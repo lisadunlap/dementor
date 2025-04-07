@@ -29,7 +29,9 @@ def process_split(image_dir, annotations_file, output_file, model="idefics", lim
     existing_captions = {}
     if skip_existing and os.path.exists(output_file):
         with open(output_file, 'r') as f:
-            existing_captions = json.load(f)
+            for line in f:
+                item = json.loads(line)
+                existing_captions[item['image_id']] = item['caption']
         print(f"Loaded {len(existing_captions)} existing captions from {output_file}")
     
     # Load COCO annotations
@@ -55,8 +57,10 @@ def process_split(image_dir, annotations_file, output_file, model="idefics", lim
     # Function to save results to file
     def save_results():
         with save_lock:
+            # Write results to JSONL file (overwriting the existing file)
             with open(output_file, 'w') as f:
-                json.dump(results, f, indent=2)
+                for img_id, caption in results.items():
+                    f.write(json.dumps({"image_id": img_id, "caption": caption}) + '\n')
     
     # Create a list of images to process (exclude already processed ones)
     to_process = []
@@ -130,7 +134,7 @@ def main():
     if args.split != "test2014":
         annotations_file = os.path.join(args.coco_dir, "annotations", f"captions_{args.split}.json")
     
-    output_file = os.path.join(args.output_dir, f"{args.model}_{args.split}_captions.json")
+    output_file = os.path.join(args.output_dir, f"{args.model}_{args.split}_captions.jsonl")
     
     # Process the dataset split
     process_split(image_dir, annotations_file, output_file, 

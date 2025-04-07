@@ -75,19 +75,7 @@ def get_vlm_output(image: str, prompt: str, model: str, cache: bool = True) -> s
             # print(f"Response cost: {response._hidden_params['response_cost']}")
             save_to_cache(key, output, vlm_cache)
         else:
-            chat_response = litellm.completion(
-                model="HuggingFaceM4/Idefics3-8B-Llama3",  # Model name for routing
-                messages=[{
-                    "role": "user",
-                    "content": [
-                        {"type": "text", "text": prompt},
-                        {"type": "image_url", "image_url": {"url": image_url}},
-                    ],
-                }],
-                api_base=vllm_api_base,  # Your VLLM endpoint
-                custom_llm_provider="openai"  # Using OpenAI-compatible API format
-            )
-            output = chat_response.choices[0].message.content
+            raise ValueError(f"Model {model} not supported")
     except Exception as e:
         logging.error(f"VLM Error: {e}")
         return None
