@@ -11,7 +11,7 @@ run `vllm serve` with the huggingface model name and the number of GPUs you want
 
 ```bash
 vllm serve meta-llama/Meta-Llama-3-8B-Instruct --dtype half --tensor_parallel_size 4
-```
+`
 
 if you want to run multiple models at once, set `--port` to a different port for each model
 
