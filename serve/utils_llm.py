@@ -13,12 +13,14 @@ import anthropic
 import datetime
 import numpy as np
 
-from components.utils_general import (
+from serve.utils_general import (
     get_from_cache,
     save_to_cache,
     save_emb_to_cache,
     get_emb_from_cache,
 )
+
+from serve.global_vars import LLAMA_URL
 
 logging.basicConfig(level=logging.ERROR)
 
@@ -34,7 +36,7 @@ llm_embed_cache = lmdb.open("cache/llm_embed_cache", map_size=int(1e11))
 cache_lock = threading.Lock()
 
 def get_llm_output(
-    prompt: str | List[str], model: str, cache=True, system_prompt=None, history=[], max_tokens=256
+    prompt: str | List[str], model: str, cache=True, system_prompt=None, history=[], max_tokens=1024
 ) -> str | List[str]:
     if isinstance(prompt, list):
         with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
@@ -48,13 +50,13 @@ def get_llm_output(
             return [future.result() for future in futures]
 
     openai.api_base = (
-        "https://api.openai.com/v1" if model != "llama-3-8b" else "http://localhost:8000/v1"
+        "https://api.openai.com/v1" if model != "llama-3-8b" else LLAMA_URL
     )
     if "gpt" in model:
         client = OpenAI()
     elif model == "llama-3-8b":
         client = OpenAI(
-            base_url="http://localhost:8000/v1",
+            base_url=LLAMA_URL,
         )
     else:
         client = anthropic.Anthropic()
@@ -96,7 +98,7 @@ def get_llm_output(
 
     for _ in range(3):
         try:
-            if "gpt-3.5" in model:
+            if "gpt" in model:
                 start_time_ms = datetime.datetime.now().timestamp() * 1000
                 completion = client.chat.completions.create(
                     model=model,
@@ -107,24 +109,6 @@ def get_llm_output(
                     datetime.datetime.now().timestamp() * 1000
                 )
                 response = completion.choices[0].message.content.strip()
-            elif "gpt-4" in model:
-                start_time_ms = datetime.datetime.now().timestamp() * 1000
-                completion = client.chat.completions.create(
-                    model=model,
-                    messages=messages,
-                )
-                end_time_ms = round(
-                    datetime.datetime.now().timestamp() * 1000
-                )
-                response = completion.choices[0].message.content.strip()
-            elif "claude-opus" in model:
-                completion = client.messages.create(
-                    model=model,
-                    messages=messages,
-                    max_tokens=1024,
-                    system=systems_prompt,
-                )
-                response = completion.content[0].text
             elif "claude" in model:
                 completion = client.messages.create(
                     model=model,
@@ -173,7 +157,6 @@ def get_llm_output(
     return "LLM Error: Cannot get response."
 
 
-from components.utils_text_embedding import get_text_embedding
 def get_llm_embedding(prompt: str | List[str], model: str, cache=True) -> str | List[str]:
     if isinstance(prompt, list):
         with concurrent.futures.ThreadPoolExecutor(max_workers=32) as executor:
@@ -230,9 +213,10 @@ def test_get_llm_output():
     model = "gpt-3.5-turbo"
     completion = get_llm_output(prompt, model)
     print(f"{model=}, {completion=}")
-    # model = "llama-3-8b"
-    # completion = get_llm_output(prompt, model)
-    # print(f"{model=}, {completion=}")
+
+    model = "llama-3-8b"
+    completion = get_llm_output(prompt, model)
+    print(f"{model=}, {completion=}")
 
 def test_get_llm_embedding():
     prompt = "hello"
