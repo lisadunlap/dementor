@@ -179,13 +179,13 @@ def run_all_analyses(response_35, response_4o, response_35_repr):
 response_35 = {}
 response_4o = {}
 response_35_repr = {}
-with open ('/home/davidchan/Projects/dementor/disguising/old_comparison_results.csv', 'r') as f:
+with open ('old_comparison_results.csv', 'r') as f:
     # Columns are prompt,gpt35_response,gpt4omini_response,comparison_results
     for row in csv.DictReader(f):
         response_35[row['prompt']] = row['gpt35_response']
         response_4o[row['prompt']] = row['gpt4omini_response']
 
-with open('/home/davidchan/Projects/dementor/disguising/new_comparison_results.csv', 'r') as f:
+with open('new_comparison_results.csv', 'r') as f:
     # Columns are prompt,gpt35_reprompted,gpt4omini_response,comparison_results
     for row in csv.DictReader(f):
         response_35_repr[row['prompt']] = row['gpt35_reprompted']
