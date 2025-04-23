@@ -139,7 +139,8 @@ def run_all_analyses(response_35, response_4o, response_35_repr):
     table.add_column("Feature", style="bold cyan")
     table.add_column("GPT-3.5 (%)", justify="right")
     table.add_column("GPT-4o (%)", justify="right")
-    table.add_column("GPT-3.5 Repr (%)", justify="right")
+    # table.add_column("GPT-3.5 Repr (%)", justify="right")
+    table.add_column("GPT-3.5 Repr Clustering (%)", justify="right")
 
     for feature, func in tqdm.tqdm(style_functions.items()):
         matches_35 = analyze_style(func, response_35)
@@ -179,18 +180,26 @@ def run_all_analyses(response_35, response_4o, response_35_repr):
 response_35 = {}
 response_4o = {}
 response_35_repr = {}
+response_35_repr_clustering = {}
 with open ('old_comparison_results.csv', 'r') as f:
     # Columns are prompt,gpt35_response,gpt4omini_response,comparison_results
     for row in csv.DictReader(f):
         response_35[row['prompt']] = row['gpt35_response']
         response_4o[row['prompt']] = row['gpt4omini_response']
 
-with open('new_comparison_results.csv', 'r') as f:
-    # Columns are prompt,gpt35_reprompted,gpt4omini_response,comparison_results
+# with open('new_comparison_results.csv', 'r') as f:
+#     # Columns are prompt,gpt35_reprompted,gpt4omini_response,comparison_results
+#     for row in csv.DictReader(f):
+#         response_35_repr[row['prompt']] = row['gpt35_reprompted']
+#         response_4o[row['prompt']] = row['gpt4omini_response']
+
+with open('clustering/gpt35_clustering_responses.csv', 'r') as f:
+    # Columns are prompt,gpt35_reprompted_clustering_0,gpt35_reprompted_clustering_1, gpt35_reprompted_clustering_2
     for row in csv.DictReader(f):
-        response_35_repr[row['prompt']] = row['gpt35_reprompted']
-        response_4o[row['prompt']] = row['gpt4omini_response']
+        response_35_repr_clustering[row['prompt']] = row['gpt35_reprompted_clustering_2']
 
 
 # Run the analysis
-run_all_analyses(response_35, response_4o, response_35_repr)
+# run_all_analyses(response_35, response_4o, response_35_repr)
+run_all_analyses(response_35, response_4o, response_35_repr_clustering)
+
