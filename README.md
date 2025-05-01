@@ -31,3 +31,15 @@ python get_differences.py --input_file data/friendly_and_cold_sample.csv --batch
 ```
 
 This will run 2 rounds of getting differences between the friendly and cold models, and then reduce the differences to 5 final vibes.
+
+## Running Scorer
+
+Make sure that you have the right package versions to run [phi-4](https://huggingface.co/microsoft/Phi-4-mini-instruct)
+
+To test it out:
+`python disguising/llm_scorer.py --response1 "hello" --response2 "howdy how are ya"`
+
+To run on your file 
+```
+python disguising/llm_scorer.py --input_file disguising/comparisons/new_comparison_results.csv --output_file test.csv --col1 gpt35_reprompted --col2 gpt4omini_response
+```
