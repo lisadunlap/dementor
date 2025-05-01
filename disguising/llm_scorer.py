@@ -45,6 +45,12 @@ Response 2:
 {response2}
 """
 
+def parse_score(score):
+    # get first line of score
+    score = score.split("\n")[0]
+    # split on comma
+    return int(score.split(",")[0]), int(score.split(",")[1])
+
 def format_prompt(response1, response2):
     user_question =  comparison_system_prompt.format(response1=response1, response2=response2)
     return [
@@ -72,6 +78,8 @@ if __name__ == "__main__":
     else:
         assert args.col1 and args.col2, "col1 and col2 must be provided if input_file is provided"
         outputs = []
+        semantic_scores = []
+        stylistic_scores = []
         df = pd.read_csv(args.input_file)
         if args.test:
             df = df.head(10)
@@ -81,9 +89,18 @@ if __name__ == "__main__":
             print(messages)
             output = llm.chat(messages=messages, sampling_params=sampling_params)
             outputs.append(output[0].outputs[0].text)
+            semantic_score, stylistic_score = parse_score(output[0].outputs[0].text)
+            semantic_scores.append(semantic_score)
+            stylistic_scores.append(stylistic_score)
 
         wandb.init(project=args.wandb_project)
         df["comparison_results"] = outputs
+        df["semantic_score"] = semantic_scores
+        df["stylistic_score"] = stylistic_scores
         df.to_csv(args.output_file, index=False)
         wandb.log({"comparison_results": wandb.Table(data=df)})
+
+        # log semantic and stylistic scores
+        wandb.summary["semantic_score"] = sum(semantic_scores) / len(semantic_scores)
+        wandb.summary["stylistic_score"] = sum(stylistic_scores) / len(stylistic_scores)
         wandb.finish()
