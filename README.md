@@ -7,7 +7,7 @@ pip install -r requirements.txt
 ```
 
 ## Running Local Models with VLLM
-run `vllm serve` with the huggingface model name and the number of GPUs you want to use
+run `vllm serve` with the huggingface model name and the number of GPUs you want to use (NOTE: most of our files load the model for offline inference so we dont need run vllm serve)
 
 ```bash
 vllm serve meta-llama/Meta-Llama-3-8B-Instruct --dtype half --tensor_parallel_size 4
@@ -32,6 +32,40 @@ python get_differences.py --input_file data/friendly_and_cold_sample.csv --batch
 
 This will run 2 rounds of getting differences between the friendly and cold models, and then reduce the differences to 5 final vibes.
 
+## Generating responses
+```bash
+python disguising/prompt_llm_new.py --model google/gemma-3-1b-it --num_samples 1000
+```
+
+# Class structure
+
+To disguise a model, run `python disguising/disguise.py ` with your method of choice (methods located in `methods`). Each method should return a prompt to give an llm which will disguise it as the target_llm
+
+```bash
+class MethodBase:
+    """
+    Base class for all methods.
+    """
+    def __init__(self, model: str, disguise_as: str) -> None:
+        self.model = model
+        self.disguise_as = disguise_as
+    
+    def forward(self, prompt: str) -> str:
+        """
+        Given a prompt, return the disguised prompt to use for the model.
+        """
+        return ...
+```
+
+## Random Sample Baseline
+
+Randomly sample examples from generations of the `disguise_as` model and use those in the prompt for `model`. This assumes that you have already generated the responses for the disguise_as model. 
+```bash
+python disguising/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --test
+```
+
+This will save the generations in `model-respones/disguised`. 
+
 ## Running Scorer
 
 Make sure that you have the right package versions to run [phi-4](https://huggingface.co/microsoft/Phi-4-mini-instruct)
@@ -39,7 +73,11 @@ Make sure that you have the right package versions to run [phi-4](https://huggin
 To test it out:
 `python disguising/llm_scorer.py --response1 "hello" --response2 "howdy how are ya"`
 
-To run on your file 
+<!-- To run on your file 
 ```
 python disguising/llm_scorer.py --input_file disguising/comparisons/new_comparison_results.csv --output_file test.csv --col1 gpt35_reprompted --col2 gpt4omini_response
+``` -->
+Then you can run the scoring on your results with the following:
+```bash
+python disguising/llm_scorer_new.py --input_file_a disguising/model-responses/gpt-4o_responses.csv --input_file_b disguising/model-responses/google_gemma-3-1b-it_responses-1000.csv
 ```
