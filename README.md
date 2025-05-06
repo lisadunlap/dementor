@@ -73,11 +73,7 @@ Make sure that you have the right package versions to run [phi-4](https://huggin
 To test it out:
 `python disguising/llm_scorer.py --response1 "hello" --response2 "howdy how are ya"`
 
-<!-- To run on your file 
-```
-python disguising/llm_scorer.py --input_file disguising/comparisons/new_comparison_results.csv --output_file test.csv --col1 gpt35_reprompted --col2 gpt4omini_response
-``` -->
 Then you can run the scoring on your results with the following:
 ```bash
-python disguising/llm_scorer_new.py --input_file_a disguising/model-responses/gpt-4o_responses.csv --input_file_b disguising/model-responses/google_gemma-3-1b-it_responses-1000.csv
+python disguising/llm_scorer.py --input_file_a disguising/model-responses/gpt-4o_responses.csv --input_file_b disguising/model-responses/google_gemma-3-1b-it_responses-1000.csv
 ```
