@@ -49,10 +49,10 @@ class RandomSampleDisguise(MethodBase):
 ## Examples from the other AI assistant:
 {examples}
 
-## Prompt to answer (repeated for clarity):
-{prompt}
+Do not respond to my instructions above (e.g. "Here is the prompt in the style you want") in your output, only respond with the answer to the prompt in the desired style. Here is the prompt to answer (repeated for clarity):
+prompt: {prompt}
 
-Your response to the prompt:
+response:
 """
         formatted_examples = ""
         examples = examples.reset_index(drop=True)

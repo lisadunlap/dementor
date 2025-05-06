@@ -14,6 +14,7 @@ import wandb
 import matplotlib.pyplot as plt
 import logging
 import argparse
+from typing import List
 
 from methods.get_method import get_method
 from utils import get_token_count
@@ -65,6 +66,14 @@ def generate_responses(df: pd.DataFrame, llm, sampling_params, batch_size: int) 
         responses.extend(llm.chat(messages=messages, sampling_params=sampling_params))
     return [response.outputs[0].text for response in responses]
 
+def clean_response(old_responses: List[str], llm, sampling_params, batch_size: int) -> List[str]:
+    prompt = "In the LLM output below, remove any text at the beginning which mentions generating a response or mimicing a style (e.g. 'Here is the response in the style of ...'). If there is no mention of this, return the original output. Do not alter the original output in any other way.\nLLM output: {response}"
+    messages = [format_prompt(prompt.format(response=response)) for response in old_responses]
+    responses = []
+    for i in tqdm(range(0, len(messages), batch_size), desc="Cleaning responses in batches"):
+        responses.extend(llm.chat(messages=messages[i:i+batch_size], sampling_params=sampling_params))
+    return [response.outputs[0].text for response in responses]
+
 def plot_token_length_distribution(df: pd.DataFrame, out_path: str):
     plt.figure(figsize=(10, 5))
     plt.hist(df["target_response_token_length"], bins=20, alpha=0.5, label="Target")
@@ -97,7 +106,8 @@ def main():
 
     llm = LLM(model=args.model, trust_remote_code=True, max_model_len=MAX_MODEL_LEN)
     sampling_params = SamplingParams(max_tokens=MAX_MODEL_LEN, temperature=args.temperature, top_p=args.top_p)
-    df["disguised_response"] = generate_responses(df, llm, sampling_params, BATCH_SIZE)
+    df["disguised_response_raw"] = generate_responses(df, llm, sampling_params, BATCH_SIZE)
+    df["disguised_response"] = clean_response(df["disguised_response_raw"], llm, sampling_params, BATCH_SIZE)
     df["disguised_response_token_length"] = df["disguised_response"].apply(get_token_count)
 
     out_csv = f"disguising/model-responses/disguised/{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_responses-{args.num_samples}.csv"
