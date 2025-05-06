@@ -71,3 +71,13 @@ response:
         disguise_df_sample = self.disguise_df.sample(n=self.num_samples_per_disguise, random_state=self.seed)
         disguise_prompt = self.make_disguise_prompt(disguise_df_sample, prompt)
         return disguise_prompt
+
+class JustNameIt(MethodBase):
+    """
+    Just ask the model to act like the other model.
+    """
+    def __init__(self, model: str, disguise_as: str) -> None:
+        super().__init__(model, disguise_as)
+
+    def forward(self, prompt: str) -> str:
+        return f"Answer the following prompt in the style of {self.disguise_as}:\n{prompt}"

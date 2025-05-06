@@ -106,11 +106,14 @@ def main():
 
     llm = LLM(model=args.model, trust_remote_code=True, max_model_len=MAX_MODEL_LEN)
     sampling_params = SamplingParams(max_tokens=MAX_MODEL_LEN, temperature=args.temperature, top_p=args.top_p)
-    df["disguised_response_raw"] = generate_responses(df, llm, sampling_params, BATCH_SIZE)
-    df["disguised_response"] = clean_response(df["disguised_response_raw"], llm, sampling_params, BATCH_SIZE)
+    df["disguised_response"] = generate_responses(df, llm, sampling_params, BATCH_SIZE)
+    # df["disguised_response"] = clean_response(df["disguised_response_raw"], llm, sampling_params, BATCH_SIZE)
     df["disguised_response_token_length"] = df["disguised_response"].apply(get_token_count)
 
-    out_csv = f"disguising/model-responses/disguised/{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_responses-{args.num_samples}.csv"
+    results_folder = f"disguising/model-responses/disguised/{args.method}"
+    if not os.path.exists(results_folder):
+        os.makedirs(results_folder)
+    out_csv = f"{results_folder}/{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_responses-{args.num_samples}.csv"
     df.to_csv(out_csv, index=False)
     logging.info(f"Saved disguised responses to {out_csv}")
 
