@@ -3,6 +3,10 @@ import wandb
 import pandas as pd
 import re
 from vllm import LLM, SamplingParams
+import os
+
+from stylistic_analysis import compute_heuristics
+from utils import get_token_count
 
 comparison_system_prompt = """You are an expert evaluator of AI model responses. Your task is to rate the similarity between two responses in two key dimensions:
 
@@ -24,10 +28,12 @@ For each comparison, provide:
 3. Specific examples of similarities and differences
 
 Example format:
-3, 1
+Scores: 3/4, 2/4
 Breakdown:
-- Semantic Meaning: 3/4 (both responses are greetings, conveying the same intent, even though one adds "how are you")
-- Stylistic Similarity: 2/4 (both responses are informal, but one is more expressive)
+- Semantic Meaning: 3/4 
+    Justification: both responses are greetings, conveying the same intent, but one adds "how are you"
+- Stylistic Similarity: 2/4 
+    Justification: both responses are informal with minimal formatting, but one is much more enthusiastic in tone
 
 Here are the two responses to compare:
 Response 1:
@@ -39,14 +45,32 @@ Response 2:
 """
 
 def parse_score(score):
+    original_score = score
     # get first line of score
     score = score.split("\n")[0]
-    # split on comma
-    try:
-        return int(score.split(",")[0]), int(score.split(",")[1])
-    except Exception as e:
-        print(f"Failed to parse score from: {score.splitlines()[0]}")
-        return None, None
+    
+    # First try to match the exact format "Scores: X/Y, Z/W"
+    match = re.search(r'Scores:\s*(\d+)/(\d+),\s*(\d+)/(\d+)', score)
+    if match:
+        return int(match.group(1)), int(match.group(3))
+    
+    # Try to find two numbers in the format X/Y, Z/W
+    match = re.search(r'(\d+)/(\d+),\s*(\d+)/(\d+)', score)
+    if match:
+        return int(match.group(1)), int(match.group(3))
+    
+    # Try to find two numbers separated by comma or slash
+    match = re.search(r'(\d+)[,/]\s*(\d+)', score)
+    if match:
+        return int(match.group(1)), int(match.group(2))
+    
+    # If that fails, try to find any two numbers in the line
+    matches = re.findall(r'\b(\d+)\b', score)
+    if len(matches) >= 2:
+        return int(matches[0]), int(matches[1])
+    
+    print(f"Failed to parse score from: {original_score}")
+    return None, None
 
 def parse_similarity_score(score):
     # Use regex to find the first integer between 1 and 10 in the output
@@ -86,7 +110,10 @@ if __name__ == "__main__":
     parser.add_argument("--output_file", type=str)
     parser.add_argument("--wandb_project", type=str, default="disguising")
     parser.add_argument("--test", action="store_true")
+    parser.add_argument("--compute_heuristics_only", action="store_true")
     args = parser.parse_args()
+
+    os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
 
     wandb.init(project=args.wandb_project, name=f"{args.input_file_a.split('/')[-1].replace('.csv', '')}_vs_{args.input_file_b.split('/')[-1].replace('.csv', '')}", group="comparison")
     wandb.config.update(args)
@@ -116,7 +143,29 @@ if __name__ == "__main__":
         print(f"Loaded {len(df)} rows")
         if args.test:
             df = df.head(10)
+        
+        # get token count of each response
+        df["token_count_a"] = df["response_a"].apply(get_token_count)
+        df["token_count_b"] = df["response_b"].apply(get_token_count)
+        df["over_token_limit"] = df["token_count_a"]  + df["token_count_b"]  + 400 > 4096
+        print(f"Found {len(df[df['over_token_limit']])} rows that are over the token limit")
+        wandb.summary["over_token_limit"] = len(df[df["over_token_limit"]])
+        df = df[~df["over_token_limit"]]
 
+        # get average normalized difference in length
+        length_diff = [(len(row["response_a"]) - len(row["response_b"])) / max(len(row["response_a"]), len(row["response_b"])) for _, row in df.iterrows()]
+        wandb.summary["length_diff"] = sum(length_diff) / len(length_diff)
+
+        # Compute heuristics
+        heuristic_table = compute_heuristics(df["response_a"].tolist(), df["response_b"].tolist())
+        heuristic_file= args.output_file.replace(".csv", "_heuristic_table.csv")
+        heuristic_table.to_csv(heuristic_file, index=False)
+        wandb.log({"style_heuristics": wandb.Table(dataframe=heuristic_table)})
+        wandb.summary["heuristic_avg_score"] = heuristic_table["match"].mean()
+        if args.compute_heuristics_only:
+            wandb.finish()
+            exit()
+        
         llm = LLM(model="microsoft/Phi-4-mini-instruct", trust_remote_code=True, max_model_len=4096)
         sampling_params = SamplingParams(
             max_tokens=4096,
@@ -125,7 +174,8 @@ if __name__ == "__main__":
         outputs = []
         batch_size = 100  # You can make this configurable
         num_rows = len(df)
-        for batch_start in range(0, num_rows, batch_size):
+        for i, batch_start in enumerate(range(0, num_rows, batch_size)):
+            print(f"Processing batch {i+1} of {num_rows // batch_size}")
             batch_end = min(batch_start + batch_size, num_rows)
             batch_rows = df.iloc[batch_start:batch_end]
 
@@ -156,7 +206,7 @@ if __name__ == "__main__":
 
         # find any rows where there are non or non-integer scores
         non_integer_scores = df[df["semantic_score"].isna() | df["stylistic_score"].isna() | df["similarity_score"].isna()]
-        print(f"Found {len(non_integer_scores)} rows with non-integer scores")
+        print(f"Found {len(non_integer_scores)} rows with nan scores")
         semantic_scores = [score for score in semantic_scores if score is not None]
         stylistic_scores = [score for score in stylistic_scores if score is not None]
         similarity_scores = [score for score in similarity_scores if score is not None]
@@ -165,4 +215,6 @@ if __name__ == "__main__":
         wandb.summary["semantic_score"] = sum(semantic_scores) / len(semantic_scores)
         wandb.summary["stylistic_score"] = sum(stylistic_scores) / len(stylistic_scores)
         wandb.summary["similarity_score_1_10"] = sum(similarity_scores) / len(similarity_scores)
+        wandb.summary["parsing_errors"] = len(non_integer_scores)
         wandb.finish()
+        exit()

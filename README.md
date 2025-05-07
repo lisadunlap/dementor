@@ -75,5 +75,7 @@ To test it out:
 
 Then you can run the scoring on your results with the following:
 ```bash
-python disguising/llm_scorer.py --input_file_a disguising/model-responses/gpt-4o_responses.csv --input_file_b disguising/model-responses/google_gemma-3-1b-it_responses-1000.csv
+python disguising/llm_scorer.py --input_file_a disguising/model-responses/gpt-4o_responses.csv --input_file_b disguising/model-responses/google_gemma-3-1b-it_responses-1000.csv --output_file disguising/model-responses/scores/google_gemma-3-1b-it_vs_gpt-4o.csv
 ```
+
+If you just want to run the heuristics (response length, markdown headers, eclamation marks, etc), add the `--compute_heuristics_only` flag to your command
