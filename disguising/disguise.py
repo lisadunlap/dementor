@@ -55,14 +55,14 @@ def load_data(args) -> pd.DataFrame:
 
 def generate_disguised_prompts(df: pd.DataFrame, method, max_tokens: int) -> pd.DataFrame:
     df["disguised_prompt"] = df["prompt"].apply(lambda x: method.forward(x))
-    df["disguised_prompt_token_length"] = df["disguised_prompt"].apply(get_token_count)
+    df["disguised_prompt_token_length"] = df["disguised_prompt"].apply(lambda x: get_token_count(x[1]["content"]))
     df = df[df["disguised_prompt_token_length"] <= max_tokens]
     return df.drop(columns=["disguised_prompt_token_length"])
 
 def generate_responses(df: pd.DataFrame, llm, sampling_params, batch_size: int) -> list:
     responses = []
     for i in tqdm(range(0, len(df), batch_size), desc="Generating responses in batches"):
-        messages = [format_prompt(prompt) for prompt in df["disguised_prompt"].tolist()[i:i+batch_size]]
+        messages = df["disguised_prompt"].tolist()[i:i+batch_size]
         responses.extend(llm.chat(messages=messages, sampling_params=sampling_params))
     return [response.outputs[0].text for response in responses]
 

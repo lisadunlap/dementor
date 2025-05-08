@@ -1,4 +1,8 @@
 import pandas as pd
+from typing import List
+from litellm import completion
+import wandb
+
 from transformers import AutoTokenizer
 from utils import get_token_count
 
@@ -14,7 +18,7 @@ class MethodBase:
         """
         Given a prompt, return the disguised prompt to use for the model.
         """
-        return prompt
+        return [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": prompt}]
     
 class RandomSampleDisguise(MethodBase):
     """
@@ -70,7 +74,7 @@ response:
         """
         disguise_df_sample = self.disguise_df.sample(n=self.num_samples_per_disguise, random_state=self.seed)
         disguise_prompt = self.make_disguise_prompt(disguise_df_sample, prompt)
-        return disguise_prompt
+        return [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": disguise_prompt}]
 
 class JustNameIt(MethodBase):
     """
@@ -81,3 +85,119 @@ class JustNameIt(MethodBase):
 
     def forward(self, prompt: str) -> str:
         return f"Answer the following prompt in the style of {self.disguise_as}:\n{prompt}"
+    
+class VibeBasedDisguise(MethodBase):
+    """
+    Disguise the prompt by using the vibe of the other model.
+    """
+    def __init__(self, model: str, disguise_as: str, num_samples: int = 1000, num_samples_per_disguise: int = 10, seed: int = None) -> None:
+        super().__init__(model, disguise_as)
+        self.num_samples = num_samples
+        self.num_samples_per_disguise = num_samples_per_disguise
+        self.seed = seed
+        self.disguise_df = pd.read_csv(f"disguising/model-responses/base/{self.disguise_as.replace('/', '_')}_responses-{self.num_samples}.csv")
+        self.model_df = pd.read_csv(f"disguising/model-responses/base/{self.model.replace('/', '_')}_responses-{self.num_samples}.csv")
+        # join the two dataframes on the prompt column
+        self.model_df = self.model_df.merge(self.disguise_df, on="prompt", suffixes=("_model", "_disguise"))
+        self.model_tokenizer = AutoTokenizer.from_pretrained(self.model)
+        self.system_prompts, self.logs = [], []
+        for i in range(5):
+            system_prompt, log = self.get_vibe_system_prompt(self.model_df.sample(n=num_samples_per_disguise))
+            self.system_prompts.append(system_prompt)
+            self.logs.append(log)
+        self.vibe_prompt, log = self.aggregate_vibe_system_prompts(self.system_prompts)
+        self.logs.append(log)
+        self.log_to_wandb(self.logs)
+
+    def log_to_wandb(self, logs: List[dict]) -> None:
+        """
+        Log the logs to wandb.
+        """
+        wandb.log({"logs": wandb.Table(dataframe=pd.DataFrame(logs))})
+    
+    def get_vibe_system_prompt(self, df_batch: pd.DataFrame) -> List[str]:
+        proposer_systems_prompt = """You are a machine learning engineer tasked with constructing a systems prompt that will cause Model 1 to act like Model 2 such that users will not be able to tell the difference. To do this, you will be given examples of prompts and responses from both models. 
+
+When analyzing the differences between the models, consider the following factors in detail (this is not an exhaustive list, but a good starting point):
+
+1. Response Style:
+   - Length and verbosity of responses
+   - Use of bullet points, numbered lists, or paragraphs
+   - Level of formality or casualness
+   - Use of technical jargon vs. plain language
+
+2. Tone and Personality:
+   - Emotional tone (friendly, professional, academic, etc.)
+   - Use of humor or wit
+   - Level of confidence in responses
+   - Personal pronouns and self-references
+
+3. Content Structure:
+   - How information is organized
+   - Use of headers, sections, or subsections
+   - Introduction and conclusion patterns
+   - Handling of multiple questions or topics
+
+4. Language Patterns:
+   - Common phrases or expressions
+   - Sentence structure and complexity
+   - Use of metaphors or analogies
+   - Transitional phrases and connectors
+
+5. Technical Aspects:
+   - Level of detail in explanations
+   - Use of examples or demonstrations
+   - Handling of uncertainty or ambiguity
+   - Approach to problem-solving
+
+6. Interaction Style:
+   - How questions are addressed
+   - Use of follow-up questions
+   - Handling of edge cases or errors
+   - Response to unclear or ambiguous prompts
+
+If there are also behaviors that Model 1 has that are unique, you should instruct the model to not do these things (e.g. "Do not start your response with 'Hello, I'm ...'")
+
+This system prompt will be given to Model 1 directly, so it should be written in the style of a helpful assistant and should not mention model 2 as it will not know anything about it. The prompt should be specific about the exact behaviors the model should have and may include examples of the desired behavior or specific phrases that should be used.
+
+Think through your response step by step, then respond with your response in the following format:
+Analysis: [your analysis of the differences between the two models]
+System prompt: You are a helpful assistant ... [your proposed system prompt for Model 1 to cause it to act like Model 2]
+"""
+        prompt_str = "\n\n".join([f"### Prompt: {row['prompt']}\n\n### Model 1:\n{row['model_response_model']}\n\n### Model 2:\n{row['model_response_disguise']}" for _, row in df_batch.iterrows()])
+        prompt = f"Examples:\n{prompt_str}"
+        response = completion(
+            model="openai/gpt-4o",
+            messages=[{"content": proposer_systems_prompt, "role": "system"}, {"content": prompt, "role": "user"}],
+            caching=True
+        )
+        response = response["choices"][0]["message"]["content"]
+        parsed_response = response.split("System prompt:")[1].strip()
+        logs = {"input": prompt, "output": response, "parsed_output": parsed_response}
+        return parsed_response, logs
+    
+    def aggregate_vibe_system_prompts(self, systems_prompts: List[str]) -> str:
+        """
+        Aggregate the vibe system prompts into a single system prompt.
+        """
+        systems_prompt = """You are a machine learning engineer tasked with constructing a systems prompt that will cause Model 1 to act like Model 2 such that users will not be able to tell the difference.  To do this you will be given a list of different systems prompts that have been proposed for this task. Your job is to aggregate these into a single system prompt that will be given to Model 1. This prompt should generalize to new prompts, but be specific about the exact behaviors the model should have. You may include examples of the exact behavior you want the model to have or specific phrases that the model should use if you think it will help.
+This system prompt will be given to Model 1 directly, so it should be written in the style of a helpful assistant and should not mention model 2 as it will not know anything about it. Remeber to be as specific as possible in your system prompt.
+
+Respond with your response in the following format:
+Analysis: [your analysis of the differences between the two models]
+System prompt: [the final system prompt for Model 1 to cause it to act like Model 2]
+"""
+        prompt = f"System prompts:\n\n{systems_prompts}"
+        print(prompt)
+        response = completion(
+            model="openai/gpt-4o",
+            messages=[{"content": systems_prompt, "role": "system"}, {"content": prompt, "role": "user"}],
+            caching=True
+        )
+        response = response["choices"][0]["message"]["content"]
+        parsed_response = response.split("System prompt:")[1].strip()
+        logs = {"input": prompt, "output": response, "parsed_output": parsed_response}
+        return parsed_response, logs
+    
+    def forward(self, prompt: str) -> str:
+        return [{"role": "system", "content": self.vibe_prompt}, {"role": "user", "content": prompt}]
