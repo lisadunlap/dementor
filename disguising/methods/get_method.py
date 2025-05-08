@@ -19,5 +19,7 @@ def get_method(method_name, model, disguise_as, num_samples=None):
         return FeatureClustering(model, disguise_as, num_samples_per_disguise=5, num_samples=num_samples, method='stylistic', sample_at_init=True, save_clusters=True)
     elif method_name == "stylistic_clustering_resample":
         return FeatureClustering(model, disguise_as, num_samples_per_disguise=5, num_samples=num_samples, method='stylistic', sample_at_init=False, save_clusters=True)
+    elif method_name == "vibe_based_disguise":
+        return VibeBasedDisguise(model, disguise_as, num_samples=num_samples)
     else:
         raise ValueError(f"Method {method_name} not found")
