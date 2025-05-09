@@ -64,7 +64,7 @@ Randomly sample examples from generations of the `disguise_as` model and use tho
 python disguising/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --test
 ```
 
-This will save the generations in `model-respones/disguised`. 
+This will save the generations in `model-respones/disguised/{method}`. 
 
 ## Running Scorer
 
