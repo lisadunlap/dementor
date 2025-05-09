@@ -33,7 +33,7 @@ def format_prompt(prompt):
         {"role": "user", "content": prompt}
     ]
 
-def get_model_response_path(model: str, num_samples: int) -> str:
+def get_model_response_path(model: str, num_samples = None) -> str:
     base = model.replace('/', '_')
     if num_samples is not None:
         return f"disguising/model-responses/base/{base}_responses-{num_samples}.csv"
