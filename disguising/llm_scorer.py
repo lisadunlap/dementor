@@ -107,18 +107,21 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default="gpt-4o-mini")
     parser.add_argument("--input_file_a", type=str)
     parser.add_argument("--input_file_b", type=str)
+    parser.add_argument("--input_file", type=str) # input file that contains both target, source, and disguised responses
     parser.add_argument("--output_file", type=str)
     parser.add_argument("--wandb_project", type=str, default="disguising")
     parser.add_argument("--test", action="store_true")
     parser.add_argument("--compute_heuristics_only", action="store_true")
     args = parser.parse_args()
 
-    os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
+    
+    if args.output_file:
+        os.makedirs(os.path.dirname(args.output_file), exist_ok=True)
 
-    wandb.init(project=args.wandb_project, name=f"{args.input_file_a.split('/')[-1].replace('.csv', '')}_vs_{args.input_file_b.split('/')[-1].replace('.csv', '')}", group="comparison")
-    wandb.config.update(args)
+        wandb.init(project=args.wandb_project, name=f"{args.output_file.split('/')[-1].replace('.csv', '')}", group="comparison")
+        wandb.config.update(args)
 
-    if not args.input_file_a and not args.input_file_b:
+    if not args.input_file and not args.input_file_a and not args.input_file_b: # compare two responses
         llm = LLM(model="microsoft/Phi-4-mini-instruct", trust_remote_code=True, max_model_len=4096)
         sampling_params = SamplingParams(
             max_tokens=500,
@@ -127,7 +130,97 @@ if __name__ == "__main__":
         messages = format_prompt(args.response1, args.response2)
         output = llm.chat(messages=messages, sampling_params=sampling_params)
         print(output[0].outputs[0].text)
-    else:
+
+    elif args.input_file: # single file with target, source, and disguised responses
+        assert args.input_file, "input_file must be provided"
+        outputs = []
+        semantic_scores = []
+        stylistic_scores = []
+        similarity_scores = []
+        df = pd.read_csv(args.input_file).dropna(subset=["target_response", "disguised_response"]).drop_duplicates(subset=["prompt"]).reset_index(drop=True)
+        print(f"Loaded {len(df)} rows")
+        if args.test:
+            df = df.head(10)
+        
+        # get token count of each response
+        df["over_token_limit"] = df["target_response_token_length"]  + df["disguised_response_token_length"]  + 400 > 4096
+        print(f"Found {len(df[df['over_token_limit']])} rows that are over the token limit")
+        if args.output_file:
+            wandb.summary["over_token_limit"] = len(df[df["over_token_limit"]])
+        df = df[~df["over_token_limit"]]
+
+        # get average normalized difference in length
+        length_diff = [(len(row["target_response"]) - len(row["disguised_response"])) / max(len(row["target_response"]), len(row["disguised_response"])) for _, row in df.iterrows()]
+        if args.output_file:
+            wandb.summary["length_diff"] = sum(length_diff) / len(length_diff)
+
+        # Compute heuristics
+        heuristic_table = compute_heuristics(df["target_response"].tolist(), df["disguised_response"].tolist())
+        if args.output_file:
+            heuristic_file= args.output_file.replace(".csv", "_heuristic_table.csv")
+            heuristic_table.to_csv(heuristic_file, index=False)
+            wandb.log({"style_heuristics": wandb.Table(dataframe=heuristic_table)})
+            wandb.summary["heuristic_avg_score"] = heuristic_table["match"].mean()
+            if args.compute_heuristics_only:
+                wandb.finish()
+                exit()
+        
+        llm = LLM(model="microsoft/Phi-4-mini-instruct", trust_remote_code=True, max_model_len=4096)
+        sampling_params = SamplingParams(
+            max_tokens=4096,
+            temperature=0.0,
+            )
+        outputs = []
+        batch_size = 100  # You can make this configurable
+        num_rows = len(df)
+        for i, batch_start in enumerate(range(0, num_rows, batch_size)):
+            print(f"Processing batch {i+1} of {num_rows // batch_size}")
+            batch_end = min(batch_start + batch_size, num_rows)
+            batch_rows = df.iloc[batch_start:batch_end]
+
+            # Prepare batch prompts for comparison
+            comparison_messages_batch = [format_prompt(row["target_response"], row["disguised_response"]) for _, row in batch_rows.iterrows()]
+            comparison_outputs = llm.chat(messages=comparison_messages_batch, sampling_params=sampling_params)
+
+            for output in comparison_outputs:
+                outputs.append(output.outputs[0].text)
+                semantic_score, stylistic_score = parse_score(output.outputs[0].text)
+                semantic_scores.append(semantic_score)
+                stylistic_scores.append(stylistic_score)
+
+            # Prepare batch prompts for similarity
+            similarity_messages_batch = [format_similarity_prompt(row["target_response"], row["disguised_response"]) for _, row in batch_rows.iterrows()]
+            similarity_outputs = llm.chat(messages=similarity_messages_batch, sampling_params=sampling_params)
+
+            for output in similarity_outputs:
+                similarity_score = parse_similarity_score(output.outputs[0].text)
+                similarity_scores.append(similarity_score)
+
+        df["comparison_results"] = outputs
+        df["semantic_score"] = semantic_scores
+        df["stylistic_score"] = stylistic_scores
+        df["similarity_score"] = similarity_scores
+        if args.output_file:   
+            df.to_csv(args.output_file, index=False)
+            wandb.log({"comparison_results": wandb.Table(data=df)})
+
+        # find any rows where there are non or non-integer scores
+        non_integer_scores = df[df["semantic_score"].isna() | df["stylistic_score"].isna() | df["similarity_score"].isna()]
+        print(f"Found {len(non_integer_scores)} rows with nan scores")
+        semantic_scores = [score for score in semantic_scores if score is not None]
+        stylistic_scores = [score for score in stylistic_scores if score is not None]
+        similarity_scores = [score for score in similarity_scores if score is not None]
+
+        # log semantic and stylistic scores
+        if args.output_file:
+            wandb.summary["semantic_score"] = sum(semantic_scores) / len(semantic_scores)
+            wandb.summary["stylistic_score"] = sum(stylistic_scores) / len(stylistic_scores)
+            wandb.summary["similarity_score_1_10"] = sum(similarity_scores) / len(similarity_scores)
+            wandb.summary["parsing_errors"] = len(non_integer_scores)
+            wandb.finish()
+            exit()
+
+    elif args.input_file_a and args.input_file_b: # compare two files with model responses
         assert args.input_file_a and args.input_file_b, "input_file_a and input_file_b must be provided"
         outputs = []
         semantic_scores = []
