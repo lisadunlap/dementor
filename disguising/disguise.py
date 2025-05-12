@@ -33,7 +33,7 @@ def format_prompt(prompt):
         {"role": "user", "content": prompt}
     ]
 
-def get_model_response_path(model: str, num_samples: int) -> str:
+def get_model_response_path(model: str, num_samples = None) -> str:
     base = model.replace('/', '_')
     if num_samples is not None:
         return f"disguising/model-responses/base/{base}_responses-{num_samples}.csv"
@@ -110,7 +110,7 @@ def main():
     # df["disguised_response"] = clean_response(df["disguised_response_raw"], llm, sampling_params, BATCH_SIZE)
     df["disguised_response_token_length"] = df["disguised_response"].apply(get_token_count)
 
-    results_folder = f"disguising/model-responses/disguised/{args.method}"
+    results_folder = f"disguising/model-responses/disguised/{args.method}/{args.model.replace('/', '_')}"
     if not os.path.exists(results_folder):
         os.makedirs(results_folder)
     out_csv = f"{results_folder}/{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_responses-{args.num_samples}.csv"

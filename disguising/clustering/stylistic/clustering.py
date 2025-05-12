@@ -6,10 +6,6 @@ import re
 import json
 
 
-# ----------------------------
-# Style Detection Functions (copied from ../stylistic_analysis_fixed.py)
-# ----------------------------
-
 def has_markdown(text):
     markdown_patterns = [
         r'\*\*.*?\*\*', r'\*.*?\*', r'\_\_.*?\_\_', r'\_.*?\_',

@@ -57,14 +57,14 @@ class MethodBase:
         return ...
 ```
 
-## Random Sample Baseline
+## Sampling In-context Examples
 
-Randomly sample examples from generations of the `disguise_as` model and use those in the prompt for `model`. This assumes that you have already generated the responses for the disguise_as model. 
+Sample examples from generations of the `disguise_as` model and use those in the prompt for `model`. This assumes that you have already generated the responses for the disguise_as model. 
 ```bash
 python disguising/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --test
 ```
 
-This will save the generations in `model-respones/disguised`. 
+This will save the generations in `model-respones/disguised/{method}/{model}`. 
 
 ## Running Scorer
 
@@ -76,6 +76,13 @@ To test it out:
 Then you can run the scoring on your results with the following:
 ```bash
 python disguising/llm_scorer.py --input_file_a disguising/model-responses/gpt-4o_responses.csv --input_file_b disguising/model-responses/google_gemma-3-1b-it_responses-1000.csv --output_file disguising/model-responses/scores/google_gemma-3-1b-it_vs_gpt-4o.csv
+```
+
+If the csv is from `disguise.py` that has responses from both models, you can run scorer by:
+```bash
+python disguising/llm_scorer.py \
+  --input_file disguising/model-responses/disguised/stylistic_clustering_resample/meta-llama_Meta-Llama-3-8B-Instruct/meta-llama_Meta-Llama-3-8B-Instruct_disguised-gpt-3.5_responses-1000.csv \
+  --output_file disguising/comparisons/disguised/stylistic_clustering/llama-3-8b_as_gpt-3.5_vs_gpt-3.5.csv
 ```
 
 If you just want to run the heuristics (response length, markdown headers, eclamation marks, etc), add the `--compute_heuristics_only` flag to your command
