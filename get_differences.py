@@ -87,6 +87,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_rounds", type=int, default=5)
     parser.add_argument("--num_final_vibes", type=int, default=10)
     parser.add_argument("--models", nargs="+", required=True)
+    parser.add_argument("--output_file", type=str)
     args = parser.parse_args()
 
     df = pd.read_csv(args.input_file)
@@ -102,3 +103,6 @@ if __name__ == "__main__":
     reduced_differences = reduce_properties(all_differences, args.num_final_vibes)
     print(reduced_differences)
     print(len(reduced_differences))
+    if args.output_file:
+        with open(args.output_file, "w", encoding="utf-8") as f:
+            json.dump(reduced_differences, f)
