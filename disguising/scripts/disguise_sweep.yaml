@@ -1,0 +1,30 @@
+method: grid
+metric:
+  goal: minimize
+  name: Relative Time (Process)
+parameters:
+  disguise_as:
+    distribution: categorical
+    values:
+      - OpenGVLab/InternVL3-8B
+      - mistralai/Mistral-7B-Instruct-v0.3
+      - microsoft/Phi-4-mini-instruct
+      - meta-llama/Llama-3.1-8B-Instruct
+      - Qwen/Qwen2.5-VL-7B-Instruct
+  method:
+    distribution: categorical
+    values:
+      - random_sample_5_examples
+      - just_name_it
+      - vibe_based_disguise
+      - stylistic_clustering
+      - stylistic_clustering_resample
+  model:
+    distribution: categorical
+    values:
+      - OpenGVLab/InternVL3-8B
+      - mistralai/Mistral-7B-Instruct-v0.3
+      - microsoft/Phi-4-mini-instruct
+      - meta-llama/Llama-3.1-8B-Instruct
+      - Qwen/Qwen2.5-VL-7B-Instruct
+program: disguising/disguise.py

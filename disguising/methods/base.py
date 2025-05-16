@@ -52,7 +52,8 @@ class RandomSampleDisguise(MethodBase):
     """
     Disguise the prompt by randomly sampling from the base model's responses.
     """
-    def __init__(self, model: str, disguise_as: str, num_samples: int = 1000, num_samples_per_disguise: int = 5, seed: int = None) -> None:
+    def __init__(self, model: str, disguise_as: str, num_samples: int = 1000, num_samples_per_disguise: int = 5, seed: int = None,
+                 disguise_df: pd.DataFrame = None) -> None:
         """
         Num_samples is the number of samples to use from the base model, used to read in the responses from the model-responses/base folder.
         Num_samples_per_disguise is the number of samples to use for each disguise.
@@ -62,7 +63,7 @@ class RandomSampleDisguise(MethodBase):
         self.num_samples = num_samples
         self.num_samples_per_disguise = num_samples_per_disguise
         self.seed = seed
-        self.disguise_df = pd.read_csv(f"disguising/model-responses/base/{self.disguise_as.replace('/', '_')}_responses-{self.num_samples}.csv")
+        self.disguise_df = disguise_df
         self.disguise_df["token_length"] = self.disguise_df["model_response"].apply(lambda x: get_token_count(x))
         # truncate the responses to 256 tokens
         self.disguise_df["model_response"] = self.disguise_df["model_response"].apply(lambda x: f"{x[:256]}...(truncated)" if get_token_count(x) > 256 else x)
@@ -83,19 +84,20 @@ class JustNameIt(MethodBase):
         super().__init__(model, disguise_as)
 
     def forward(self, prompt: str) -> str:
-        return f"Answer the following prompt in the style of {self.disguise_as}:\n{prompt}"
+        return [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": f"Answer the following prompt in the style of {self.disguise_as}:\n{prompt}"}]
     
 class VibeBasedDisguise(MethodBase):
     """
     Disguise the prompt by using the vibe of the other model.
     """
-    def __init__(self, model: str, disguise_as: str, num_samples: int = 1000, num_samples_per_disguise: int = 10, seed: int = None) -> None:
+    def __init__(self, model: str, disguise_as: str, num_samples: int = 1000, num_samples_per_disguise: int = 10, seed: int = None,
+                 disguise_df: pd.DataFrame = None, model_df: pd.DataFrame = None) -> None:
         super().__init__(model, disguise_as)
         self.num_samples = num_samples
         self.num_samples_per_disguise = num_samples_per_disguise
         self.seed = seed
-        self.disguise_df = pd.read_csv(f"disguising/model-responses/base/{self.disguise_as.replace('/', '_')}_responses-{self.num_samples}.csv")
-        self.model_df = pd.read_csv(f"disguising/model-responses/base/{self.model.replace('/', '_')}_responses-{self.num_samples}.csv")
+        self.disguise_df = disguise_df
+        self.model_df = model_df
         # join the two dataframes on the prompt column
         self.model_df = self.model_df.merge(self.disguise_df, on="prompt", suffixes=("_model", "_disguise"))
         self.model_tokenizer = AutoTokenizer.from_pretrained(self.model)

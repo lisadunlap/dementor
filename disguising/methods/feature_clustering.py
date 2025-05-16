@@ -12,7 +12,7 @@ class FeatureClustering(MethodBase):
     Disguise the prompt by clustering the base model's responses by stylistic features and then sampling from the clusters.
     """
     def __init__(self, model: str, disguise_as: str, num_samples: int = 1000, num_samples_per_disguise: int = 5, seed: int = None,
-                 method: str = 'stylistic', sample_at_init: bool = True, save_clusters: bool = True) -> None:
+                 method: str = 'stylistic', sample_at_init: bool = True, save_clusters: bool = True, disguise_df: pd.DataFrame = None) -> None:
         """
         Num_samples is the number of samples to use from the base model, used to read in the responses from the model-responses/base folder.
         Num_samples_per_disguise is the number of samples to use for each disguise.
@@ -28,7 +28,7 @@ class FeatureClustering(MethodBase):
         self.method = method
         self.sample_at_init = sample_at_init
         self.save_clusters = save_clusters
-        self.disguise_df = pd.read_csv(f"disguising/model-responses/base/{self.disguise_as.replace('/', '_')}_responses-{self.num_samples}.csv")
+        self.disguise_df = disguise_df
         self.disguise_df["token_length"] = self.disguise_df["model_response"].apply(lambda x: get_token_count(x))
         # truncate the responses to 256 tokens
         self.disguise_df["model_response"] = self.disguise_df["model_response"].apply(lambda x: f"{x[:256]}...(truncated)" if get_token_count(x) > 256 else x)
@@ -46,7 +46,7 @@ class FeatureClustering(MethodBase):
         # Check if clusters already exist
         if self.method == 'stylistic':
             save_dir = f"disguising/model-responses/clusters/stylistic"
-            filename = f"{self.disguise_as.replace('/', '_')}_clusters.csv" # stylistic clusters are only based on the disguise_as model
+            filename = f"{self.disguise_as.replace('/', '_')}_clusters-{self.num_samples}.csv" # stylistic clusters are only based on the disguise_as model
         elif self.method == 'vibes':
             save_dir = f"disguising/model-responses/clusters/vibes"
             filename = f"{self.model.replace('/', '_')}_disguised-{self.disguise_as.replace('/', '_')}_clusters.csv"
@@ -106,4 +106,4 @@ class FeatureClustering(MethodBase):
         else:
             sampled_df = sample_from_clusters(self.clusters_df, self.seed)
             disguise_prompt = self.make_disguise_prompt(sampled_df, prompt)
-        return disguise_prompt
+        return  [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": disguise_prompt}]

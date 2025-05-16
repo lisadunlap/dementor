@@ -35,13 +35,13 @@ def format_prompt(prompt):
 
 def get_model_response_path(model: str, num_samples = None) -> str:
     base = model.replace('/', '_')
+    if num_samples == 500:
+        return f"disguising/model-responses/base_500_all_models/{base}.csv"
     if num_samples is not None:
         return f"disguising/model-responses/base/{base}_responses-{num_samples}.csv"
-    return f"disguising/model-responses/{base}_responses.csv"
+    return f"disguising/model-responses/base/{base}_responses.csv"
 
-def load_data(args) -> pd.DataFrame:
-    disguise_df = pd.read_csv(get_model_response_path(args.disguise_as, args.num_samples))
-    model_df = pd.read_csv(get_model_response_path(args.model, args.num_samples))
+def load_data(args, disguise_df, model_df) -> pd.DataFrame:
     df = disguise_df.merge(model_df, on="prompt", how="inner", suffixes=("_disguise", "_model"))
     df["target_model"] = args.disguise_as
     df["target_response"] = df["model_response_disguise"]
@@ -89,17 +89,20 @@ def main():
     parser.add_argument("--model", type=str, default="OpenGVLab/InternVL3-9B")
     parser.add_argument("--disguise_as", type=str, default="Qwen/Qwen2.5-1.5B-Instruct")
     parser.add_argument("--method", type=str, default="random_sample_3_examples")
-    parser.add_argument("--temperature", type=float, default=0.7)
-    parser.add_argument("--top_p", type=float, default=0.95)
-    parser.add_argument("--num_samples", type=int, default=1000)
+    parser.add_argument("--temperature", type=float, default=0)
+    parser.add_argument("--top_p", type=float, default=1.0)
+    parser.add_argument("--num_samples", type=int, default=500)
+    parser.add_argument("--run_name", type=str)
     parser.add_argument("--test", action="store_true")
     args = parser.parse_args()
 
     wandb.init(project="disguising", name=f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_responses-{args.num_samples}", group=args.method)
     wandb.config.update(args)
 
-    method = get_method(args.method, args.model, args.disguise_as, num_samples=args.num_samples)
-    df = load_data(args)
+    disguise_df = pd.read_csv(get_model_response_path(args.disguise_as, args.num_samples))
+    model_df = pd.read_csv(get_model_response_path(args.model, args.num_samples))
+    method = get_method(args.method, args.model, args.disguise_as, num_samples=args.num_samples, model_df=model_df, disguise_df=disguise_df)
+    df = load_data(args, disguise_df, model_df)
     df = generate_disguised_prompts(df, method, MAX_PROMPT_TOKENS // 2)
     if args.test:
         df = df.head(10)
@@ -110,7 +113,11 @@ def main():
     # df["disguised_response"] = clean_response(df["disguised_response_raw"], llm, sampling_params, BATCH_SIZE)
     df["disguised_response_token_length"] = df["disguised_response"].apply(get_token_count)
 
-    results_folder = f"disguising/model-responses/disguised/{args.method}/{args.model.replace('/', '_')}"
+    if args.run_name is None:
+        results_folder = f"disguising/model-responses/disguised/{args.method}/{args.model.replace('/', '_')}"
+    else:
+        results_folder = f"disguising/model-responses/disguised/{args.method}/{args.model.replace('/', '_')}/{args.run_name}"
+    
     if not os.path.exists(results_folder):
         os.makedirs(results_folder)
     out_csv = f"{results_folder}/{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_responses-{args.num_samples}.csv"
