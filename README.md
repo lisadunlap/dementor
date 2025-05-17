@@ -87,4 +87,4 @@ Results are stored under `/scores` folder.
 
 ## Visualization
 
-Add scoring data from wandb in `visualization/data` and run `heatmap.py`.
+Add scoring data from wandb in `visualization/data` and run `heatmap.py`. `heatmaps.py` plots all heatmaps in one plot.
