@@ -24,7 +24,7 @@ class RandomSampleDisguise(MethodBase):
     """
     Disguise the prompt by randomly sampling from the base model's responses.
     """
-    def __init__(self, model: str, disguise_as: str, num_samples: int = 1000, num_samples_per_disguise: int = 5, seed: int = None) -> None:
+    def __init__(self, model: str, disguise_as: str, num_samples: int, num_samples_per_disguise: int = 5, seed: int = None) -> None:
         """
         Num_samples is the number of samples to use from the base model, used to read in the responses from the model-responses/base folder.
         Num_samples_per_disguise is the number of samples to use for each disguise.
@@ -34,7 +34,7 @@ class RandomSampleDisguise(MethodBase):
         self.num_samples = num_samples
         self.num_samples_per_disguise = num_samples_per_disguise
         self.seed = seed
-        self.disguise_df = pd.read_csv(f"disguising/model-responses/base/{self.disguise_as.replace('/', '_')}_responses-{self.num_samples}.csv")
+        self.disguise_df = pd.read_csv(f"disguising/model-responses/base_500/{self.disguise_as.replace('/', '_')}.csv")
         self.disguise_df["token_length"] = self.disguise_df["model_response"].apply(lambda x: get_token_count(x))
         # truncate the responses to 256 tokens
         self.disguise_df["model_response"] = self.disguise_df["model_response"].apply(lambda x: f"{x[:256]}...(truncated)" if get_token_count(x) > 256 else x)
@@ -84,19 +84,19 @@ class JustNameIt(MethodBase):
         super().__init__(model, disguise_as)
 
     def forward(self, prompt: str) -> str:
-        return f"Answer the following prompt in the style of {self.disguise_as}:\n{prompt}"
+        return [{"role": "system", "content": f"You are a helpful assistant which will answer the given prompt in the style of {self.disguise_as}"}, {"role": "user", "content": prompt}]
     
 class VibeBasedDisguise(MethodBase):
     """
     Disguise the prompt by using the vibe of the other model.
     """
-    def __init__(self, model: str, disguise_as: str, num_samples: int = 1000, num_samples_per_disguise: int = 10, seed: int = None) -> None:
+    def __init__(self, model: str, disguise_as: str, num_samples: int, num_samples_per_disguise: int = 10, seed: int = None) -> None:
         super().__init__(model, disguise_as)
         self.num_samples = num_samples
         self.num_samples_per_disguise = num_samples_per_disguise
         self.seed = seed
-        self.disguise_df = pd.read_csv(f"disguising/model-responses/base/{self.disguise_as.replace('/', '_')}_responses-{self.num_samples}.csv")
-        self.model_df = pd.read_csv(f"disguising/model-responses/base/{self.model.replace('/', '_')}_responses-{self.num_samples}.csv")
+        self.disguise_df = pd.read_csv(f"disguising/model-responses/base_500/{self.disguise_as.replace('/', '_')}.csv")
+        self.model_df = pd.read_csv(f"disguising/model-responses/base_500/{self.model.replace('/', '_')}.csv")
         # join the two dataframes on the prompt column
         self.model_df = self.model_df.merge(self.disguise_df, on="prompt", suffixes=("_model", "_disguise"))
         self.model_tokenizer = AutoTokenizer.from_pretrained(self.model)
@@ -201,3 +201,40 @@ System prompt: [the final system prompt for Model 1 to cause it to act like Mode
     
     def forward(self, prompt: str) -> str:
         return [{"role": "system", "content": self.vibe_prompt}, {"role": "user", "content": prompt}]
+
+class VibeBasedDisguise2(VibeBasedDisguise):
+    """
+    Disguise the prompt by using the vibe of the other model.
+    """
+    def get_vibe_system_prompt(self, df_batch: pd.DataFrame) -> List[str]:
+        proposer_systems_prompt = """You are a machine learning engineer tasked with constructing a systems prompt that will cause Model 1 to act like Model 2 such that users will not be able to tell the difference. To do this, you will be given examples of prompts and responses from both models. 
+
+When analyzing the differences between the models, consider the following factors in detail (this is not an exhaustive list, but a good starting point):
+
+1. Beginning of response: do the models start differently? Does one model often start with a certain phrase?
+2. Formatting: does one model use more formatting (e.g. bullet points, numbered lists, paragraphs) than the other? If so, what is the difference?
+3. Indecisiveness: does one model give more confident answer or opinions than the other? Does one model give more unsure responses or does not directly give its opinion?
+4. Use of examples: does one model use more examples than the other?
+5. Use of headers, sections, or subsections: does one model use more headers, sections, or subsections than the other?
+6. Use of humor or wit: does one model use more humor or wit than the other?
+7. Use of technical jargon vs. plain language: does one model use more technical jargon or plain language than the other?
+
+If there are also behaviors that Model 1 has that are unique, you should instruct the model to not do these things (e.g. "Do not start your response with 'Hello, I'm ...'")
+
+This system prompt will be given to Model 1 directly, so it should be written in the style of a helpful assistant and should not mention model 2 as it will not know anything about it. The prompt should be specific about the exact behaviors the model should have and may include examples of the desired behavior or specific phrases that should be used.
+
+Think through your response step by step, then respond with your response in the following format:
+Analysis: [your analysis of the differences between the two models]
+System prompt: You are a helpful assistant ... [your proposed system prompt for Model 1 to cause it to act like Model 2]
+"""
+        prompt_str = "\n\n".join([f"### Prompt: {row['prompt']}\n\n### Model 1:\n{row['model_response_model']}\n\n### Model 2:\n{row['model_response_disguise']}" for _, row in df_batch.iterrows()])
+        prompt = f"Examples:\n{prompt_str}"
+        response = completion(
+            model="openai/gpt-4o",
+            messages=[{"content": proposer_systems_prompt, "role": "system"}, {"content": prompt, "role": "user"}],
+            caching=True
+        )
+        response = response["choices"][0]["message"]["content"]
+        parsed_response = response.split("System prompt:")[1].strip()
+        logs = {"input": prompt, "output": response, "parsed_output": parsed_response}
+        return parsed_response, logs

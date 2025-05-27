@@ -11,6 +11,7 @@ import aiohttp
 from tqdm import tqdm
 from vllm import LLM, SamplingParams
 import wandb
+import re
 import matplotlib.pyplot as plt
 import logging
 import argparse
@@ -21,7 +22,8 @@ from utils import get_token_count
 
 # Constants
 BATCH_SIZE = 100
-MAX_PROMPT_TOKENS = 2048
+TENSOR_PARALLEL_SIZE = 2
+MAX_PROMPT_TOKENS = 4096
 MAX_MODEL_LEN = 4096
 
 def setup_logging():
@@ -35,13 +37,11 @@ def format_prompt(prompt):
 
 def get_model_response_path(model: str, num_samples: int) -> str:
     base = model.replace('/', '_')
-    if num_samples is not None:
-        return f"disguising/model-responses/base/{base}_responses-{num_samples}.csv"
-    return f"disguising/model-responses/{base}_responses.csv"
+    return f"{base}.csv"
 
-def load_data(args) -> pd.DataFrame:
-    disguise_df = pd.read_csv(get_model_response_path(args.disguise_as, args.num_samples))
-    model_df = pd.read_csv(get_model_response_path(args.model, args.num_samples))
+def load_data(args, data_dir: str) -> pd.DataFrame:
+    disguise_df = pd.read_csv(os.path.join(data_dir, get_model_response_path(args.disguise_as, args.num_samples)))
+    model_df = pd.read_csv(os.path.join(data_dir, get_model_response_path(args.model, args.num_samples)))
     df = disguise_df.merge(model_df, on="prompt", how="inner", suffixes=("_disguise", "_model"))
     df["target_model"] = args.disguise_as
     df["target_response"] = df["model_response_disguise"]
@@ -83,37 +83,53 @@ def plot_token_length_distribution(df: pd.DataFrame, out_path: str):
     plt.savefig(out_path)
     plt.close()
 
+def remove_thinking_from_output(output):
+    # Remove content between <think> tags
+    pattern = r'<think>.*?</think>'
+    cleaned_output = re.sub(pattern, '', output, flags=re.DOTALL)
+    # Remove any extra whitespace that might be left
+    cleaned_output = re.sub(r'\n\s*\n', '\n\n', cleaned_output)
+    return cleaned_output.strip()
+
 def main():
     setup_logging()
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="OpenGVLab/InternVL3-9B")
     parser.add_argument("--disguise_as", type=str, default="Qwen/Qwen2.5-1.5B-Instruct")
+    parser.add_argument("--data_dir", type=str, default="disguising/model-responses/base_500")
     parser.add_argument("--method", type=str, default="random_sample_3_examples")
-    parser.add_argument("--temperature", type=float, default=0.7)
+    parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--top_p", type=float, default=0.95)
-    parser.add_argument("--num_samples", type=int, default=1000)
+    parser.add_argument("--num_samples", type=int)
+    parser.add_argument("--enable_thinking", type=bool, default=False)
     parser.add_argument("--test", action="store_true")
     args = parser.parse_args()
 
-    wandb.init(project="disguising", name=f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_responses-{args.num_samples}", group=args.method)
+    wandb.init(project="dementor-methods", name=f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_responses-{args.num_samples}", group=args.method)
     wandb.config.update(args)
 
     method = get_method(args.method, args.model, args.disguise_as, num_samples=args.num_samples)
-    df = load_data(args)
-    df = generate_disguised_prompts(df, method, MAX_PROMPT_TOKENS // 2)
+    df = load_data(args, data_dir=args.data_dir)
+    df = generate_disguised_prompts(df, method, MAX_PROMPT_TOKENS)
     if args.test:
         df = df.head(10)
 
-    llm = LLM(model=args.model, trust_remote_code=True, max_model_len=MAX_MODEL_LEN)
+    llm = LLM(model=args.model, trust_remote_code=True, max_model_len=MAX_MODEL_LEN, tensor_parallel_size=TENSOR_PARALLEL_SIZE)
     sampling_params = SamplingParams(max_tokens=MAX_MODEL_LEN, temperature=args.temperature, top_p=args.top_p)
-    df["disguised_response"] = generate_responses(df, llm, sampling_params, BATCH_SIZE)
+    df["disguised_response_raw"] = generate_responses(df, llm, sampling_params, BATCH_SIZE)
+    df["disguised_response"] = df["disguised_response_raw"].apply(remove_thinking_from_output)
+
     # df["disguised_response"] = clean_response(df["disguised_response_raw"], llm, sampling_params, BATCH_SIZE)
     df["disguised_response_token_length"] = df["disguised_response"].apply(get_token_count)
+    df["model"] = f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}"
+    df["source_model"] = args.model
+    df["target_model"] = args.disguise_as
+    df["method"] = args.method
 
     results_folder = f"disguising/model-responses/disguised/{args.method}"
     if not os.path.exists(results_folder):
         os.makedirs(results_folder)
-    out_csv = f"{results_folder}/{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_responses-{args.num_samples}.csv"
+    out_csv = f"{results_folder}/{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}.csv"
     df.to_csv(out_csv, index=False)
     logging.info(f"Saved disguised responses to {out_csv}")
 

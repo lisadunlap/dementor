@@ -141,6 +141,13 @@ def run_all_analyses(response_35, response_4o, response_35_repr, scores_35=None,
     table.add_column("GPT-4o (%)", justify="right")
     table.add_column("GPT-3.5 Repr (%)", justify="right")
 
+    # Store all feature values for aggregation
+    feature_values = {
+        "GPT-3.5": [],
+        "GPT-4o": [],
+        "GPT-3.5 Repr": []
+    }
+
     for feature, func in tqdm.tqdm(style_functions.items()):
         matches_35 = analyze_style(func, response_35)
         matches_4o = analyze_style(func, response_4o)
@@ -149,6 +156,10 @@ def run_all_analyses(response_35, response_4o, response_35_repr, scores_35=None,
         val_35 = compute_percentage(matches_35)
         val_4o = compute_percentage(matches_4o)
         val_35_repr = compute_percentage(matches_35_repr)
+
+        feature_values["GPT-3.5"].append(val_35)
+        feature_values["GPT-4o"].append(val_4o)
+        feature_values["GPT-3.5 Repr"].append(val_35_repr)
 
         # Compare distance to 4o
         dist_original = abs(val_35 - val_4o)
