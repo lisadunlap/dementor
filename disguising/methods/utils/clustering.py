@@ -20,7 +20,7 @@ def get_cluster_to_idx(cluster_labels):
 
 def sample_from_clusters(df_clusters, seed, n_samples=1):
     '''
-    Returns a df with columns 'cluster', 'row_index', 'prompt', 'model_response'
+    Returns a df with columns 'cluster', 'row_index', 'prompt', 'target_response'
     '''
     unique_clusters = df_clusters['cluster'].unique()
     
@@ -32,7 +32,7 @@ def sample_from_clusters(df_clusters, seed, n_samples=1):
             'cluster': cluster,
             'row_index': int(sampled_row.name),
             'prompt': sampled_row['prompt'],
-            'model_response': sampled_row['model_response']
+            'target_response': sampled_row['target_response']
         })
     sampled_df = pd.DataFrame(sampled_rows)
     return sampled_df

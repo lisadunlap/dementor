@@ -12,7 +12,7 @@ from tqdm import tqdm
 from vllm import LLM, SamplingParams
 from tqdm import tqdm
 import wandb
-
+import re
 from utils import get_token_count
 
 # Run event loop
@@ -21,10 +21,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="OpenGVLab/InternVL3-9B")
     parser.add_argument("--output_column", type=str, default="model_response")
-    parser.add_argument("--dataset", type=str, default="data/chatbot_arena_prompts.txt", help="Path to the dataset of prompts to use for generation")
+    parser.add_argument("--output_dir", type=str, default="disguising/model-responses/base_500_all_models")
+    parser.add_argument("--dataset", type=str, default="data/chabot_arena_500_propmts.txt", help="Path to the dataset of prompts to use for generation")
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--top_p", type=float, default=0.95)
+    parser.add_argument("--max_tokens", type=int, default=2048)
+    parser.add_argument("--max_model_len", type=int, default=8000)
     parser.add_argument("--num_samples", type=int)
+    parser.add_argument("--multimodal", action="store_true")
+    parser.add_argument("--tensor_parallel_size", type=int, default=1)
     args = parser.parse_args()
     
     # df = pd.read_csv(LOAD_PATH)
@@ -41,19 +46,31 @@ if __name__ == "__main__":
     wandb.init(project="disguising-generations", name=f"{args.model.replace('/', '_')}_responses")
     wandb.config.update(args)
 
+    
     def format_prompt(prompt):
         return [
             {"role": "system", "content": "You are a helpful assistant."},
             {"role": "user", "content": prompt}
         ]
     
-    messages = [format_prompt(prompt) for prompt in prompts]
-
-    save_path = f"disguising/model-responses/base/{args.model.replace('/', '_')}_responses-{args.num_samples}.csv" if args.num_samples is not None else f"disguising/model-responses/{args.model.replace('/', '_')}_responses.csv"
+    def format_multimodal_prompt(prompt):
+        return [
+            {"role": "system", "content": [{"type": "text", "text": "You are a helpful assistant."}]},
+            {"role": "user", "content": [{"type": "text", "text": prompt}]}
+        ]
     
-    llm = LLM(model=args.model, trust_remote_code=True, max_model_len=2048)
+    def postprocess_response(response):
+        # Remove any content between <think> tags
+        response = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL)
+        return response.strip()
+    
+    messages = [format_multimodal_prompt(prompt) if args.multimodal else format_prompt(prompt) for prompt in prompts]
+
+    save_path = f"{args.output_dir}/{args.model.replace('/', '_')}-{args.num_samples}.csv" if args.num_samples is not None else f"{args.output_dir}/{args.model.replace('/', '_')}.csv"
+    
+    llm = LLM(model=args.model, trust_remote_code=True, max_model_len=args.max_model_len, tensor_parallel_size=args.tensor_parallel_size)
     sampling_params = SamplingParams(
-        max_tokens=2048,
+        max_tokens=args.max_tokens,
         temperature=args.temperature,
         top_p=args.top_p,
     )

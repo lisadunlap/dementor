@@ -2,7 +2,7 @@
 import pandas as pd
 from methods.base import MethodBase
 from utils import get_token_count
-from methods.utils.extract_styles import extract_style_features
+from methods.utils.extract_styles import extract_style_features, get_model_embeddings
 from methods.utils.clustering import kmodes_clustering, get_cluster_to_idx, sample_from_clusters
 import numpy as np
 import os
@@ -29,9 +29,9 @@ class FeatureClustering(MethodBase):
         self.sample_at_init = sample_at_init
         self.save_clusters = save_clusters
         self.disguise_df = disguise_df
-        self.disguise_df["token_length"] = self.disguise_df["model_response"].apply(lambda x: get_token_count(x))
+        self.disguise_df["token_length"] = self.disguise_df["target_response"].apply(lambda x: get_token_count(x))
         # truncate the responses to 256 tokens
-        self.disguise_df["model_response"] = self.disguise_df["model_response"].apply(lambda x: f"{x[:256]}...(truncated)" if get_token_count(x) > 256 else x)
+        self.disguise_df["target_response"] = self.disguise_df["target_response"].apply(lambda x: f"{x[:256]}...(truncated)" if get_token_count(x) > 256 else x)
         
         # initialize clusters
         self.clusters_df = self.init_clusters()
@@ -50,6 +50,9 @@ class FeatureClustering(MethodBase):
         elif self.method == 'vibes':
             save_dir = f"disguising/model-responses/clusters/vibes"
             filename = f"{self.model.replace('/', '_')}_disguised-{self.disguise_as.replace('/', '_')}_clusters.csv"
+        elif self.method == 'embedding':
+            save_dir = f"disguising/model-responses/clusters/embedding"
+            filename = f"{self.model.replace('/', '_')}_disguised-{self.disguise_as.replace('/', '_')}_clusters.csv"
         else:
             raise ValueError(f"Method {self.method} not supported")
 
@@ -59,7 +62,7 @@ class FeatureClustering(MethodBase):
             return pd.read_csv(f"{save_dir}/{filename}")
         
         # Do clustering
-        responses = self.disguise_df["model_response"]
+        responses = self.disguise_df["target_response"]
         if self.method == 'stylistic':
             # Extract style features    
             style_features = []
@@ -70,9 +73,17 @@ class FeatureClustering(MethodBase):
             style_features = np.array(style_features)
             cluster_labels, _ = kmodes_clustering(style_features, self.num_samples_per_disguise)
             cluster_to_idx = get_cluster_to_idx(cluster_labels)
-
         elif self.method == 'vibes':
             pass
+        elif self.method == 'embedding':
+            responses_source = self.disguise_df["source_response"]
+            responses_target = self.disguise_df["target_response"]
+            embeddings_source = get_model_embeddings(responses_source)
+            embeddings_target = get_model_embeddings(responses_target)
+            embeddings_diff = embeddings_source - embeddings_target
+            embeddings_diff_norm = embeddings_diff / np.linalg.norm(embeddings_diff, axis=1, keepdims=True)
+            cluster_labels, _ = kmodes_clustering(embeddings_diff_norm, self.num_samples_per_disguise)
+            cluster_to_idx = get_cluster_to_idx(cluster_labels)
         else:
             raise ValueError(f"Method {self.method} not supported")
 
@@ -81,13 +92,13 @@ class FeatureClustering(MethodBase):
         responses = []
         for cluster, indices in cluster_to_idx.items():
             rows = self.disguise_df.iloc[indices]
-            r = rows["model_response"].tolist()
+            r = rows["target_response"].tolist()
             p = rows['prompt'].tolist()
             clusters.extend([cluster] * len(r))
             prompts.extend(p)
             responses.extend(r)
 
-        samples_df = pd.DataFrame({'cluster': clusters, 'prompt': prompts, 'model_response': responses})
+        samples_df = pd.DataFrame({'cluster': clusters, 'prompt': prompts, 'target_response': responses})
 
         # Save cluster samples to CSV
         if self.save_clusters:
@@ -106,4 +117,5 @@ class FeatureClustering(MethodBase):
         else:
             sampled_df = sample_from_clusters(self.clusters_df, self.seed)
             disguise_prompt = self.make_disguise_prompt(sampled_df, prompt)
-        return  [{"role": "system", "content": "You are a helpful assistant."}, {"role": "user", "content": disguise_prompt}]
+        return  [{"role": "system", "content": disguise_prompt}, {"role": "user", "content": prompt}]
+        
