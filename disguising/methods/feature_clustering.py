@@ -28,10 +28,10 @@ class FeatureClustering(MethodBase):
         self.method = method
         self.sample_at_init = sample_at_init
         self.save_clusters = save_clusters
-        self.disguise_df = disguise_df
+        self.disguise_df = disguise_df.copy()
         self.disguise_df["token_length"] = self.disguise_df["target_response"].apply(lambda x: get_token_count(x))
         # truncate the responses to 256 tokens
-        self.disguise_df["target_response"] = self.disguise_df["target_response"].apply(lambda x: f"{x[:256]}...(truncated)" if get_token_count(x) > 256 else x)
+        # self.disguise_df["target_response"] = self.disguise_df["target_response"].apply(lambda x: f"{x[:256]}...(truncated)" if get_token_count(x) > 256 else x)
         
         # initialize clusters
         self.clusters_df = self.init_clusters()
@@ -63,6 +63,7 @@ class FeatureClustering(MethodBase):
         
         # Do clustering
         responses = self.disguise_df["target_response"]
+        responses = responses.apply(lambda x: f"{x[:256]}...(truncated)" if get_token_count(x) > 256 else x)
         if self.method == 'stylistic':
             # Extract style features    
             style_features = []

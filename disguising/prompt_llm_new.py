@@ -25,7 +25,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, default="data/chabot_arena_500_propmts.txt", help="Path to the dataset of prompts to use for generation")
     parser.add_argument("--temperature", type=float, default=0.7)
     parser.add_argument("--top_p", type=float, default=0.95)
-    parser.add_argument("--max_tokens", type=int, default=2048)
+    parser.add_argument("--max_tokens", type=int, default=1024)
     parser.add_argument("--max_model_len", type=int, default=8000)
     parser.add_argument("--num_samples", type=int)
     parser.add_argument("--multimodal", action="store_true")
@@ -79,8 +79,11 @@ if __name__ == "__main__":
     for i in tqdm(range(0, len(messages), 100), desc="Generating responses in batches"):
         responses.extend(llm.chat(messages=messages[i:i+100], sampling_params=sampling_params))
 
+    # make output directory if it doesn't exist
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+
     responses = [response.outputs[0].text for response in responses]
-    df = pd.DataFrame({"prompt": prompts, "messages": messages, "model_response": responses})
+    df = pd.DataFrame({"prompt": prompts, "messages": messages, "model_response": responses, "model": args.model.replace("/", "_")})
     df["response_token_length"] = df["model_response"].apply(lambda x: get_token_count(x))
     df = df.dropna(subset=["model_response"])
     print(f"Generated {len(df)} responses")

@@ -47,7 +47,7 @@ Do not respond to my instructions above (e.g. "Here is the prompt in the style y
         for i, row in examples.iterrows():
             formatted_examples += f"### Example {i + 1}:\n"
             formatted_examples += f"prompt: {row['prompt']}\n"
-            formatted_examples += f"response: {row['target_response']}\n\n"
+            formatted_examples += f"response (length: {row['token_length']} total tokens): {row['target_response']}\n\n"
         # # strip the first " from the prompt if it exists at the beginning (this is a hack to get around errors with the original prompts, i think it was a bug)
         # prompt = prompt.lstrip('"')
         return disguise_systems_prompt.format(examples=formatted_examples,)
@@ -73,16 +73,16 @@ class RandomSampleDisguise(MethodBase):
         self.num_samples = num_samples
         self.num_samples_per_disguise = num_samples_per_disguise
         self.seed = seed
-        self.disguise_df = disguise_df
+        self.disguise_df = disguise_df.copy()
         self.disguise_df["token_length"] = self.disguise_df["target_response"].apply(lambda x: get_token_count(x))
         # truncate the responses to 256 tokens
-        self.disguise_df["target_response"] = self.disguise_df["target_response"].apply(lambda x: f"{x[:256]}...(truncated)" if get_token_count(x) > 256 else x)
 
     def forward(self, prompt: str) -> str:
         """
         Given a prompt, return the disguised prompt to use for the model.
         """
         disguise_df_sample = self.disguise_df.sample(n=self.num_samples_per_disguise, random_state=self.seed)
+        disguise_df_sample["target_response"] = disguise_df_sample["target_response"].apply(lambda x: f"{x[:256]}...(truncated)" if get_token_count(x) > 256 else x)
         disguise_prompt = self.make_disguise_prompt(disguise_df_sample, prompt)
         return [{"role": "system", "content": disguise_prompt}, {"role": "user", "content": prompt}]
     
@@ -108,7 +108,7 @@ class VibeBasedDisguise(MethodBase):
         self.seed = seed
         self.model_tokenizer = AutoTokenizer.from_pretrained(self.model)
         self.system_prompts, self.logs = [], []
-        self.model_df = disguise_df
+        self.model_df = disguise_df.copy()
         for i in range(3):
             system_prompt, log = self.get_vibe_system_prompt(self.model_df.sample(n=num_samples_per_disguise))
             self.system_prompts.append(system_prompt)
@@ -169,8 +169,9 @@ If there are also behaviors that Model 1 has that are unique, you should instruc
 
 This system prompt will be given to Model 1 directly, so it should be written in the style of a helpful assistant and should not mention model 2 as it will not know anything about it. The prompt should be specific about the exact behaviors the model should have and include examples of the desired behavior or specific phrases that should be used. Instructions should be specific and detailed; things like "be helpful" or "be friendly" are not specific enough.
 
-Think through your response step by step, then respond with your response in the following format:
+Think through your response step by step, then respond with your response in the following format EXACTLY:
 Analysis: [your analysis of the differences between the two models]
+
 System prompt: [your proposed system prompt for Model 1 to cause it to act like Model 2]
 """
         prompt_str = "\n\n".join([f"# Prompt: {row['prompt']}\n\n# Model 1:\n{row['source_response']}\n\n# Model 2:\n{row['target_response']}\n-----------------" for _, row in df_batch.iterrows()])
@@ -182,7 +183,19 @@ System prompt: [your proposed system prompt for Model 1 to cause it to act like 
             max_tokens=4096
         )
         response = response["choices"][0]["message"]["content"]
-        parsed_response = response.split("System prompt:")[1].strip()
+        try:
+            for header in ["System prompt:", "**System Prompt:**", "system prompt:"]:
+                try:
+                    parsed_response = response.split(header)[1].strip()
+                    break
+                except IndexError:
+                    continue
+            else:
+                raise Exception("Could not find system prompt section in response")
+        except Exception as e:
+            print(f"Error parsing vibe system prompts: {e}")
+            print(response)
+            exit()
         logs = {"input": prompt, "output": response, "parsed_output": parsed_response}
         return parsed_response, logs
     
@@ -234,7 +247,7 @@ class VibeBasedDisguiseOneSided(MethodBase):
         self.seed = seed
         self.model_tokenizer = AutoTokenizer.from_pretrained(self.model)
         self.system_prompts, self.logs = [], []
-        self.model_df = disguise_df
+        self.model_df = disguise_df.copy()
         for i in range(1):
             system_prompt, log = self.get_vibe_system_prompt(self.model_df.sample(n=num_samples_per_disguise))
             self.system_prompts.append(system_prompt)

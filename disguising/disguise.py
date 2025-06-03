@@ -52,6 +52,7 @@ def load_data(args, data_dir: str) -> pd.DataFrame:
     df["target_response_token_length"] = df["target_response"].apply(lambda x: get_token_count(x))
     df["source_model"] = args.model
     df["source_response"] = df["model_response_model"]
+    df["source_response"] = df["source_response"].apply(remove_thinking_from_output)
     df["source_response_token_length"] = df["source_response"].apply(lambda x: get_token_count(x))
     df = df[["prompt", "target_model", "target_response", "target_response_token_length", "source_model", "source_response", "source_response_token_length"]]
     df = df.dropna(subset=["target_response", "source_response"])
@@ -320,7 +321,7 @@ def main():
     # get pairwise distances between embeddings and source embeddings
     distances_source_target = np.linalg.norm(embeddings_source - embeddings_target, axis=1)
     wandb.summary["average_distance_source_target"] = distances_source_target.mean()
-    wandb.summary["diff_avg_embedding_distance"] = (distances_disguise_target.mean() - distances_source_target.mean()) / (distances_disguise_target.mean() + distances_source_target.mean())
+    wandb.summary["diff_avg_embedding_distance"] = (distances_source_target.mean() - distances_disguise_target.mean()) / (distances_disguise_target.mean() + distances_source_target.mean())
 
     # Compute heuristics
     heuristic_table = compute_heuristics(df["disguised_response"].tolist(), df["target_response"].tolist())
@@ -344,6 +345,11 @@ def main():
     wandb.summary["heuristic_diff_normalized"] = (heuristic_table["match"].mean() - heuristic_table_target_source["match"].mean()) / heuristic_table_target_source["match"].mean()
     print(f"Heuristic diff: {wandb.summary['heuristic_diff']}")
     print(f"Heuristic diff normalized: {wandb.summary['heuristic_diff_normalized']}")
+
+    print("Embedding distances:")
+    print(f"Average distance to target: {distances_disguise_target.mean()}")
+    print(f"Average distance to source: {distances_source_target.mean()}")
+    print(f"source to target - disguise / (source to target + disguise): {(distances_source_target.mean() - distances_disguise_target.mean()) / (distances_source_target.mean() + distances_disguise_target.mean())}")
 
     # Plot embedding distance distribution
     plot_embedding_distance_distribution(distances_disguise_target, distances_source_target, os.path.join(results_folder, f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_embedding_distance_distribution.png"))
