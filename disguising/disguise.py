@@ -80,7 +80,8 @@ def generate_responses(df: pd.DataFrame, llm, sampling_params, batch_size: int, 
                         messages=messages,
                         max_tokens=sampling_params.max_tokens,
                         temperature=sampling_params.temperature,
-                        top_p=sampling_params.top_p
+                        top_p=sampling_params.top_p,
+                        caching=True,
                     )
                     batch_responses.append(response.choices[0].message.content)
                 except Exception as e:
@@ -275,6 +276,7 @@ def main():
     df = generate_disguised_prompts(df, method, args.max_prompt_tokens)
     if args.test:
         df = df.head(10)
+    print(df.head())
 
     # Only initialize VLLM if not using OpenAI models
     llm = None
