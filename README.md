@@ -88,3 +88,9 @@ Results are stored under `/scores` folder.
 ## Visualization
 
 Add scoring data from wandb in `visualization/data` and run `heatmap.py`. `heatmaps.py` plots all heatmaps in one plot.
+
+## Command to run for Qwen32B
+
+```bash
+python disguising/disguise.py --disguise_as=benchmark_conspiracy-theorist --model=Qwen/Qwen3-32B
+```
