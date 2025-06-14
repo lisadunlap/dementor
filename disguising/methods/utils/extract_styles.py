@@ -1,5 +1,23 @@
 import numpy as np
 import re
+from tqdm import tqdm
+from litellm import embedding
+from typing import List
+
+def get_model_embeddings(embeddings: List[str]) -> np.ndarray:
+    """
+    Get the embeddings for the source and target model's responses using litellm
+    """
+    embeddings_list = []
+    for row in tqdm(embeddings, desc="Getting embeddings"):
+        embedding_vec = embedding(
+            model="text-embedding-3-small",
+            input=row,
+            caching=True,
+        )
+        embedding_vec = embedding_vec["data"][0]["embedding"]
+        embeddings_list.append(embedding_vec)
+    return np.array(embeddings_list)
 
 def has_markdown(text):
     markdown_patterns = [

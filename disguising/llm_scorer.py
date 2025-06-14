@@ -182,6 +182,10 @@ if __name__ == "__main__":
         wandb.summary["over_token_limit"] = len(df[df["over_token_limit"]])
         df = df[~df["over_token_limit"]]
 
+        # remove any thinking from the responses
+        df["disguised_response"] = df["disguised_response"].apply(remove_thinking_from_output)
+        df["target_response"] = df["target_response"].apply(remove_thinking_from_output)
+        df["source_response"] = df["source_response"].apply(remove_thinking_from_output)
 
         # get average normalized difference in length
         length_diff = [(len(row["disguised_response"]) - len(row["target_response"])) / max(len(row["disguised_response"]), len(row["target_response"])) for _, row in df.iterrows()]

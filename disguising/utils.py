@@ -7,5 +7,6 @@ def get_token_count(text):
     use the tiktoken library.
     """
     encoding = tiktoken.encoding_for_model("gpt-3.5-turbo")
-    num_tokens = len(encoding.encode(text))
+    # Allow special tokens or disable the check for disallowed special tokens
+    num_tokens = len(encoding.encode(text, disallowed_special=()))
     return num_tokens
