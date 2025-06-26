@@ -61,7 +61,7 @@ class MethodBase:
 
 Sample examples from generations of the `disguise_as` model and use those in the prompt for `model`. This assumes that you have already generated the responses for the disguise_as model. 
 ```bash
-python disguising/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sample_3_examples --run_name test_run --num_samples 100
+python disguising/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sample_3_examples
 ```
 
 This will save the generations in `model-respones/disguised/{method}/{model}/{run_name}`. 

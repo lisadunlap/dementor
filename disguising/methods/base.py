@@ -62,15 +62,13 @@ class RandomSampleDisguise(MethodBase):
     """
     Disguise the prompt by randomly sampling from the base model's responses.
     """
-    def __init__(self, model: str, disguise_as: str, num_samples: int = 1000, num_samples_per_disguise: int = 5, seed: int = None,
+    def __init__(self, model: str, disguise_as: str, num_samples_per_disguise: int = 5, seed: int = None,
                  disguise_df: pd.DataFrame = None) -> None:
         """
-        Num_samples is the number of samples to use from the base model, used to read in the responses from the model-responses/base folder.
         Num_samples_per_disguise is the number of samples to use for each disguise.
         Seed is the seed to use for the random sampling, if it is None, then no seed is used and the samples will be different each time.
         """
         super().__init__(model, disguise_as)
-        self.num_samples = num_samples
         self.num_samples_per_disguise = num_samples_per_disguise
         self.seed = seed
         self.disguise_df = disguise_df.copy()
@@ -100,10 +98,9 @@ class VibeBasedDisguise(MethodBase):
     """
     Disguise the prompt by using the vibe of the other model.
     """
-    def __init__(self, model: str, disguise_as: str, num_samples: int = 1000, num_samples_per_disguise: int = 5, seed: int = None,
+    def __init__(self, model: str, disguise_as: str, num_samples_per_disguise: int = 5, seed: int = None,
                  disguise_df: pd.DataFrame = None) -> None:
         super().__init__(model, disguise_as)
-        self.num_samples = num_samples
         self.num_samples_per_disguise = num_samples_per_disguise
         self.seed = seed
         self.model_tokenizer = AutoTokenizer.from_pretrained(self.model)
@@ -239,10 +236,9 @@ class VibeBasedDisguiseOneSided(MethodBase):
     """
     Disguise the prompt by using the vibe of the other model.
     """
-    def __init__(self, model: str, disguise_as: str, num_samples: int = 1000, num_samples_per_disguise: int = 10, seed: int = None,
+    def __init__(self, model: str, disguise_as: str, num_samples_per_disguise: int = 10, seed: int = None,
                  disguise_df: pd.DataFrame = None) -> None:
         super().__init__(model, disguise_as)
-        self.num_samples = num_samples
         self.num_samples_per_disguise = num_samples_per_disguise
         self.seed = seed
         self.model_tokenizer = AutoTokenizer.from_pretrained(self.model)

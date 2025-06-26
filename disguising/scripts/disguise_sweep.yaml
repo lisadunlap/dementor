@@ -19,6 +19,7 @@ parameters:
       - vibe_based_disguise
       - stylistic_clustering
       - stylistic_clustering_resample
+      - vibe_clustering
   model:
     distribution: categorical
     values:

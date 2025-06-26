@@ -1,8 +1,8 @@
 import pandas as pd
 import os
 
-RESULTS_PATH = "data/wandb_export_2025-05-16T02_54_03.211-07_00.csv"
-METHODS = ["random_sample_3_examples", "just_name_it", "vibe_based_disguise", "stylistic_clustering", "stylistic_clustering_resample"]
+RESULTS_PATH = "data/wandb_export_2025-06-26T11_04_04.687-07_00.csv"
+METHODS = ["vibe_clustering"] #"random_sample_3_examples", "just_name_it", "vibe_based_disguise", "stylistic_clustering", "stylistic_clustering_resample"
 SCORE = "heuristic_diff"
 
 def shorten_model_name(model_name):
@@ -15,14 +15,14 @@ def main(method):
     print(f"Total rows with method {method}:", len(df))
 
     # shorten model names
-    df["source_model"] = df["source_model"].apply(shorten_model_name)
-    df["target_model"] = df["target_model"].apply(shorten_model_name)
+    df["model"] = df["model"].apply(shorten_model_name)
+    df["disguise_as"] = df["disguise_as"].apply(shorten_model_name)
 
     # Create pivot table for heatmap
     pivot_df = df.pivot_table(
         values=SCORE,
-        index='source_model',
-        columns='target_model',
+        index='model',
+        columns='disguise_as',
     )
 
     # Sort index and columns alphabetically

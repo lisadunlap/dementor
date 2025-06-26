@@ -36,13 +36,13 @@ def format_prompt(prompt):
         {"role": "user", "content": prompt}
     ]
 
-def get_model_response_path(model: str, num_samples: int) -> str:
+def get_model_response_path(model: str) -> str:
     base = model.replace('/', '_')
     return f"{base}.csv"
 
 def load_data(args, data_dir: str) -> pd.DataFrame:
-    disguise_df = pd.read_csv(os.path.join(data_dir, get_model_response_path(args.disguise_as, args.num_samples)))
-    model_df = pd.read_csv(os.path.join(data_dir, get_model_response_path(args.model, args.num_samples)))
+    disguise_df = pd.read_csv(os.path.join(data_dir, get_model_response_path(args.disguise_as)))
+    model_df = pd.read_csv(os.path.join(data_dir, get_model_response_path(args.model)))
     disguise_df['prompt'] = disguise_df['prompt'].str.strip()
     model_df['prompt'] = model_df['prompt'].str.strip()
     df = disguise_df.merge(model_df, on="prompt", how="inner", suffixes=("_disguise", "_model"))
@@ -234,16 +234,23 @@ def prep_wandb_table(df: pd.DataFrame) -> wandb.Table:
     df = df.astype(str)
     return wandb.Table(dataframe=df)
 
+def truncate_to_token_limit(text: str, encoding: tiktoken.Encoding, max_tokens: int = 8192) -> str:
+    tokens = encoding.encode(text)
+    if len(tokens) <= max_tokens:
+        return text
+    truncated_tokens = tokens[:max_tokens]
+    return encoding.decode(truncated_tokens)
 
-def get_model_embeddings(embeddings: List[str]) -> np.ndarray:
+def get_model_embeddings(embeddings: List[str], encoding: tiktoken.Encoding, max_tokens: int = 8192) -> np.ndarray:
     """
     Get the embeddings for the source and target model's responses using litellm
     """
     embeddings_list = []
     for row in tqdm(embeddings, desc="Getting embeddings"):
+        safe_input = truncate_to_token_limit(row, encoding, max_tokens)
         embedding_vec = embedding(
             model="text-embedding-3-small",
-            input=row,
+            input=safe_input,
             caching=True,
         )
         embedding_vec = embedding_vec["data"][0]["embedding"]
@@ -253,14 +260,13 @@ def get_model_embeddings(embeddings: List[str]) -> np.ndarray:
 def main():
     setup_logging()
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", type=str, default="OpenGVLab/InternVL3-9B")
+    parser.add_argument("--model", type=str, default="OpenGVLab/InternVL3-8B")
     parser.add_argument("--disguise_as", type=str, default="Qwen/Qwen2.5-1.5B-Instruct")
     parser.add_argument("--data_dir", type=str, default="disguising/model-responses/base_500_all_models")
     parser.add_argument("--output_dir", type=str, default="disguising/model-responses/disguised")
     parser.add_argument("--method", type=str, default="random_sample_3_examples")
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--top_p", type=float, default=0.95)
-    parser.add_argument("--num_samples", type=int)
     parser.add_argument("--enable_thinking", type=bool, default=False)
     parser.add_argument("--max_tokens", type=int, default=8000)
     parser.add_argument("--max_prompt_tokens", type=int, default=4096)
@@ -268,38 +274,43 @@ def main():
     parser.add_argument("--test", action="store_true")
     args = parser.parse_args()
 
-    wandb.init(project="dementor-methods", name=f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_responses-{args.num_samples}", group=args.method)
-    wandb.config.update(args)
-
     df = load_data(args, data_dir=args.data_dir)
-    method = get_method(args.method, args.model, args.disguise_as, num_samples=args.num_samples, disguise_df=df)
-    df = generate_disguised_prompts(df, method, args.max_prompt_tokens)
-    if args.test:
-        df = df.head(10)
-    print(df.head())
-
-    # Only initialize VLLM if not using OpenAI models
-    llm = None
-    if not (args.model.startswith("gpt-") or "gpt" in args.model.lower()):
-        llm = LLM(model=args.model, trust_remote_code=True, max_model_len=args.max_tokens, tensor_parallel_size=args.tensor_parallel_size)
-    
-    sampling_params = SamplingParams(max_tokens=args.max_prompt_tokens, temperature=args.temperature, top_p=args.top_p)
-    df["disguised_response_raw"] = generate_responses(df, llm, sampling_params, BATCH_SIZE, args.model)
-    df["disguised_response"] = df["disguised_response_raw"].apply(remove_thinking_from_output)
-
-    # df["disguised_response"] = clean_response(df["disguised_response_raw"], llm, sampling_params, BATCH_SIZE, args.model)
-    df["disguised_response_token_length"] = df["disguised_response"].apply(get_token_count)
-    df["model"] = f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}"
-    df["source_model"] = args.model
-    df["target_model"] = args.disguise_as
-    df["method"] = args.method
+    wandb.init(project="dementor-methods", name=f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_responses-{len(df)}", group=args.method)
+    wandb.config.update(args)
 
     results_folder = f"{args.output_dir}/{args.method}" if not args.test else f"{args.output_dir}/test"
     if not os.path.exists(results_folder):
         os.makedirs(results_folder)
     out_csv = f"{results_folder}/{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}.csv"
-    df.to_csv(out_csv, index=False)
-    logging.info(f"Saved disguised responses to {out_csv}")
+
+    if os.path.exists(out_csv):
+        logging.info(f"{out_csv} exists, running heuristics and plots...")
+        df = pd.read_csv(out_csv)
+    else:
+        method = get_method(args.method, args.model, args.disguise_as, disguise_df=df)
+        df = generate_disguised_prompts(df, method, args.max_prompt_tokens)
+        if args.test:
+            df = df.head(10)
+        print(df.head())
+
+        # Only initialize VLLM if not using OpenAI models
+        llm = None
+        if not (args.model.startswith("gpt-") or "gpt" in args.model.lower()):
+            llm = LLM(model=args.model, trust_remote_code=True, max_model_len=args.max_tokens, tensor_parallel_size=args.tensor_parallel_size)
+        
+        sampling_params = SamplingParams(max_tokens=args.max_prompt_tokens, temperature=args.temperature, top_p=args.top_p)
+        df["disguised_response_raw"] = generate_responses(df, llm, sampling_params, BATCH_SIZE, args.model)
+        df["disguised_response"] = df["disguised_response_raw"].apply(remove_thinking_from_output)
+
+        # df["disguised_response"] = clean_response(df["disguised_response_raw"], llm, sampling_params, BATCH_SIZE, args.model)
+        df["disguised_response_token_length"] = df["disguised_response"].apply(get_token_count)
+        df["model"] = f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}"
+        df["source_model"] = args.model
+        df["target_model"] = args.disguise_as
+        df["method"] = args.method
+        
+        df.to_csv(out_csv, index=False)
+        logging.info(f"Saved disguised responses to {out_csv}")
 
     wandb.log({"data": prep_wandb_table(df)})
     wandb.summary["average_disguised_response_token_length"] = df["disguised_response_token_length"].mean()
@@ -314,9 +325,11 @@ def main():
     wandb.summary["length_diff"] = sum(length_diff) / len(length_diff)
 
     # get embeddings
-    embeddings = get_model_embeddings(df["disguised_response"].tolist())
-    embeddings_target = get_model_embeddings(df["target_response"].tolist())
-    embeddings_source = get_model_embeddings(df["source_response"].tolist())
+    encoding = tiktoken.encoding_for_model("text-embedding-3-small")
+    MAX_TOKENS = 8192
+    embeddings = get_model_embeddings(df["disguised_response"].tolist(), encoding, MAX_TOKENS)
+    embeddings_target = get_model_embeddings(df["target_response"].tolist(), encoding, MAX_TOKENS)
+    embeddings_source = get_model_embeddings(df["source_response"].tolist(), encoding, MAX_TOKENS)
     # get pairwise distances between embeddings and target embeddings
     distances_disguise_target = np.linalg.norm(embeddings - embeddings_target, axis=1)
     wandb.summary["average_distance_disguise_target"] = distances_disguise_target.mean()
@@ -354,9 +367,10 @@ def main():
     print(f"source to target - disguise / (source to target + disguise): {(distances_source_target.mean() - distances_disguise_target.mean()) / (distances_source_target.mean() + distances_disguise_target.mean())}")
 
     # Plot embedding distance distribution
-    plot_embedding_distance_distribution(distances_disguise_target, distances_source_target, os.path.join(results_folder, f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_embedding_distance_distribution.png"))
-    wandb.log({"embedding_distance_distribution": wandb.Image(os.path.join(results_folder, f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_embedding_distance_distribution.png"))})
-    logging.info(f"Saved embedding distance distribution plot to {os.path.join(results_folder, f'{args.model.replace("/", "_")}_disguised-{args.disguise_as.replace("/", "_")}_embedding_distance_distribution.png')}")
+    plot_path = os.path.join(results_folder, f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_embedding_distance_distribution.png")
+    plot_embedding_distance_distribution(distances_disguise_target, distances_source_target, plot_path)
+    wandb.log({"embedding_distance_distribution": wandb.Image(plot_path)})
+    logging.info(f"Saved embedding distance distribution plot to {plot_path}")
 
 if __name__ == "__main__":
     main()
