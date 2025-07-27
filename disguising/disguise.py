@@ -36,16 +36,81 @@ def format_prompt(prompt):
         {"role": "user", "content": prompt}
     ]
 
-def get_model_response_path(model: str) -> str:
-    base = model.replace('/', '_')
-    return f"{base}.csv"
+def get_model_response_path(model: str, num_samples: int) -> str:
+    # Convert slash format to underscore format for filenames
+    return f"{model.replace('/', '_')}.csv"
+
+def find_model_file(model_name):
+    # Convert slash format to underscore format for filenames
+    model_name = model_name.replace('/', '_')
+    print(f"Looking for model: {model_name}")
+    
+    # Try base_500_all_models_2 first
+    base_dir = os.path.join("/home/ethanliu/dementor", "disguising", "model-responses", "base_500_all_models_2")
+    print(f"Checking directory: {base_dir}")
+    model_file = os.path.join(base_dir, f"{model_name}.csv")
+    print(f"Checking file: {model_file}")
+    
+    if os.path.exists(model_file):
+        print(f"Found file at: {model_file}")
+        return model_file
+    
+    # If not found, try base_500_all_models
+    base_dir = os.path.join("/home/ethanliu/dementor", "disguising", "model-responses", "base_500_all_models")
+    print(f"Checking directory: {base_dir}")
+    model_file = os.path.join(base_dir, f"{model_name}.csv")
+    print(f"Checking file: {model_file}")
+    
+    if os.path.exists(model_file):
+        print(f"Found file at: {model_file}")
+        return model_file
+    
+    raise FileNotFoundError(f"Model file for {model_name} not found in any base directory.")
 
 def load_data(args, data_dir: str) -> pd.DataFrame:
-    disguise_df = pd.read_csv(os.path.join(data_dir, get_model_response_path(args.disguise_as)))
-    model_df = pd.read_csv(os.path.join(data_dir, get_model_response_path(args.model)))
+    disguise_file = find_model_file(args.disguise_as)
+    model_file = find_model_file(args.model)
+    print(f"Loading disguise file: {disguise_file}")
+    print(f"Loading model file: {model_file}")
+    
+    # Load and inspect files
+    disguise_df = pd.read_csv(disguise_file)
+    model_df = pd.read_csv(model_file)
+    print(f"Disguise file columns: {list(disguise_df.columns)}")
+    print(f"Model file columns: {list(model_df.columns)}")
+    
+    # Ensure consistent column names
+    disguise_df = disguise_df.rename(columns={
+        'prompt': 'prompt',
+        'model_response': 'model_response_disguise',
+        'response': 'model_response_disguise'
+    })
+    model_df = model_df.rename(columns={
+        'prompt': 'prompt',
+        'model_response': 'model_response_model',
+        'response': 'model_response_model'
+    })
+    
+    # Ensure prompt column exists and is clean
+    if 'prompt' not in disguise_df.columns or 'prompt' not in model_df.columns:
+        raise ValueError("Prompt column not found in one of the dataframes")
+    
+    # Clean prompt columns
     disguise_df['prompt'] = disguise_df['prompt'].str.strip()
     model_df['prompt'] = model_df['prompt'].str.strip()
+    
+    # Merge on prompt
     df = disguise_df.merge(model_df, on="prompt", how="inner", suffixes=("_disguise", "_model"))
+    
+    if len(df) == 0:
+        print("No common prompts found between the two dataframes")
+        print("Disguise file sample:")
+        print(disguise_df.head(2))
+        print("\nModel file sample:")
+        print(model_df.head(2))
+        raise ValueError("Merge resulted in empty DataFrame. Check if prompts match between files.")
+    
+    # Add model information
     df["target_model"] = args.disguise_as
     df["target_response"] = df["model_response_disguise"]
     df["target_response"] = df["target_response"].apply(remove_thinking_from_output)
@@ -54,13 +119,30 @@ def load_data(args, data_dir: str) -> pd.DataFrame:
     df["source_response"] = df["model_response_model"]
     df["source_response"] = df["source_response"].apply(remove_thinking_from_output)
     df["source_response_token_length"] = df["source_response"].apply(lambda x: get_token_count(x))
+    
+    # Select final columns
     df = df[["prompt", "target_model", "target_response", "target_response_token_length", "source_model", "source_response", "source_response_token_length"]]
     df = df.dropna(subset=["target_response", "source_response"])
+    
+    print(f"Final DataFrame shape: {df.shape}")
     return df
 
 def generate_disguised_prompts(df: pd.DataFrame, method, max_tokens: int) -> pd.DataFrame:
     df["disguised_prompt"] = df["prompt"].apply(lambda x: method.forward(x))
-    df["disguised_prompt_token_length"] = df["disguised_prompt"].apply(lambda x: get_token_count(x[1]["content"]))
+    
+    # Handle both standard format and Gemma format prompts
+    def get_token_length(prompt_data):
+        if isinstance(prompt_data, list):
+            # Standard format: [{"role": "system", "content": "..."}, {"role": "user", "content": "..."}]
+            if len(prompt_data) > 1 and "content" in prompt_data[1]:
+                return get_token_count(prompt_data[1]["content"])
+            # Gemma format: [{"role": "user", "content": "<start_of_turn>user\n..."}]
+            elif len(prompt_data) == 1 and "content" in prompt_data[0]:
+                return get_token_count(prompt_data[0]["content"])
+        # If we can't determine the format, return 0 to filter it out
+        return max_tokens + 1  # This will be filtered out
+    
+    df["disguised_prompt_token_length"] = df["disguised_prompt"].apply(get_token_length)
     df = df[df["disguised_prompt_token_length"] <= max_tokens]
     return df.drop(columns=["disguised_prompt_token_length"])
 
@@ -97,38 +179,38 @@ def generate_responses(df: pd.DataFrame, llm, sampling_params, batch_size: int, 
     
     return responses
 
-def clean_response(old_responses: List[str], llm, sampling_params, batch_size: int, model_name: str) -> List[str]:
-    prompt = "In the LLM output below, remove any text at the beginning which mentions generating a response or mimicing a style (e.g. 'Here is the response in the style of ...'). If there is no mention of this, return the original output. Do not alter the original output in any other way.\nLLM output: {response}"
-    messages = [format_prompt(prompt.format(response=response)) for response in old_responses]
-    responses = []
+# def clean_response(old_responses: List[str], llm, sampling_params, batch_size: int, model_name: str) -> List[str]:
+#     prompt = "In the LLM output below, remove any text at the beginning which mentions generating a response or mimicing a style (e.g. 'Here is the response in the style of ...'). If there is no mention of this, return the original output. Do not alter the original output in any other way.\nLLM output: {response}"
+#     messages = [format_prompt(prompt.format(response=response)) for response in old_responses]
+#     responses = []
     
-    # Check if it's an OpenAI model
-    if model_name.startswith("gpt-") or "gpt" in model_name.lower():
-        # Use LiteLLM for OpenAI models
-        for i in tqdm(range(0, len(messages), batch_size), desc="Cleaning responses in batches"):
-            batch_messages = messages[i:i+batch_size]
-            batch_responses = []
-            for message in batch_messages:
-                try:
-                    response = completion(
-                        model=model_name,
-                        messages=message,
-                        max_tokens=sampling_params.max_tokens,
-                        temperature=sampling_params.temperature,
-                        top_p=sampling_params.top_p
-                    )
-                    batch_responses.append(response.choices[0].message.content)
-                except Exception as e:
-                    logging.error(f"Error cleaning response: {e}")
-                    batch_responses.append("")
-            responses.extend(batch_responses)
-    else:
-        # Use VLLM for other models
-        for i in tqdm(range(0, len(messages), batch_size), desc="Cleaning responses in batches"):
-            responses.extend(llm.chat(messages=messages[i:i+batch_size], sampling_params=sampling_params))
-        responses = [response.outputs[0].text for response in responses]
+#     # Check if it's an OpenAI model
+#     if model_name.startswith("gpt-") or "gpt" in model_name.lower():
+#         # Use LiteLLM for OpenAI models
+#         for i in tqdm(range(0, len(messages), batch_size), desc="Cleaning responses in batches"):
+#             batch_messages = messages[i:i+batch_size]
+#             batch_responses = []
+#             for message in batch_messages:
+#                 try:
+#                     response = completion(
+#                         model=model_name,
+#                         messages=message,
+#                         max_tokens=sampling_params.max_tokens,
+#                         temperature=sampling_params.temperature,
+#                         top_p=sampling_params.top_p
+#                     )
+#                     batch_responses.append(response.choices[0].message.content)
+#                 except Exception as e:
+#                     logging.error(f"Error cleaning response: {e}")
+#                     batch_responses.append("")
+#             responses.extend(batch_responses)
+#     else:
+#         # Use VLLM for other models
+#         for i in tqdm(range(0, len(messages), batch_size), desc="Cleaning responses in batches"):
+#             responses.extend(llm.chat(messages=messages[i:i+batch_size], sampling_params=sampling_params))
+#         responses = [response.outputs[0].text for response in responses]
     
-    return responses
+#     return responses
 
 def plot_token_length_distribution(df: pd.DataFrame, out_path: str):
     # Calculate the overall min and max across all three distributions
@@ -222,6 +304,8 @@ def plot_embedding_distance_distribution(distances_to_target: np.ndarray, distan
     fig.write_image(out_path)
 
 def remove_thinking_from_output(output):
+    if not isinstance(output, str):
+        return ""
     # Remove content between <think> tags
     pattern = r'<think>.*?</think>'
     cleaned_output = re.sub(pattern, '', output, flags=re.DOTALL)
@@ -234,28 +318,21 @@ def prep_wandb_table(df: pd.DataFrame) -> wandb.Table:
     df = df.astype(str)
     return wandb.Table(dataframe=df)
 
-def truncate_to_token_limit(text: str, encoding: tiktoken.Encoding, max_tokens: int = 8192) -> str:
-    tokens = encoding.encode(text)
-    if len(tokens) <= max_tokens:
-        return text
-    truncated_tokens = tokens[:max_tokens]
-    return encoding.decode(truncated_tokens)
 
-def get_model_embeddings(embeddings: List[str], encoding: tiktoken.Encoding, max_tokens: int = 8192) -> np.ndarray:
-    """
-    Get the embeddings for the source and target model's responses using litellm
-    """
-    embeddings_list = []
-    for row in tqdm(embeddings, desc="Getting embeddings"):
-        safe_input = truncate_to_token_limit(row, encoding, max_tokens)
-        embedding_vec = embedding(
-            model="text-embedding-3-small",
-            input=safe_input,
-            caching=True,
-        )
-        embedding_vec = embedding_vec["data"][0]["embedding"]
-        embeddings_list.append(embedding_vec)
-    return np.array(embeddings_list)
+# def get_model_embeddings(embeddings: List[str]) -> np.ndarray:
+#     """
+#     Get the embeddings for the source and target model's responses using litellm
+#     """
+#     embeddings_list = []
+#     for row in tqdm(embeddings, desc="Getting embeddings"):
+#         embedding_vec = embedding(
+#             model="text-embedding-3-small",
+#             input=row,
+#             caching=True,
+#         )
+#         embedding_vec = embedding_vec["data"][0]["embedding"]
+#         embeddings_list.append(embedding_vec)
+#     return np.array(embeddings_list)
 
 def main():
     setup_logging()
@@ -293,24 +370,37 @@ def main():
             df = df.head(10)
         print(df.head())
 
-        # Only initialize VLLM if not using OpenAI models
-        llm = None
-        if not (args.model.startswith("gpt-") or "gpt" in args.model.lower()):
-            llm = LLM(model=args.model, trust_remote_code=True, max_model_len=args.max_tokens, tensor_parallel_size=args.tensor_parallel_size)
-        
-        sampling_params = SamplingParams(max_tokens=args.max_prompt_tokens, temperature=args.temperature, top_p=args.top_p)
-        df["disguised_response_raw"] = generate_responses(df, llm, sampling_params, BATCH_SIZE, args.model)
-        df["disguised_response"] = df["disguised_response_raw"].apply(remove_thinking_from_output)
+    # Only initialize vLLM if not using OpenAI models
+    llm = None
+    if not (args.model.startswith("gpt-") or "gpt" in args.model.lower()):
+        model_name = args.model.replace('_', '/')
 
-        # df["disguised_response"] = clean_response(df["disguised_response_raw"], llm, sampling_params, BATCH_SIZE, args.model)
-        df["disguised_response_token_length"] = df["disguised_response"].apply(get_token_count)
-        df["model"] = f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}"
-        df["source_model"] = args.model
-        df["target_model"] = args.disguise_as
-        df["method"] = args.method
-        
-        df.to_csv(out_csv, index=False)
-        logging.info(f"Saved disguised responses to {out_csv}")
+    # vLLM handles Gemma chat templates automatically
+    llm = LLM(
+        model=model_name,
+        trust_remote_code=True,
+        max_model_len=args.max_tokens,
+        tensor_parallel_size=args.tensor_parallel_size
+    )
+    
+    sampling_params = SamplingParams(max_tokens=args.max_prompt_tokens, temperature=args.temperature, top_p=args.top_p)
+    df["disguised_response_raw"] = generate_responses(df, llm, sampling_params, BATCH_SIZE, args.model)
+    df["disguised_response"] = df["disguised_response_raw"].apply(remove_thinking_from_output)
+
+    # Commented out LLM-based cleaning
+    # df["disguised_response"] = clean_response(df["disguised_response_raw"], llm, sampling_params, BATCH_SIZE, args.model)
+    df["disguised_response_token_length"] = df["disguised_response"].apply(get_token_count)
+    df["model"] = f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}"
+    df["source_model"] = args.model
+    df["target_model"] = args.disguise_as
+    df["method"] = args.method
+
+    results_folder = f"{args.output_dir}/{args.method}" if not args.test else f"{args.output_dir}/test"
+    if not os.path.exists(results_folder):
+        os.makedirs(results_folder)
+    out_csv = f"{results_folder}/{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}.csv"
+    df.to_csv(out_csv, index=False)
+    logging.info(f"Saved disguised responses to {out_csv}")
 
     wandb.log({"data": prep_wandb_table(df)})
     wandb.summary["average_disguised_response_token_length"] = df["disguised_response_token_length"].mean()
@@ -325,18 +415,16 @@ def main():
     wandb.summary["length_diff"] = sum(length_diff) / len(length_diff)
 
     # get embeddings
-    encoding = tiktoken.encoding_for_model("text-embedding-3-small")
-    MAX_TOKENS = 8192
-    embeddings = get_model_embeddings(df["disguised_response"].tolist(), encoding, MAX_TOKENS)
-    embeddings_target = get_model_embeddings(df["target_response"].tolist(), encoding, MAX_TOKENS)
-    embeddings_source = get_model_embeddings(df["source_response"].tolist(), encoding, MAX_TOKENS)
+    # embeddings = get_model_embeddings(df["disguised_response"].tolist())
+    # embeddings_target = get_model_embeddings(df["target_response"].tolist())
+    # embeddings_source = get_model_embeddings(df["source_response"].tolist())
     # get pairwise distances between embeddings and target embeddings
-    distances_disguise_target = np.linalg.norm(embeddings - embeddings_target, axis=1)
-    wandb.summary["average_distance_disguise_target"] = distances_disguise_target.mean()
-    # get pairwise distances between embeddings and source embeddings
-    distances_source_target = np.linalg.norm(embeddings_source - embeddings_target, axis=1)
-    wandb.summary["average_distance_source_target"] = distances_source_target.mean()
-    wandb.summary["diff_avg_embedding_distance"] = (distances_source_target.mean() - distances_disguise_target.mean()) / (distances_disguise_target.mean() + distances_source_target.mean())
+    # distances_disguise_target = np.linalg.norm(embeddings - embeddings_target, axis=1)
+    # wandb.summary["average_distance_disguise_target"] = distances_disguise_target.mean()
+    # # get pairwise distances between embeddings and source embeddings
+    # distances_source_target = np.linalg.norm(embeddings_source - embeddings_target, axis=1)
+    # wandb.summary["average_distance_source_target"] = distances_source_target.mean()
+    # wandb.summary["diff_avg_embedding_distance"] = (distances_source_target.mean() - distances_disguise_target.mean()) / (distances_disguise_target.mean() + distances_source_target.mean())
 
     # Compute heuristics
     heuristic_table = compute_heuristics(df["disguised_response"].tolist(), df["target_response"].tolist())
@@ -361,16 +449,15 @@ def main():
     print(f"Heuristic diff: {wandb.summary['heuristic_diff']}")
     print(f"Heuristic diff normalized: {wandb.summary['heuristic_diff_normalized']}")
 
-    print("Embedding distances:")
-    print(f"Average distance to target: {distances_disguise_target.mean()}")
-    print(f"Average distance to source: {distances_source_target.mean()}")
-    print(f"source to target - disguise / (source to target + disguise): {(distances_source_target.mean() - distances_disguise_target.mean()) / (distances_source_target.mean() + distances_disguise_target.mean())}")
+    # print("Embedding distances:")
+    # print(f"Average distance to target: {distances_disguise_target.mean()}")
+    # print(f"Average distance to source: {distances_source_target.mean()}")
+    # print(f"source to target - disguise / (source to target + disguise): {(distances_source_target.mean() - distances_disguise_target.mean()) / (distances_source_target.mean() + distances_disguise_target.mean())}")
 
-    # Plot embedding distance distribution
-    plot_path = os.path.join(results_folder, f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_embedding_distance_distribution.png")
-    plot_embedding_distance_distribution(distances_disguise_target, distances_source_target, plot_path)
-    wandb.log({"embedding_distance_distribution": wandb.Image(plot_path)})
-    logging.info(f"Saved embedding distance distribution plot to {plot_path}")
+    # # Plot embedding distance distribution
+    # plot_embedding_distance_distribution(distances_disguise_target, distances_source_target, os.path.join(results_folder, f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_embedding_distance_distribution.png"))
+    # wandb.log({"embedding_distance_distribution": wandb.Image(os.path.join(results_folder, f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_embedding_distance_distribution.png"))})
+    # logging.info(f"Saved embedding distance distribution plot to {os.path.join(results_folder, f'{args.model.replace("/", "_")}_disguised-{args.disguise_as.replace("/", "_")}_embedding_distance_distribution.png')}")
 
 if __name__ == "__main__":
     main()
