@@ -90,7 +90,8 @@ class FeatureClustering(MethodBase):
             embeddings_source = get_model_embeddings(responses_source)
             embeddings_target = get_model_embeddings(responses_target)
             embeddings_diff = embeddings_source - embeddings_target
-            embeddings_diff_norm = embeddings_diff / np.linalg.norm(embeddings_diff, axis=1, keepdims=True)
+            epsilon = 1e-8 # to avoid division by zero
+            embeddings_diff_norm = embeddings_diff / (np.linalg.norm(embeddings_diff, axis=1, keepdims=True) + epsilon)
             cluster_labels, _ = kmeans_clustering(embeddings_diff_norm, self.num_samples_per_disguise)
             cluster_to_idx = get_cluster_to_idx(cluster_labels)
         else:
