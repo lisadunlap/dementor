@@ -297,6 +297,14 @@ def main():
         llm = None
         if not (args.model.startswith("gpt-") or "gpt" in args.model.lower()):
             llm = LLM(model=args.model, trust_remote_code=True, max_model_len=args.max_tokens, tensor_parallel_size=args.tensor_parallel_size)
+            
+        # vLLM handles Gemma chat templates automatically
+        llm = LLM(
+            model=model_name,
+            trust_remote_code=True,
+            max_model_len=args.max_tokens,
+            tensor_parallel_size=args.tensor_parallel_size
+        )
         
         sampling_params = SamplingParams(max_tokens=args.max_prompt_tokens, temperature=args.temperature, top_p=args.top_p)
         df["disguised_response_raw"] = generate_responses(df, llm, sampling_params, BATCH_SIZE, args.model)
@@ -374,3 +382,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    

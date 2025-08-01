@@ -2,166 +2,149 @@ import pandas as pd
 import asyncio
 import os
 import nest_asyncio
-from openai import OpenAI
 import tiktoken  # For token counting
 from dotenv import load_dotenv
-from vllm import VLLM  # Placeholder for vLLM import
+from openai import OpenAI
 import requests
 
-# Allow nested event loops (needed for Jupyter Notebooks)
-nest_asyncio.apply()
+"""
+Run this script **after** your local vLLM server is up, e.g.
 
-# Load environment variables
-load_dotenv()  # Load environment variables from .env file
+    vllm serve meta-llama/Meta-Llama-3-8B-Instruct --dtype half --tensor-parallel-size 4 \
+        --max-model-len 8192 --max-num-seqs 128 --gpu-memory-utilization 0.90
 
-# Get the API keys from environment variables
-openai_api_key = os.getenv("OPENAI_API_KEY")  
-anthropic_api_key = os.getenv("ANTHROPIC_API_KEY")
+The script will:
+  1. Read *model-responses/molmo-7b-o.csv* which must contain two columns:
+        - prompt          – the original question
+        - model_response  – molmo‑7b‑o’s answer
+  2. Sample **five** rows every time it talks to the model and build a
+     system prompt so Llama‑3‑8B mimics molmo’s style.
+  3. Call the *local* vLLM server (OpenAI‑compatible endpoint
+     http://localhost:8000/v1/chat/completions) and save the new answers in
+     */home/ethanliu/dementor/disguising/comparisons/llama-3-8b_as_molmo-7b-o.csv*.
+"""
 
-# Set constants
-TOKEN_LIMIT = 8192  # Max token limit for GPT-3.5-turbo. 
-LOAD_PATH = "/home/ethanliu/dementor/disguising/minimodel_responses.csv"
-SAVE_PATH = "/home/ethanliu/dementor/disguising/test_responses.csv"
-VLLM_URL = "http://localhost:5000" # URL of your local VLLM server
-IS_VLLM = False # Whether or not the model being called is a VLLM
+load_dotenv()  # read .env if present
+
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "EMPTY")  # not used when is_vllm=True
+
+TOKEN_LIMIT = 8192
+MODEL_NAME = "qwen/qwen3-32B"  # must match what vLLM serves
+VLLM_URL = "http://localhost:8000"
+IS_VLLM = True  # we are calling our own llama‑3 server
+
+LOAD_PATH = "disguising/model-responses/base_500_all_models/Qwen_Qwen2.5-VL-7B-Instruct.csv"
+SAVE_PATH = "disguising/model-responses/disguised/random_sample_5_examples/qwen-qwen3-32b_as_qwen-qwen2.5-vl-7b-instruct.csv"
+
+PROMPT_COLUMN = "prompt"
+RESPONSE_COLUMN = "model_response"  # column holding "ground truth" original model answers in the csv
+OUTPUT_COLUMN = "llama3_as_gpt-4o"
 
 class LLMHandler:
-    def __init__(self, model_name="gpt-3.5-turbo", batch_size=10000, example_size = 5, 
-                 token_limit=TOKEN_LIMIT, save_path=SAVE_PATH, load_path = LOAD_PATH,
-                 prompt_column="prompt", response_column="gpt4omini_response", output_column="gpt35_reprompted"):
-        '''
-        Initialize the LLMHandler.
-        
-        Parameters: 
-        - model_name: The name of the model to use (e.g., "gpt-3.5-turbo").
-        - is_vllm: Whether or not the model is an LLM
-        - batch_size: The number of prompts to process at once (default: 10000).
-        - example_size: The number of examples to sample from the dataframe for the system prompt (default: 5).
-        - token_limit: The maximum token limit for the model (default: 8192).
-        - load_path: The load path which contains the prompts as well as the LLM outputs that you would like the model to "act" as. 
-        - save_path: The path to save the CSV file (default: a specified location).
-        - prompt_column: The column name that contains the prompts (default: "prompt").
-        - response_column: The column name that contains the model responses (default: "gpt4omini_response").
-        - output_column: The column name where the new responses will be saved (default: "gpt35_reprompted").
-        '''
+    def __init__(self,
+                 model_name: str = MODEL_NAME,
+                 batch_size: int = 128,
+                 example_size: int = 5,
+                 token_limit: int = TOKEN_LIMIT,
+                 load_path: str = LOAD_PATH,
+                 save_path: str = SAVE_PATH,
+                 prompt_column: str = PROMPT_COLUMN,
+                 response_column: str = RESPONSE_COLUMN,
+                 output_column: str = OUTPUT_COLUMN,
+                 is_vllm: bool = IS_VLLM):
+
         self.model_name = model_name
-        self.is_vllm = IS_VLLM
-        self.batch_size = batch_size # Number of prompts to batch for the LLM
-        self.example_size = example_size # Number of examples for the system prompt
+        self.batch_size = batch_size
+        self.example_size = example_size
         self.token_limit = token_limit
         self.load_path = load_path
         self.save_path = save_path
-        self.client = OpenAI(api_key=openai_api_key)
-        self.encoder = tiktoken.encoding_for_model(model_name)
-        self.df = pd.read_csv(self.load_path)
-        # reset the reprompted column to NA
+        self.prompt_column = prompt_column
+        self.response_column = response_column
+        self.output_column = output_column
+        self.is_vllm = is_vllm
+
+        self.client = OpenAI(api_key=OPENAI_API_KEY)
+        # fall back to base encoding if model not in tiktoken list
+        try:
+            self.encoder = tiktoken.encoding_for_model(model_name)
+        except KeyError:
+            self.encoder = tiktoken.get_encoding("cl100k_base")
+
+        self.df = pd.read_csv(self.load_path, nrows=1000)
+        # ensure output column exists and empty
         self.df[self.output_column] = pd.NA
-
-    def get_system_prompt(self, examples: pd.DataFrame) -> str:
-        '''
-        Generates the system prompt string based on sampled examples from the dataframe.
-
-        Parameters:
-        - examples: A DataFrame containing the examples to use in the system prompt.
-
-        Returns:
-        - A formatted system prompt string.
-        '''
         
-        system_prompt = f'''You are a helpful AI assistant. You answer the questions provided in the style defined by the example question and responses below. Note that your task is to match the style of the responses only.\n\n'''
-        
+    def _build_system_prompt(self, examples: pd.DataFrame) -> str:
+        """Return the system prompt that makes llama imitate molmo."""
+        s = [
+            "You are a helpful AI assistant. Answer **only** in the style "
+            "shown in the examples below. Your goal is to mimic formatting, "
+            "tone, level of detail, and phrasing – not to copy content.\n\n"
+        ]
         for i, row in examples.iterrows():
-            # Replace gpt4omini_response
-            system_prompt += f"Example {i+1}:\nprompt: {row['self.prompt_column']}\nresponse: {row['self.response_column']}\n\n"
+            s.append(f"Example {i + 1}:\n"              # 1‑indexed for readability
+                     f"prompt: {row[self.prompt_column]}\n"
+                     f"response: {row[self.response_column]}\n\n")
+        s.append("Here is the question to answer:")
+        return "".join(s)
 
-        system_prompt += "Here is the question to answer: "
-        return system_prompt
+    async def _call_openai_or_vllm(self, full_prompt: str) -> str:
+        if not self.is_vllm:
+            # cloud OpenAI (not used in this workflow)
+            resp = await asyncio.to_thread(
+                self.client.chat.completions.create,
+                model=self.model_name,
+                messages=[{"role": "user", "content": full_prompt}],
+            )
+            return resp.choices[0].message.content
+        else:
+            # local vLLM OpenAI‑compatible endpoint
+            payload = {
+                "model": self.model_name,
+                "messages": [{"role": "user", "content": full_prompt}],
+            }
+            r = await asyncio.to_thread(requests.post, f"{VLLM_URL}/v1/chat/completions", json=payload, timeout=300)
+            r.raise_for_status()
+            return r.json()["choices"][0]["message"]["content"].strip()
 
-    async def fetch_response(self, prompt: str, is_vllm = False) -> str:
-        """
-        Fetches a response from either OpenAI's API or a local vLLM server based on the provided prompt.
+    async def _generate_one(self, prompt: str) -> str:
+        examples = self.df[[self.prompt_column, self.response_column]].sample(
+            n=self.example_size, random_state=None)  # true randomness per call
+        full_prompt = f"{self._build_system_prompt(examples)}\n{prompt}"
 
-        Parameters:
-        - prompt: The prompt to send to the model.
-        - is_vllm: Boolean flag indicating whether to use the local vLLM server (default: False for OpenAI API).
+        if len(self.encoder.encode(full_prompt)) > self.token_limit:
+            return "N/A (prompt too long)"
 
-        Returns:
-        - The response from the model.
-        """
-        
-        # Make sure that the LLM_response for your column is not "I cannot assist with your request"
-        sampled_examples = self.df[[self.prompt_column, self.response_column]].sample(n=self.example_size, random_state=42) 
-        full_prompt = self.get_system_prompt(sampled_examples) + "\n" + prompt
+        try:
+            return await self._call_openai_or_vllm(full_prompt)
+        except Exception as e:
+            return f"ERROR: {e}"
 
-        # Token check
-        num_tokens = len(self.encoder.encode(full_prompt))
-        if num_tokens > self.token_limit:
-            return "N/A"  # Skip this prompt if it's too long
-
-        if not is_vllm:
-            try:
-                response = await asyncio.to_thread(self.client.chat.completions.create, 
-                    model=self.model_name,
-                    messages=[{"role": "user", "content": full_prompt}]
-                )
-                return response.choices[0].message.content 
-        
-            except Exception as e:
-                return f"ERROR: {str(e)}"
-        
-        # Make HTTP request to local vLLM server
-        else: 
-            try:
-                response = requests.post(
-                    f"{VLLM_URL}/predict",
-                    json={
-                        "model": self.model_name,
-                        "prompt": full_prompt
-                    }
-                )
-                response.raise_for_status()  # Raise an exception for HTTP errors
-                return response.json().get("response", "ERROR: No response field found.")
-            except requests.exceptions.RequestException as e:
-                return f"ERROR: {str(e)}"
-
-    async def process_batch(self, batch: list) -> list:
-        responses = await asyncio.gather(*[self.fetch_response(prompt, self.is_vllm) for prompt in batch])
-        return responses
-
-    async def process_all_prompts(self):
+    async def process_all(self):
         prompts = self.df[self.prompt_column].tolist()
-        total_batches = (len(prompts) + self.batch_size - 1) // self.batch_size
-        print(f"Starting processing of {len(prompts)} prompts in {total_batches} batches")
+        total = len(prompts)
+        print(f"Processing {total} prompts in batches of {self.batch_size}…")
 
-        processed_count = 0
-        for i in range(0, len(prompts), self.batch_size):
-            batch = prompts[i:i + self.batch_size]
-            print(f"Processing batch {i // self.batch_size + 1}/{total_batches}...")
-
+        for start in range(0, total, self.batch_size):
+            batch_prompts = prompts[start:start + self.batch_size]
+            print(f" ▸ Batch {start // self.batch_size + 1} / {(total - 1) // self.batch_size + 1}")
             try:
-                responses = await self.process_batch(batch)
-                for j, prompt in enumerate(batch):
-                    self.df.loc[self.df[self.prompt_column] == prompt, self.output_column] = responses[j]
-                    processed_count += 1
-
-                self.df.to_csv(self.save_path, index=False, escapechar='\\')
-                print(f"Processed {processed_count}/{len(prompts)} responses")
-
+                responses = await asyncio.gather(*[self._generate_one(p) for p in batch_prompts])
             except Exception as e:
-                print(f"Error in batch {i // self.batch_size + 1}: {e}")
-                continue
+                print("Batch failed:", e)
+                responses = [f"ERROR: {e}"] * len(batch_prompts)
 
-        print(f"Processing complete. Total responses: {processed_count}/{len(prompts)}")
-        assert processed_count == len(prompts), f"Expected {len(prompts)} responses, but got {processed_count}"
+            # write results back to dataframe
+            for p, ans in zip(batch_prompts, responses):
+                self.df.loc[self.df[self.prompt_column] == p, self.output_column] = ans
 
-# Run event loop
+            self.df.to_csv(self.save_path, index=False)
+            print(f"   Saved up to row {start + len(batch_prompts)} → {os.path.basename(self.save_path)}")
+
+        print("✓ All done – file written to", self.save_path)
+
 if __name__ == "__main__":
-    handler = LLMHandler(model_name="gpt-3.5-turbo", batch_size=10000, example_size=5, 
-                         save_path=SAVE_PATH, 
-                         prompt_column="prompt", response_column="gpt4omini_response", output_column="gpt35_reprompted")
-    
-    # model_name is the LLM you have. 
-    # The response_column should be what you want the model_name LLM to act as, namely some other LLM. 
-    
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(handler.process_all_prompts())
+    nest_asyncio.apply()
+    handler = LLMHandler()
+    asyncio.run(handler.process_all())

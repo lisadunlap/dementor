@@ -9,7 +9,12 @@ scikit-learn==1.6.1
 torch==2.5.1
 torchaudio==2.5.1
 torchvision==0.20.1
-transformers==4.48.1
-flash_attn==2.7.4.post1
+transformers==4.48.2
+#flash_attn==2.7.4.post1
 vllm>=0.7.3
 xformers==0.0.28.post3
+plotly>=5.0.0
+#litellm # uninstall lite llm and then upgraded openai
+kmodes>=0.12.2
+wandb
+litellm

@@ -82,7 +82,20 @@ class RandomSampleDisguise(MethodBase):
         disguise_df_sample = self.disguise_df.sample(n=self.num_samples_per_disguise, random_state=self.seed)
         disguise_df_sample["target_response"] = disguise_df_sample["target_response"].apply(lambda x: f"{x[:256]}...(truncated)" if get_token_count(x) > 256 else x)
         disguise_prompt = self.make_disguise_prompt(disguise_df_sample, prompt)
-        return [{"role": "system", "content": disguise_prompt}, {"role": "user", "content": prompt}]
+        
+        # Format for Gemma models
+        if "gemma" in self.model.lower():
+            # For Gemma models, we need to format the prompt using their specific template
+            formatted_prompt = f"""<start_of_turn>user
+{disguise_prompt}
+
+{prompt}<end_of_turn>
+<start_of_turn>model
+"""
+            return [{"role": "user", "content": formatted_prompt}]
+        else:
+            # Standard chat format for other models
+            return [{"role": "system", "content": disguise_prompt}, {"role": "user", "content": prompt}]
     
 class JustNameIt(MethodBase):
     """
