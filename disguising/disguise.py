@@ -67,8 +67,8 @@ def generate_disguised_prompts(df: pd.DataFrame, method, max_tokens: int) -> pd.
 def generate_responses(df: pd.DataFrame, llm, sampling_params, batch_size: int, model_name: str) -> list:
     responses = []
     
-    # Check if it's an OpenAI model (simple check for gpt models)
-    if model_name.startswith("gpt-") or "gpt" in model_name.lower():
+    # Use LiteLLM path if no local llm is provided (i.e., using OpenAI-compatible server)
+    if llm is None:
         # Use LiteLLM for OpenAI models
         for i in tqdm(range(0, len(df), batch_size), desc="Generating responses in batches"):
             messages_batch = df["disguised_prompt"].tolist()[i:i+batch_size]
@@ -81,6 +81,7 @@ def generate_responses(df: pd.DataFrame, llm, sampling_params, batch_size: int, 
                         max_tokens=sampling_params.max_tokens,
                         temperature=sampling_params.temperature,
                         top_p=sampling_params.top_p,
+                        custom_llm_provider="openai",
                         caching=True,
                     )
                     batch_responses.append(response.choices[0].message.content)
@@ -222,12 +223,20 @@ def plot_embedding_distance_distribution(distances_to_target: np.ndarray, distan
     fig.write_image(out_path)
 
 def remove_thinking_from_output(output):
-    # Remove content between <think> tags
-    pattern = r'<think>.*?</think>'
-    cleaned_output = re.sub(pattern, '', output, flags=re.DOTALL)
-    # Remove any extra whitespace that might be left
-    cleaned_output = re.sub(r'\n\s*\n', '\n\n', cleaned_output)
-    return cleaned_output.strip()
+    # Handle NaN / non-string values gracefully
+    if output is None:
+        return ""
+    try:
+        # Remove content between <think> tags
+        pattern = r'<think>.*?</think>'
+        text = output if isinstance(output, str) else str(output)
+        cleaned_output = re.sub(pattern, '', text, flags=re.DOTALL)
+        # Remove any extra whitespace that might be left
+        cleaned_output = re.sub(r'\n\s*\n', '\n\n', cleaned_output)
+        return cleaned_output.strip()
+    except Exception:
+        # Fallback to string conversion
+        return str(output)
 
 def prep_wandb_table(df: pd.DataFrame) -> wandb.Table:
     # cast all columns to strings
@@ -259,6 +268,8 @@ def get_model_embeddings(embeddings: List[str], encoding: tiktoken.Encoding, max
 
 def main():
     setup_logging()
+    # Load environment variables from .env (e.g., OPENAI_API_KEY)
+    load_dotenv()
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="OpenGVLab/InternVL3-8B")
     parser.add_argument("--disguise_as", type=str, default="Qwen/Qwen2.5-1.5B-Instruct")
@@ -271,6 +282,10 @@ def main():
     parser.add_argument("--max_tokens", type=int, default=8000)
     parser.add_argument("--max_prompt_tokens", type=int, default=4096)
     parser.add_argument("--tensor_parallel_size", type=int, default=1)
+    # Optional: use an OpenAI-compatible server (e.g., your running vLLM server)
+    parser.add_argument("--use_openai_server", action="store_true")
+    parser.add_argument("--api_base", type=str, default=None)
+    parser.add_argument("--api_key", type=str, default=None)
     parser.add_argument("--test", action="store_true")
     args = parser.parse_args()
 
@@ -287,25 +302,33 @@ def main():
         logging.info(f"{out_csv} exists, running heuristics and plots...")
         df = pd.read_csv(out_csv)
     else:
-        method = get_method(args.method, args.model, args.disguise_as, disguise_df=df)
+        # Methods expect a DataFrame with a 'model_response' column for examples.
+        # Map from our merged 'target_response' to the expected name.
+        disguise_examples_df = df.rename(columns={"target_response": "model_response"})
+        method = get_method(args.method, args.model, args.disguise_as, disguise_df=disguise_examples_df)
         df = generate_disguised_prompts(df, method, args.max_prompt_tokens)
         if args.test:
             df = df.head(10)
         print(df.head())
 
-        # Only initialize VLLM if not using OpenAI models
+        # Decide how to generate responses
         llm = None
-        if not (args.model.startswith("gpt-") or "gpt" in args.model.lower()):
+        use_openai_mode = args.model.startswith("gpt-") or "gpt" in args.model.lower() or args.use_openai_server
+        if not use_openai_mode:
+            # Local vLLM instance
             llm = LLM(model=args.model, trust_remote_code=True, max_model_len=args.max_tokens, tensor_parallel_size=args.tensor_parallel_size)
             
         # vLLM handles Gemma chat templates automatically
-        llm = LLM(
-            model=model_name,
-            trust_remote_code=True,
-            max_model_len=args.max_tokens,
-            tensor_parallel_size=args.tensor_parallel_size
-        )
+        # (llm already initialized above for non-GPT models)
         
+        # Configure LiteLLM/OpenAI client if using remote server
+        if use_openai_mode and args.use_openai_server:
+            # Configure via environment variables for litellm
+            if args.api_base:
+                os.environ["OPENAI_API_BASE"] = args.api_base
+            if args.api_key:
+                os.environ["OPENAI_API_KEY"] = args.api_key
+
         sampling_params = SamplingParams(max_tokens=args.max_prompt_tokens, temperature=args.temperature, top_p=args.top_p)
         df["disguised_response_raw"] = generate_responses(df, llm, sampling_params, BATCH_SIZE, args.model)
         df["disguised_response"] = df["disguised_response_raw"].apply(remove_thinking_from_output)

@@ -217,14 +217,21 @@ if __name__ == "__main__":
             wandb.finish()
             sys.exit(0)
         
-        llm = LLM(model="microsoft/Phi-4-mini-instruct", trust_remote_code=True, max_model_len=4096)
+        llm = LLM(
+            model="microsoft/Phi-4-mini-instruct",
+            trust_remote_code=True,
+            max_model_len=4096,
+            dtype="float16",
+            gpu_memory_utilization=0.6,
+            max_num_seqs=16,
+        )
         sampling_params = SamplingParams(
             max_tokens=4096,
             temperature=0.0,
             )
         outputs = []
         semantic_outputs = []
-        batch_size = 100  # You can make this configurable
+        batch_size = 10  # Lower batch size to reduce GPU memory usage
         num_rows = len(df)
         for i, batch_start in enumerate(range(0, num_rows, batch_size)):
             print(f"Processing batch {i+1} of {num_rows // batch_size +1}")
