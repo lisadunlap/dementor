@@ -41,32 +41,35 @@ def get_model_response_path(model: str) -> str:
     return f"{base}.csv"
 
 def load_data(args, data_dir: str) -> pd.DataFrame:
-    # Handle GSM8K data structure
-    if "gsm8k" in data_dir:
-        # For GSM8K, use the integrated directory
-        gsm8k_dir = "disguising/model-responses/gsm8k_integrated"
-        if not os.path.exists(gsm8k_dir):
-            # Create integrated directory if it doesn't exist
-            os.makedirs(gsm8k_dir, exist_ok=True)
-            # Copy and fix GSM8K files
-            gsm8k_source = "disguising/model-responses/gsm8k"
-            for file in os.listdir(gsm8k_source):
-                if file.endswith('.csv'):
-                    source_path = os.path.join(gsm8k_source, file)
-                    target_name = file.replace('_gsm8k_test_500.csv', '.csv').replace('_gsm8k_responses_temp.csv', '.csv')
-                    target_path = os.path.join(gsm8k_dir, target_name)
-                    if not os.path.exists(target_path):
-                        df_temp = pd.read_csv(source_path)
-                        if 'model' not in df_temp.columns:
-                            model_name = file.replace('_gsm8k_test_500.csv', '').replace('_gsm8k_responses_temp.csv', '')
-                            df_temp['model'] = model_name
-                        if 'messages' not in df_temp.columns:
-                            df_temp['messages'] = df_temp['model_response']
-                        df_temp.to_csv(target_path, index=False)
-        data_dir = gsm8k_dir
-    
-    disguise_df = pd.read_csv(os.path.join(data_dir, get_model_response_path(args.disguise_as)))
-    model_df = pd.read_csv(os.path.join(data_dir, get_model_response_path(args.model)))
+    # Resolve CSV path flexibly to support GSM8K filenames
+    def resolve_csv_path(directory: str, model_name: str) -> str:
+        expected = os.path.join(directory, get_model_response_path(model_name))
+        if os.path.exists(expected):
+            return expected
+        # Fallbacks: try common GSM8K-style filenames
+        base = model_name.replace('/', '_')
+        candidates = []
+        try:
+            for fname in os.listdir(directory):
+                if not fname.endswith('.csv'):
+                    continue
+                # exact base match anywhere or gsm8k variants
+                if fname == f"{base}_gsm8k_test_500.csv" or fname.startswith(base):
+                    candidates.append(os.path.join(directory, fname))
+        except FileNotFoundError:
+            pass
+        if candidates:
+            # Prefer gsm8k_test_500 if present
+            for c in candidates:
+                if c.endswith('_gsm8k_test_500.csv'):
+                    return c
+            return candidates[0]
+        raise FileNotFoundError(f"Could not find CSV for model '{model_name}' in {directory}")
+
+    disguise_path = resolve_csv_path(data_dir, args.disguise_as)
+    model_path = resolve_csv_path(data_dir, args.model)
+    disguise_df = pd.read_csv(disguise_path)
+    model_df = pd.read_csv(model_path)
     disguise_df['prompt'] = disguise_df['prompt'].str.strip()
     model_df['prompt'] = model_df['prompt'].str.strip()
     df = disguise_df.merge(model_df, on="prompt", how="inner", suffixes=("_disguise", "_model"))
@@ -201,7 +204,13 @@ def plot_token_length_distribution(df: pd.DataFrame, out_path: str):
         showlegend=True
     )
     
-    fig.write_image(out_path)
+    try:
+        fig.write_image(out_path)
+    except Exception as e:
+        # Fallback to HTML if static export is unavailable (e.g., Chrome not installed for kaleido)
+        html_path = out_path.replace('.png', '.html')
+        logging.warning(f"Static image export failed ({e}). Writing HTML to {html_path} instead.")
+        fig.write_html(html_path, include_plotlyjs='cdn')
 
 def plot_embedding_distance_distribution(distances_to_target: np.ndarray, distances_to_source: np.ndarray, out_path: str):
     """
@@ -244,7 +253,13 @@ def plot_embedding_distance_distribution(distances_to_target: np.ndarray, distan
         showlegend=True
     )
     
-    fig.write_image(out_path)
+    try:
+        fig.write_image(out_path)
+    except Exception as e:
+        # Fallback to HTML if static export is unavailable
+        html_path = out_path.replace('.png', '.html')
+        logging.warning(f"Static image export failed ({e}). Writing HTML to {html_path} instead.")
+        fig.write_html(html_path, include_plotlyjs='cdn')
 
 def remove_thinking_from_output(output):
     # Handle NaN / non-string values gracefully
@@ -311,6 +326,7 @@ def main():
     parser.add_argument("--api_base", type=str, default=None)
     parser.add_argument("--api_key", type=str, default=None)
     parser.add_argument("--test", action="store_true")
+    parser.add_argument("--skip_generation", action="store_true")
     args = parser.parse_args()
 
     df = load_data(args, data_dir=args.data_dir)
@@ -335,27 +351,28 @@ def main():
             df = df.head(10)
         print(df.head())
 
-        # Decide how to generate responses
-        llm = None
-        use_openai_mode = args.model.startswith("gpt-") or "gpt" in args.model.lower() or args.use_openai_server
-        if not use_openai_mode:
-            # Local vLLM instance
-            llm = LLM(model=args.model, trust_remote_code=True, max_model_len=args.max_tokens, tensor_parallel_size=args.tensor_parallel_size)
-            
-        # vLLM handles Gemma chat templates automatically
-        # (llm already initialized above for non-GPT models)
-        
-        # Configure LiteLLM/OpenAI client if using remote server
-        if use_openai_mode and args.use_openai_server:
-            # Configure via environment variables for litellm
-            if args.api_base:
-                os.environ["OPENAI_API_BASE"] = args.api_base
-            if args.api_key:
-                os.environ["OPENAI_API_KEY"] = args.api_key
+        if not args.skip_generation:
+            # Decide how to generate responses
+            llm = None
+            use_openai_mode = args.model.startswith("gpt-") or "gpt" in args.model.lower() or args.use_openai_server
+            if not use_openai_mode:
+                # Local vLLM instance
+                llm = LLM(model=args.model, trust_remote_code=True, max_model_len=args.max_tokens, tensor_parallel_size=args.tensor_parallel_size)
+                
+            # Configure LiteLLM/OpenAI client if using remote server
+            if use_openai_mode and args.use_openai_server:
+                # Configure via environment variables for litellm
+                if args.api_base:
+                    os.environ["OPENAI_API_BASE"] = args.api_base
+                if args.api_key:
+                    os.environ["OPENAI_API_KEY"] = args.api_key
 
-        sampling_params = SamplingParams(max_tokens=args.max_prompt_tokens, temperature=args.temperature, top_p=args.top_p)
-        df["disguised_response_raw"] = generate_responses(df, llm, sampling_params, BATCH_SIZE, args.model)
-        df["disguised_response"] = df["disguised_response_raw"].apply(remove_thinking_from_output)
+            sampling_params = SamplingParams(max_tokens=args.max_prompt_tokens, temperature=args.temperature, top_p=args.top_p)
+            df["disguised_response_raw"] = generate_responses(df, llm, sampling_params, BATCH_SIZE, args.model)
+            df["disguised_response"] = df["disguised_response_raw"].apply(remove_thinking_from_output)
+        else:
+            # Skip generation (for quick sanity checks of prompt formation)
+            df["disguised_response"] = ""
 
         # df["disguised_response"] = clean_response(df["disguised_response_raw"], llm, sampling_params, BATCH_SIZE, args.model)
         df["disguised_response_token_length"] = df["disguised_response"].apply(get_token_count)
@@ -367,31 +384,51 @@ def main():
         df.to_csv(out_csv, index=False)
         logging.info(f"Saved disguised responses to {out_csv}")
 
+    # Normalize text columns to avoid NaNs causing errors downstream
+    for col in ["disguised_response", "target_response", "source_response"]:
+        if col in df.columns:
+            df[col] = df[col].fillna("").astype(str)
+
     wandb.log({"data": prep_wandb_table(df)})
     wandb.summary["average_disguised_response_token_length"] = df["disguised_response_token_length"].mean()
 
     out_png = out_csv.replace('.csv', '.png')
     plot_token_length_distribution(df, out_png)
-    wandb.log({"disguised_response_token_length_distribution": wandb.Image(out_png)})
-    logging.info(f"Saved distribution plot to {out_png}")
+    try:
+        if os.path.exists(out_png):
+            wandb.log({"disguised_response_token_length_distribution": wandb.Image(out_png)})
+            logging.info(f"Saved distribution plot to {out_png}")
+        else:
+            out_html = out_png.replace('.png', '.html')
+            logging.info(f"Saved distribution plot to {out_html}")
+    except Exception as e:
+        logging.warning(f"Failed to log token length distribution image: {e}")
 
     # get average normalized difference in length
-    length_diff = [(len(row["disguised_response"]) - len(row["target_response"])) / max(len(row["disguised_response"]), len(row["target_response"])) for _, row in df.iterrows()]
+    def safe_len(s: str) -> int:
+        try:
+            return len(s) if isinstance(s, str) else len(str(s))
+        except Exception:
+            return 0
+    length_diff = [(safe_len(row["disguised_response"]) - safe_len(row["target_response"])) / max(safe_len(row["disguised_response"]), safe_len(row["target_response"])) if max(safe_len(row["disguised_response"]), safe_len(row["target_response"])) > 0 else 0 for _, row in df.iterrows()]
     wandb.summary["length_diff"] = sum(length_diff) / len(length_diff)
 
-    # get embeddings
-    encoding = tiktoken.encoding_for_model("text-embedding-3-small")
-    MAX_TOKENS = 8192
-    embeddings = get_model_embeddings(df["disguised_response"].tolist(), encoding, MAX_TOKENS)
-    embeddings_target = get_model_embeddings(df["target_response"].tolist(), encoding, MAX_TOKENS)
-    embeddings_source = get_model_embeddings(df["source_response"].tolist(), encoding, MAX_TOKENS)
-    # get pairwise distances between embeddings and target embeddings
-    distances_disguise_target = np.linalg.norm(embeddings - embeddings_target, axis=1)
-    wandb.summary["average_distance_disguise_target"] = distances_disguise_target.mean()
-    # get pairwise distances between embeddings and source embeddings
-    distances_source_target = np.linalg.norm(embeddings_source - embeddings_target, axis=1)
-    wandb.summary["average_distance_source_target"] = distances_source_target.mean()
-    wandb.summary["diff_avg_embedding_distance"] = (distances_source_target.mean() - distances_disguise_target.mean()) / (distances_disguise_target.mean() + distances_source_target.mean())
+    # get embeddings (skip if skipping generation)
+    distances_disguise_target = None
+    distances_source_target = None
+    if not args.skip_generation:
+        encoding = tiktoken.encoding_for_model("text-embedding-3-small")
+        MAX_TOKENS = 8192
+        embeddings = get_model_embeddings(df["disguised_response"].tolist(), encoding, MAX_TOKENS)
+        embeddings_target = get_model_embeddings(df["target_response"].tolist(), encoding, MAX_TOKENS)
+        embeddings_source = get_model_embeddings(df["source_response"].tolist(), encoding, MAX_TOKENS)
+        # get pairwise distances between embeddings and target embeddings
+        distances_disguise_target = np.linalg.norm(embeddings - embeddings_target, axis=1)
+        wandb.summary["average_distance_disguise_target"] = distances_disguise_target.mean()
+        # get pairwise distances between embeddings and source embeddings
+        distances_source_target = np.linalg.norm(embeddings_source - embeddings_target, axis=1)
+        wandb.summary["average_distance_source_target"] = distances_source_target.mean()
+        wandb.summary["diff_avg_embedding_distance"] = (distances_source_target.mean() - distances_disguise_target.mean()) / (distances_disguise_target.mean() + distances_source_target.mean())
 
     # Compute heuristics
     heuristic_table = compute_heuristics(df["disguised_response"].tolist(), df["target_response"].tolist())
@@ -416,16 +453,25 @@ def main():
     print(f"Heuristic diff: {wandb.summary['heuristic_diff']}")
     print(f"Heuristic diff normalized: {wandb.summary['heuristic_diff_normalized']}")
 
-    print("Embedding distances:")
-    print(f"Average distance to target: {distances_disguise_target.mean()}")
-    print(f"Average distance to source: {distances_source_target.mean()}")
-    print(f"source to target - disguise / (source to target + disguise): {(distances_source_target.mean() - distances_disguise_target.mean()) / (distances_source_target.mean() + distances_disguise_target.mean())}")
+    if distances_disguise_target is not None and distances_source_target is not None:
+        print("Embedding distances:")
+        print(f"Average distance to target: {distances_disguise_target.mean()}")
+        print(f"Average distance to source: {distances_source_target.mean()}")
+        print(f"source to target - disguise / (source to target + disguise): {(distances_source_target.mean() - distances_disguise_target.mean()) / (distances_source_target.mean() + distances_disguise_target.mean())}")
 
     # Plot embedding distance distribution
     plot_path = os.path.join(results_folder, f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_embedding_distance_distribution.png")
-    plot_embedding_distance_distribution(distances_disguise_target, distances_source_target, plot_path)
-    wandb.log({"embedding_distance_distribution": wandb.Image(plot_path)})
-    logging.info(f"Saved embedding distance distribution plot to {plot_path}")
+    if distances_disguise_target is not None and distances_source_target is not None:
+        plot_embedding_distance_distribution(distances_disguise_target, distances_source_target, plot_path)
+        try:
+            if os.path.exists(plot_path):
+                wandb.log({"embedding_distance_distribution": wandb.Image(plot_path)})
+                logging.info(f"Saved embedding distance distribution plot to {plot_path}")
+            else:
+                plot_html = plot_path.replace('.png', '.html')
+                logging.info(f"Saved embedding distance distribution plot to {plot_html}")
+        except Exception as e:
+            logging.warning(f"Failed to log embedding distance distribution image: {e}")
 
 if __name__ == "__main__":
     main()
