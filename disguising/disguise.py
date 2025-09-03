@@ -41,6 +41,30 @@ def get_model_response_path(model: str) -> str:
     return f"{base}.csv"
 
 def load_data(args, data_dir: str) -> pd.DataFrame:
+    # Handle GSM8K data structure
+    if "gsm8k" in data_dir:
+        # For GSM8K, use the integrated directory
+        gsm8k_dir = "disguising/model-responses/gsm8k_integrated"
+        if not os.path.exists(gsm8k_dir):
+            # Create integrated directory if it doesn't exist
+            os.makedirs(gsm8k_dir, exist_ok=True)
+            # Copy and fix GSM8K files
+            gsm8k_source = "disguising/model-responses/gsm8k"
+            for file in os.listdir(gsm8k_source):
+                if file.endswith('.csv'):
+                    source_path = os.path.join(gsm8k_source, file)
+                    target_name = file.replace('_gsm8k_test_500.csv', '.csv').replace('_gsm8k_responses_temp.csv', '.csv')
+                    target_path = os.path.join(gsm8k_dir, target_name)
+                    if not os.path.exists(target_path):
+                        df_temp = pd.read_csv(source_path)
+                        if 'model' not in df_temp.columns:
+                            model_name = file.replace('_gsm8k_test_500.csv', '').replace('_gsm8k_responses_temp.csv', '')
+                            df_temp['model'] = model_name
+                        if 'messages' not in df_temp.columns:
+                            df_temp['messages'] = df_temp['model_response']
+                        df_temp.to_csv(target_path, index=False)
+        data_dir = gsm8k_dir
+    
     disguise_df = pd.read_csv(os.path.join(data_dir, get_model_response_path(args.disguise_as)))
     model_df = pd.read_csv(os.path.join(data_dir, get_model_response_path(args.model)))
     disguise_df['prompt'] = disguise_df['prompt'].str.strip()
@@ -273,7 +297,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", type=str, default="OpenGVLab/InternVL3-8B")
     parser.add_argument("--disguise_as", type=str, default="Qwen/Qwen2.5-1.5B-Instruct")
-    parser.add_argument("--data_dir", type=str, default="disguising/model-responses/base_500_all_models")
+    parser.add_argument("--data_dir", type=str, default="disguising/model-responses/base_500_all_models", help="Data directory. Use 'gsm8k' for GSM8K dataset.")
     parser.add_argument("--output_dir", type=str, default="disguising/model-responses/disguised")
     parser.add_argument("--method", type=str, default="random_sample_3_examples")
     parser.add_argument("--temperature", type=float, default=0.0)
