@@ -432,7 +432,28 @@ def main():
 
     # Compute heuristics
     heuristic_table = compute_heuristics(df["disguised_response"].tolist(), df["target_response"].tolist())
-    heuristic_file= os.path.join(args.output_dir, "heuristic_table.csv")
+    # Save to the new hierarchical_math_disguise scores structure
+    # Normalize naming to match stylistic_clustering:
+    #   disguising/scores/{method}/source_<family>/<model>/target_<family>/<model>
+    def split_family_model(name: str):
+        if '/' in name:
+            family, model = name.split('/', 1)
+        else:
+            # Derive a family heuristically from the prefix before first '-'
+            parts = name.split('-', 1)
+            family = parts[0]
+            model = name
+        return family, model
+
+    source_family, source_model_name = split_family_model(args.model)
+    target_family, target_model_name = split_family_model(args.disguise_as)
+    scores_dir = (
+        f"disguising/scores/{args.method}/"
+        f"source_{source_family}/{source_model_name}/"
+        f"target_{target_family}/{target_model_name}"
+    )
+    os.makedirs(scores_dir, exist_ok=True)
+    heuristic_file = os.path.join(scores_dir, "heuristic_table.csv")
     heuristic_table.to_csv(heuristic_file, index=False)
     wandb.log({"style_heuristics": wandb.Table(dataframe=heuristic_table)})
     wandb.summary["heuristic_avg_score"] = heuristic_table["match"].mean()
@@ -441,8 +462,8 @@ def main():
 
     # Compute heuristics comparing source and target responses
     heuristic_table_target_source = compute_heuristics(df["target_response"].tolist(), df["source_response"].tolist())
-    heuristic_file= os.path.join(args.output_dir, "heuristic_table_target_source.csv")
-    heuristic_table_target_source.to_csv(heuristic_file, index=False)
+    heuristic_file_target_source = os.path.join(scores_dir, "heuristic_table_target_source.csv")
+    heuristic_table_target_source.to_csv(heuristic_file_target_source, index=False)
     wandb.log({"style_heuristics_target_source": wandb.Table(dataframe=heuristic_table_target_source)})
     wandb.summary["heuristic_avg_score_source_target"] = heuristic_table_target_source["match"].mean()
     for i, row in heuristic_table_target_source.iterrows():
@@ -460,7 +481,7 @@ def main():
         print(f"source to target - disguise / (source to target + disguise): {(distances_source_target.mean() - distances_disguise_target.mean()) / (distances_source_target.mean() + distances_disguise_target.mean())}")
 
     # Plot embedding distance distribution
-    plot_path = os.path.join(results_folder, f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_embedding_distance_distribution.png")
+    plot_path = os.path.join(scores_dir, f"{args.model.replace('/', '_')}_disguised-{args.disguise_as.replace('/', '_')}_embedding_distance_distribution.png")
     if distances_disguise_target is not None and distances_source_target is not None:
         plot_embedding_distance_distribution(distances_disguise_target, distances_source_target, plot_path)
         try:
