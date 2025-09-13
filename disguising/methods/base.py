@@ -7,7 +7,14 @@ from sklearn.cluster import KMeans
 
 from transformers import AutoTokenizer
 from tqdm import tqdm
-from utils import get_token_count
+try:
+    from ..utils import get_token_count
+except ImportError:
+    # Fallback for different import contexts
+    import sys
+    import os
+    sys.path.append(os.path.join(os.path.dirname(__file__), '..'))
+    from utils import get_token_count
 
 class MethodBase:
     """

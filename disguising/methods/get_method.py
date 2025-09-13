@@ -1,44 +1,93 @@
-from methods.base import RandomSampleDisguise, JustNameIt, VibeBasedDisguise, VibeBasedDisguiseOneSided
-from methods.feature_clustering import FeatureClustering
-from methods.hierarchical_math_disguise import HierarchicalMathDisguise
-from methods.ensemble_math_disguise import EnsembleMathDisguise
+"""
+Complete method registry for all disguise methods.
+"""
+try:
+    from methods.core_methods import (
+        ContrastiveSystemPrompting,
+        VibeBasedSystemPrompting,
+        RandomSamplingSystemPrompting,
+        StylisticSystemPrompting,
+        ContrastiveWithALExamples,
+    )
+except ImportError:
+    from core_methods import (
+        ContrastiveSystemPrompting,
+        VibeBasedSystemPrompting,
+        RandomSamplingSystemPrompting,
+        StylisticSystemPrompting,
+        ContrastiveWithALExamples,
+    )
 
-def get_method(method_name, model, disguise_as, disguise_df=None):
+
+def get_method(method_name, model, disguise_as, disguise_df=None, source_df=None, method_kwargs=None):
     """
-    Get a method from the methods module.
+    Get a method instance.
+    
+    Args:
+        method_name: One of the five core methods
+        model: Source model name
+        disguise_as: Target model to disguise as
+        disguise_df: DataFrame with target model responses
+        source_df: DataFrame with source model responses (required for contrastive)
+    
+    Available methods:
+        - contrastive: Learn differences between models
+        - vibe_based: Capture personality and communication essence
+        - stylistic: Focus on measurable surface-level style patterns
+        - random_sampling: Example-based disguise
+        - contrastive_with_al_examples: Contrastive rules + AL-selected examples
     """
-    if method_name == "random_sample_1_example":
-        return RandomSampleDisguise(model, disguise_as, num_samples_per_disguise=1, disguise_df=disguise_df)
-    elif method_name == "random_sample_3_examples":
-        return RandomSampleDisguise(model, disguise_as, num_samples_per_disguise=3, disguise_df=disguise_df)
-    elif method_name == "random_sample_5_examples":
-        return RandomSampleDisguise(model, disguise_as, num_samples_per_disguise=5, disguise_df=disguise_df)
-    elif method_name == "just_name_it":
-        return JustNameIt(model, disguise_as)
-    elif method_name == "vibe_based_disguise":
-        return VibeBasedDisguise(model, disguise_as, disguise_df=disguise_df)
-    elif method_name == "stylistic_clustering":
-        return FeatureClustering(model, disguise_as, num_samples_per_disguise=5, method='stylistic', sample_at_init=True, disguise_df=disguise_df)
-    elif method_name == "vibe_clustering":
-        return FeatureClustering(model, disguise_as, num_samples_per_disguise=5, method='vibe', sample_at_init=True, disguise_df=disguise_df)
-    elif method_name == "stylistic_clustering_resample":
-        return FeatureClustering(model, disguise_as, num_samples_per_disguise=5, method='stylistic', sample_at_init=False, disguise_df=disguise_df)
-    elif method_name == "embedding_clustering":
-        return FeatureClustering(model, disguise_as, num_samples_per_disguise=5, method='embedding', sample_at_init=True, disguise_df=disguise_df)
-    elif method_name == "vibe_based_disguise_one_sided":
-        return VibeBasedDisguiseOneSided(model, disguise_as, disguise_df=disguise_df)
-    # New math-specific methods
-    elif method_name == "hierarchical_math_disguise":
-        return HierarchicalMathDisguise(model, disguise_as, num_examples_per_disguise=5, disguise_df=disguise_df)
-    elif method_name == "hierarchical_math_disguise_contrastive":
-        return HierarchicalMathDisguise(model, disguise_as, num_examples_per_disguise=5, disguise_df=disguise_df, enable_contrastive_learning=True)
-    elif method_name == "hierarchical_math_disguise_iterative":
-        return HierarchicalMathDisguise(model, disguise_as, num_examples_per_disguise=5, disguise_df=disguise_df, enable_iterative_refinement=True)
-    elif method_name == "ensemble_math_disguise":
-        return EnsembleMathDisguise(model, disguise_as, disguise_df=disguise_df, num_examples_per_disguise=5)
-    elif method_name == "ensemble_math_disguise_adaptive":
-        return EnsembleMathDisguise(model, disguise_as, disguise_df=disguise_df, num_examples_per_disguise=5, enable_adaptive_weighting=True)
-    elif method_name == "ensemble_math_disguise_weighted":
-        return EnsembleMathDisguise(model, disguise_as, disguise_df=disguise_df, num_examples_per_disguise=5, enable_adaptive_weighting=False)
+    # Clean, concise method names
+    method_kwargs = method_kwargs or {}
+
+    if method_name == "contrastive":
+        if source_df is None:
+            raise ValueError("contrastive method requires source_df parameter")
+        return ContrastiveSystemPrompting(model, disguise_as, disguise_df=disguise_df, source_df=source_df)
+    
+    elif method_name == "vibe_based":
+        return VibeBasedSystemPrompting(model, disguise_as, disguise_df=disguise_df)
+    
+    elif method_name == "stylistic":
+        return StylisticSystemPrompting(model, disguise_as, disguise_df=disguise_df)
+    
+    elif method_name == "random_sampling":
+        return RandomSamplingSystemPrompting(model, disguise_as, disguise_df=disguise_df)
+        
+    # Note: active_learning is no longer exposed as a standalone method. Use
+    # the composite method contrastive_with_al_examples (or contrastive_al) to
+    # apply AL-based example selection together with contrastive rules.
+
+    elif method_name in ("contrastive_with_al_examples", "contrastive_al"):
+        if source_df is None or disguise_df is None:
+            raise ValueError("contrastive_with_al_examples requires disguise_df and source_df")
+        # Prepare kwargs for AL selector
+        al_kwargs = {
+            'd_regular': method_kwargs.get('al_d_regular', 3),
+            'p_threshold': method_kwargs.get('al_p_threshold', 0.1),
+            'q_threshold': method_kwargs.get('al_q_threshold', 0.1),
+            'batch_size': method_kwargs.get('al_batch_size', 10),
+            'max_iterations': method_kwargs.get('al_max_iterations', 5),
+            'relaxation_factor': method_kwargs.get('al_relaxation_factor', 1.2),
+            'seed': method_kwargs.get('al_seed'),
+        }
+        return ContrastiveWithALExamples(
+            model,
+            disguise_as,
+            disguise_df=disguise_df,
+            source_df=source_df,
+            num_examples=method_kwargs.get('al_num_examples', 5),
+            al_kwargs=al_kwargs,
+            selector=method_kwargs.get('example_selector', 'al'),
+        )
+    
+    # Legacy support for old verbose names
+    elif method_name in ["contrastive_system_prompting", "vibe_based_system_prompting", 
+                        "stylistic_system_prompting", "random_sampling_system_prompting"]:
+        # Redirect to clean names
+        clean_name = method_name.replace("_system_prompting", "").replace("random_sampling_system_prompting", "random_sampling")
+        return get_method(clean_name, model, disguise_as, disguise_df, source_df)
+    
     else:
-        raise ValueError(f"Method {method_name} not found")
+        available_methods = ["contrastive", "vibe_based", "stylistic", "random_sampling", "contrastive_with_al_examples", "contrastive_al"]
+        raise ValueError(f"Method '{method_name}' not found. Available methods: {available_methods}")
