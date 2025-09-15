@@ -13,7 +13,7 @@ Outputs:
 import argparse
 import os
 import pandas as pd
-from disguising.scorer import score_model_comparison
+from scorer import score_model_comparison
 
 
 def main():
@@ -22,6 +22,7 @@ def main():
     parser.add_argument("--b", required=True, help="CSV for model B (columns: prompt, model_response)")
     parser.add_argument("--output", required=True, help="Output merged CSV path")
     parser.add_argument("--heuristics-only", action="store_true", help="Compute heuristics only")
+    parser.add_argument("--judge-model", default="gpt-4o", help="Judge model for LLM scoring")
     args = parser.parse_args()
 
     df_a = pd.read_csv(args.a)
@@ -38,7 +39,7 @@ def main():
     print(f"Wrote merged comparison CSV: {out}")
 
     scored = out.replace('.csv', '_scored.csv')
-    score_model_comparison(out, scored, heuristics_only=args.heuristics_only)
+    score_model_comparison(out, scored, heuristics_only=args.heuristics_only, judge_model=args.judge_model)
     print(f"Wrote scored CSV: {scored}")
     print(f"Metrics JSON: {scored.replace('.csv', '_metrics.json')}")
 

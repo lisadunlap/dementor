@@ -11,7 +11,7 @@ Usage examples:
   python scripts/make_prompts.py \
     --input data/gsm8k/gsm8k_test.csv \
     --column question \
-    --output data/gsm8k_prompts.txt
+    --output data/datasets/gsm8k/gsm8k_prompts.txt
 
   # JSONL -> TXT (key 'prompt')
   python scripts/make_prompts.py --input data/dataset.jsonl --key prompt --output data/prompts.txt
@@ -81,4 +81,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

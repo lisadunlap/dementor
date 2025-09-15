@@ -59,8 +59,8 @@ vllm serve meta-llama/Llama-3.1-8B-Instruct \
 ```bash
 python scripts/generate_responses.py \
   --model openai/meta-llama/Llama-3.1-8B-Instruct \
-  --prompts_file data/chabot_arena_500_propmts.txt \
-  --output disguising/model-responses/base/llama31_8b.csv \
+  --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
+  --output data/model-responses/chatbot_arena/full/llama31_8b.csv \
   --openai-api-base http://localhost:8000/v1 \
   --openai-api-key EMPTY
 ```
@@ -79,8 +79,8 @@ python disguise.py \
 
 4) Score and aggregate as usual
 ```bash
-python -m disguising.scorer results/streamlined/my_run.csv --output results/streamlined/my_run_scored.csv
-python scripts/aggregate_metrics.py --root results/streamlined --output results/summary.csv --markdown results/summary.md
+python -m scripts.scorer data/results/chatbot_arena/disguised/my_run.csv --output data/results/chatbot_arena/scores/my_run_scored.csv
+python scripts/aggregate_metrics.py --root data/results/chatbot_arena --output data/results/chatbot_arena/summary.csv --markdown data/results/chatbot_arena/summary.md
 ```
 
 Helper script
@@ -89,55 +89,55 @@ Helper script
   bash scripts/run_local_vllm.sh \
     --hf-model meta-llama/Meta-Llama-3-8B-Instruct \
     --port 8000 --dtype float16 --tp 4 \
-    --prompts_file data/chabot_arena_500_propmts.txt \
-    --num_samples 200 --output_dir results/streamlined \
+  --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
+    --num_samples 200 --output_dir data/results/chatbot_arena/disguised \
     --source-model-openai openai/meta-llama/Meta-Llama-3-8B-Instruct \
     --target-model gpt-4o
   ```
 
 ## Disguise Methods
 
-### 1. Random Sampling
+### 1. Random Sampling (`--method random_sampling`)
 **Best for**: Reliable baseline performance with good target model responses
 ```bash
-python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling
 ```
 - Randomly samples examples from target model responses
 - Uses clean system prompting for instructions
 - Simple, effective, and fast
 
-### 2. Vibe-Based
+### 2. Vibe-Based (`--method vibe_based`)
 **Best for**: Capturing personality and deep communication essence
 ```bash
-python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based
 ```
 - Analyzes target model's communication style, personality, and behavioral patterns
 - Creates sophisticated "essence profile" capturing how the model thinks and responds
 - Focuses on cognitive style, emotional resonance, and interaction patterns
 
-### 3. Stylistic
+### 3. Stylistic (`--method stylistic`)
 **Best for**: Replicating measurable surface-level patterns
 ```bash
-python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method stylistic
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method stylistic
 ```
 - Analyzes and replicates measurable stylistic features (formatting, length, structure)
 - Focuses on surface-level patterns that can be quantified
 - Complements vibe-based analysis with concrete metrics
 
-### 4. Contrastive
+### 4. Contrastive (`--method contrastive`)
 **Best for**: Learning specific differences between models
 ```bash
-python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive
 ```
 - Compares source and target models to identify distinguishing features
 - Learns what makes the target model unique vs the source; produces explicit, actionable guidelines (system prompt)
 - Requires both source and target model response data
 - Pairs well with AL‑selected examples (see the Composite method below)
 
-### Composite: Contrastive + AL‑Selected Examples
+### Composite: Contrastive + AL‑Selected Examples (`--method contrastive_with_al_examples`)
 **Best for**: Clear rules plus strong in‑context exemplars
 ```bash
-python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o \
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o \
   --method contrastive_with_al_examples --num_samples 200 \
   --al-num-examples 5 --al-max-iterations 5 --al-batch-size 10
 ```
@@ -154,8 +154,15 @@ dementor/
 ├── disguise.py                      # Main script - run disguise methods
 ├── disguising/
 │   ├── methods/
-│   │   ├── core_methods.py          # Four core methods implementation  
-│   │   └── get_method.py            # Clean method registry
+│   │   ├── contrastive.py                   # Contrastive method
+│   │   ├── contrastive_with_al_examples.py # Composite: contrastive + AL-selected examples
+│   │   ├── vibe_based.py                   # Vibe-based method
+│   │   ├── random_sampling.py              # Random sampling method
+│   │   ├── stylistic.py                    # Stylistic method
+│   │   ├── example_selection/              # Active learning selectors (re-exports from utils)
+│   │   ├── utils/                          # Shared utilities (stylistic_analysis, clustering, etc.)
+│   │   ├── extras/                         # Less-used/legacy methods (math, thurstonian, clustering)
+│   │   └── get_method.py                   # Clean method registry
 │   └── scorer.py                    # Unified scoring (LLM judge + heuristics)
 ├── data/                            # Datasets and prompts
 └── results/                         # Generated responses and scores
@@ -204,15 +211,15 @@ python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method co
 ### Scoring and Summaries
 ```bash
 # Score a CSV of response pairs with LLM judge + heuristics
-python -m disguising.scorer results/streamlined/my_run.csv --output results/streamlined/my_run_scored.csv
+python -m scripts.scorer data/results/chatbot_arena/disguised/my_run.csv --output data/results/chatbot_arena/scores/my_run_scored.csv
 
 # Heuristics only (no LLM judge)
-python -m disguising.scorer results/streamlined/my_run.csv --output results/streamlined/my_run_scored.csv --heuristics-only
+python -m scripts.scorer data/results/chatbot_arena/disguised/my_run.csv --output data/results/chatbot_arena/scores/my_run_scored.csv --heuristics-only
 
 # Programmatic usage: compute averages
 python - << 'PY'
-from disguising.scorer import score_model_comparison, summarize_scores
-df = score_model_comparison('results/streamlined/my_run.csv', 'results/streamlined/my_run_scored.csv')
+from scripts.scorer import score_model_comparison, summarize_scores
+df = score_model_comparison('data/results/chatbot_arena/disguised/my_run.csv', 'data/results/chatbot_arena/scores/my_run_scored.csv')
 print(summarize_scores(df))
 PY
 ```
@@ -248,7 +255,7 @@ PY
   - python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based --num_samples 200
 
 -- Scoring with summary metrics.json
-  - python -m disguising.scorer results/streamlined/my_run.csv --output results/streamlined/my_run_scored.csv
+  - python -m scripts.scorer data/results/chatbot_arena/disguised/my_run.csv --output data/results/chatbot_arena/scores/my_run_scored.csv
 
 Note on “Contrastive + AL-selected examples”
 - This repo now provides a composite method (`contrastive_with_al_examples`) that generates contrastive rules and automatically selects informative examples via Active Learning for the context window.
@@ -261,36 +268,44 @@ For larger datasets (e.g., GSM8K), prefer explicit steps over a single mega-comm
 ```bash
 python scripts/generate_responses.py \
   --model openai/gpt-4o-mini \
-  --prompts_file data/chabot_arena_500_propmts.txt \
-  --output disguising/model-responses/base/openai_gpt-4o-mini.csv
+  --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
+  --output data/model-responses/chatbot_arena/full/openai_gpt-4o-mini.csv
 
 python scripts/generate_responses.py \
   --model openai/gpt-4o \
-  --prompts_file data/chabot_arena_500_propmts.txt \
-  --output disguising/model-responses/base/openai_gpt-4o.csv
+  --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
+  --output data/model-responses/chatbot_arena/full/openai_gpt-4o.csv
 ```
+
+Note: The canonical location for base model outputs is `data/model-responses/<dataset>/full/` (and optionally `/500/`). The `disguise.py` script will auto‑detect source/target CSVs there first and will still fall back to legacy `data/model-responses/base/` if present. You can always override with `--source_responses` and `--target_responses`.
+
+Benchmark style archetypes
+- Curated style/persona response CSVs are inputs and now live under `data/datasets/benchmarks/style_archetypes/`.
+- These are not generated artifacts; they are used for analysis/visualization and reference.
 
 2) Run disguise (rules + selected examples)
 ```bash
-python disguise.py \
+python scripts/disguise.py \
   --model openai/gpt-4o-mini \
   --disguise_as gpt-4o \
   --method contrastive_with_al_examples \
   --num_samples 200 \
   --al-num-examples 5 --al-max-iterations 5 --al-batch-size 10 \
-  --source_responses disguising/model-responses/base/openai_gpt-4o-mini.csv \
-  --target_responses disguising/model-responses/base/openai_gpt-4o.csv
+  --source_responses data/model-responses/chatbot_arena/full/openai_gpt-4o-mini.csv \
+  --target_responses data/model-responses/chatbot_arena/full/openai_gpt-4o.csv
 ```
 
 3) Score and get metrics
 ```bash
-python -m disguising.scorer results/streamlined/my_run.csv --output results/streamlined/my_run_scored.csv
+python -m scripts.scorer \
+  data/results/<dataset>/comparisons/disguised_vs_target/<method>/<src>_as_<tgt>.csv \
+  --output data/results/<dataset>/comparisons/disguised_vs_target/<method>/<src>_as_<tgt>_scored.csv
 ```
 
 Optional one-liner orchestrator
 ```bash
 python scripts/run_pipeline.py \
-  --prompts_file data/chabot_arena_500_propmts.txt \
+  --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
   --source-model openai/gpt-4o-mini \
   --target-model gpt-4o \
   --method contrastive_with_al_examples \
@@ -302,7 +317,7 @@ python scripts/run_pipeline.py \
 - `scripts/generate_responses.py`
   - Generates base model outputs for a prompts file, with simple caching by prompt.
   - Backends: LiteLLM providers (default), local HuggingFace via `hf:` prefix, local vLLM via `vllm:` prefix.
-  - Example: `python scripts/generate_responses.py --model openai/gpt-4o-mini --prompts_file data/....txt --output disguising/model-responses/base/openai_gpt-4o-mini.csv`
+  - Example: `python scripts/generate_responses.py --model openai/gpt-4o-mini --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt --output data/model-responses/chatbot_arena/full/openai_gpt-4o-mini.csv`
 
 - `scripts/compare_models.py`
   - Merges two base outputs on prompt into a comparison CSV and runs the scorer.
@@ -364,23 +379,21 @@ This complements vibe-based analysis by providing concrete, measurable targets f
 ## 🗂️ File Structure Details
 
 ### Input Files Expected:
-- Target model responses: `disguising/model-responses/base/{model_name}.csv`
-- Source model responses: `disguising/model-responses/base/{source_model}.csv` (for contrastive)
-- Prompts: Text file with one prompt per line (default: `data/chabot_arena_500_propmts.txt`)
+- Target model responses: `data/model-responses/<dataset>/full/{model_name}.csv`
+- Source model responses: `data/model-responses/<dataset>/full/{source_model}.csv` (for contrastive)
+- Prompts: Text file with one prompt per line (default: `data/datasets/chatbot_arena/chatbot_arena_prompts.txt`)
 
 ### Output Files Generated:
-- **Results**: `results/streamlined/{method}_{model}_as_{target}.csv`
-- **Scores**: `results/streamlined/{method}_{model}_as_{target}_scores.csv`
-- **Metrics**: `results/streamlined/{method}_{model}_as_{target}_scores_metrics.json|.csv`
-- **Run Summary**: `results/streamlined/{method}_{model}_as_{target}_summary.json` (composite method)
+Results and scores are saved under `data/results/<dataset>/comparisons/...` with method-specific subfolders.
 
 ## 🚮 What Was Cleaned Up
 
 **Removed useless scripts:**
-- `disguising/prompt_llm.py` (use `prompt_llm_new.py`)
-- `disguising/llm_scorer2.py` (use `scorer.py`)
-- `disguising/random_sample_disguise.py` (use core methods)
-- `disguising/compare_llm.py` (functionality merged)
+- Legacy scripts moved to `scripts/legacy/` (use the streamlined scripts in `scripts/`):
+  - prompt_llm.py → use `scripts/prompt_llm_new.py`
+  - llm_scorer2.py → use `scripts/scorer.py`
+  - random_sample_disguise.py → use core methods in `scripts/methods/`
+  - compare_llm.py → use `scripts/compare_models.py`
 
 **Streamlined:**
 - Clean method registry with only 3 core methods
@@ -444,7 +457,7 @@ This repository includes a minimal GitHub Actions workflow (`.github/workflows/s
 ### Aggregating Metrics and W&B Table
 Aggregate all run metrics under a directory and optionally log a W&B table:
 ```bash
-python scripts/aggregate_metrics.py --root results/streamlined \
+python scripts/aggregate_metrics.py --root data/results/chatbot_arena \
   --output results/summary.csv --markdown results/summary.md \
   --use-wandb --wandb-project streamlined-disguise --wandb-run-name metrics-aggregate
 ```

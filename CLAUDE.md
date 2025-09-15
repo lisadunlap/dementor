@@ -18,16 +18,16 @@ The project is organized around these key components:
 - All methods inherit from `MethodBase` and implement `forward(prompt: str) -> str`
 
 ### Main Scripts
-- **`disguising/disguise.py`**: Core disguise script that applies methods to transform model responses
-- **Scoring**: Use `python -m disguising.scorer input.csv --output output_scored.csv` for LLM judge + heuristics.
-- **`disguising/prompt_llm_new.py`**: Generate responses from models for evaluation
-- **`generate_gsm8k_responses.py`**: Generate responses specifically for GSM8K math dataset
+- **`scripts/disguise.py`**: Core disguise script that applies methods to transform model responses
+- **Scoring**: Use `python -m scripts.scorer input.csv --output output_scored.csv` for LLM judge + heuristics.
+- **`scripts/prompt_llm_new.py`**: Generate responses from models for evaluation
+- **`scripts/legacy/generate_gsm8k_responses.py`**: Legacy GSM8K generator (new flow uses scripts/generate_responses.py)
 
 ### Data Flow
 1. Generate base responses using `prompt_llm_new.py` or `generate_gsm8k_responses.py`
 2. Apply disguise methods via `disguise.py` to transform responses  
 3. Score disguised vs target responses using `llm_scorer.py`
-4. Results stored in `disguising/scores/` and `disguising/model-responses/`
+4. Results stored in `data/results/` and base responses in `data/model-responses/`
 
 ## Common Commands
 
@@ -40,26 +40,30 @@ pip install -r math_disguise_requirements.txt
 
 ### Streamlined Workflow (Recommended)
 ```bash
-# Run complete disguise experiment with one command
-python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling
+# Run complete pipeline: generate responses, compare baseline, disguise, and score
+python scripts/run_pipeline.py \
+  --prompts_file data/datasets/gsm8k/gsm8k_prompts.txt \
+  --source-model meta-llama/Meta-Llama-3.1-8B-Instruct \
+  --target-model gpt-4o \
+  --method contrastive_with_al_examples
 
-# Three core methods available:
-# - random_sampling (baseline)
-# - vibe_based (personality-based)
-# - contrastive (comparative analysis)
+# Results organized under data/results/<dataset>/ with:
+# - comparisons/source_vs_target/ (source vs target baseline comparison and scores)
+# - comparisons/disguised_vs_target/<method>/ (method-specific disguise runs and scores)
+# - scores/ (other aggregated evaluation artifacts)
 ```
 
 ### Legacy Workflow (For Specialized Cases)
 ```bash
 # Generate model responses
-python disguising/prompt_llm_new.py --model google/gemma-3-1b-it --num_samples 1000
+python scripts/prompt_llm_new.py --model google/gemma-3-1b-it --num_samples 1000
 python generate_gsm8k_responses.py  # For GSM8K dataset
 
 # Apply disguise methods
-python disguising/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sample_3_examples
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sample_3_examples
 
 # Run evaluations
-python -m disguising.scorer path/to/disguised_responses.csv --output path/to/disguised_responses_scored.csv
+python -m scripts.scorer path/to/disguised_responses.csv --output path/to/disguised_responses_scored.csv
 bash disguising/base_evals.sh      # Compare base models
 bash disguising/disguised_evals.sh # Compare disguised vs target models
 ```
@@ -89,10 +93,12 @@ python test_active_learning_disguise.py
 
 ## File Organization
 
-- **`disguising/model-responses/`**: Generated responses organized by method and model
-- **`disguising/scores/`**: Evaluation results and scoring outputs
+- **`data/model-responses/<dataset>/{full,500}/`**: Base model responses per dataset
+- **`data/results/<dataset>/comparisons/baseline/`**: Baseline model comparisons and scoring
+- **`data/results/<dataset>/disguised/`**: Disguised model outputs
+- **`data/results/<dataset>/scores/`**: Evaluation results and scoring outputs
 - **`disguising/methods/`**: Implementation of all disguise techniques
-- **`serve/`**: Utilities for model serving and LLM interaction
+- **`scripts/`**: Pipeline scripts (run_pipeline.py, generate_responses.py, etc.)
 - **`data/`**: Datasets and prompts (GSM8K, chatbot arena, etc.)
 
 ## Available Disguise Methods
@@ -120,3 +126,34 @@ Responses follow naming pattern: `{model_name_with_underscores}.csv`
 ## Environment Variables
 
 Create `.env` file with required API keys for OpenAI, Anthropic, or other model providers used in evaluation.
+
+## Coding Guidelines for Claude
+
+### General Principles
+- **User executes commands**: I will run commands myself, so do not prompt to run things on your end
+- **Prioritize simplicity**: Use helper functions or classes instead of redundant code or methods with hundreds of lines
+- **Avoid over-engineering**: Do not add excessive tests and type checking (e.g., checking if a value is None) unless asked
+- **Clean up thoroughly**: When told to remove components or refactor, ensure that you delete any files which are no longer needed and delete any code which is no longer used
+
+### Error Handling
+- **Address root causes**: Avoid adding try/excepts when running into errors; address the error rather than handling it with try/except
+- **Ask before defaults**: Before adding a try/except or filling in a default dictionary value, ask the user whether to add this exception or if this is a bug that should be fixed
+- **No import protection**: Assume all imports are correctly imported; do not add try/excepts to imports unless asked
+
+### Data Handling
+- **No automatic defaults**: When getting an item from a dictionary or dataframe, do not automatically put a default if that key does not exist. Instead, ask the user if they want a default value
+- **Explicit typing**: Include typing and docstrings about the expected format of the inputs and outputs (e.g., keys and values if it's a dictionary, columns if it's a dataframe)
+
+### Documentation & Testing
+- **Maintain README**: Keep a README for just code structure and inputs/outputs to reference every time a question is asked
+- **Update after changes**: Update the README after any added argument or refactor of code structure, especially if the input or output formats have changed
+- **Ask before tests**: Prompt the user before adding test files
+- **Ask about README updates**: When a new feature is added or a refactor is made, prompt the user to ask whether or not to add this to the README
+
+### Code Quality
+- **Check for redundancy**: With every edit you make, double-check that there is no redundant code in the files you are editing
+- **No backwards compatibility**: Do NOT automatically support backwards compatibility – instead, prompt the user to ask if they would like backwards compatibility
+
+### UI & Presentation
+- **Minimal emojis**: Do not use emojis in READMEs and use sparingly in things like Gradio apps unless asked
+- **Plotly default**: Use Plotly as the default plotting library

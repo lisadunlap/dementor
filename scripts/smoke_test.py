@@ -10,7 +10,7 @@ Checks:
 import pandas as pd
 from pathlib import Path
 from disguising.methods.get_method import get_method
-from disguising.scorer import score_model_comparison, summarize_scores
+from scripts.scorer import score_model_comparison, summarize_scores
 
 
 def main():
@@ -57,4 +57,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

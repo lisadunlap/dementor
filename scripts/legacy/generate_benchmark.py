@@ -16,7 +16,7 @@ from vllm.utils import destroy_model_parallel
 import argparse
 
 parser = argparse.ArgumentParser(description='Generate benchmark data')
-parser.add_argument('--question_file', type=str, default='data/chabot_arena_500_propmts.txt', help='input prompts')
+parser.add_argument('--question_file', type=str, default='data/datasets/chatbot_arena/chatbot_arena_prompts.txt', help='input prompts')
 parser.add_argument('--output_file', type=str, default='data/system_prompt_benchmark.jsonl', help='Output file')
 parser.add_argument('--model', type=str, default='Qwen/Qwen3-32B', help='Model to use')
 parser.add_argument('--max_model_len', type=int, default=8000, help='Max model length')

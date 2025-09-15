@@ -38,8 +38,8 @@ Disguise commands
 
 Scoring with metrics
 ```bash
-python -m disguising.scorer results/streamlined/my_run.csv --output results/streamlined/my_run_scored.csv
-cat results/streamlined/my_run_scored_metrics.json
+python -m scripts.scorer data/results/chatbot_arena/disguised/my_run.csv --output data/results/chatbot_arena/scores/my_run_scored.csv
+cat data/results/chatbot_arena/scores/my_run_scored_metrics.json
 ```
 
 Run summary (composite method)

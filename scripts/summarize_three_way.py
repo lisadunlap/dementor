@@ -4,10 +4,10 @@ Summarize baseline (source vs target) and disguised vs target metrics into a sma
 
 Usage:
   python scripts/summarize_three_way.py \
-    --baseline results/streamlined/baseline_src_vs_tgt.csv \
-    --disguised results/streamlined/contrastive_with_al_examples_openai_gpt-4o-mini_as_gpt-4o.csv \
-    --output results/streamlined/three_way_summary.csv \
-    [--markdown results/streamlined/three_way_summary.md] \
+    --baseline data/results/<dataset>/comparisons/source_vs_target/<src>_vs_<tgt>.csv \
+    --disguised data/results/<dataset>/comparisons/disguised_vs_target/<method>/<src>_as_<tgt>.csv \
+    --output data/results/<dataset>/three_way_summary.csv \
+    [--markdown data/results/<dataset>/three_way_summary.md] \
     [--use-wandb --wandb-project streamlined-disguise --wandb-run-name three-way-summary]
 """
 import argparse
@@ -93,4 +93,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-

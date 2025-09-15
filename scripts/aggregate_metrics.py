@@ -2,10 +2,10 @@
 """
 Aggregate metrics across multiple scored runs into a single CSV and optional Markdown table.
 
-Looks for files matching *scores_metrics.json under a root (default: results/).
+Looks for files matching *scores_metrics.json under a root (default: data/results/).
 
 Usage:
-  python scripts/aggregate_metrics.py --root results/streamlined --output results/summary.csv --markdown results/summary.md
+  python scripts/aggregate_metrics.py --root data/results/<dataset> --output data/results/<dataset>/summary.csv --markdown data/results/<dataset>/summary.md
 """
 import argparse
 import json
@@ -53,8 +53,8 @@ def collect_metrics(root: Path):
 
 def main():
     parser = argparse.ArgumentParser(description="Aggregate scored metrics")
-    parser.add_argument("--root", default="results", help="Root directory to search")
-    parser.add_argument("--output", default="results/metrics_summary.csv", help="Output CSV path")
+    parser.add_argument("--root", default="data/results", help="Root directory to search")
+    parser.add_argument("--output", default="data/results/metrics_summary.csv", help="Output CSV path")
     parser.add_argument("--markdown", default=None, help="Optional Markdown output path")
     parser.add_argument("--use-wandb", action="store_true", help="Log a wandb.Table with summary")
     parser.add_argument("--wandb-project", default="streamlined-disguise", help="W&B project name")

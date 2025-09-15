@@ -13,9 +13,9 @@ HF_MODEL="meta-llama/Meta-Llama-3-8B-Instruct"
 PORT=8000
 DTYPE="float16"
 TP=4
-PROMPTS_FILE="data/chabot_arena_500_propmts.txt"
+PROMPTS_FILE="data/datasets/chatbot_arena/chatbot_arena_prompts.txt"
 NUM_SAMPLES=200
-OUTPUT_DIR="results/streamlined"
+OUTPUT_DIR="data/results/chatbot_arena/comparisons/disguised_vs_target/contrastive_with_al_examples"
 SOURCE_MODEL_OPENAI="openai/meta-llama/Meta-Llama-3-8B-Instruct"
 TARGET_MODEL="gpt-4o"
 KEEP_SERVER=0
@@ -92,7 +92,7 @@ echo "[2/4] Generating base outputs via LiteLLM routed to vLLM"
 python scripts/generate_responses.py \
   --model "${SOURCE_MODEL_OPENAI}" \
   --prompts_file "${PROMPTS_FILE}" \
-  --output "disguising/model-responses/base/${SOURCE_MODEL_OPENAI//\//_}.csv" \
+  --output "data/model-responses/chatbot_arena/full/${SOURCE_MODEL_OPENAI//\//_}.csv" \
   --openai-api-base "${API_BASE}" \
   --openai-api-key "EMPTY"
 
@@ -109,7 +109,7 @@ python disguise.py \
 
 LATEST_CSV=$(ls -t ${OUTPUT_DIR}/*.csv | head -n 1)
 echo "[4/4] Scoring ${LATEST_CSV}"
-python -m disguising.scorer "${LATEST_CSV}" --output "${LATEST_CSV%.csv}_scored.csv"
+python -m scripts.scorer "${LATEST_CSV}" --output "${LATEST_CSV%.csv}_scored.csv"
 
 if [[ ${KEEP_SERVER} -eq 0 ]]; then
   echo "Stopping vLLM server (PID ${VLLM_PID})"
@@ -119,4 +119,3 @@ else
 fi
 
 echo "Done."
-
