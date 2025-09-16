@@ -1,6 +1,6 @@
-# CLAUDE.md
+# agents.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to agents when working with code in this repository.
 
 ## Project Overview
 
@@ -127,7 +127,7 @@ Responses follow naming pattern: `{model_name_with_underscores}.csv`
 
 Create `.env` file with required API keys for OpenAI, Anthropic, or other model providers used in evaluation.
 
-## Coding Guidelines for Claude
+## Coding Guidelines 
 
 ### General Principles
 - **User executes commands**: I will run commands myself, so do not prompt to run things on your end

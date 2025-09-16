@@ -29,11 +29,12 @@ except ImportError:
     SamplingParams = None
 
 try:
-    # Prefer module under methods/utils
-    from methods.utils.stylistic_analysis import compute_heuristics
+    # Prefer module under scripts/methods/utils
+    from .methods.utils.stylistic_analysis import compute_heuristics
 except Exception:
     try:
-        from stylistic_analysis import compute_heuristics
+        # Fallback to scripts/stylistic_analysis.py
+        from .stylistic_analysis import compute_heuristics
     except Exception:
         print("Warning: stylistic_analysis not available. Using fallback heuristics.")
         def compute_heuristics(responses1, responses2):
@@ -46,8 +47,8 @@ except Exception:
             return pd.DataFrame(data)
 
 try:
-    from utils import get_token_count
-except ImportError:
+    from .utils import get_token_count
+except Exception:
     print("Warning: utils not available. Using fallback token counter.")
     def get_token_count(text):
         return len(text.split())
@@ -56,7 +57,7 @@ except ImportError:
 class ModelScorer:
     """Unified interface for scoring model responses."""
     
-    def __init__(self, judge_model: str = "openai/gpt-4.1", 
+    def __init__(self, judge_model: str = "openai/gpt-4.1-mini", 
                  temperature: float = 0.0, max_tokens: int = 512):
         """
         Initialize scorer with judge model.
@@ -117,6 +118,10 @@ class ModelScorer:
     def _litellm_generate(self, messages: List[dict]) -> str:
         try:
             from litellm import completion
+            import litellm
+            # Enable caching for API calls (not for vLLM/local servers)
+            if not hasattr(litellm, 'cache') or litellm.cache is None:
+                litellm.cache = litellm.Cache()
         except ImportError as e:
             raise RuntimeError("LiteLLM not installed. pip install litellm") from e
         resp = completion(model=self.judge_model, messages=messages, max_tokens=self.max_tokens, temperature=self.temperature)
@@ -336,7 +341,7 @@ Please evaluate these responses and provide your scores and explanation."""
 
 def score_model_comparison(input_file: str, output_file: Optional[str] = None,
                          heuristics_only: bool = False, 
-                         judge_model: str = "gpt-4o") -> pd.DataFrame:
+                         judge_model: str = "gpt-4.1-mini") -> pd.DataFrame:
     """
     Convenience function for scoring model comparisons from file.
     
@@ -349,8 +354,17 @@ def score_model_comparison(input_file: str, output_file: Optional[str] = None,
     Returns:
         DataFrame with scores
     """
-    # Load data
-    df = pd.read_csv(input_file)
+    # Load data with robust CSV parsing
+    try:
+        df = pd.read_csv(input_file)
+    except pd.errors.ParserError:
+        logging.warning("CSV parsing error detected, retrying with error handling...")
+        try:
+            df = pd.read_csv(input_file, on_bad_lines='skip', quoting=1)  # QUOTE_ALL
+        except pd.errors.ParserError:
+            logging.warning("Second parsing attempt failed, trying with minimal quoting...")
+            df = pd.read_csv(input_file, on_bad_lines='skip', quoting=3, engine='python')  # QUOTE_NONE with python engine
+        logging.info(f"Loaded {len(df)} rows after handling CSV issues")
     
     # Initialize scorer
     scorer = ModelScorer(judge_model=judge_model)
@@ -421,7 +435,7 @@ def _cli():
     parser.add_argument("input", help="CSV with response pairs")
     parser.add_argument("--output", help="Optional output CSV path")
     parser.add_argument("--heuristics-only", action="store_true", help="Compute heuristics only")
-    parser.add_argument("--judge-model", default="openai/gpt-4.1", help="Judge model id. Prefix with vllm: or hf: for local backends; provider ids (e.g., openai/gpt-4.1) use LiteLLM.")
+    parser.add_argument("--judge-model", default="openai/gpt-4.1-mini", help="Judge model id. Prefix with vllm: or hf: for local backends; provider ids (e.g., openai/gpt-4o-mini) use LiteLLM.")
     parser.add_argument("--openai-api-base", default=None, help="Override OPENAI_API_BASE for LiteLLM judge routing")
     parser.add_argument("--openai-api-key", default=None, help="Override OPENAI_API_KEY for LiteLLM judge routing")
     args = parser.parse_args()
@@ -432,8 +446,14 @@ def _cli():
         base, ext = os.path.splitext(input_path)
         args.output = f"{base}_scores{ext}"
 
+    # Ensure judge routing goes to the correct endpoint
     if args.openai_api_base:
         os.environ["OPENAI_API_BASE"] = args.openai_api_base
+    else:
+        # If using an OpenAI-provided model, default to the official OpenAI base
+        jm = (args.judge_model or "").lower()
+        if jm.startswith("openai/"):
+            os.environ["OPENAI_API_BASE"] = "https://api.openai.com/v1"
     if args.openai_api_key:
         os.environ["OPENAI_API_KEY"] = args.openai_api_key
 

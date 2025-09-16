@@ -7,15 +7,33 @@ import pandas as pd
 
 try:
     from .base import MethodBase
-except Exception:  # pragma: no cover
-    from methods.base import MethodBase
+except ImportError:
+    try:
+        from scripts.methods.base import MethodBase
+    except ImportError:
+        from base import MethodBase
 
 # get_token_count is defined in scripts/utils.py (top-level module)
-from utils import get_token_count
-from methods.utils.stylistic_analysis import (
-    has_markdown, contains_list, contains_header, contains_code,
-    contains_question, contains_exclamation, average_sentence_length
-)
+try:
+    from scripts.utils import get_token_count
+except ImportError:
+    from utils import get_token_count
+try:
+    from .utils.stylistic_analysis import (
+        has_markdown, contains_list, contains_header, contains_code,
+        contains_question, contains_exclamation, average_sentence_length
+    )
+except ImportError:
+    try:
+        from scripts.methods.utils.stylistic_analysis import (
+            has_markdown, contains_list, contains_header, contains_code,
+            contains_question, contains_exclamation, average_sentence_length
+        )
+    except ImportError:
+        from utils.stylistic_analysis import (
+            has_markdown, contains_list, contains_header, contains_code,
+            contains_question, contains_exclamation, average_sentence_length
+        )
 
 
 class StylisticSystemPrompting(MethodBase):

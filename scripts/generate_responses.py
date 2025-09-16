@@ -23,6 +23,11 @@ from tqdm import tqdm
 from typing import Optional
 import sys
 from litellm import completion
+import litellm
+
+# Enable caching for API calls (not for vLLM/local servers)
+if not hasattr(litellm, 'cache') or litellm.cache is None:
+    litellm.cache = litellm.Cache()
 import pandas as pd
 try:
     from dotenv import load_dotenv  # type: ignore
@@ -123,6 +128,16 @@ def main():
     api_base = args.openai_api_base
     api_key = args.openai_api_key
 
+    # Hard-guard: never route OpenAI-hosted GPT models to a local base
+    try:
+        model_lower = (args.model or "").lower()
+        if model_lower.startswith("openai/gpt-"):
+            os.environ["OPENAI_API_BASE"] = "https://api.openai.com/v1"
+            api_base = "https://api.openai.com/v1"
+            print(f"Routing '{args.model}' to the official OpenAI API base.")
+    except Exception:
+        pass
+
     existing = {} if args.overwrite else load_existing(out_path)
     mode = 'w' if args.overwrite or not out_path.exists() else 'a'
 
@@ -154,14 +169,18 @@ def main():
                     sys_text = (args.system + "\n\n" if args.system else "")
                     text = _gen_vllm(model_id, sys_text + prompt, args.max_tokens, args.temperature)
                 else:
-                    # Route local models to vLLM server with openai/ prefix
+                    # Route to local OpenAI-compatible base if provided
                     model_lower = args.model.lower()
                     use_routing = api_base and any(x in model_lower for x in ['llama', 'meta-llama', 'mistral', 'phi'])
-                    
+
+                    def _has_provider_prefix(m: str) -> bool:
+                        m = (m or '').lower()
+                        return any(m.startswith(p) for p in ['openai/', 'azure/', 'anthropic/', 'vertex/', 'bedrock/'])
+
                     if use_routing:
-                        # For vLLM server, LiteLLM needs openai/ prefix to recognize it as OpenAI-compatible
-                        vllm_model = f"openai/{args.model}"
-                        text = _gen_litellm(vllm_model, messages, args.max_tokens, args.temperature, api_base, api_key)
+                        # If caller passed a raw HF id, wrap with openai/ so LiteLLM uses OpenAI-compatible client
+                        routed_model = args.model if _has_provider_prefix(args.model) else f"openai/{args.model}"
+                        text = _gen_litellm(routed_model, messages, args.max_tokens, args.temperature, api_base, api_key)
                     else:
                         text = _gen_litellm(args.model, messages, args.max_tokens, args.temperature)
             except Exception as e:

@@ -12,6 +12,7 @@ import os
 import pandas as pd
 import os
 import logging
+import time
 from pathlib import Path
 from typing import Optional
 
@@ -25,8 +26,13 @@ if 'scripts' not in sys.path:
 from methods.get_method import get_method
 from scorer import score_model_comparison
 from litellm import completion
+import litellm
 from tqdm import tqdm
 import wandb
+
+# Enable caching for API calls (not for vLLM/local servers)
+if not hasattr(litellm, 'cache') or litellm.cache is None:
+    litellm.cache = litellm.Cache()
 try:
     from dotenv import load_dotenv  # type: ignore
     load_dotenv()
@@ -72,10 +78,17 @@ def load_model_responses(model_path: str, disguise_as_path: str) -> tuple[pd.Dat
     return source_df, target_df
 
 
-def generate_disguised_responses(method_name: str, model: str, disguise_as: str,
-                               source_df: pd.DataFrame, target_df: pd.DataFrame, 
-                               prompts: list, num_samples: int = 100,
-                               method_kwargs: dict | None = None) -> tuple[pd.DataFrame, dict]:
+def generate_disguised_responses(
+    method_name: str,
+    model: str,
+    disguise_as: str,
+    source_df: pd.DataFrame,
+    target_df: pd.DataFrame,
+    prompts: list,
+    num_samples: int = 100,
+    method_kwargs: dict | None = None,
+    output_file: Optional[str] = None,
+) -> tuple[pd.DataFrame, dict]:
     """
     Generate disguised responses using the specified method.
     
@@ -98,36 +111,138 @@ def generate_disguised_responses(method_name: str, model: str, disguise_as: str,
     
     results = []
     method_stats: dict = {}
+
+    # Prepare output for incremental persistence
+    csv_writer = None
+    if output_file is not None:
+        import csv
+        os.makedirs(os.path.dirname(output_file) or '.', exist_ok=True)
+        if not os.path.exists(output_file):
+            with open(output_file, 'w', newline='', encoding='utf-8') as f:
+                writer = csv.writer(f, quoting=csv.QUOTE_ALL)
+                writer.writerow(['prompt', 'model_response', 'target_response', 'method', 'source_model', 'target_model'])
+
+    # Backend helpers
+    def _has_provider_prefix(m: str) -> bool:
+        m = (m or '').lower()
+        return any(m.startswith(p) for p in ['openai/', 'azure/', 'anthropic/', 'vertex/', 'bedrock/'])
+
+    def _to_text_from_messages(msgs: list[dict]) -> str:
+        # Compose a simple text prompt for non-chat backends
+        if not msgs:
+            return ""
+        if len(msgs) == 1 and msgs[0].get('role') == 'user':
+            return str(msgs[0].get('content', ''))
+        sys_text = ""
+        user_text = ""
+        for m in msgs:
+            role = m.get('role')
+            content = str(m.get('content', ''))
+            if role == 'system':
+                sys_text += content + "\n\n"
+            elif role == 'user':
+                user_text += content
+        return f"{sys_text}{user_text}".strip()
+
+    # Cache heavy backends
+    _hf_pipe = None
+    _vllm_llm = None
+    _vllm_params = None
     
     for i, prompt in enumerate(tqdm(prompts[:num_samples], desc=f"Generating {method_name} responses")):
         try:
             # Get disguised prompt from method
             disguised_messages = method.forward(prompt)
-            
-            # Generate response using litellm
-            response = completion(
-                model=model,
-                messages=disguised_messages,
-                temperature=0.7,
-                max_tokens=1024
-            )
-            
-            disguised_response = response.choices[0].message.content
-            
+
+            # Choose backend: explicit hf:/vllm: → direct; else LiteLLM
+            model_lower = (model or '').lower()
+            max_new_tokens = 1024
+            temperature = 0.7
+
+            def _gen_with_retries(call_fn, max_attempts=3, base_delay=0.5):
+                last_exc = None
+                for attempt in range(1, max_attempts + 1):
+                    try:
+                        return call_fn()
+                    except Exception as e:
+                        last_exc = e
+                        # brief backoff
+                        time.sleep(base_delay * attempt)
+                raise last_exc
+
+            if model_lower.startswith('hf:') or model_lower.startswith('huggingface:'):
+                from transformers import pipeline
+                if _hf_pipe is None:
+                    model_id = model.split(':', 1)[1]
+                    _hf_pipe = pipeline('text-generation', model=model_id, device_map='auto')
+                text_input = _to_text_from_messages(disguised_messages)
+                def _hf_call():
+                    out = _hf_pipe(text_input, max_new_tokens=max_new_tokens, do_sample=(temperature > 0), temperature=max(temperature, 1e-6))
+                    gen = out[0]['generated_text']
+                    # return suffix beyond prompt
+                    return gen[len(text_input):].strip()
+                disguised_response = _gen_with_retries(_hf_call)
+            elif model_lower.startswith('vllm:'):
+                from vllm import LLM, SamplingParams
+                if _vllm_llm is None:
+                    model_id = model.split(':', 1)[1]
+                    _vllm_llm = LLM(model=model_id, trust_remote_code=True)
+                    _vllm_params = SamplingParams(max_tokens=max_new_tokens, temperature=temperature)
+                text_input = _to_text_from_messages(disguised_messages)
+                def _vllm_call():
+                    outputs = _vllm_llm.generate([text_input], _vllm_params)
+                    return outputs[0].outputs[0].text
+                disguised_response = _gen_with_retries(_vllm_call)
+            else:
+                # LiteLLM: decide routing and provider
+                routed_model = model
+                api_base = os.getenv('OPENAI_API_BASE')
+                api_key = os.getenv('OPENAI_API_KEY')
+                # Force official base for OpenAI models
+                if model_lower.startswith('openai/gpt-'):
+                    os.environ['OPENAI_API_BASE'] = 'https://api.openai.com/v1'
+                    api_base = 'https://api.openai.com/v1'
+                # If a local OpenAI-compatible base is set and no provider prefix, wrap with openai/
+                if api_base and not _has_provider_prefix(model):
+                    routed_model = f"openai/{model}"
+
+                def _llm_call():
+                    resp = completion(
+                        model=routed_model,
+                        messages=disguised_messages,
+                        temperature=temperature,
+                        max_tokens=max_new_tokens,
+                        api_base=api_base if api_base else None,
+                        api_key=api_key if api_key else None,
+                        request_timeout=60,
+                    )
+                    return resp["choices"][0]["message"]["content"]
+                disguised_response = _gen_with_retries(_llm_call)
+
             # Find matching target response for comparison
             target_response = ""
             if i < len(target_df) and 'target_response' in target_df.columns:
                 target_response = target_df.iloc[i]['target_response']
             
-            results.append({
+            row = {
                 'prompt': prompt,
                 'model_response': disguised_response,
                 'target_response': target_response,
                 'method': method_name,
                 'source_model': model,
                 'target_model': disguise_as
-            })
-            
+            }
+            results.append(row)
+
+            # Incremental persist
+            if output_file is not None:
+                import csv
+                with open(output_file, 'a', newline='', encoding='utf-8') as f:
+                    writer = csv.writer(f, quoting=csv.QUOTE_ALL)
+                    writer.writerow([
+                        row['prompt'], row['model_response'], row['target_response'], row['method'], row['source_model'], row['target_model']
+                    ])
+
         except Exception as e:
             logging.error(f"Error processing prompt {i}: {e}")
             continue
@@ -213,8 +328,8 @@ def main():
                        help="Skip automatic evaluation")
     parser.add_argument("--heuristics_only", action="store_true",
                        help="Only compute heuristic scores (faster)")
-    parser.add_argument("--judge-model", default="openai/gpt-4.1",
-                       help="Judge model for scoring (default: openai/gpt-4.1)")
+    parser.add_argument("--judge-model", default="openai/gpt-4.1-mini",
+                       help="Judge model for scoring (default: openai/gpt-4.1-mini)")
     parser.add_argument("--judge-api-base", default="https://api.openai.com/v1",
                        help="API base URL for judge model (default: OpenAI API)")
     parser.add_argument("--judge-api-key", default=None,
@@ -241,7 +356,26 @@ def main():
         os.environ["OPENAI_API_BASE"] = args.openai_api_base
     if args.openai_api_key:
         os.environ["OPENAI_API_KEY"] = args.openai_api_key
+
+    # Hard-guard: if generation model is an OpenAI-hosted model, force official base
+    try:
+        model_lower = (args.model or "").lower()
+        if model_lower.startswith("openai/gpt-"):
+            os.environ["OPENAI_API_BASE"] = "https://api.openai.com/v1"
+            logging.info("Detected OpenAI provider model '%s'; routing generation to OpenAI API.", args.model)
+    except Exception:
+        pass
     
+    # Determine dataset once (used for paths and optional logging)
+    def _infer_dataset(prompts_path: str) -> str:
+        p = (prompts_path or "").lower()
+        if "gsm8k" in p:
+            return "gsm8k"
+        if "arena" in p or "chatbot" in p:
+            return "chatbot_arena"
+        return "generic"
+    dataset = _infer_dataset(args.prompts_file)
+
     # Initialize wandb by default (unless disabled)
     use_wandb = not args.no_wandb
     if use_wandb:
@@ -261,15 +395,6 @@ def main():
     
     # Auto-detect response files if not provided
     # Canonical location is data/model-responses/<dataset>/{full,500}; fall back to legacy locations
-    def _infer_dataset(prompts_path: str) -> str:
-        p = (prompts_path or "").lower()
-        if "gsm8k" in p:
-            return "gsm8k"
-        if "arena" in p or "chatbot" in p:
-            return "chatbot_arena"
-        return "generic"
-
-    dataset = _infer_dataset(args.prompts_file)
     # Expose dataset to downstream utilities (e.g., clustering) via environment
     os.environ["DEMENTOR_DATASET"] = dataset
 
@@ -333,6 +458,18 @@ def main():
     
     logging.info(f"Loaded {len(prompts)} prompts")
     
+    # Determine output dir and result path before generation for incremental writes
+    if args.output_dir in (None, "results/streamlined"):
+        default_dir = os.path.join("data", "results", dataset, "comparisons", "disguised_vs_target", args.method)
+        os.makedirs(default_dir, exist_ok=True)
+        args.output_dir = default_dir
+    else:
+        os.makedirs(args.output_dir, exist_ok=True)
+
+    src_short = _short_model_name(args.model)
+    tgt_short = _short_model_name(args.disguise_as)
+    results_file = os.path.join(args.output_dir, f"{src_short}_as_{tgt_short}.csv")
+
     # Prepare method kwargs (for AL variants)
     method_kwargs = {
         'al_num_examples': args.al_num_examples,
@@ -351,26 +488,24 @@ def main():
     results_df, method_stats = generate_disguised_responses(
         args.method, args.model, args.disguise_as,
         source_df, target_df, prompts, args.num_samples,
-        method_kwargs=method_kwargs
+        method_kwargs=method_kwargs,
+        output_file=results_file,
     )
     
-    # Determine default output dir if not explicitly set
-    if args.output_dir in (None, "results/streamlined"):
-        default_dir = os.path.join("data", "results", dataset, "comparisons", "disguised_vs_target", args.method)
-        os.makedirs(default_dir, exist_ok=True)
-        args.output_dir = default_dir
-    else:
-        os.makedirs(args.output_dir, exist_ok=True)
-
-    # Save results with compact names (omit provider and long suffixes)
-    src_short = _short_model_name(args.model)
-    tgt_short = _short_model_name(args.disguise_as)
-    results_file = os.path.join(args.output_dir, f"{src_short}_as_{tgt_short}.csv")
-    results_df.to_csv(results_file, index=False)
+    # If file exists but results_df is empty (all failed), ensure header exists
+    if results_df.empty and os.path.exists(results_file):
+        import csv
+        with open(results_file, 'r', encoding='utf-8') as f:
+            head = f.read(100)
+        if not head.strip():
+            import csv as _csv
+            with open(results_file, 'w', newline='', encoding='utf-8') as f:
+                writer = _csv.writer(f, quoting=_csv.QUOTE_ALL)
+                writer.writerow(['prompt', 'model_response', 'target_response', 'method', 'source_model', 'target_model'])
     logging.info(f"Results saved to {results_file}")
     
     # Evaluate results
-    if not args.skip_evaluation:
+    if not args.skip_evaluation and os.path.exists(results_file) and os.path.getsize(results_file) > 0:
         logging.info("Evaluating disguised responses...")
         scores_file = results_file.replace('.csv', '_scores.csv')
 

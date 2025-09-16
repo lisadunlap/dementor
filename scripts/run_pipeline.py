@@ -17,6 +17,11 @@ import os
 import subprocess
 from pathlib import Path
 import sys
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:
+    pass
 
 
 def run(cmd, exclude_routing=False):
@@ -87,14 +92,16 @@ def main():
 
     # Generate source
     if args.overwrite or not src_out.exists():
-        rc = run([sys.executable, 'scripts/generate_responses.py',
-                  '--model', args.source_model,
-                  '--prompts_file', args.prompts_file,
-                  '--output', str(src_out)] + (
-                  ['--openai-api-base', args.openai_api_base] if args.openai_api_base else []
-              ) + (
-                  ['--openai-api-key', args.openai_api_key] if args.openai_api_key else []
-              ))
+        gen_cmd = [sys.executable, 'scripts/generate_responses.py',
+                   '--model', args.source_model,
+                   '--prompts_file', args.prompts_file,
+                   '--output', str(src_out)]
+        # Only pass routing flags for local/HF models; never for openai/gpt-*
+        if args.openai_api_base and not args.source_model.lower().startswith('openai/gpt-'):
+            gen_cmd += ['--openai-api-base', args.openai_api_base]
+        if args.openai_api_key and not args.source_model.lower().startswith('openai/gpt-'):
+            gen_cmd += ['--openai-api-key', args.openai_api_key]
+        rc = run(gen_cmd)
         if rc != 0:
             sys.exit(rc)
     else:
@@ -102,14 +109,15 @@ def main():
 
     # Generate target
     if args.overwrite or not tgt_out.exists():
-        rc = run([sys.executable, 'scripts/generate_responses.py',
-                  '--model', args.target_model,
-                  '--prompts_file', args.prompts_file,
-                  '--output', str(tgt_out)] + (
-                  ['--openai-api-base', args.openai_api_base] if args.openai_api_base else []
-              ) + (
-                  ['--openai-api-key', args.openai_api_key] if args.openai_api_key else []
-              ))
+        gen_cmd = [sys.executable, 'scripts/generate_responses.py',
+                   '--model', args.target_model,
+                   '--prompts_file', args.prompts_file,
+                   '--output', str(tgt_out)]
+        if args.openai_api_base and not args.target_model.lower().startswith('openai/gpt-'):
+            gen_cmd += ['--openai-api-base', args.openai_api_base]
+        if args.openai_api_key and not args.target_model.lower().startswith('openai/gpt-'):
+            gen_cmd += ['--openai-api-key', args.openai_api_key]
+        rc = run(gen_cmd)
         if rc != 0:
             sys.exit(rc)
     else:
@@ -123,7 +131,7 @@ def main():
               '--a', str(src_out),
               '--b', str(tgt_out),
               '--output', str(baseline_csv),
-              '--judge-model', 'gpt-4o'], exclude_routing=True)  # Use GPT-4o judge, no routing to vLLM
+              '--judge-model', 'openai/gpt-4.1-mini'], exclude_routing=True)  # OpenAI judge; ensure no local routing
     if rc != 0:
         sys.exit(rc)
 
@@ -162,7 +170,7 @@ def main():
     scores_dir.mkdir(parents=True, exist_ok=True) 
     scored_output = str(scores_dir / (Path(latest).stem + '_scored.csv'))
     scmd = [sys.executable, '-m', 'scripts.scorer', latest, '--output', scored_output,
-            '--judge-model', 'gpt-4o']
+            '--judge-model', 'openai/gpt-4.1-mini']
     # Don't route judge model to vLLM - use real OpenAI API
     rc = run(scmd, exclude_routing=True)
     if rc != 0:

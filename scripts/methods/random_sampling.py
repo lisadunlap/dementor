@@ -7,10 +7,16 @@ import pandas as pd
 
 try:
     from .base import MethodBase
-except Exception:  # pragma: no cover
-    from methods.base import MethodBase
+except ImportError:
+    try:
+        from scripts.methods.base import MethodBase
+    except ImportError:
+        from base import MethodBase
 
-from utils import get_token_count
+try:
+    from scripts.utils import get_token_count
+except ImportError:
+    from utils import get_token_count
 
 
 class RandomSamplingSystemPrompting(MethodBase):

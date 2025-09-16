@@ -7,14 +7,25 @@ import os
 from typing import List, Dict
 import pandas as pd
 from litellm import completion
+import litellm
+
+# Enable caching for API calls
+if not hasattr(litellm, 'cache') or litellm.cache is None:
+    litellm.cache = litellm.Cache()
 
 try:
     from .base import MethodBase
-except Exception:  # pragma: no cover
-    from methods.base import MethodBase
+except ImportError:
+    try:
+        from scripts.methods.base import MethodBase
+    except ImportError:
+        from base import MethodBase
 
-# get_token_count is a top-level helper under scripts/utils.py (made available via sys.path)
-from utils import get_token_count
+# get_token_count is a top-level helper under scripts/utils.py
+try:
+    from scripts.utils import get_token_count
+except ImportError:
+    from utils import get_token_count
 
 
 class ContrastiveSystemPrompting(MethodBase):
@@ -46,7 +57,7 @@ TARGET MODEL ({self.disguise_as}) responses:
         if source_samples is not None:
             contrastive_prompt += f"\nSOURCE MODEL ({self.model}) responses:\n"
             for _, row in source_samples.iterrows():
-                contrastive_prompt += f"Q: {row['prompt'][:100]}...\nA: {row['target_response'][:200]}...\n\n"
+                contrastive_prompt += f"Q: {row['prompt'][:100]}...\nA: {row['model_response'][:200]}...\n\n"
         contrastive_prompt += """
 Based on these examples, identify 5-7 key distinctive features of the TARGET model:
 1. Communication style (formal/informal, tone, personality)

@@ -77,9 +77,9 @@ CLI knobs for Active Learning (both standalone and composite):
 
 ### How to Get a Method
 ```python
-from disguising.methods.get_method import get_method
+from scripts.methods.get_method import get_method
 method = get_method(
-    method_name="vibe_based",          # or: contrastive | random_sampling | stylistic | active_learning
+    method_name="vibe_based",          # or: contrastive | random_sampling | stylistic
     model="source-model",              # model to run
     disguise_as="target-model",        # model to mimic
     disguise_df=target_df,              # DataFrame of target examples (required for most methods)
@@ -114,99 +114,44 @@ Key entrypoints and classes:
 
 If you experiment here, recommended defaults are Thurstonian + Active Learning (pseudolabels off, strict A/B parsing). Again, this is temporary and not part of the stable interface.
 
----
+## Method Selection Guide
 
-## Disguise Methods
+### Quick Decision Tree:
+- **Fast baseline**: `random_sampling` for quick trials with good examples
+- **Distinctive personality**: `vibe_based` when personality/communication style matters
+- **Structural patterns**: `stylistic` when formatting and structure are key
+- **Explicit guidance**: `contrastive` when you want clear rules about what to change
+- **Best of both**: `contrastive_with_al_examples` for rules + smart example selection
 
-Location: `disguising/methods/`
+### Available Methods
+Get method names from `scripts/methods/get_method.py`:
+- `random_sample_{1,3,5}_examples`: Sample-based approaches
+- `just_name_it`: Simple name-based instruction
+- `vibe_based_disguise`: GPT-4o identified behavioral differences
+- `stylistic_clustering`: Cluster by formatting/length features
+- `hierarchical_math_disguise`: Math-domain specific approach
+- `ensemble_math_disguise`: Multiple math disguise strategies
+- `active_learning_disguise`: Adaptive example selection
 
-Method registry: `disguising/methods/get_method.py` (clean names in quotes below).
+## Usage Examples
 
-### Core Methods
-- "contrastive"
-  - Class: `core_methods.ContrastiveSystemPrompting`
-  - Learns distinguishing features by contrasting target vs source outputs; returns actionable system instructions.
-  - Use when you have both target and source data and want explicit gap-bridging guidance.
-
-- "vibe_based"
-  - Class: `core_methods.VibeBasedSystemPrompting`
-  - Builds a deep “vibe/essence” profile (cognitive style, tone, interaction patterns) from target data; uses it in the system prompt.
-  - Use when personality/feel (beyond formatting) is key.
-
-- "random_sampling"
-  - Class: `core_methods.RandomSamplingSystemPrompting`
-  - Randomly picks k target examples and instructs to mimic; strong, simple baseline.
-  - Use for quick trials and sanity checks.
-
-- "stylistic"
-  - Class: `core_methods.StylisticSystemPrompting`
-  - Analyzes measurable surface patterns (length, lists, markdown, headers) and turns them into concrete style rules.
-  - Use when structure and presentation patterns are the main gap.
-
-### Clustering Variants (Representative Sampling)
-- `stylistic_clustering`, `stylistic_clustering_resample`, `vibe_clustering`, `embedding_clustering`
-  - Cluster responses on different feature spaces (stylistic/vibe/embeddings) and select representatives.
-  - Use when you want example diversity/coverage without manual curation.
-
-### Active Learning Disguise
-- "active_learning" (if dependencies available)
-  - Class: `active_learning_disguise.ActiveLearningDisguise`
-  - Iteratively selects the most informative examples to include, updating selection based on quality/uncertainty signals.
-  - Use when you can afford iterative selection and want to outperform random example choice.
-
-### How to Get a Method
-```python
-from disguising.methods.get_method import get_method
-method = get_method(
-    method_name="vibe_based",          # or: contrastive | random_sampling | stylistic | active_learning
-    model="source-model",              # model to run
-    disguise_as="target-model",        # model to mimic
-    disguise_df=target_df,              # DataFrame of target examples (required for most methods)
-    source_df=source_df                 # Required for contrastive
-)
-messages = method.forward(prompt="…")   # returns chat-format messages to send to the model
+### Streamlined Pipeline (Recommended)
+```bash
+python scripts/run_pipeline.py \
+  --prompts_file data/datasets/gsm8k/gsm8k_prompts.txt \
+  --source-model meta-llama/Meta-Llama-3.1-8B-Instruct \
+  --target-model gpt-4o \
+  --method contrastive_with_al_examples
 ```
 
-Notes:
-- Some models (e.g., Gemma) need specific chat formatting; the implementations handle this internally.
-- Several methods use LiteLLM for analysis steps; ensure API keys are set if using those features.
+### Individual Components
+```bash
+# Generate responses
+python scripts/generate_responses.py --model meta-llama/Meta-Llama-3.1-8B-Instruct
 
----
+# Apply disguise
+python scripts/disguise.py --model meta-llama/Meta-Llama-3.1-8B-Instruct --disguise_as gpt-4o --method contrastive
 
-## Choosing Methods
-
-- If you need a utility ranking over many options with limited budget:
-  - Start with Thurstonian + Active Learning.
-  - Keep pseudolabels off initially; enable later if pools are huge and confidence is high.
-
-- If you need a quick disguise baseline:
-  - Use "random_sampling" (k=5) or "stylistic" for structure-driven targets.
-
-- If the target has a distinctive personality:
-  - Use "vibe_based" (and optionally add a few examples).
-
-- If you have both source and target data and want explicit guidance:
-  - Use "contrastive".
-
-- If you want automated, stronger example selection:
-  - Try "active_learning" (disguise), or a clustering variant for representative coverage.
-
----
-
-## Terminology
-
-- Method vs Submethod (Utility Estimation):
-  - Method = data acquisition strategy (Static vs Active Learning) × inference model (Bradley–Terry vs Thurstonian).
-  - Submethods = selection policy (e.g., P%|Δμ| ∩ Q% degree), pseudolabeling on/off, parsing mode, backend.
-
-- In Disguise:
-  - Method = prompting strategy category (contrastive, vibe-based, random, stylistic, clustering, AL-disguise).
-  - Submethods = sampling knobs (k, clustering params), analysis backends, formatting quirks.
-
----
-
-## Pointers & Caveats
-
-- Utility code is duplicated between `superstimuli` and `utility-alignment/agent_refactored` for project isolation; behavior should be consistent.
-- There are experimental files (e.g., `bradley_terry/gavel.py`) not wired into the main `compute_utilities` pipeline; treat as reference.
-- If you see parsing noise, prefer strict A/B or structured outputs and enable HF logits-only scoring where possible.
+# Score results
+python -m scripts.scorer input.csv --output output_scored.csv
+```

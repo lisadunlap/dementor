@@ -7,13 +7,24 @@ import os
 from typing import List, Dict
 import pandas as pd
 from litellm import completion
+import litellm
+
+# Enable caching for API calls
+if not hasattr(litellm, 'cache') or litellm.cache is None:
+    litellm.cache = litellm.Cache()
 
 try:
     from .base import MethodBase
-except Exception:  # pragma: no cover
-    from methods.base import MethodBase
+except ImportError:
+    try:
+        from scripts.methods.base import MethodBase
+    except ImportError:
+        from base import MethodBase
 
-from utils import get_token_count
+try:
+    from scripts.utils import get_token_count
+except ImportError:
+    from utils import get_token_count
 
 
 class VibeBasedSystemPrompting(MethodBase):

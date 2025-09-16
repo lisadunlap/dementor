@@ -8,6 +8,11 @@ import sys
 import os
 import subprocess
 from pathlib import Path
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:
+    pass
 
 def run_script(script_path, args):
     """Run a script with the given arguments."""

@@ -10,12 +10,15 @@ See also: METHODS.md for a concise taxonomy and when to use each method.
 # Install
 pip install -r requirements.txt
 
-# Optional extras
-pip install networkx vllm  # active-learning disguise; local LLM judge scoring
-pip install transformers accelerate  # local HuggingFace generation (hf: prefix)
+# For math-specific methods, also install:
+pip install -r math_disguise_requirements.txt
 
-# Run a basic disguise
-python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling
+# Run streamlined pipeline (recommended)
+python scripts/run_pipeline.py \
+  --prompts_file data/datasets/gsm8k/gsm8k_prompts.txt \
+  --source-model meta-llama/Meta-Llama-3.1-8B-Instruct \
+  --target-model gpt-4o \
+  --method contrastive_with_al_examples
 ```
 
 ## Local Generation (HF vs vLLM)
@@ -97,37 +100,37 @@ Helper script
 
 ## Disguise Methods
 
-### 1. Random Sampling (`--method random_sampling`)
+### 1. Random Sampling (`--method random_sampling_system_prompting`)
 **Best for**: Reliable baseline performance with good target model responses
 ```bash
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling_system_prompting
 ```
 - Randomly samples examples from target model responses
 - Uses clean system prompting for instructions
 - Simple, effective, and fast
 
-### 2. Vibe-Based (`--method vibe_based`)
+### 2. Vibe-Based (`--method vibe_based_system_prompting`)
 **Best for**: Capturing personality and deep communication essence
 ```bash
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based_system_prompting
 ```
 - Analyzes target model's communication style, personality, and behavioral patterns
 - Creates sophisticated "essence profile" capturing how the model thinks and responds
 - Focuses on cognitive style, emotional resonance, and interaction patterns
 
-### 3. Stylistic (`--method stylistic`)
+### 3. Stylistic (`--method stylistic_system_prompting`)
 **Best for**: Replicating measurable surface-level patterns
 ```bash
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method stylistic
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method stylistic_system_prompting
 ```
 - Analyzes and replicates measurable stylistic features (formatting, length, structure)
 - Focuses on surface-level patterns that can be quantified
 - Complements vibe-based analysis with concrete metrics
 
-### 4. Contrastive (`--method contrastive`)
+### 4. Contrastive (`--method contrastive_system_prompting`)
 **Best for**: Learning specific differences between models
 ```bash
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive_system_prompting
 ```
 - Compares source and target models to identify distinguishing features
 - Learns what makes the target model unique vs the source; produces explicit, actionable guidelines (system prompt)
@@ -151,19 +154,22 @@ What are “AL-selected examples”?
 
 ```
 dementor/
-├── disguise.py                      # Main script - run disguise methods
-├── disguising/
-│   ├── methods/
-│   │   ├── contrastive.py                   # Contrastive method
-│   │   ├── contrastive_with_al_examples.py # Composite: contrastive + AL-selected examples
-│   │   ├── vibe_based.py                   # Vibe-based method
-│   │   ├── random_sampling.py              # Random sampling method
-│   │   ├── stylistic.py                    # Stylistic method
-│   │   ├── example_selection/              # Active learning selectors (re-exports from utils)
-│   │   ├── utils/                          # Shared utilities (stylistic_analysis, clustering, etc.)
-│   │   ├── extras/                         # Less-used/legacy methods (math, thurstonian, clustering)
-│   │   └── get_method.py                   # Clean method registry
-│   └── scorer.py                    # Unified scoring (LLM judge + heuristics)
+├── scripts/
+│   ├── run_pipeline.py              # Streamlined end-to-end pipeline (recommended)
+│   ├── disguise.py                  # Core disguise script
+│   ├── generate_responses.py        # Generate model responses
+│   ├── compare_models.py            # Compare two models
+│   ├── scorer.py                    # Unified scoring (LLM judge + heuristics)
+│   ├── stylistic_analysis.py        # Heuristic analysis functions
+│   └── methods/
+│       ├── contrastive.py           # Contrastive method
+│       ├── vibe_based.py            # Vibe-based method
+│       ├── random_sampling.py       # Random sampling method
+│       ├── stylistic.py             # Stylistic method
+│       ├── contrastive_with_al_examples.py # Composite method
+│       ├── get_method.py            # Method registry
+│       ├── utils/                   # Shared utilities
+│       └── extras/                  # Legacy/specialized methods
 ├── data/                            # Datasets and prompts
 └── results/                         # Generated responses and scores
 
@@ -191,21 +197,21 @@ The framework provides two types of evaluation:
 ### Basic Usage
 ```bash
 # Generate 200 disguised responses
-python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based --num_samples 200
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based --num_samples 200
 
 # Use custom prompts
-python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive --prompts_file my_prompts.txt
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive --prompts_file my_prompts.txt
 
-# Skip evaluation (generation only)  
-python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling --skip_evaluation
+# Skip evaluation (generation only)
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling --skip_evaluation
 
 # Heuristics only (faster evaluation)
-python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based --heuristics_only
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based --heuristics_only
 ```
 
 ### With Experiment Tracking
 ```bash
-python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive --use_wandb --run_name "contrastive_experiment_v1"
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive --use_wandb --run_name "contrastive_experiment_v1"
 ```
 
 ### Scoring and Summaries
@@ -228,11 +234,11 @@ PY
 
 | Method | Strengths | Best Use Case | Speed |
 |--------|-----------|---------------|-------|
-| **Random Sampling** | Simple, reliable baseline | When you have good target examples | Fast |
-| **Vibe-Based** | Captures deep communication essence | Models with distinctive personality | Medium |
-| **Stylistic** | Measurable surface features | Consistent formatting/structure patterns | Fast |
-| **Contrastive** | Explicit change-list and rules; pairs well with AL-selected examples | Understanding model distinctions | Slow |
-| **Composite (Contrastive + AL examples)** | Clear rules + strong exemplars | When examples improve mimicry | Medium |
+| **random_sampling** | Simple, reliable baseline | When you have good target examples | Fast |
+| **vibe_based** | Captures deep communication essence | Models with distinctive personality | Medium |
+| **stylistic** | Measurable surface features | Consistent formatting/structure patterns | Fast |
+| **contrastive** | Explicit change-list and rules; pairs well with AL-selected examples | Understanding model distinctions | Slow |
+| **contrastive_with_al_examples** | Clear rules + strong exemplars | When examples improve mimicry | Medium |
 
 ## Recommended Combinations
 - Contrastive + AL-selected examples: clear rules + strong exemplars.
@@ -241,18 +247,18 @@ PY
 
 ## Recommended Pipelines (Commands)
 -- Contrastive (rules-only)
-  - python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive --num_samples 200
+  - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive --num_samples 200
 
 -- Contrastive + AL-selected examples (composite)
-  - python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o \
+  - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o \
       --method contrastive_with_al_examples --num_samples 200 \
       --al-num-examples 5 --al-max-iterations 5 --al-batch-size 10
 
 -- Random-k examples baseline
-  - python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling --num_samples 200
+  - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling --num_samples 200
 
 -- Vibe-based (personality) with examples
-  - python disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based --num_samples 200
+  - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based --num_samples 200
 
 -- Scoring with summary metrics.json
   - python -m scripts.scorer data/results/chatbot_arena/disguised/my_run.csv --output data/results/chatbot_arena/scores/my_run_scored.csv
@@ -407,12 +413,12 @@ The core methods can be customized:
 
 ```python
 # In your own scripts
-from disguising.methods.get_method import get_method
+from scripts.methods.get_method import get_method
 
 # Vibe-based with custom settings
 method = get_method('vibe_based', 'source-model', 'target-model', disguise_df=target_data)
 
-# Contrastive with both datasets  
+# Contrastive with both datasets
 method = get_method('contrastive', 'source-model', 'target-model', disguise_df=target_data, source_df=source_data)
 
 # Generate disguised prompt

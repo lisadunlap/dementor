@@ -9,11 +9,18 @@ try:
     from .contrastive_with_al_examples import ContrastiveWithALExamples
 except ImportError:
     # Fallbacks if relative imports fail
-    from contrastive import ContrastiveSystemPrompting
-    from vibe_based import VibeBasedSystemPrompting
-    from random_sampling import RandomSamplingSystemPrompting
-    from stylistic import StylisticSystemPrompting
-    from contrastive_with_al_examples import ContrastiveWithALExamples
+    try:
+        from scripts.methods.contrastive import ContrastiveSystemPrompting
+        from scripts.methods.vibe_based import VibeBasedSystemPrompting
+        from scripts.methods.random_sampling import RandomSamplingSystemPrompting
+        from scripts.methods.stylistic import StylisticSystemPrompting
+        from scripts.methods.contrastive_with_al_examples import ContrastiveWithALExamples
+    except ImportError:
+        from contrastive import ContrastiveSystemPrompting
+        from vibe_based import VibeBasedSystemPrompting
+        from random_sampling import RandomSamplingSystemPrompting
+        from stylistic import StylisticSystemPrompting
+        from contrastive_with_al_examples import ContrastiveWithALExamples
 
 
 def get_method(method_name, model, disguise_as, disguise_df=None, source_df=None, method_kwargs=None):

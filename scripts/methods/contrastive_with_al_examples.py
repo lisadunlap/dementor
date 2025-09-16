@@ -8,11 +8,18 @@ import pandas as pd
 try:
     from .base import MethodBase
     from .contrastive import ContrastiveSystemPrompting
-except Exception:  # pragma: no cover
-    from methods.base import MethodBase
-    from methods.contrastive import ContrastiveSystemPrompting
+except ImportError:
+    try:
+        from scripts.methods.base import MethodBase
+        from scripts.methods.contrastive import ContrastiveSystemPrompting
+    except ImportError:
+        from base import MethodBase
+        from contrastive import ContrastiveSystemPrompting
 
-from utils import get_token_count
+try:
+    from scripts.utils import get_token_count
+except ImportError:
+    from utils import get_token_count
 
 
 class ContrastiveWithALExamples(MethodBase):
@@ -42,7 +49,10 @@ class ContrastiveWithALExamples(MethodBase):
             try:
                 from ..utils.active_learning_selector import ActiveLearningSelector
             except Exception:
-                from methods.utils.active_learning_selector import ActiveLearningSelector
+                try:
+                    from scripts.methods.utils.active_learning_selector import ActiveLearningSelector
+                except ImportError:
+                    from utils.active_learning_selector import ActiveLearningSelector
             self._al_selector = ActiveLearningSelector(
                 target_responses_df=self.disguise_df.rename(columns={"target_response": "model_response"}),
                 num_examples=self.num_examples,
@@ -62,7 +72,10 @@ class ContrastiveWithALExamples(MethodBase):
             try:
                 from ..utils.extract_styles import extract_style_features
             except Exception:
-                from methods.utils.extract_styles import extract_style_features
+                try:
+                    from scripts.methods.utils.extract_styles import extract_style_features
+                except ImportError:
+                    from utils.extract_styles import extract_style_features
             from sklearn.cluster import KMeans
             vecs = []
             for _, row in self.disguise_df.iterrows():

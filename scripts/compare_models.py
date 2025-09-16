@@ -14,6 +14,11 @@ import argparse
 import os
 import pandas as pd
 from scorer import score_model_comparison
+try:
+    from dotenv import load_dotenv  # type: ignore
+    load_dotenv()
+except Exception:
+    pass
 
 
 def main():
@@ -22,7 +27,9 @@ def main():
     parser.add_argument("--b", required=True, help="CSV for model B (columns: prompt, model_response)")
     parser.add_argument("--output", required=True, help="Output merged CSV path")
     parser.add_argument("--heuristics-only", action="store_true", help="Compute heuristics only")
-    parser.add_argument("--judge-model", default="gpt-4o", help="Judge model for LLM scoring")
+    parser.add_argument("--judge-model", default="openai/gpt-4.1-mini", help="Judge model for LLM scoring (prefix with openai/ to route to OpenAI API)")
+    parser.add_argument("--openai-api-base", default=None, help="Override OPENAI_API_BASE for judge routing")
+    parser.add_argument("--openai-api-key", default=None, help="Override OPENAI_API_KEY for judge routing")
     args = parser.parse_args()
 
     df_a = pd.read_csv(args.a)
@@ -38,12 +45,20 @@ def main():
     merged.to_csv(out, index=False)
     print(f"Wrote merged comparison CSV: {out}")
 
+    # Ensure judge routing is correct
+    jm = (args.judge_model or '').lower()
+    if args.openai_api_base:
+        os.environ['OPENAI_API_BASE'] = args.openai_api_base
+    elif jm.startswith('openai/'):
+        os.environ['OPENAI_API_BASE'] = 'https://api.openai.com/v1'
+    if args.openai_api_key:
+        os.environ['OPENAI_API_KEY'] = args.openai_api_key
+
     scored = out.replace('.csv', '_scored.csv')
     score_model_comparison(out, scored, heuristics_only=args.heuristics_only, judge_model=args.judge_model)
     print(f"Wrote scored CSV: {scored}")
-    print(f"Metrics JSON: {scored.replace('.csv', '_metrics.json')}")
+    print(f"Metrics CSV: {scored.replace('.csv', '_metrics.csv')}")
 
 
 if __name__ == '__main__':
     main()
-
