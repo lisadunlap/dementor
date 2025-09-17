@@ -79,12 +79,29 @@ Make this actionable - write it as instructions that would allow another AI to a
 
         try:
             analysis_model = os.getenv("ANALYSIS_MODEL", "openai/gpt-4o")
-            response = completion(
-                model=analysis_model,
-                messages=[{"role": "user", "content": vibe_prompt}],
-                temperature=0.1
-            )
-            self.vibe_profile = response.choices[0].message.content
+            # Use cached completion for persistent caching
+            try:
+                import sys
+                import os
+                # Add parent directory to path for importing cached_llm
+                parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if parent_dir not in sys.path:
+                    sys.path.insert(0, parent_dir)
+                from scripts.cached_llm import cached_completion
+                response = cached_completion(
+                    model=analysis_model,
+                    messages=[{"role": "user", "content": vibe_prompt}],
+                    temperature=0.1
+                )
+                self.vibe_profile = response.choices[0].message.content
+            except ImportError:
+                # Fallback to standard litellm
+                response = completion(
+                    model=analysis_model,
+                    messages=[{"role": "user", "content": vibe_prompt}],
+                    temperature=0.1
+                )
+                self.vibe_profile = response.choices[0].message.content
         except Exception as e:
             logging.warning(f"Failed to generate vibe profile: {e}")
             self.vibe_profile = f"Respond with the characteristic communication style and deep personality essence of {self.disguise_as}."

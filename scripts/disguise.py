@@ -207,16 +207,31 @@ def generate_disguised_responses(
                     routed_model = f"openai/{model}"
 
                 def _llm_call():
-                    resp = completion(
-                        model=routed_model,
-                        messages=disguised_messages,
-                        temperature=temperature,
-                        max_tokens=max_new_tokens,
-                        api_base=api_base if api_base else None,
-                        api_key=api_key if api_key else None,
-                        request_timeout=60,
-                    )
-                    return resp["choices"][0]["message"]["content"]
+                    # Use cached completion for persistent caching
+                    try:
+                        from .cached_llm import cached_completion
+                        resp = cached_completion(
+                            model=routed_model,
+                            messages=disguised_messages,
+                            temperature=temperature,
+                            max_tokens=max_new_tokens,
+                            api_base=api_base if api_base else None,
+                            api_key=api_key if api_key else None,
+                            request_timeout=60,
+                        )
+                        return resp.choices[0].message.content
+                    except ImportError:
+                        # Fallback to standard litellm
+                        resp = completion(
+                            model=routed_model,
+                            messages=disguised_messages,
+                            temperature=temperature,
+                            max_tokens=max_new_tokens,
+                            api_base=api_base if api_base else None,
+                            api_key=api_key if api_key else None,
+                            request_timeout=60,
+                        )
+                        return resp["choices"][0]["message"]["content"]
                 disguised_response = _gen_with_retries(_llm_call)
 
             # Find matching target response for comparison

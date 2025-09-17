@@ -38,6 +38,15 @@ pip install -r requirements.txt
 pip install -r math_disguise_requirements.txt
 ```
 
+### Caching
+The framework includes persistent LMDB-based caching for all API calls:
+- **Automatic**: All scripts automatically use caching when available
+- **Persistent**: Cache survives across sessions, reducing API costs
+- **Location**: `cache/llm_cache/` directory
+- **Benefits**: Faster responses, reduced costs, consistent results
+- **Clear cache**: `python -c "from scripts.cached_llm import clear_cache; clear_cache()"`
+- **Stats**: `python -c "from scripts.cached_llm import get_cache_stats; print(get_cache_stats())"`
+
 ### Streamlined Workflow (Recommended)
 ```bash
 # Run complete pipeline: generate responses, compare baseline, disguise, and score

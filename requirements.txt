@@ -19,3 +19,4 @@ kmodes>=0.12.2
 wandb
 litellm
 tiktoken
+lmdb

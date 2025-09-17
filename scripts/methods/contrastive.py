@@ -69,12 +69,29 @@ Based on these examples, identify 5-7 key distinctive features of the TARGET mod
 Provide specific, actionable guidelines for mimicking the TARGET model's distinctive style."""
         try:
             analysis_model = os.getenv("ANALYSIS_MODEL", "openai/gpt-4o")
-            response = completion(
-                model=analysis_model,
-                messages=[{"role": "user", "content": contrastive_prompt}],
-                temperature=0.3
-            )
-            self.contrastive_features = response.choices[0].message.content
+            # Use cached completion for persistent caching
+            try:
+                import sys
+                import os
+                # Add parent directory to path for importing cached_llm
+                parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                if parent_dir not in sys.path:
+                    sys.path.insert(0, parent_dir)
+                from scripts.cached_llm import cached_completion
+                response = cached_completion(
+                    model=analysis_model,
+                    messages=[{"role": "user", "content": contrastive_prompt}],
+                    temperature=0.3
+                )
+                self.contrastive_features = response.choices[0].message.content
+            except ImportError:
+                # Fallback to standard litellm
+                response = completion(
+                    model=analysis_model,
+                    messages=[{"role": "user", "content": contrastive_prompt}],
+                    temperature=0.3
+                )
+                self.contrastive_features = response.choices[0].message.content
         except Exception as e:
             logging.warning(f"Failed to generate contrastive features: {e}")
             self.contrastive_features = "Unable to generate contrastive analysis."

@@ -117,15 +117,21 @@ class ModelScorer:
 
     def _litellm_generate(self, messages: List[dict]) -> str:
         try:
-            from litellm import completion
-            import litellm
-            # Enable caching for API calls (not for vLLM/local servers)
-            if not hasattr(litellm, 'cache') or litellm.cache is None:
-                litellm.cache = litellm.Cache()
-        except ImportError as e:
-            raise RuntimeError("LiteLLM not installed. pip install litellm") from e
-        resp = completion(model=self.judge_model, messages=messages, max_tokens=self.max_tokens, temperature=self.temperature)
-        return resp["choices"][0]["message"]["content"]
+            # Use cached completion for persistent caching
+            from .cached_llm import cached_completion
+        except ImportError:
+            try:
+                from litellm import completion
+                import litellm
+                # Fallback to standard litellm with in-memory cache
+                if not hasattr(litellm, 'cache') or litellm.cache is None:
+                    litellm.cache = litellm.Cache()
+                cached_completion = completion
+            except ImportError as e:
+                raise RuntimeError("LiteLLM not installed. pip install litellm") from e
+
+        resp = cached_completion(model=self.judge_model, messages=messages, max_tokens=self.max_tokens, temperature=self.temperature)
+        return resp.choices[0].message.content
     
     def _clean_thinking_output(self, output: str) -> str:
         """Remove <think> tags from model output."""

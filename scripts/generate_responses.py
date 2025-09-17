@@ -56,6 +56,13 @@ def load_existing(output: Path) -> Dict[str, str]:
 
 
 def _gen_litellm(model: str, messages: list, max_tokens: int, temperature: float, api_base: str = None, api_key: str = None) -> str:
+    # Use cached completion for persistent caching
+    try:
+        from .cached_llm import cached_completion
+        use_cached = True
+    except ImportError:
+        use_cached = False
+
     kwargs = {
         "model": model,
         "messages": messages,
@@ -66,9 +73,13 @@ def _gen_litellm(model: str, messages: list, max_tokens: int, temperature: float
         kwargs["api_base"] = api_base
     if api_key:
         kwargs["api_key"] = api_key
-    
-    resp = completion(**kwargs)
-    return resp["choices"][0]["message"]["content"]
+
+    if use_cached:
+        resp = cached_completion(**kwargs)
+        return resp.choices[0].message.content
+    else:
+        resp = completion(**kwargs)
+        return resp["choices"][0]["message"]["content"]
 
 
 def _gen_hf(model_id: str, prompt_text: str, max_tokens: int, temperature: float) -> str:
