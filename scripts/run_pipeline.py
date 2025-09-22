@@ -74,9 +74,15 @@ def main():
         return "generic"
 
     dataset = infer_dataset(args.prompts_file)
+    def infer_subset(prompts_path: str) -> str:
+        p = (prompts_path or "").lower()
+        if "_500" in p or "/500" in p or p.endswith("500.csv"):
+            return "500"
+        return "full"
+    subset = infer_subset(args.prompts_file)
 
     # Resolve output root
-    base_results_root = Path("data") / "results" / dataset
+    base_results_root = Path("data") / "results" / dataset / subset
     if args.output_dir:
         out_dir = Path(args.output_dir)
     else:
@@ -123,7 +129,8 @@ def main():
     else:
         print(f"Found existing: {tgt_out}")
 
-    # 2) Baseline comparison (source vs target)
+    # 2) Optional baseline comparison (source vs target) – can be skipped if not needed
+    # Keeping for compatibility; comment out if you consider it obsolete.
     baseline_dir = out_dir / "comparisons" / "source_vs_target"
     baseline_dir.mkdir(parents=True, exist_ok=True)
     baseline_csv = baseline_dir / f"{args.source_model.replace('/', '_')}_vs_{args.target_model.replace('/', '_')}.csv"
@@ -131,12 +138,20 @@ def main():
               '--a', str(src_out),
               '--b', str(tgt_out),
               '--output', str(baseline_csv),
-              '--judge-model', 'openai/gpt-4.1-mini'], exclude_routing=True)  # OpenAI judge; ensure no local routing
+              '--judge-model', 'openai/gpt-4.1-mini'], exclude_routing=True)
     if rc != 0:
         sys.exit(rc)
 
-    # 3) Run disguise
-    disguise_dir = out_dir / "comparisons" / "disguised_vs_target" / args.method
+    # 3) Score single-file source and target into standardized locations (base scores)
+    src_score_dir = out_dir / "scores" / args.source_model.replace('/', '_')
+    tgt_score_dir = out_dir / "scores" / args.target_model.replace('/', '_')
+    src_score_dir.mkdir(parents=True, exist_ok=True)
+    tgt_score_dir.mkdir(parents=True, exist_ok=True)
+    run([sys.executable, '-m', 'scripts.scorer', str(src_out), '--output', str(src_score_dir / 'scored.csv'), '--single'])
+    run([sys.executable, '-m', 'scripts.scorer', str(tgt_out), '--output', str(tgt_score_dir / 'scored.csv'), '--single'])
+
+    # 4) Run disguise with new layout for outputs (per-method directory)
+    disguise_dir = out_dir / args.method
     disguise_dir.mkdir(parents=True, exist_ok=True)
     dcmd = [sys.executable, 'scripts/disguise.py',
             '--model', args.source_model,
@@ -160,21 +175,8 @@ def main():
     if rc != 0:
         sys.exit(rc)
 
-    # 4) Score latest results (disguised vs target already scored by disguise.py; this re-scores to ensure artifacts)
-    csvs = sorted(disguise_dir.glob('*.csv'), key=os.path.getmtime)
-    if not csvs:
-        print('No results to score in', disguise_dir)
-        sys.exit(1)
-    latest = str(csvs[-1])
-    scores_dir = out_dir / "scores"
-    scores_dir.mkdir(parents=True, exist_ok=True) 
-    scored_output = str(scores_dir / (Path(latest).stem + '_scored.csv'))
-    scmd = [sys.executable, '-m', 'scripts.scorer', latest, '--output', scored_output,
-            '--judge-model', 'openai/gpt-4.1-mini']
-    # Don't route judge model to vLLM - use real OpenAI API
-    rc = run(scmd, exclude_routing=True)
-    if rc != 0:
-        sys.exit(rc)
+    # 5) No extra re-scoring here: disguise.py already emitted scores into
+    #    data/results/<dataset>/comparisons/disguised/<method>/metrics_<pair>/
 
     # 5) Aggregate and (optionally) log a W&B table
     if args.use_wandb:

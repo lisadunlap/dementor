@@ -13,7 +13,17 @@ Outputs:
 import argparse
 import os
 import pandas as pd
-from scorer import score_model_comparison
+import csv
+import sys
+
+# Ensure we can import scorer whether run as a package or a script
+try:
+    from scorer import score_model_comparison  # when executed with sys.path including scripts/
+except Exception:
+    try:
+        from scripts.scorer import score_model_comparison  # when executed from repo root as package
+    except Exception as _e:
+        raise
 try:
     from dotenv import load_dotenv  # type: ignore
     load_dotenv()
@@ -32,8 +42,18 @@ def main():
     parser.add_argument("--openai-api-key", default=None, help="Override OPENAI_API_KEY for judge routing")
     args = parser.parse_args()
 
-    df_a = pd.read_csv(args.a)
-    df_b = pd.read_csv(args.b)
+    # Robust CSV loading (handles embedded quotes/newlines)
+    def _read_csv_robust(path: str) -> pd.DataFrame:
+        try:
+            return pd.read_csv(path)
+        except pd.errors.ParserError:
+            try:
+                return pd.read_csv(path, on_bad_lines='skip', quoting=csv.QUOTE_ALL)
+            except pd.errors.ParserError:
+                return pd.read_csv(path, on_bad_lines='skip', quoting=csv.QUOTE_NONE, engine='python')
+
+    df_a = _read_csv_robust(args.a)
+    df_b = _read_csv_robust(args.b)
     for c in ('prompt', 'model_response'):
         if c not in df_a.columns or c not in df_b.columns:
             raise ValueError("Both input CSVs must contain 'prompt' and 'model_response' columns")
@@ -54,10 +74,9 @@ def main():
     if args.openai_api_key:
         os.environ['OPENAI_API_KEY'] = args.openai_api_key
 
-    scored = out.replace('.csv', '_scored.csv')
-    score_model_comparison(out, scored, heuristics_only=args.heuristics_only, judge_model=args.judge_model)
-    print(f"Wrote scored CSV: {scored}")
-    print(f"Metrics CSV: {scored.replace('.csv', '_metrics.csv')}")
+    print("Pairwise scoring has moved to scripts/pairwise_scorer.py.")
+    print("To score the merged file, run:")
+    print(f"  python scripts/pairwise_scorer.py --input {out} --output {out.replace('.csv','_scored.csv')} --judge-model {args.judge_model}")
 
 
 if __name__ == '__main__':

@@ -78,7 +78,8 @@ Based on this analysis, create a comprehensive "essence profile" of {self.disgui
 Make this actionable - write it as instructions that would allow another AI to authentically embody this model's communication essence, not just mimic surface features."""
 
         try:
-            analysis_model = os.getenv("ANALYSIS_MODEL", "openai/gpt-4o")
+            # Default to GPT-4.1-mini for analysis unless overridden
+            analysis_model = os.getenv("ANALYSIS_MODEL", "openai/gpt-4.1-mini")
             # Use cached completion for persistent caching
             try:
                 import sys

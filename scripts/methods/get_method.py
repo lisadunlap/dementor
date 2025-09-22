@@ -74,6 +74,9 @@ def get_method(method_name, model, disguise_as, disguise_df=None, source_df=None
             'max_iterations': method_kwargs.get('al_max_iterations', 5),
             'relaxation_factor': method_kwargs.get('al_relaxation_factor', 1.2),
             'seed': method_kwargs.get('al_seed'),
+            # Also used by embedding_delta selector
+            'embedding_model': method_kwargs.get('selector_embedding_model', 'intfloat/e5-small-v2'),
+            'pool_multiplier': method_kwargs.get('selector_pool_multiplier', 5),
         }
         return ContrastiveWithALExamples(
             model,

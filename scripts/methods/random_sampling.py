@@ -37,8 +37,12 @@ class RandomSamplingSystemPrompting(MethodBase):
         if self.disguise_df is None or len(self.disguise_df) == 0:
             system_prompt = f"You are {self.disguise_as}. Respond in the style and manner of {self.disguise_as}."
         else:
-            sample_size = min(self.num_samples, len(self.disguise_df))
-            examples = self.disguise_df.sample(n=sample_size, random_state=self.seed)
+            # Exclude the current prompt to avoid leakage
+            df = self.disguise_df
+            if 'prompt' in df.columns:
+                df = df[df['prompt'] != prompt]
+            sample_size = min(self.num_samples, len(df))
+            examples = df.sample(n=sample_size, random_state=self.seed) if sample_size > 0 else df.head(0)
             
             system_prompt = f"""You are {self.disguise_as}. Study these examples of {self.disguise_as}'s responses and mimic the style, tone, formatting, and approach:
 

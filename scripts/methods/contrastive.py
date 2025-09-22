@@ -68,11 +68,11 @@ Based on these examples, identify 5-7 key distinctive features of the TARGET mod
 
 Provide specific, actionable guidelines for mimicking the TARGET model's distinctive style."""
         try:
-            analysis_model = os.getenv("ANALYSIS_MODEL", "openai/gpt-4o")
+            # Use GPT-4.1-mini by default for contrastive analysis (override with ANALYSIS_MODEL)
+            analysis_model = os.getenv("ANALYSIS_MODEL", "openai/gpt-4.1-mini")
             # Use cached completion for persistent caching
             try:
                 import sys
-                import os
                 # Add parent directory to path for importing cached_llm
                 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 if parent_dir not in sys.path:

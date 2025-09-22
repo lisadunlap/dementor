@@ -14,7 +14,7 @@ from litellm import completion
 import litellm
 
 # Import from serve utilities
-from .serve.utils_general import (
+from serve.utils_general import (
     get_from_cache,
     save_to_cache,
     hash_key

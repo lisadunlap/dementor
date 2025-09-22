@@ -8,7 +8,7 @@ from scripts.generate_responses import read_prompts, _gen_litellm
 
 # Test reading prompts
 print("Testing prompt reading...")
-prompts = read_prompts('data/datasets/gsm8k/gsm8k_prompts.txt')
+prompts = read_prompts('data/datasets/gsm8k/gsm8k_prompts_500.csv')
 print(f"Read {len(prompts)} prompts")
 print(f"First prompt: {prompts[0][:100]}...")
 

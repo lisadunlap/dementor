@@ -254,6 +254,11 @@ def compute_heuristics(responses1, responses2):
     
     # Compute features for each pair
     for resp1, resp2 in zip(responses1, responses2):
+        # Coerce to safe strings; treat None/NaN/non-text as empty string
+        if not isinstance(resp1, str):
+            resp1 = "" if (resp1 is None or (isinstance(resp1, float) and resp1 != resp1)) else str(resp1)
+        if not isinstance(resp2, str):
+            resp2 = "" if (resp2 is None or (isinstance(resp2, float) and resp2 != resp2)) else str(resp2)
         pair_result = {}
         for feature_name, feature_func in style_functions.items():
             resp1_has = feature_func(resp1)

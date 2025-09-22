@@ -24,7 +24,7 @@ if 'scripts' not in sys.path:
     sys.path.append('scripts')
 
 from methods.get_method import get_method
-from scorer import score_model_comparison
+from scorer import score_model_single
 from litellm import completion
 import litellm
 from tqdm import tqdm
@@ -67,11 +67,13 @@ def load_model_responses(model_path: str, disguise_as_path: str) -> tuple[pd.Dat
     
     source_df = pd.read_csv(model_path)
     target_df = pd.read_csv(disguise_as_path)
-    
-    # Standardize column names
-    if 'model_response' in source_df.columns:
-        source_df = source_df.rename(columns={'model_response': 'target_response'})
-    if 'model_response' in target_df.columns:
+
+    # Standardize columns expected by methods:
+    # - source_df must have 'model_response'
+    # - target_df must have 'target_response'
+    if 'model_response' not in source_df.columns and 'target_response' in source_df.columns:
+        source_df = source_df.rename(columns={'target_response': 'model_response'})
+    if 'target_response' not in target_df.columns and 'model_response' in target_df.columns:
         target_df = target_df.rename(columns={'model_response': 'target_response'})
     
     logging.info(f"Loaded {len(source_df)} source responses and {len(target_df)} target responses")
@@ -209,7 +211,7 @@ def generate_disguised_responses(
                 def _llm_call():
                     # Use cached completion for persistent caching
                     try:
-                        from .cached_llm import cached_completion
+                        from cached_llm import cached_completion
                         resp = cached_completion(
                             model=routed_model,
                             messages=disguised_messages,
@@ -275,24 +277,7 @@ def generate_disguised_responses(
     return pd.DataFrame(results), method_stats
 
 
-def _short_model_name(name: str) -> str:
-    """Produce a short, readable identifier from a provider/model string.
-    Examples:
-      'openai/meta-llama/Meta-Llama-3-8B-Instruct' -> 'llama-3-8b'
-      'meta-llama/Meta-Llama-3.1-8B-Instruct'     -> 'llama-3.1-8b'
-      'gpt-4o'                                    -> 'gpt-4o'
-    """
-    if not name:
-        return "model"
-    seg = name.split('/')[-1]
-    s = seg.replace('_', '-').strip()
-    # Remove common suffixes/prefixes
-    for token in ["Instruct", "-Instruct", "instruct", "-instruct", "Meta-", "meta-"]:
-        s = s.replace(token, "")
-    # Normalize Llama branding and casing
-    s = s.replace("Llama-", "llama-").replace("Llama", "llama")
-    s = s.lower().strip('-')
-    return s or "model"
+# (Removed short-name formatter; we use official model identifiers in filenames and tags.)
 
 
 def main():
@@ -320,8 +305,12 @@ def main():
     parser.add_argument("--al-max-iterations", type=int, default=5, help="Max AL iterations")
     parser.add_argument("--al-relaxation-factor", type=float, default=1.2, help="Relax thresholds factor when few candidates")
     parser.add_argument("--al-seed", type=int, default=None, help="Seed for AL selection")
-    parser.add_argument("--example-selector", choices=["al", "clustering", "random"], default="al",
+    parser.add_argument("--example-selector", choices=["embedding_delta", "al", "clustering", "random"], default="embedding_delta",
                         help="How to choose in-context examples for composite method")
+    parser.add_argument("--selector-embedding-model", type=str, default="intfloat/e5-small-v2",
+                        help="HF embedding model to use for embedding_delta selector")
+    parser.add_argument("--selector-pool-multiplier", type=int, default=5,
+                        help="Pool multiplier for top-|Δ| candidates before clustering (embedding_delta)")
     
     # Data paths
     parser.add_argument("--source_responses", type=str, 
@@ -381,7 +370,7 @@ def main():
     except Exception:
         pass
     
-    # Determine dataset once (used for paths and optional logging)
+    # Determine dataset and subset once (used for paths and optional logging)
     def _infer_dataset(prompts_path: str) -> str:
         p = (prompts_path or "").lower()
         if "gsm8k" in p:
@@ -390,22 +379,34 @@ def main():
             return "chatbot_arena"
         return "generic"
     dataset = _infer_dataset(args.prompts_file)
+    def _infer_subset(prompts_path: str) -> str:
+        p = (prompts_path or "").lower()
+        if "_500" in p or "/500" in p or p.endswith("500.csv"):
+            return "500"
+        return "full"
+    subset = _infer_subset(args.prompts_file)
+
+    # Helper to create a filesystem/tag-friendly identifier from the official model name
+    def _official_id(s: str) -> str:
+        return (s or "").replace('/', '_').replace(':', '_')
+
+    # Precompute official identifiers for logging/filenames
+    src_id = _official_id(args.model)
+    tgt_id = _official_id(args.disguise_as)
 
     # Initialize wandb by default (unless disabled)
     use_wandb = not args.no_wandb
     if use_wandb:
         # Auto-generate run name if not provided
         if not args.run_name:
-            src_short = _short_model_name(args.model)
-            tgt_short = _short_model_name(args.disguise_as)
             timestamp = pd.Timestamp.now().strftime("%m%d_%H%M")
-            args.run_name = f"{args.method}_{src_short}_as_{tgt_short}_{timestamp}"
+            args.run_name = f"{args.method}_{src_id}_as_{tgt_id}_{timestamp}"
 
         wandb.init(
             project="dementor-disguise",
             name=args.run_name,
             config=vars(args),
-            tags=[args.method, dataset, src_short, tgt_short]
+            tags=[args.method, dataset, src_id, tgt_id]
         )
     
     # Auto-detect response files if not provided
@@ -464,26 +465,36 @@ def main():
         )
         raise
     
-    # Load prompts
+    # Load prompts (CSV only; expects a 'prompt' column)
     if not os.path.exists(args.prompts_file):
         raise FileNotFoundError(f"Prompts file not found: {args.prompts_file}")
-        
-    with open(args.prompts_file, 'r') as f:
-        prompts = [line.strip() for line in f if line.strip()]
+    if not args.prompts_file.lower().endswith('.csv'):
+        raise ValueError("prompts_file must be a CSV with a 'prompt' column. TXT is no longer supported.")
+    try:
+        import csv as _csv
+        prompts_df = pd.read_csv(args.prompts_file)
+    except pd.errors.ParserError:
+        try:
+            prompts_df = pd.read_csv(args.prompts_file, on_bad_lines='skip', quoting=_csv.QUOTE_ALL)
+        except pd.errors.ParserError:
+            prompts_df = pd.read_csv(args.prompts_file, on_bad_lines='skip', quoting=_csv.QUOTE_NONE, engine='python')
+    if 'prompt' not in prompts_df.columns:
+        raise ValueError("prompts_file CSV must contain a 'prompt' column")
+    prompts = [str(p).strip() for p in prompts_df['prompt'].tolist() if str(p).strip()]
     
     logging.info(f"Loaded {len(prompts)} prompts")
     
     # Determine output dir and result path before generation for incremental writes
+    # New layout (per user): data/results/<dataset>/<subset>/<method>/{pair}.csv
     if args.output_dir in (None, "results/streamlined"):
-        default_dir = os.path.join("data", "results", dataset, "comparisons", "disguised_vs_target", args.method)
+        default_dir = os.path.join("data", "results", dataset, subset, args.method)
         os.makedirs(default_dir, exist_ok=True)
         args.output_dir = default_dir
     else:
         os.makedirs(args.output_dir, exist_ok=True)
 
-    src_short = _short_model_name(args.model)
-    tgt_short = _short_model_name(args.disguise_as)
-    results_file = os.path.join(args.output_dir, f"{src_short}_as_{tgt_short}.csv")
+    pair_id = f"{src_id}_as_{tgt_id}"
+    results_file = os.path.join(args.output_dir, f"{pair_id}.csv")
 
     # Prepare method kwargs (for AL variants)
     method_kwargs = {
@@ -496,6 +507,9 @@ def main():
         'al_relaxation_factor': args.al_relaxation_factor,
         'al_seed': args.al_seed,
         'example_selector': args.example_selector,
+        # Selector-specific
+        'selector_embedding_model': args.selector_embedding_model,
+        'selector_pool_multiplier': args.selector_pool_multiplier,
     }
 
     # Generate disguised responses
@@ -522,7 +536,10 @@ def main():
     # Evaluate results
     if not args.skip_evaluation and os.path.exists(results_file) and os.path.getsize(results_file) > 0:
         logging.info("Evaluating disguised responses...")
-        scores_file = results_file.replace('.csv', '_scores.csv')
+        # Group scores under: data/results/<dataset>/<subset>/<method>/scores/<pair>/
+        metrics_dir = os.path.join(args.output_dir, "scores", pair_id)
+        os.makedirs(metrics_dir, exist_ok=True)
+        scores_file = os.path.join(metrics_dir, "scored.csv")
 
         # Set up judge model environment if specified
         original_api_base = os.environ.get("OPENAI_API_BASE")
@@ -534,11 +551,10 @@ def main():
             os.environ["OPENAI_API_KEY"] = args.judge_api_key
 
         try:
-            scored_df = score_model_comparison(
-                results_file,
-                scores_file,
-                heuristics_only=args.heuristics_only,
-                judge_model=args.judge_model
+            # Single-file scoring (no pairwise): compute stylistic features + aggregates
+            scored_df = score_model_single(
+                input_file=results_file,
+                output_file=scores_file,
             )
         finally:
             # Restore original environment
@@ -553,25 +569,15 @@ def main():
                 del os.environ["OPENAI_API_KEY"]
         
         # Log summary statistics
-        if 'semantic_score' in scored_df.columns:
-            sem_mean = scored_df['semantic_score'].mean()
-            sty_mean = scored_df['stylistic_score'].mean()
-            logging.info(f"Average semantic score: {sem_mean:.3f}")
-            logging.info(f"Average stylistic score: {sty_mean:.3f}")
-            
-            if use_wandb:
-                wandb.log({
-                    "semantic_score_mean": sem_mean,
-                    "stylistic_score_mean": sty_mean,
-                    "num_samples": len(scored_df)
-                })
-        
-        if 'heuristic_match_score' in scored_df.columns:
-            heur_mean = scored_df['heuristic_match_score'].mean()
-            logging.info(f"Average heuristic match: {heur_mean:.3f}")
-            
-            if use_wandb:
-                wandb.log({"heuristic_match_mean": heur_mean})
+        # For single-file scoring, we only have feature columns + response_length
+        try:
+            if 'response_length' in scored_df.columns:
+                rlen = scored_df['response_length'].mean()
+                logging.info(f"Average response length: {rlen:.1f}")
+                if use_wandb:
+                    wandb.log({"response_length_mean": rlen, "num_samples": len(scored_df)})
+        except Exception:
+            pass
 
         # Save a run summary JSON
         try:
@@ -588,7 +594,8 @@ def main():
             }
             if method_stats:
                 summary.update(method_stats)
-            summary_path = results_file.replace('.csv', '_summary.json')
+            # Write summary into metrics_<pair>/ alongside scores/metrics
+            summary_path = os.path.join(metrics_dir, "summary.json")
             with open(summary_path, 'w') as f:
                 json.dump(summary, f, indent=2)
             logging.info(f"Run summary saved to {summary_path}")

@@ -137,18 +137,30 @@ python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --m
 - Requires both source and target model response data
 - Pairs well with AL‑selected examples (see the Composite method below)
 
-### Composite: Contrastive + AL‑Selected Examples (`--method contrastive_with_al_examples`)
+### Composite: Contrastive + Example Selection (`--method contrastive_with_al_examples`)
 **Best for**: Clear rules plus strong in‑context exemplars
 ```bash
 python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o \
   --method contrastive_with_al_examples --num_samples 200 \
-  --al-num-examples 5 --al-max-iterations 5 --al-batch-size 10
+  --al-num-examples 5 --al-max-iterations 5 --al-batch-size 10 \
+  --example-selector embedding_delta \
+  --selector-embedding-model intfloat/e5-small-v2 \
+  --selector-pool-multiplier 5
 ```
-- Produces a contrastive system prompt (explicit guidelines) AND selects informative examples (AL/clustering/random) for the context window.
-- Switch example selection via `--example-selector al|clustering|random`.
+- Produces a contrastive system prompt (explicit guidelines) AND selects informative examples for the context window.
+- Default selection is `embedding_delta`: computes embedding differences (target − source) and selects diverse, high‑magnitude deltas via k‑means coverage.
+- Switch example selection via `--example-selector embedding_delta|al|clustering|random`.
 
-What are “AL-selected examples”?
-- Examples chosen by the Active Learning Disguise selector. It iteratively picks target examples that are most informative for imitation (based on quality/uncertainty), rather than random examples. You can use a contrastive system prompt (rules) plus AL-selected examples (context) together.
+Selector notes
+- `embedding_delta` (default): inner‑joins source/target by `prompt`; make sure both CSVs share prompts and have expected columns (source→`model_response`, target→`target_response`). Tunables: `--selector-embedding-model`, `--selector-pool-multiplier`.
+- `al`: Active Learning selector (pairwise/Thurstonian on math‑style features).
+- `clustering`: style‑feature k‑means over target responses.
+- `random`: uniform sample.
+
+Scoring
+- Single-file scoring (base models): `python -m scripts.scorer <model_responses.csv> --output data/results/<dataset>/scores/<model>/scored.csv --single`
+- Pairwise scoring (disguised vs target) moved to a dedicated script:
+  `python scripts/pairwise_scorer.py --input data/results/<dataset>/<method>/<src>_as_<tgt>.csv --output data/results/<dataset>/<method>/scores/<pair>/scored.csv --judge-model openai/gpt-4.1-mini`
 
 ## File Structure
 
@@ -177,6 +189,17 @@ Additional:
 - `examples/` — provider setup and copy‑paste commands
 - `scripts/smoke_test.py` — offline smoke test (no API keys)
 - `scripts/legacy/` — legacy/experimental scripts retained for reference (includes `serve/` helpers)
+
+## Filename Convention
+
+- We use official model identifiers in artifact filenames and tags, with only minimal sanitization for filesystem safety.
+- Sanitization rule: replace `/` and `:` with `_`.
+- Examples:
+  - Source responses: `data/model-responses/gsm8k/full/meta-llama_Meta-Llama-3-8B-Instruct.csv`
+  - Disguised vs target: `data/results/gsm8k/comparisons/disguised_vs_target/<method>/gpt-4.1_as_meta-llama_Meta-Llama-3-8B-Instruct.csv`
+  - Baseline comparison: `data/results/gsm8k/comparisons/source_vs_target/openai_gpt-4o-mini_vs_meta-llama_Meta-Llama-3-8B-Instruct.csv`
+
+Note: Older runs may contain short-name artifacts (e.g., `llama-3-8b`). These are deprecated; new runs and tools write official names.
 ```
 
 ## Evaluation

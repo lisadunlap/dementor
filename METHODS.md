@@ -66,7 +66,7 @@ Method registry: `disguising/methods/get_method.py` (clean names in quotes below
   - What it does: Combines contrastive rules (explicit guidelines) with AL-selected examples for the context window.
   - When to use: You want both a clear rulebook and strong exemplars in one run.
 
-CLI knobs for Active Learning (both standalone and composite):
+CLI knobs for Active Learning and selectors (composite):
 - `--al-num-examples`: number of examples to include (default: 5)
 - `--al-d-regular`: initial degree for regular graph seeding (default: 3)
 - `--al-p-threshold`, `--al-q-threshold`: bottom fractions (0–1) for ambiguity and coverage filters (default: 0.1 each)
@@ -74,6 +74,11 @@ CLI knobs for Active Learning (both standalone and composite):
 - `--al-max-iterations`: iterations (default: 5)
 - `--al-relaxation-factor`: relax thresholds when too few candidates (default: 1.2)
 - `--al-seed`: random seed
+Selectors (used by `contrastive_with_al_examples` via `--example-selector`):
+- `embedding_delta` (default): coverage over normalized embedding deltas `e_t − e_s` with k‑means; knobs: `--selector-embedding-model` (default: `intfloat/e5-small-v2`), `--selector-pool-multiplier` (default: 5)
+- `al`: iterative active learning selector (pairwise/Thurstonian on math features)
+- `clustering`: style‑feature k‑means over target responses
+- `random`: uniform sample
 
 ### How to Get a Method
 ```python
@@ -96,7 +101,7 @@ Notes:
 - Fast baseline: "random_sampling" (k=5) or "stylistic" if structure is key.
 - Distinctive personality: "vibe_based" (optionally with a few examples).
 - Explicit change-list from source→target: "contrastive".
-- Automated, stronger example selection: "active_learning" or a clustering variant.
+- Automated, stronger example selection: `embedding_delta` (default in composite), `active_learning`, or a clustering variant.
 
 ---
 

@@ -13,14 +13,10 @@ from pathlib import Path
 
 # Adding directories to sys.path
 current_dir = os.path.dirname(os.path.abspath(__file__))
-serve_dir = os.path.join(current_dir, 'serve')
-disguising_dir = os.path.abspath(os.path.join(current_dir, '..'))
-project_root = os.path.abspath(os.path.join(current_dir, '..', '..'))
-
-# Add paths to sys.path if they exist and aren't already there
-for path in [serve_dir, disguising_dir, project_root]:
-    if os.path.exists(path) and path not in sys.path:
-        sys.path.insert(0, path)
+repo_root = os.path.abspath(os.path.join(current_dir, '..'))  # repository root containing the 'scripts' package
+# Ensure repository root is first on sys.path so `import scripts.*` resolves reliably
+if repo_root not in sys.path:
+    sys.path.insert(0, repo_root)
 
 import nest_asyncio
 from openai import OpenAI
@@ -38,11 +34,11 @@ import lmdb
 import numpy as np
 import logging
 
-# Import utilities from serve folder (now in path)
-from utils_llm import get_llm_output, get_llm_embedding
-from utils_general import get_from_cache, save_to_cache, hash_key
-from global_vars import LLAMA_URL
-from utils import get_token_count
+# Import utilities using absolute package paths so relative imports work inside modules
+from scripts.serve.utils_llm import get_llm_output, get_llm_embedding
+from scripts.serve.utils_general import get_from_cache, save_to_cache, hash_key
+from scripts.serve.global_vars import LLAMA_URL
+from scripts.utils import get_token_count
 
 # Load environment variables
 load_dotenv()
@@ -67,6 +63,8 @@ class CachedResponseGenerator:
             map_size=int(1e11)
         )
         self.cache_lock = threading.Lock()
+        # Track prompts we've already written to the incremental CSV (avoid duplicates on resume)
+        self._seen_written_prompts: set[str] = set()
         
     def load_prompts(self, dataset_path, marker="### Call Transcript"):
         """Load prompts from CSV or text file."""
@@ -84,23 +82,27 @@ class CachedResponseGenerator:
         conversations = [block.strip() for block in content.split(marker) if block.strip()]
         return conversations
 
-    def get_cached_response(self, prompt: str, model: str, params: dict) -> Optional[str]:
+    def get_cached_response(self, prompt: str, model: str, params: dict, *, multimodal: bool = False, system_prompt: Optional[str] = "You are a helpful assistant.") -> Optional[str]:
         """Get cached response if available."""
         cache_key = json.dumps({
             "prompt": prompt,
             "model": model,
-            "params": params
+            "params": params,
+            "multimodal": multimodal,
+            "system_prompt": system_prompt
         }, sort_keys=True)
         
         with self.cache_lock:
             return get_from_cache(cache_key, self.generation_cache)
 
-    def save_cached_response(self, prompt: str, model: str, params: dict, response: str):
+    def save_cached_response(self, prompt: str, model: str, params: dict, response: str, *, multimodal: bool = False, system_prompt: Optional[str] = "You are a helpful assistant."):
         """Save response to cache."""
         cache_key = json.dumps({
             "prompt": prompt,
             "model": model,
-            "params": params
+            "params": params,
+            "multimodal": multimodal,
+            "system_prompt": system_prompt
         }, sort_keys=True)
         
         with self.cache_lock:
@@ -124,6 +126,55 @@ class CachedResponseGenerator:
         response = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL)
         return response.strip()
 
+    # ----------------------------
+    # Incremental CSV helpers
+    # ----------------------------
+    def _ensure_csv_header(self, output_path: Optional[str]):
+        if not output_path:
+            return
+        os.makedirs(os.path.dirname(output_path) or '.', exist_ok=True)
+        if not os.path.exists(output_path) or os.path.getsize(output_path) == 0:
+            import csv as _csv
+            with open(output_path, 'w', newline='', encoding='utf-8') as f:
+                w = _csv.writer(f, quoting=_csv.QUOTE_ALL)
+                w.writerow(["prompt", "messages", "model_response", "model", "prompt_token_length", "response_token_length"])
+        # Initialize seen set from existing file to prevent duplicate appends on resume
+        try:
+            import csv as _csv
+            with open(output_path, 'r', encoding='utf-8') as f:
+                reader = _csv.reader(f)
+                header = next(reader, None)
+                if header and 'prompt' in header:
+                    p_idx = header.index('prompt')
+                else:
+                    p_idx = 0
+                for row in reader:
+                    if row and len(row) > p_idx:
+                        self._seen_written_prompts.add(row[p_idx])
+        except Exception:
+            pass
+
+    def _append_csv_rows(self, output_path: Optional[str], rows):
+        if not output_path or not rows:
+            return
+        import csv as _csv
+        with open(output_path, 'a', newline='', encoding='utf-8') as f:
+            w = _csv.writer(f, quoting=_csv.QUOTE_ALL)
+            for r in rows:
+                p = r.get('prompt', '')
+                # Skip if we've already written this prompt in this file (prevents duplicates on resume)
+                if p in self._seen_written_prompts:
+                    continue
+                w.writerow([
+                    r.get('prompt', ''),
+                    r.get('messages', ''),
+                    r.get('model_response', ''),
+                    r.get('model', ''),
+                    r.get('prompt_token_length', ''),
+                    r.get('response_token_length', ''),
+                ])
+                self._seen_written_prompts.add(p)
+
     def generate_with_openai(self, prompts: List[str], model: str, **kwargs):
         """Generate responses using OpenAI API with caching."""
         client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
@@ -132,6 +183,8 @@ class CachedResponseGenerator:
         
         responses = []
         multimodal = kwargs.get('multimodal', False)
+        output_path: Optional[str] = kwargs.get('output_path')
+        self._ensure_csv_header(output_path)
         params = {
             'temperature': kwargs.get('temperature', 0.7),
             'top_p': kwargs.get('top_p', 0.95),
@@ -140,10 +193,20 @@ class CachedResponseGenerator:
         
         for prompt in tqdm(prompts, desc=f"Generating responses with {model}"):
             # Check cache first
-            cached_response = self.get_cached_response(prompt, model, params)
+            cached_response = self.get_cached_response(prompt, model, params, multimodal=multimodal)
             if cached_response is not None:
                 logger.debug(f"Cache hit for prompt: {prompt[:50]}...")
                 responses.append(cached_response)
+                # Incremental write
+                messages = self.format_prompt(prompt, multimodal)
+                self._append_csv_rows(output_path, [{
+                    'prompt': prompt,
+                    'messages': json.dumps(messages),
+                    'model_response': cached_response,
+                    'model': model,
+                    'prompt_token_length': get_token_count(prompt),
+                    'response_token_length': get_token_count(cached_response),
+                }])
                 continue
             
             # Generate new response
@@ -191,7 +254,16 @@ class CachedResponseGenerator:
                 response = self.postprocess_response(response)
                 
                 # Cache the response
-                self.save_cached_response(prompt, model, params, response)
+                self.save_cached_response(prompt, model, params, response, multimodal=multimodal)
+                # Incremental write
+                self._append_csv_rows(output_path, [{
+                    'prompt': prompt,
+                    'messages': json.dumps(messages),
+                    'model_response': response,
+                    'model': model,
+                    'prompt_token_length': get_token_count(prompt),
+                    'response_token_length': get_token_count(response),
+                }])
                 
             except Exception as e:
                 response = f"[ERROR] {e}"
@@ -204,6 +276,8 @@ class CachedResponseGenerator:
     def generate_with_vllm(self, prompts: List[str], model: str, **kwargs):
         """Generate responses using vLLM with caching."""
         multimodal = kwargs.get('multimodal', False)
+        output_path: Optional[str] = kwargs.get('output_path')
+        self._ensure_csv_header(output_path)
         params = {
             'temperature': kwargs.get('temperature', 0.7),
             'top_p': kwargs.get('top_p', 0.95),
@@ -216,9 +290,19 @@ class CachedResponseGenerator:
         uncached_indices = []
         
         for i, prompt in enumerate(prompts):
-            cached_response = self.get_cached_response(prompt, model, params)
+            cached_response = self.get_cached_response(prompt, model, params, multimodal=multimodal)
             if cached_response is not None:
                 cached_responses.append((i, cached_response))
+                # Incremental write for cached
+                messages = self.format_prompt(prompt, multimodal)
+                self._append_csv_rows(output_path, [{
+                    'prompt': prompt,
+                    'messages': json.dumps(messages),
+                    'model_response': cached_response,
+                    'model': model,
+                    'prompt_token_length': get_token_count(prompt),
+                    'response_token_length': get_token_count(cached_response),
+                }])
             else:
                 uncached_prompts.append(prompt)
                 uncached_indices.append(i)
@@ -254,7 +338,17 @@ class CachedResponseGenerator:
                 for j, response in enumerate(batch_responses):
                     response = self.postprocess_response(response)
                     prompt = uncached_prompts[i + j]
-                    self.save_cached_response(prompt, model, params, response)
+                    self.save_cached_response(prompt, model, params, response, multimodal=multimodal)
+                    # Incremental write for new responses
+                    mm = self.format_prompt(prompt, multimodal)
+                    self._append_csv_rows(output_path, [{
+                        'prompt': prompt,
+                        'messages': json.dumps(mm),
+                        'model_response': response,
+                        'model': model,
+                        'prompt_token_length': get_token_count(prompt),
+                        'response_token_length': get_token_count(response),
+                    }])
                     new_responses.append(response)
         
         # Combine cached and new responses in correct order
@@ -275,6 +369,8 @@ class CachedResponseGenerator:
         params = {
             'max_tokens': kwargs.get('max_tokens', 1024)
         }
+        output_path: Optional[str] = kwargs.get('output_path')
+        self._ensure_csv_header(output_path)
         
         responses = []
         for prompt in tqdm(prompts, desc=f"Generating responses with {model} (serve)"):
@@ -288,6 +384,16 @@ class CachedResponseGenerator:
                 )
                 response = self.postprocess_response(response)
                 responses.append(response)
+                # Incremental write
+                messages = self.format_prompt(prompt, False)
+                self._append_csv_rows(output_path, [{
+                    'prompt': prompt,
+                    'messages': json.dumps(messages),
+                    'model_response': response,
+                    'model': model,
+                    'prompt_token_length': get_token_count(prompt),
+                    'response_token_length': get_token_count(response),
+                }])
             except Exception as e:
                 response = f"[ERROR] {e}"
                 logger.error(f"Error generating response: {e}")
@@ -489,9 +595,15 @@ def main():
         use_openai = "gpt" in model.lower()
         use_vllm = not use_openai
     
-    # Generate responses
+    # Determine output path (used for incremental writing too)
+    model_clean = model.replace("/", "_")
+    if args.num_samples:
+        output_path = os.path.join(args.output_dir, f"{model_clean}-{args.num_samples}.csv")
+    else:
+        output_path = os.path.join(args.output_dir, f"{model_clean}.csv")
+
+    # Generate responses with incremental CSV writing
     logger.info(f"Generating responses with model: {model}")
-    
     if use_openai:
         responses = generator.generate_with_openai(
             prompts=prompts,
@@ -499,7 +611,8 @@ def main():
             temperature=args.temperature,
             top_p=args.top_p,
             max_tokens=args.max_tokens,
-            multimodal=args.multimodal
+            multimodal=args.multimodal,
+            output_path=output_path,
         )
     elif use_vllm:
         responses = generator.generate_with_vllm(
@@ -511,16 +624,18 @@ def main():
             multimodal=args.multimodal,
             max_model_len=args.max_model_len,
             tensor_parallel_size=args.tensor_parallel_size,
-            batch_size=args.batch_size
+            batch_size=args.batch_size,
+            output_path=output_path,
         )
     else:
         responses = generator.generate_with_serve_llm(
             prompts=prompts,
             model=model,
-            max_tokens=args.max_tokens
+            max_tokens=args.max_tokens,
+            output_path=output_path,
         )
-    
-    # Save results
+
+    # Final consolidated save (incremental CSV already contains rows if process was interrupted)
     model_clean = model.replace("/", "_")
     if args.num_samples:
         output_path = os.path.join(args.output_dir, f"{model_clean}-{args.num_samples}.csv")

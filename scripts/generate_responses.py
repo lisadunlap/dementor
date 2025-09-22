@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
-Generate model responses for a prompts file, with simple caching.
+Generate model responses for a prompts CSV (no TXT), with simple caching.
 
-Supports API providers via LiteLLM. Writes a CSV with columns:
+Input CSV must contain a 'prompt' column. Writes a CSV with columns:
 - prompt, model_response, model
 
 Usage:
   python scripts/generate_responses.py \
     --model openai/gpt-4o-mini \
-    --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
+    --prompts_file data/datasets/chatbot_arena/prompts.csv \
     --output data/model-responses/chatbot_arena/full/openai_gpt-4o-mini.csv
 
 If the output file exists and --overwrite is not provided, the script skips prompts
@@ -38,8 +38,20 @@ except Exception:
 
 
 def read_prompts(path: str) -> List[str]:
-    with open(path, 'r', encoding='utf-8') as f:
-        return [line.strip() for line in f if line.strip()]
+    """Read prompts from a CSV with a 'prompt' column (TXT not supported)."""
+    if not path.lower().endswith('.csv'):
+        raise ValueError("prompts_file must be a CSV with a 'prompt' column. TXT is no longer supported.")
+    import csv as _csv
+    try:
+        df = pd.read_csv(path)
+    except pd.errors.ParserError:
+        try:
+            df = pd.read_csv(path, on_bad_lines='skip', quoting=_csv.QUOTE_ALL)
+        except pd.errors.ParserError:
+            df = pd.read_csv(path, on_bad_lines='skip', quoting=_csv.QUOTE_NONE, engine='python')
+    if 'prompt' not in df.columns:
+        raise ValueError("prompts CSV must contain a 'prompt' column")
+    return [str(p).strip() for p in df['prompt'].tolist() if str(p).strip()]
 
 
 def load_existing(output: Path) -> Dict[str, str]:
@@ -109,7 +121,7 @@ def _gen_vllm(model_id: str, prompt_text: str, max_tokens: int, temperature: flo
 def main():
     parser = argparse.ArgumentParser(description="Generate model responses for prompts")
     parser.add_argument("--model", required=True, help="LiteLLM model id (e.g., openai/gpt-4o-mini)")
-    parser.add_argument("--prompts_file", required=True, help="Path to prompts text file")
+    parser.add_argument("--prompts_file", required=True, help="Path to prompts CSV with 'prompt' column (TXT not supported)")
     parser.add_argument("--output", required=True, help="Output CSV path")
     parser.add_argument("--system", default=None, help="Optional system message")
     parser.add_argument("--max-tokens", type=int, default=512)

@@ -47,16 +47,32 @@ class ContrastiveWithALExamples(MethodBase):
         self._al_selector = None
         if self.selector == 'al':
             try:
-                from ..utils.active_learning_selector import ActiveLearningSelector
+                # Prefer absolute import via the 'scripts' package
+                from scripts.methods.utils.active_learning_selector import ActiveLearningSelector
             except Exception:
-                try:
-                    from scripts.methods.utils.active_learning_selector import ActiveLearningSelector
-                except ImportError:
-                    from utils.active_learning_selector import ActiveLearningSelector
+                # Fallback to relative when imported as part of the package
+                from ..utils.active_learning_selector import ActiveLearningSelector
             self._al_selector = ActiveLearningSelector(
                 target_responses_df=self.disguise_df.rename(columns={"target_response": "model_response"}),
                 num_examples=self.num_examples,
                 **self.al_kwargs,
+            )
+        elif self.selector == 'embedding_delta':
+            try:
+                from scripts.methods.utils.embedding_delta_selector import EmbeddingDeltaSelector
+            except Exception:
+                from ..utils.embedding_delta_selector import EmbeddingDeltaSelector
+            # Pull selector-specific args from al_kwargs for simplicity
+            emb_model = self.al_kwargs.get('embedding_model', 'intfloat/e5-small-v2')
+            pool_mult = int(self.al_kwargs.get('pool_multiplier', 5))
+            seed = self.al_kwargs.get('seed', None)
+            self._al_selector = EmbeddingDeltaSelector(
+                target_responses_df=self.disguise_df,
+                source_responses_df=self.source_df,
+                num_examples=self.num_examples,
+                embedding_model=emb_model,
+                pool_multiplier=pool_mult,
+                seed=seed,
             )
 
     def forward(self, prompt: str) -> List[Dict[str, str]]:
@@ -66,7 +82,7 @@ class ContrastiveWithALExamples(MethodBase):
         else:
             base_system = f"You are {self.disguise_as}."
 
-        if self.selector == 'al' and self._al_selector is not None:
+        if self.selector in ('al', 'embedding_delta') and self._al_selector is not None:
             selected = self._al_selector.select_examples()
         elif self.selector == 'clustering':
             try:
@@ -100,6 +116,20 @@ class ContrastiveWithALExamples(MethodBase):
                 selected = self.disguise_df.iloc[chosen_idx]
         else:
             selected = self.disguise_df.sample(n=min(self.num_examples, len(self.disguise_df)))
+
+        # Exclude the current prompt from examples to avoid leakage
+        if 'prompt' in selected.columns:
+            selected = selected[selected['prompt'] != prompt]
+        # If we dropped below the desired number, top up from the remaining pool (excluding current prompt)
+        need = self.num_examples - len(selected)
+        if need > 0 and 'prompt' in self.disguise_df.columns:
+            pool = self.disguise_df[self.disguise_df['prompt'] != prompt]
+            # Avoid duplicates already in selected
+            if len(selected) > 0:
+                pool = pool[~pool.index.isin(selected.index)]
+            if len(pool) > 0:
+                extra = pool.sample(n=min(need, len(pool)))
+                selected = pd.concat([selected, extra], axis=0)
 
         examples_block = "\n\nReference examples in this style:\n"
         for _, row in selected.iterrows():

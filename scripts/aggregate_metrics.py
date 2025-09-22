@@ -2,7 +2,9 @@
 """
 Aggregate metrics across multiple scored runs into a single CSV and optional Markdown table.
 
-Looks for files matching *scores_metrics.json under a root (default: data/results/).
+Finds per-run metrics emitted by the scorer in either JSON or CSV format:
+- "*_scores_metrics.json" (JSON dict)
+- "*_metrics.csv" (two-column CSV: metric,value)
 
 Usage:
   python scripts/aggregate_metrics.py --root data/results/<dataset> --output data/results/<dataset>/summary.csv --markdown data/results/<dataset>/summary.md
@@ -14,41 +16,66 @@ from pathlib import Path
 import pandas as pd
 
 
+def _load_metrics_from_csv(path: Path):
+    import csv
+    out = {}
+    try:
+        with open(path, 'r', newline='') as f:
+            reader = csv.reader(f)
+            header = next(reader, None)
+            # Expect columns like [metric, value]
+            for row in reader:
+                if len(row) >= 2:
+                    k, v = row[0], row[1]
+                    try:
+                        out[k] = float(v)
+                    except Exception:
+                        out[k] = v
+    except Exception:
+        pass
+    return out
+
+
 def collect_metrics(root: Path):
     rows = []
+    # JSON metrics
     for path in root.rglob("*_scores_metrics.json"):
         try:
             with open(path, 'r') as f:
                 metrics = json.load(f)
         except Exception:
             continue
-        base = path.stem.replace('_scores_metrics', '')
-        # Attempt to parse method, model, target from filename pattern
-        filename = path.name
-        parent = path.parent.name
-        full = path.with_suffix('').name  # e.g., method_model_as_target_scores_metrics
-        method = None
-        source_model = None
-        target_model = None
-        try:
-            parts = full.split('_scores_metrics')[0].split('_scores')[0].split('_')
-            # Look for "as" separator
-            if 'as' in parts:
-                as_idx = parts.index('as')
-                target_model = "_".join(parts[as_idx+1:])
-                source_model = "_".join(parts[1:as_idx])
-                method = parts[0]
-        except Exception:
-            pass
-        row = {
-            'file': str(path),
-            'method': method,
-            'source_model': source_model,
-            'target_model': target_model,
-            **metrics
-        }
-        rows.append(row)
+        rows.append(_row_from_path_and_metrics(path, metrics))
+    # CSV metrics
+    for path in root.rglob("*_metrics.csv"):
+        metrics = _load_metrics_from_csv(path)
+        if metrics:
+            rows.append(_row_from_path_and_metrics(path, metrics))
     return pd.DataFrame(rows)
+
+
+def _row_from_path_and_metrics(path: Path, metrics: dict) -> dict:
+    # Attempt to parse method, model, target from filename pattern
+    full = path.with_suffix('').name
+    method = None
+    source_model = None
+    target_model = None
+    try:
+        parts = full.split('_scores_metrics')[0].split('_metrics')[0].split('_scores')[0].split('_')
+        if 'as' in parts:
+            as_idx = parts.index('as')
+            target_model = "_".join(parts[as_idx+1:])
+            source_model = "_".join(parts[1:as_idx])
+            method = parts[0]
+    except Exception:
+        pass
+    return {
+        'file': str(path),
+        'method': method,
+        'source_model': source_model,
+        'target_model': target_model,
+        **metrics
+    }
 
 
 def main():
