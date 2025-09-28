@@ -50,7 +50,7 @@ class CachedLLM:
             "model": model,
             "messages": messages,
             "max_tokens": kwargs.get("max_tokens"),
-            "temperature": kwargs.get("temperature", 0.7),
+            "temperature": kwargs.get("temperature", 0.0),
             "top_p": kwargs.get("top_p"),
             # Add other relevant parameters that affect output
         }

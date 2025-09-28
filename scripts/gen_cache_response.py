@@ -50,18 +50,28 @@ logger = logging.getLogger(__name__)
 class CachedResponseGenerator:
     """Response generator with caching capabilities and batch processing."""
     
-    def __init__(self, cache_dir="cache", enable_wandb=True):
+    def __init__(
+        self,
+        cache_dir="cache",
+        enable_wandb=True,
+        use_generation_cache=True,
+        skip_cache_reads=False,
+    ):
         self.cache_dir = cache_dir
         self.enable_wandb = enable_wandb
+        self.use_generation_cache = use_generation_cache
+        self.skip_cache_reads = skip_cache_reads
         
         # Create cache directories if they don't exist
-        os.makedirs(os.path.join(cache_dir, "generation_cache"), exist_ok=True)
-        
-        # Initialize LMDB cache for generations
-        self.generation_cache = lmdb.open(
-            os.path.join(cache_dir, "generation_cache"), 
-            map_size=int(1e11)
-        )
+        if self.use_generation_cache:
+            os.makedirs(os.path.join(cache_dir, "generation_cache"), exist_ok=True)
+            # Initialize LMDB cache for generations
+            self.generation_cache = lmdb.open(
+                os.path.join(cache_dir, "generation_cache"), 
+                map_size=int(1e11)
+            )
+        else:
+            self.generation_cache = None
         self.cache_lock = threading.Lock()
         # Track prompts we've already written to the incremental CSV (avoid duplicates on resume)
         self._seen_written_prompts: set[str] = set()
@@ -84,6 +94,9 @@ class CachedResponseGenerator:
 
     def get_cached_response(self, prompt: str, model: str, params: dict, *, multimodal: bool = False, system_prompt: Optional[str] = "You are a helpful assistant.") -> Optional[str]:
         """Get cached response if available."""
+        if (not self.use_generation_cache or self.generation_cache is None
+                or self.skip_cache_reads):
+            return None
         cache_key = json.dumps({
             "prompt": prompt,
             "model": model,
@@ -97,6 +110,8 @@ class CachedResponseGenerator:
 
     def save_cached_response(self, prompt: str, model: str, params: dict, response: str, *, multimodal: bool = False, system_prompt: Optional[str] = "You are a helpful assistant."):
         """Save response to cache."""
+        if not self.use_generation_cache or self.generation_cache is None:
+            return
         cache_key = json.dumps({
             "prompt": prompt,
             "model": model,
@@ -186,7 +201,7 @@ class CachedResponseGenerator:
         output_path: Optional[str] = kwargs.get('output_path')
         self._ensure_csv_header(output_path)
         params = {
-            'temperature': kwargs.get('temperature', 0.7),
+            'temperature': kwargs.get('temperature', 0.0),
             'top_p': kwargs.get('top_p', 0.95),
             'max_tokens': kwargs.get('max_tokens', 1024)
         }
@@ -279,7 +294,7 @@ class CachedResponseGenerator:
         output_path: Optional[str] = kwargs.get('output_path')
         self._ensure_csv_header(output_path)
         params = {
-            'temperature': kwargs.get('temperature', 0.7),
+            'temperature': kwargs.get('temperature', 0.0),
             'top_p': kwargs.get('top_p', 0.95),
             'max_tokens': kwargs.get('max_tokens', 1024)
         }
@@ -460,8 +475,11 @@ class CachedResponseGenerator:
                 
                 for csv_file in csv_files[start_index:end_index]:
                     # Adjust the command based on your needs
-                    script_name = "disguising/scripts/generate_responses_with_caching.py"
-                    command = f"python {script_name} --dataset {csv_file} --output_dir {output_dir}\n"
+                    script_name = "scripts/generate_responses.py"
+                    command = (
+                        f"python {script_name} --prompts_file {csv_file} --model ${{MODEL}} "
+                        f"--output {os.path.join(output_dir, Path(csv_file).stem + '_responses.csv')}\n"
+                    )
                     f.write(command)
             
             # Make script executable
@@ -489,18 +507,20 @@ def main():
     
     # Data parameters
     parser.add_argument("--dataset", type=str, 
-                       default="/home/nazcol/dementor/dementor/disguising/model-responses/base_500_all_models/call_center_prompts.csv",
+                       default="data/datasets/gsm8k/gsm8k_prompts.txt",
                        help="Path to the dataset of prompts")
     parser.add_argument("--output_dir", type=str, 
-                       default="disguising/model-responses/cached_generations",
+                       default="data/model-responses/generated",
                        help="Output directory for generated responses")
+    parser.add_argument("--output_path", type=str, default=None,
+                       help="Explicit CSV output path (overrides --output_dir)")
     parser.add_argument("--num_samples", type=int, default=None,
                        help="Number of samples to generate (None for all)")
     parser.add_argument("--max_prompt_tokens", type=int, default=1024,
                        help="Maximum number of tokens in input prompts")
     
     # Generation parameters
-    parser.add_argument("--temperature", type=float, default=0.7)
+    parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--top_p", type=float, default=0.95)
     parser.add_argument("--max_tokens", type=int, default=1024)
     parser.add_argument("--multimodal", action="store_true")
@@ -518,7 +538,7 @@ def main():
     parser.add_argument("--num_scripts", type=int, default=8,
                        help="Number of batch scripts to generate")
     parser.add_argument("--input_pattern", type=str, 
-                       default="../model-responses/disguised/stylistic_clustering/**/temp0.7/*.csv",
+                       default="../model-responses/disguised/stylistic_clustering/**/temp0.0/*.csv",
                        help="Glob pattern for input files when generating scripts")
     
     # Cache and logging parameters
@@ -526,6 +546,8 @@ def main():
                        help="Directory for caching")
     parser.add_argument("--disable_wandb", action="store_true",
                        help="Disable wandb logging")
+    parser.add_argument("--ignore_generation_cache", action="store_true",
+                       help="Bypass the on-disk generation cache for this run")
     parser.add_argument("--wandb_project", type=str, default="disguising-generations",
                        help="Wandb project name")
     
@@ -534,7 +556,9 @@ def main():
     # Initialize generator
     generator = CachedResponseGenerator(
         cache_dir=args.cache_dir, 
-        enable_wandb=not args.disable_wandb
+        enable_wandb=not args.disable_wandb,
+        use_generation_cache=True,
+        skip_cache_reads=args.ignore_generation_cache,
     )
     
     # Handle batch script generation
@@ -558,7 +582,7 @@ def main():
         model_name = args.gpt_model or args.model
         wandb.init(
             project=args.wandb_project, 
-            name=f"{model_name.replace('/', '_')}_cached_responses"
+            name=f"{model_name.replace('/', '_')}_responses"
         )
         wandb.config.update(args)
     
@@ -597,10 +621,12 @@ def main():
     
     # Determine output path (used for incremental writing too)
     model_clean = model.replace("/", "_")
-    if args.num_samples:
-        output_path = os.path.join(args.output_dir, f"{model_clean}-{args.num_samples}.csv")
+    if args.output_path:
+        resolved_output_path = args.output_path
+    elif args.num_samples:
+        resolved_output_path = os.path.join(args.output_dir, f"{model_clean}-{args.num_samples}.csv")
     else:
-        output_path = os.path.join(args.output_dir, f"{model_clean}.csv")
+        resolved_output_path = os.path.join(args.output_dir, f"{model_clean}.csv")
 
     # Generate responses with incremental CSV writing
     logger.info(f"Generating responses with model: {model}")
@@ -612,7 +638,7 @@ def main():
             top_p=args.top_p,
             max_tokens=args.max_tokens,
             multimodal=args.multimodal,
-            output_path=output_path,
+            output_path=resolved_output_path,
         )
     elif use_vllm:
         responses = generator.generate_with_vllm(
@@ -625,28 +651,21 @@ def main():
             max_model_len=args.max_model_len,
             tensor_parallel_size=args.tensor_parallel_size,
             batch_size=args.batch_size,
-            output_path=output_path,
+            output_path=resolved_output_path,
         )
     else:
         responses = generator.generate_with_serve_llm(
             prompts=prompts,
             model=model,
             max_tokens=args.max_tokens,
-            output_path=output_path,
+            output_path=resolved_output_path,
         )
 
-    # Final consolidated save (incremental CSV already contains rows if process was interrupted)
-    model_clean = model.replace("/", "_")
-    if args.num_samples:
-        output_path = os.path.join(args.output_dir, f"{model_clean}-{args.num_samples}.csv")
-    else:
-        output_path = os.path.join(args.output_dir, f"{model_clean}.csv")
-    
     df = generator.save_results(
         prompts=prompts,
         responses=responses,
         model=model,
-        output_path=output_path,
+        output_path=resolved_output_path,
         multimodal=args.multimodal
     )
     

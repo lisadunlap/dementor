@@ -17,12 +17,46 @@ from pathlib import Path
 import pandas as pd
 
 
-def load_metrics(base_path: Path) -> dict:
-    json_path = base_path.with_suffix('').as_posix() + '_metrics.json'
-    if not os.path.exists(json_path):
-        return {}
-    with open(json_path, 'r') as f:
-        return json.load(f)
+def _resolve_scored_path(path: Path) -> Path:
+    """Return the scored.csv path for a given comparison artifact."""
+    if path.name == 'scored.csv' and path.exists():
+        return path
+    if path.is_dir():
+        candidate = path / 'scored.csv'
+        if candidate.exists():
+            return candidate
+    candidate = path.with_suffix('').with_name(path.stem + '_scored.csv')
+    if candidate.exists():
+        return candidate
+    return path
+
+
+def load_metrics(scored_path: Path) -> dict:
+    metrics_csv = scored_path.with_name('scored_metrics.csv')
+    if metrics_csv.exists():
+        try:
+            import csv
+
+            metrics: dict[str, float] = {}
+            with open(metrics_csv, 'r', newline='') as handle:
+                reader = csv.reader(handle)
+                next(reader, None)
+                for row in reader:
+                    if len(row) >= 2:
+                        try:
+                            metrics[row[0]] = float(row[1])
+                        except ValueError:
+                            metrics[row[0]] = row[1]
+            return metrics
+        except Exception:
+            pass
+
+    # Legacy JSON fallback
+    json_path = scored_path.with_suffix('').as_posix() + '_metrics.json'
+    if os.path.exists(json_path):
+        with open(json_path, 'r') as f:
+            return json.load(f)
+    return {}
 
 
 def main():
@@ -36,15 +70,11 @@ def main():
     parser.add_argument("--wandb-run-name", default="three-way-summary")
     args = parser.parse_args()
 
-    base = Path(args.baseline)
-    dis = Path(args.disguised)
+    base_scored = _resolve_scored_path(Path(args.baseline))
+    dis_scored = _resolve_scored_path(Path(args.disguised))
 
-    base_scored = base.with_suffix('').as_posix() + '_scored.csv'
-    dis_scored = dis.with_suffix('').as_posix() + '_scored.csv'
-
-    # Ensure scored exists; otherwise, just proceed with whatever metrics are present
-    base_metrics = load_metrics(Path(base_scored))
-    dis_metrics = load_metrics(Path(dis_scored))
+    base_metrics = load_metrics(base_scored)
+    dis_metrics = load_metrics(dis_scored)
 
     rows = []
     if base_metrics:

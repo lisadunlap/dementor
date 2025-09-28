@@ -82,7 +82,9 @@ python disguise.py \
 
 4) Score and aggregate as usual
 ```bash
-python -m scripts.scorer data/results/chatbot_arena/disguised/my_run.csv --output data/results/chatbot_arena/scores/my_run_scored.csv
+python -m scripts.scorer pairwise \
+  --input data/results/chatbot_arena/disguised/my_run.csv \
+  --output data/results/chatbot_arena/scores/my_run_scored/scored.csv
 python scripts/aggregate_metrics.py --root data/results/chatbot_arena --output data/results/chatbot_arena/summary.csv --markdown data/results/chatbot_arena/summary.md
 ```
 
@@ -158,9 +160,10 @@ Selector notes
 - `random`: uniform sample.
 
 Scoring
-- Single-file scoring (base models): `python -m scripts.scorer <model_responses.csv> --output data/results/<dataset>/scores/<model>/scored.csv --single`
-- Pairwise scoring (disguised vs target) moved to a dedicated script:
-  `python scripts/pairwise_scorer.py --input data/results/<dataset>/<method>/<src>_as_<tgt>.csv --output data/results/<dataset>/<method>/scores/<pair>/scored.csv --judge-model openai/gpt-4.1-mini`
+- Single-file scoring (base models): `python -m scripts.scorer single data/model-responses/<dataset>/full/<model>.csv --output data/results/<dataset>/scores/<model>/scored.csv`
+- Pairwise scoring (disguised vs target):
+  `python -m scripts.scorer pairwise --input data/results/<dataset>/<method>/<src>_as_<tgt>.csv --output data/results/<dataset>/<method>/scores/<pair>/scored.csv --judge-model openai/gpt-4.1-mini`
+- Merge and score in one step: `python -m scripts.scorer compare --a data/model-responses/<dataset>/full/<src>.csv --b data/model-responses/<dataset>/full/<tgt>.csv --output data/results/<dataset>/comparisons/source_vs_target/<src>_vs_<tgt>.csv`
 
 ## File Structure
 
@@ -170,8 +173,7 @@ dementor/
 │   ├── run_pipeline.py              # Streamlined end-to-end pipeline (recommended)
 │   ├── disguise.py                  # Core disguise script
 │   ├── generate_responses.py        # Generate model responses
-│   ├── compare_models.py            # Compare two models
-│   ├── scorer.py                    # Unified scoring (LLM judge + heuristics)
+│   ├── scorer.py                    # Unified scoring CLI (single, pairwise, compare, merge)
 │   ├── stylistic_analysis.py        # Heuristic analysis functions
 │   └── methods/
 │       ├── contrastive.py           # Contrastive method
@@ -188,7 +190,7 @@ dementor/
 Additional:
 - `examples/` — provider setup and copy‑paste commands
 - `scripts/smoke_test.py` — offline smoke test (no API keys)
-- `scripts/legacy/` — legacy/experimental scripts retained for reference (includes `serve/` helpers)
+- `scripts/serve/` — optional helpers for vLLM/local serving experiments
 
 ## Filename Convention
 
@@ -240,16 +242,25 @@ python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --m
 ### Scoring and Summaries
 ```bash
 # Score a CSV of response pairs with LLM judge + heuristics
-python -m scripts.scorer data/results/chatbot_arena/disguised/my_run.csv --output data/results/chatbot_arena/scores/my_run_scored.csv
+python -m scripts.scorer pairwise \
+  --input data/results/chatbot_arena/disguised/my_run.csv \
+  --output data/results/chatbot_arena/scores/my_run_scored/scored.csv
 
 # Heuristics only (no LLM judge)
-python -m scripts.scorer data/results/chatbot_arena/disguised/my_run.csv --output data/results/chatbot_arena/scores/my_run_scored.csv --heuristics-only
+python -m scripts.scorer pairwise \
+  --input data/results/chatbot_arena/disguised/my_run.csv \
+  --output data/results/chatbot_arena/scores/my_run_scored/scored.csv \
+  --heuristics-only
 
 # Programmatic usage: compute averages
 python - << 'PY'
-from scripts.scorer import score_model_comparison, summarize_scores
-df = score_model_comparison('data/results/chatbot_arena/disguised/my_run.csv', 'data/results/chatbot_arena/scores/my_run_scored.csv')
-print(summarize_scores(df))
+from scripts.scorer import score_pairwise
+df = score_pairwise(
+    'data/results/chatbot_arena/disguised/my_run.csv',
+    'data/results/chatbot_arena/scores/my_run_scored/scored.csv',
+    judge_model='openai/gpt-4.1-mini',
+)
+print(df[['semantic_score', 'stylistic_score', 'heuristic_match_score']].mean())
 PY
 ```
 
@@ -283,8 +294,8 @@ PY
 -- Vibe-based (personality) with examples
   - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based --num_samples 200
 
--- Scoring with summary metrics.json
-  - python -m scripts.scorer data/results/chatbot_arena/disguised/my_run.csv --output data/results/chatbot_arena/scores/my_run_scored.csv
+-- Scoring with summary metrics
+  - python -m scripts.scorer pairwise --input data/results/chatbot_arena/disguised/my_run.csv --output data/results/chatbot_arena/scores/my_run_scored/scored.csv
 
 Note on “Contrastive + AL-selected examples”
 - This repo now provides a composite method (`contrastive_with_al_examples`) that generates contrastive rules and automatically selects informative examples via Active Learning for the context window.
@@ -326,8 +337,8 @@ python scripts/disguise.py \
 
 3) Score and get metrics
 ```bash
-python -m scripts.scorer \
-  data/results/<dataset>/comparisons/disguised_vs_target/<method>/<src>_as_<tgt>.csv \
+python -m scripts.scorer pairwise \
+  --input data/results/<dataset>/comparisons/disguised_vs_target/<method>/<src>_as_<tgt>.csv \
   --output data/results/<dataset>/comparisons/disguised_vs_target/<method>/<src>_as_<tgt>_scored.csv
 ```
 
@@ -348,16 +359,18 @@ python scripts/run_pipeline.py \
   - Backends: LiteLLM providers (default), local HuggingFace via `hf:` prefix, local vLLM via `vllm:` prefix.
   - Example: `python scripts/generate_responses.py --model openai/gpt-4o-mini --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt --output data/model-responses/chatbot_arena/full/openai_gpt-4o-mini.csv`
 
-- `scripts/compare_models.py`
-  - Merges two base outputs on prompt into a comparison CSV and runs the scorer.
-  - Example: `python scripts/compare_models.py --a base/modelA.csv --b base/modelB.csv --output results/compare_A_vs_B.csv`
+- `scripts/scorer.py`
+  - Unified CLI for single-file scoring, pairwise scoring, comparison + scoring, and legacy merges.
+  - Examples:
+    - `python -m scripts.scorer single data/model-responses/chatbot_arena/full/openai_gpt-4o-mini.csv --output data/results/chatbot_arena/scores/openai_gpt-4o-mini/scored.csv`
+    - `python -m scripts.scorer compare --a base/modelA.csv --b base/modelB.csv --output results/compare_A_vs_B.csv --judge-model openai/gpt-4.1-mini`
 
 - `scripts/run_pipeline.py`
   - Optional orchestrator that runs: generate base (both models) → baseline compare (source vs target) → disguise (disguised vs target) → score → optional aggregation + W&B table + three‑way summary. Uses cache to avoid recomputing.
   - Example shown above in Pipelines.
 
 - `scripts/aggregate_metrics.py`
-  - Aggregates `*_scores_metrics.json` files to a CSV and optional Markdown; optionally logs a W&B summary table.
+  - Aggregates `scored_metrics.csv` (and legacy `*_scores_metrics.json`) files to a CSV and optional Markdown; optionally logs a W&B summary table.
   - Example shown in Evaluation → Aggregating Metrics.
 
 - `scripts/summarize_three_way.py`
@@ -366,9 +379,6 @@ python scripts/run_pipeline.py \
 
 - `scripts/smoke_test.py`
   - Offline smoke test (no API keys): checks method.forward behavior and heuristics-only scoring pipeline.
-
-- `scripts/legacy/`
-  - Legacy/experimental scripts (and legacy `serve/` helpers) retained for reference; not required for the streamlined pipeline.
 
 ## 🧠 How Vibe-Based Disguise Works
 
@@ -418,11 +428,7 @@ Results and scores are saved under `data/results/<dataset>/comparisons/...` with
 ## 🚮 What Was Cleaned Up
 
 **Removed useless scripts:**
-- Legacy scripts moved to `scripts/legacy/` (use the streamlined scripts in `scripts/`):
-  - prompt_llm.py → use `scripts/prompt_llm_new.py`
-  - llm_scorer2.py → use `scripts/scorer.py`
-  - random_sample_disguise.py → use core methods in `scripts/methods/`
-  - compare_llm.py → use `scripts/compare_models.py`
+- Legacy entrypoints (`prompt_llm.py`, `llm_scorer2.py`, `random_sample_disguise.py`, `compare_llm.py`) have been deleted; use the streamlined equivalents in `scripts/` noted above.
 
 **Streamlined:**
 - Clean method registry with only 3 core methods

@@ -16,6 +16,7 @@ import argparse
 import os
 import subprocess
 from pathlib import Path
+from typing import Optional
 import sys
 try:
     from dotenv import load_dotenv  # type: ignore
@@ -39,6 +40,36 @@ def run(cmd, exclude_routing=False):
         env.pop('LITELLM_API_BASE', None)
     
     return subprocess.call(cmd, env=env)
+
+
+def _is_openai_gpt(model_id: str) -> bool:
+    model_lower = (model_id or '').lower()
+    return model_lower.startswith('openai/gpt-')
+
+
+def _build_gen_cache_cmd(
+    model_id: str,
+    prompts_file: str,
+    output_path: Path,
+    *,
+    num_samples: Optional[int] = None,
+    refresh: bool = False,
+) -> list[str]:
+    """Construct command to call gen_cache_response for OpenAI GPT models."""
+    base_model = model_id.split('/', 1)[1] if '/' in model_id else model_id
+    cmd = [
+        sys.executable,
+        'scripts/gen_cache_response.py',
+        '--dataset', prompts_file,
+        '--gpt_model', base_model,
+        '--output_path', str(output_path),
+        '--disable_wandb',
+    ]
+    if num_samples is not None:
+        cmd += ['--num_samples', str(num_samples)]
+    if refresh:
+        cmd.append('--ignore_generation_cache')
+    return cmd
 
 
 def main():
@@ -98,34 +129,60 @@ def main():
 
     # Generate source
     if args.overwrite or not src_out.exists():
-        gen_cmd = [sys.executable, 'scripts/generate_responses.py',
-                   '--model', args.source_model,
-                   '--prompts_file', args.prompts_file,
-                   '--output', str(src_out)]
-        # Only pass routing flags for local/HF models; never for openai/gpt-*
-        if args.openai_api_base and not args.source_model.lower().startswith('openai/gpt-'):
-            gen_cmd += ['--openai-api-base', args.openai_api_base]
-        if args.openai_api_key and not args.source_model.lower().startswith('openai/gpt-'):
-            gen_cmd += ['--openai-api-key', args.openai_api_key]
-        rc = run(gen_cmd)
-        if rc != 0:
-            sys.exit(rc)
+        if _is_openai_gpt(args.source_model):
+            if args.overwrite and src_out.exists():
+                src_out.unlink()
+            gen_cmd = _build_gen_cache_cmd(
+                args.source_model,
+                args.prompts_file,
+                src_out,
+                refresh=args.overwrite,
+            )
+            rc = run(gen_cmd, exclude_routing=True)
+            if rc != 0:
+                sys.exit(rc)
+        else:
+            gen_cmd = [sys.executable, 'scripts/generate_responses.py',
+                       '--model', args.source_model,
+                       '--prompts_file', args.prompts_file,
+                       '--output', str(src_out)]
+            # Only pass routing flags for local/HF models; never for openai/gpt-*
+            if args.openai_api_base:
+                gen_cmd += ['--openai-api-base', args.openai_api_base]
+            if args.openai_api_key:
+                gen_cmd += ['--openai-api-key', args.openai_api_key]
+            rc = run(gen_cmd)
+            if rc != 0:
+                sys.exit(rc)
     else:
         print(f"Found existing: {src_out}")
 
     # Generate target
     if args.overwrite or not tgt_out.exists():
-        gen_cmd = [sys.executable, 'scripts/generate_responses.py',
-                   '--model', args.target_model,
-                   '--prompts_file', args.prompts_file,
-                   '--output', str(tgt_out)]
-        if args.openai_api_base and not args.target_model.lower().startswith('openai/gpt-'):
-            gen_cmd += ['--openai-api-base', args.openai_api_base]
-        if args.openai_api_key and not args.target_model.lower().startswith('openai/gpt-'):
-            gen_cmd += ['--openai-api-key', args.openai_api_key]
-        rc = run(gen_cmd)
-        if rc != 0:
-            sys.exit(rc)
+        if _is_openai_gpt(args.target_model):
+            if args.overwrite and tgt_out.exists():
+                tgt_out.unlink()
+            gen_cmd = _build_gen_cache_cmd(
+                args.target_model,
+                args.prompts_file,
+                tgt_out,
+                refresh=args.overwrite,
+            )
+            rc = run(gen_cmd, exclude_routing=True)
+            if rc != 0:
+                sys.exit(rc)
+        else:
+            gen_cmd = [sys.executable, 'scripts/generate_responses.py',
+                       '--model', args.target_model,
+                       '--prompts_file', args.prompts_file,
+                       '--output', str(tgt_out)]
+            if args.openai_api_base:
+                gen_cmd += ['--openai-api-base', args.openai_api_base]
+            if args.openai_api_key:
+                gen_cmd += ['--openai-api-key', args.openai_api_key]
+            rc = run(gen_cmd)
+            if rc != 0:
+                sys.exit(rc)
     else:
         print(f"Found existing: {tgt_out}")
 
@@ -134,21 +191,22 @@ def main():
     baseline_dir = out_dir / "comparisons" / "source_vs_target"
     baseline_dir.mkdir(parents=True, exist_ok=True)
     baseline_csv = baseline_dir / f"{args.source_model.replace('/', '_')}_vs_{args.target_model.replace('/', '_')}.csv"
-    rc = run([sys.executable, 'scripts/compare_models.py',
+    rc = run([sys.executable, '-m', 'scripts.scorer', 'compare',
               '--a', str(src_out),
               '--b', str(tgt_out),
               '--output', str(baseline_csv),
               '--judge-model', 'openai/gpt-4.1-mini'], exclude_routing=True)
     if rc != 0:
         sys.exit(rc)
+    baseline_scored = baseline_dir / 'scores' / baseline_csv.stem / 'scored.csv'
 
     # 3) Score single-file source and target into standardized locations (base scores)
     src_score_dir = out_dir / "scores" / args.source_model.replace('/', '_')
     tgt_score_dir = out_dir / "scores" / args.target_model.replace('/', '_')
     src_score_dir.mkdir(parents=True, exist_ok=True)
     tgt_score_dir.mkdir(parents=True, exist_ok=True)
-    run([sys.executable, '-m', 'scripts.scorer', str(src_out), '--output', str(src_score_dir / 'scored.csv'), '--single'])
-    run([sys.executable, '-m', 'scripts.scorer', str(tgt_out), '--output', str(tgt_score_dir / 'scored.csv'), '--single'])
+    run([sys.executable, '-m', 'scripts.scorer', 'single', str(src_out), '--output', str(src_score_dir / 'scored.csv')])
+    run([sys.executable, '-m', 'scripts.scorer', 'single', str(tgt_out), '--output', str(tgt_score_dir / 'scored.csv')])
 
     # 4) Run disguise with new layout for outputs (per-method directory)
     disguise_dir = out_dir / args.method
@@ -174,6 +232,8 @@ def main():
     rc = run(dcmd)
     if rc != 0:
         sys.exit(rc)
+    pair_id = f"{args.source_model.replace('/', '_')}_as_{args.target_model.replace('/', '_')}"
+    disguised_scored = disguise_dir / 'scores' / pair_id / 'scored.csv'
 
     # 5) No extra re-scoring here: disguise.py already emitted scores into
     #    data/results/<dataset>/comparisons/disguised/<method>/metrics_<pair>/
@@ -195,8 +255,8 @@ def main():
         three_way_csv = out_dir / 'three_way_summary.csv'
         three_way_md = out_dir / 'three_way_summary.md'
         rc = run([sys.executable, 'scripts/summarize_three_way.py',
-                  '--baseline', str(baseline_csv).replace('.csv', '_scored.csv'),
-                  '--disguised', scored_output,
+                  '--baseline', str(baseline_scored),
+                  '--disguised', str(disguised_scored),
                   '--output', str(three_way_csv),
                   '--markdown', str(three_way_md),
                   '--use-wandb', '--wandb-project', args.wandb_project, '--wandb-run-name', 'three-way-summary'])

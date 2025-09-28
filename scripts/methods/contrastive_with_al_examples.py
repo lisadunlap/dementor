@@ -58,10 +58,7 @@ class ContrastiveWithALExamples(MethodBase):
                 **self.al_kwargs,
             )
         elif self.selector == 'embedding_delta':
-            try:
-                from scripts.methods.utils.embedding_delta_selector import EmbeddingDeltaSelector
-            except Exception:
-                from ..utils.embedding_delta_selector import EmbeddingDeltaSelector
+            from scripts.methods.utils.embedding_delta_selector import EmbeddingDeltaSelector
             # Pull selector-specific args from al_kwargs for simplicity
             emb_model = self.al_kwargs.get('embedding_model', 'intfloat/e5-small-v2')
             pool_mult = int(self.al_kwargs.get('pool_multiplier', 5))

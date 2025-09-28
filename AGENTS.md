@@ -10,7 +10,7 @@ Dementor is a research project for "stealing the souls of LLMs" - techniques to 
 
 The project is organized around these key components:
 
-### Disguise Methods (`disguising/methods/`)
+### Disguise Methods (`scripts/methods/`)
 - **Base methods**: `RandomSampleDisguise`, `JustNameIt`, `VibeBasedDisguise` 
 - **Clustering methods**: `FeatureClustering` with stylistic, vibe, or embedding-based clustering
 - **Math-specific methods**: `HierarchicalMathDisguise`, `EnsembleMathDisguise`
@@ -19,14 +19,14 @@ The project is organized around these key components:
 
 ### Main Scripts
 - **`scripts/disguise.py`**: Core disguise script that applies methods to transform model responses
-- **Scoring**: Use `python -m scripts.scorer input.csv --output output_scored.csv` for LLM judge + heuristics.
+- **Scoring**: Use `python -m scripts.scorer pairwise --input input.csv --output scores/run_name/scored.csv` for LLM judge + heuristics.
 - **`scripts/prompt_llm_new.py`**: Generate responses from models for evaluation
-- **`scripts/legacy/generate_gsm8k_responses.py`**: Legacy GSM8K generator (new flow uses scripts/generate_responses.py)
+- **`scripts/generate_responses.py`**: Generate base responses for evaluation datasets
 
 ### Data Flow
-1. Generate base responses using `prompt_llm_new.py` or `generate_gsm8k_responses.py`
+1. Generate base responses using `prompt_llm_new.py` or `scripts/generate_responses.py`
 2. Apply disguise methods via `disguise.py` to transform responses  
-3. Score disguised vs target responses using `llm_scorer.py`
+3. Score disguised vs target responses using `scripts/scorer.py`
 4. Results stored in `data/results/` and base responses in `data/model-responses/`
 
 ## Common Commands
@@ -62,28 +62,28 @@ python scripts/run_pipeline.py \
 # - scores/ (other aggregated evaluation artifacts)
 ```
 
-### Legacy Workflow (For Specialized Cases)
+### Manual Workflow (For Specialized Cases)
 ```bash
 # Generate model responses
 python scripts/prompt_llm_new.py --model google/gemma-3-1b-it --num_samples 1000
-python generate_gsm8k_responses.py  # For GSM8K dataset
+python scripts/generate_responses.py --model google/gemma-3-1b-it --prompts_file data/datasets/gsm8k/gsm8k_prompts.txt
 
 # Apply disguise methods
 python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sample_3_examples
 
 # Run evaluations
-python -m scripts.scorer path/to/disguised_responses.csv --output path/to/disguised_responses_scored.csv
-bash disguising/base_evals.sh      # Compare base models
-bash disguising/disguised_evals.sh # Compare disguised vs target models
+python -m scripts.scorer pairwise \
+  --input path/to/disguised_responses.csv \
+  --output path/to/scores/disguised_responses/scored.csv
 ```
 
 ### Quick Evaluation
 ```bash
 # Using new scoring utilities
-python -c "from disguising.scoring_utils import score_model_comparison; score_model_comparison('input.csv', 'output.csv')"
+python -c "from scripts.scorer import score_pairwise; score_pairwise('input.csv', 'output_dir/scored.csv', judge_model='openai/gpt-4.1-mini')"
 
 # Heuristics only (faster)
-python -c "from disguising.scoring_utils import score_model_comparison; score_model_comparison('input.csv', 'output.csv', heuristics_only=True)"
+python -c "from scripts.scorer import score_pairwise; score_pairwise('input.csv', 'output_dir/scored.csv', heuristics_only=True)"
 ```
 
 ### Test Model Serving
@@ -106,7 +106,7 @@ python test_active_learning_disguise.py
 - **`data/results/<dataset>/comparisons/baseline/`**: Baseline model comparisons and scoring
 - **`data/results/<dataset>/disguised/`**: Disguised model outputs
 - **`data/results/<dataset>/scores/`**: Evaluation results and scoring outputs
-- **`disguising/methods/`**: Implementation of all disguise techniques
+- **`scripts/methods/`**: Implementation of all disguise techniques
 - **`scripts/`**: Pipeline scripts (run_pipeline.py, generate_responses.py, etc.)
 - **`data/`**: Datasets and prompts (GSM8K, chatbot arena, etc.)
 
@@ -118,7 +118,7 @@ python test_active_learning_disguise.py
 - **`random_sampling_system_prompting`**: Clean example-based disguise with system prompts
 
 ### Legacy Methods (For Compatibility)
-Get method names from `disguising/methods/get_method.py`:
+Get method names from `scripts/methods/get_method.py`:
 - `random_sample_{1,3,5}_examples`: Sample-based approaches
 - `just_name_it`: Simple name-based instruction
 - `vibe_based_disguise`: GPT-4o identified behavioral differences

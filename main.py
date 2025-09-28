@@ -49,9 +49,8 @@ Directory Structure:
 Core Scripts:
   scripts/generate_responses.py    Generate model responses
   scripts/disguise.py             Apply disguise methods
-  scripts/compare_models.py       Compare model outputs  
   scripts/run_pipeline.py         End-to-end pipeline
-  scripts/scorer.py               LLM judge + heuristics scorer
+  scripts/scorer.py               Unified single/pairwise scoring
         """
     )
     
@@ -76,7 +75,10 @@ Core Scripts:
     compare_parser.add_argument('--a', required=True, help='Model A CSV')
     compare_parser.add_argument('--b', required=True, help='Model B CSV') 
     compare_parser.add_argument('--output', required=True, help='Output comparison CSV')
+    compare_parser.add_argument('--judge-model', default='openai/gpt-4.1-mini', help='LLM judge model')
     compare_parser.add_argument('--heuristics-only', action='store_true', help='Heuristics only')
+    compare_parser.add_argument('--openai-api-base', default=None, help='Override OPENAI_API_BASE for judge routing')
+    compare_parser.add_argument('--openai-api-key', default=None, help='Override OPENAI_API_KEY for judge routing')
     
     # Pipeline command
     pipeline_parser = subparsers.add_parser('pipeline', help='Run complete pipeline')
@@ -89,6 +91,7 @@ Core Scripts:
     score_parser = subparsers.add_parser('score', help='Score model comparison')
     score_parser.add_argument('--input', required=True, help='Input comparison CSV')
     score_parser.add_argument('--output', required=True, help='Output scored CSV')
+    score_parser.add_argument('--judge-model', default='openai/gpt-4.1-mini', help='LLM judge model')
     score_parser.add_argument('--heuristics-only', action='store_true', help='Heuristics only')
     
     args, unknown_args = parser.parse_known_args()
@@ -99,19 +102,19 @@ Core Scripts:
         
     # Map commands to scripts
     script_map = {
-        'generate': 'scripts/generate_responses.py',
-        'disguise': 'scripts/disguise.py', 
-        'compare': 'scripts/compare_models.py',
-        'pipeline': 'scripts/run_pipeline.py',
-        'score': 'scripts/scorer.py'
+        'generate': ('scripts/generate_responses.py', None),
+        'disguise': ('scripts/disguise.py', None), 
+        'compare': ('scripts/scorer.py', 'compare'),
+        'pipeline': ('scripts/run_pipeline.py', None),
+        'score': ('scripts/scorer.py', 'pairwise')
     }
-    
+
     if args.command not in script_map:
         print(f"Unknown command: {args.command}")
         return 1
-        
-    script_path = script_map[args.command]
     
+    script_path, subcommand = script_map[args.command]
+
     # Convert args back to command line format
     script_args = []
     for key, value in vars(args).items():
@@ -121,7 +124,10 @@ Core Scripts:
             script_args.append(f'--{key.replace("_", "-")}')
         elif value is not False and value is not None:
             script_args.extend([f'--{key.replace("_", "-")}', str(value)])
-    
+
+    if subcommand:
+        script_args.insert(0, subcommand)
+
     # Add any unknown args
     script_args.extend(unknown_args)
     

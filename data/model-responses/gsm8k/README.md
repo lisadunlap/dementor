@@ -8,25 +8,29 @@ Files
 - gpt-4o_gsm8k_responses_temp.csv: Optional legacy target
 
 Run disguise on GSM8K
-Use disguise.py directly on this folder. Path resolution is flexible for GSM8K-style filenames.
+Use `scripts/disguise.py` directly on this folder. Path resolution is flexible for GSM8K-style filenames.
 
 Example (prompt-only sanity check):
-python disguising/disguise.py \
+python scripts/disguise.py \
   --method hierarchical_math_disguise \
   --model meta-llama_Meta-Llama-3-8B-Instruct \
   --disguise_as gpt-5 \
-  --data_dir disguising/model-responses/gsm8k \
+  --source_responses data/model-responses/gsm8k/meta-llama_Meta-Llama-3-8B-Instruct.csv \
+  --target_responses data/model-responses/gsm8k/gpt-5_gsm8k_test_500.csv \
+  --prompts_file data/datasets/gsm8k/gsm8k_prompts.txt \
   --test --skip_generation
 
 Example (small real generation):
-python disguising/disguise.py \
+python scripts/disguise.py \
   --method hierarchical_math_disguise \
   --model meta-llama_Meta-Llama-3-8B-Instruct \
   --disguise_as gpt-5 \
-  --data_dir disguising/model-responses/gsm8k \
+  --source_responses data/model-responses/gsm8k/meta-llama_Meta-Llama-3-8B-Instruct.csv \
+  --target_responses data/model-responses/gsm8k/gpt-5_gsm8k_test_500.csv \
+  --prompts_file data/datasets/gsm8k/gsm8k_prompts.txt \
   --test
 
 Notes
 - --skip_generation writes disguised prompts and runs analysis without inference.
 - Plots are saved as HTML if Chrome/Kaleido is not available.
-- Results are saved under disguising/results/gsm8k/disguised/.
+- Results are saved under `data/results/gsm8k/` by method/run.

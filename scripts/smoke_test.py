@@ -10,7 +10,7 @@ Checks:
 import pandas as pd
 from pathlib import Path
 from disguising.methods.get_method import get_method
-from scripts.scorer import score_model_comparison, summarize_scores
+from scripts.scorer import score_pairwise, summarize_scores
 
 
 def main():
@@ -50,7 +50,8 @@ def main():
     dummy.to_csv(csv_path, index=False)
 
     # Score heuristics-only
-    df = score_model_comparison(str(csv_path), str(csv_path).replace('.csv', '_scored.csv'), heuristics_only=True)
+    scored_dir = out_dir / 'dummy_results_scored.csv'
+    df = score_pairwise(str(csv_path), str(scored_dir), heuristics_only=True)
     summary = summarize_scores(df)
     print('Smoke test summary:', summary)
 

@@ -125,7 +125,7 @@ def main():
     parser.add_argument("--output", required=True, help="Output CSV path")
     parser.add_argument("--system", default=None, help="Optional system message")
     parser.add_argument("--max-tokens", type=int, default=512)
-    parser.add_argument("--temperature", type=float, default=0.7)
+    parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--overwrite", action="store_true", help="Overwrite existing output file")
     # Route LiteLLM to a local vLLM/OpenAI-compatible endpoint if desired
     parser.add_argument("--openai-api-base", default=None, help="Override OPENAI_API_BASE for LiteLLM (e.g., http://localhost:8000/v1)")

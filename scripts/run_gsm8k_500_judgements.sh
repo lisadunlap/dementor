@@ -24,19 +24,25 @@ mkdir -p "$BASE_ROOT/scores/$SRC_NAME" "$BASE_ROOT/scores/$TGT_NAME"
 mkdir -p "$BASE_ROOT/random_sampling/scores/${SRC_NAME}_as_${TGT_NAME}"
 
 echo "Scoring base source ($SRC_NAME) → $BASE_ROOT/scores/$SRC_NAME/scored.csv"
-python -m scripts.scorer "$SRC_BASE_CSV" --output "$BASE_ROOT/scores/$SRC_NAME/scored.csv" --single
+python -m scripts.scorer single "$SRC_BASE_CSV" --output "$BASE_ROOT/scores/$SRC_NAME/scored.csv"
 
 echo "Scoring base target ($TGT_NAME) → $BASE_ROOT/scores/$TGT_NAME/scored.csv"
-python -m scripts.scorer "$TGT_BASE_CSV" --output "$BASE_ROOT/scores/$TGT_NAME/scored.csv" --single
+python -m scripts.scorer single "$TGT_BASE_CSV" --output "$BASE_ROOT/scores/$TGT_NAME/scored.csv"
 
 echo "Scoring disguised random_sampling → $BASE_ROOT/random_sampling/scores/${SRC_NAME}_as_${TGT_NAME}/scored.csv"
-python -m scripts.scorer "$DISGUISED_RAW_CSV" --output "$BASE_ROOT/random_sampling/scores/${SRC_NAME}_as_${TGT_NAME}/scored.csv" --single
+python -m scripts.scorer single "$DISGUISED_RAW_CSV" --output "$BASE_ROOT/random_sampling/scores/${SRC_NAME}_as_${TGT_NAME}/scored.csv"
 
 # Run2: generate then score
 RUN2_CSV="data/model-responses/gsm8k/500/run2/${SRC_NAME}_responses.csv"
 mkdir -p "$(dirname "$RUN2_CSV")"
 echo "Generating run2 base responses (overwrite) → $RUN2_CSV"
-python scripts/generate_responses.py --model "$SRC_MODEL_ID" --prompts_file "$PROMPTS" --output "$RUN2_CSV" --overwrite
+rm -f "$RUN2_CSV"
+python scripts/gen_cache_response.py \
+  --dataset "$PROMPTS" \
+  --gpt_model "${SRC_MODEL_ID#openai/}" \
+  --output_path "$RUN2_CSV" \
+  --disable_wandb \
+  --ignore_generation_cache
 
 # Safety: ensure exactly 500 unique prompts (drop accidental duplicates)
 python - << 'PY'
@@ -54,6 +60,6 @@ PY
 RUN2_OUT_DIR="$BASE_ROOT/run2_scores/$SRC_NAME"
 mkdir -p "$RUN2_OUT_DIR"
 echo "Scoring run2 base source → $RUN2_OUT_DIR/scored.csv"
-python -m scripts.scorer "$RUN2_CSV" --output "$RUN2_OUT_DIR/scored.csv" --single
+python -m scripts.scorer single "$RUN2_CSV" --output "$RUN2_OUT_DIR/scored.csv"
 
 echo "All judgements completed."

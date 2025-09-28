@@ -25,7 +25,7 @@ if __name__ == "__main__":
     parser.add_argument("--dataset", type=str, default="data/datasets/chatbot_arena/chatbot_arena_prompts.txt", help="Path to a text file with one prompt per line")
     parser.add_argument("--dataset_csv", type=str, default=None, help="Optional: path to CSV with a 'prompt' column (or specify --dataset_csv_prompt_col)")
     parser.add_argument("--dataset_csv_prompt_col", type=str, default="prompt")
-    parser.add_argument("--temperature", type=float, default=0.7)
+    parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--top_p", type=float, default=0.95)
     parser.add_argument("--max_tokens", type=int, default=1024)
     parser.add_argument("--max_model_len", type=int, default=8000)

@@ -16,12 +16,16 @@ import time
 from pathlib import Path
 from typing import Optional
 
-# Add scripts to path
+# Add scripts to path for proper imports
 import sys
 import os
-# Ensure 'scripts' (parent of the 'methods' package) is on sys.path
-if 'scripts' not in sys.path:
-    sys.path.append('scripts')
+scripts_dir = os.path.dirname(os.path.abspath(__file__))
+if scripts_dir not in sys.path:
+    sys.path.insert(0, scripts_dir)
+# Also add the project root to sys.path so absolute imports work
+project_root = os.path.dirname(scripts_dir)
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from methods.get_method import get_method
 from scorer import score_model_single
@@ -88,6 +92,7 @@ def generate_disguised_responses(
     target_df: pd.DataFrame,
     prompts: list,
     num_samples: int = 100,
+    temperature: float = 0.0,
     method_kwargs: dict | None = None,
     output_file: Optional[str] = None,
 ) -> tuple[pd.DataFrame, dict]:
@@ -159,7 +164,7 @@ def generate_disguised_responses(
             # Choose backend: explicit hf:/vllm: → direct; else LiteLLM
             model_lower = (model or '').lower()
             max_new_tokens = 1024
-            temperature = 0.7
+            # temperature handled via function argument
 
             def _gen_with_retries(call_fn, max_attempts=3, base_delay=0.5):
                 last_exc = None
@@ -324,6 +329,8 @@ def main():
     # Experiment settings
     parser.add_argument("--num_samples", type=int, default=100,
                        help="Number of responses to generate")
+    parser.add_argument("--temperature", type=float, default=0.0,
+                       help="Temperature for generation (0.0 for deterministic)")
     parser.add_argument("--output_dir", type=str, default=None,
                        help="Output directory for results")
     
@@ -517,6 +524,7 @@ def main():
     results_df, method_stats = generate_disguised_responses(
         args.method, args.model, args.disguise_as,
         source_df, target_df, prompts, args.num_samples,
+        temperature=args.temperature,
         method_kwargs=method_kwargs,
         output_file=results_file,
     )

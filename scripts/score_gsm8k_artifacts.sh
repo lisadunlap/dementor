@@ -27,27 +27,27 @@ BASELINE_DIR="data/results/${DATASET}/comparisons/source_vs_target"
 mkdir -p "${BASELINE_DIR}" "data/results/${DATASET}/scores"
 
 echo "==> Baseline pairwise scoring: source vs target (LLM judge cached)"
-python scripts/compare_models.py \
+python -m scripts.scorer compare \
   --a "${SRC_CSV}" \
   --b "${TGT_CSV}" \
   --output "${BASELINE_DIR}/openai_gpt-4.1_vs_meta-llama_Meta-Llama-3-8B-Instruct.csv" \
   --judge-model openai/gpt-4.1-mini
 
 echo "==> Disguised pairwise scoring: disguised vs target (LLM judge cached)"
-python scripts/scorer.py \
-  "${DISG_PAIR_CSV}" \
-  --output "${DISG_DIR}/gpt-4.1_as_meta-llama_Meta-Llama-3-8B-Instruct_scored.csv" \
+python -m scripts.scorer pairwise \
+  --input "${DISG_PAIR_CSV}" \
+  --output "${DISG_DIR}/scores/gpt-4.1_as_meta-llama_Meta-Llama-3-8B-Instruct/scored.csv" \
   --judge-model openai/gpt-4.1-mini
 
 echo "==> Target self-comparison (ceiling): target vs target (LLM judge cached)"
-python scripts/compare_models.py \
+python -m scripts.scorer compare \
   --a "${TGT_CSV}" \
   --b "${TGT_CSV}" \
   --output "${BASELINE_DIR}/meta-llama_Meta-Llama-3-8B-Instruct_vs_meta-llama_Meta-Llama-3-8B-Instruct.csv" \
   --judge-model openai/gpt-4.1-mini
 
 echo "==> Source self-comparison: source vs source (LLM judge cached)"
-python scripts/compare_models.py \
+python -m scripts.scorer compare \
   --a "${SRC_CSV}" \
   --b "${SRC_CSV}" \
   --output "${BASELINE_DIR}/openai_gpt-4.1_vs_openai_gpt-4.1.csv" \

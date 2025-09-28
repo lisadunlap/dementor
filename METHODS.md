@@ -3,7 +3,7 @@
 This document summarizes the core methods in this repository and how to use them without confusion.
 
 Important context:
-- The focus of this repo is the Disguise Methods in `disguising/` — practical strategies for making one model behave like another via prompting.
+- The focus of this repo is the Disguise Methods in `scripts/methods/` — practical strategies for making one model behave like another via prompting.
 - Earlier utility-estimation codepaths (e.g., “superstimuli”, “utility-alignment”) were inspiration only and have been removed; their ideas are reflected in our composite selection strategies.
 
 We list Disguise Methods first. A short reference to the (historical) utility-estimation concepts is included at the end for completeness.
@@ -26,9 +26,9 @@ We list Disguise Methods first. A short reference to the (historical) utility-es
 
 ## Disguise Methods (Primary)
 
-Location: `disguising/methods/`
+Location: `scripts/methods/`
 
-Method registry: `disguising/methods/get_method.py` (clean names in quotes below).
+Method registry: `scripts/methods/get_method.py` (clean names in quotes below).
 
 ### Core Methods
 - "contrastive"
@@ -158,5 +158,5 @@ python scripts/generate_responses.py --model meta-llama/Meta-Llama-3.1-8B-Instru
 python scripts/disguise.py --model meta-llama/Meta-Llama-3.1-8B-Instruct --disguise_as gpt-4o --method contrastive
 
 # Score results
-python -m scripts.scorer input.csv --output output_scored.csv
+python -m scripts.scorer pairwise --input input.csv --output scores/output/scored.csv
 ```
