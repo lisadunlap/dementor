@@ -250,15 +250,15 @@ def _compute_pairwise_heuristics(df: pd.DataFrame, col_a: str, col_b: str) -> pd
 
 
 def _build_pairwise_prompt(target_response: str, model_response: str, prompt: Optional[str] = None) -> str:
+    _ = prompt  # prompt is intentionally ignored; similarity score should focus on responses only
     system = (
         "You are an expert evaluator. Rate similarity between two responses.\n\n"
         "1) Semantic (1-4)\n"
         "2) Stylistic (1-4)\n"
         "Return both scores and a brief justification."
     )
-    context = f"Original prompt: {prompt}\n\n" if prompt else ""
     return (
-        f"{system}\n\n{context}Response A:\n{target_response}\n\n"
+        f"{system}\n\nResponse A:\n{target_response}\n\n"
         f"Response B:\n{model_response}\n\nProvide semantic and stylistic scores."
     )
 
