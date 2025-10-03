@@ -1,0 +1,20 @@
+{
+  "method": "random_sampling",
+  "model": "gpt-4.1",
+  "disguise_as": "gpt-4.1",
+  "num_samples": 5,
+  "method_kwargs": {
+    "al_num_examples": 5,
+    "al_d_regular": 3,
+    "al_p_threshold": 0.1,
+    "al_q_threshold": 0.1,
+    "al_batch_size": 10,
+    "al_max_iterations": 5,
+    "al_relaxation_factor": 1.2,
+    "al_seed": null,
+    "example_selector": "al"
+  },
+  "results_file": "data/results/chatbot_arena/comparisons/disguised_vs_target/random_sampling/gpt-4.1_as_gpt-4.1.csv",
+  "scores_file": "data/results/chatbot_arena/comparisons/disguised_vs_target/random_sampling/gpt-4.1_as_gpt-4.1_scores.csv",
+  "metrics_csv": "data/results/chatbot_arena/comparisons/disguised_vs_target/random_sampling/gpt-4.1_as_gpt-4.1_scores_metrics.csv"
+}

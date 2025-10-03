@@ -1,0 +1,122 @@
+Generating random_sampling responses:   2%|▍                    | 2/100 [00:15<12:20,  7.55s/it]
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 665, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 542, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 260, in generate_disguised_responses
+    disguised_response = _gen_with_retries(_llm_call)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 169, in _gen_with_retries
+    return call_fn()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 252, in _llm_call
+    return get_llm_output(
+  File "/home/nazcol/dementor-sync/scripts/serve/utils_llm.py", line 66, in get_llm_output
+    completion = client.chat.completions.create(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_utils/_utils.py", line 279, in wrapper
+    return func(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/resources/chat/completions/completions.py", line 914, in create
+    return self._post(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 1242, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 919, in request
+    return self._request(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 955, in _request
+    response = self._client.send(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 136, in handle_request
+    raise exc
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_backends/sync.py", line 128, in read
+    return self._sock.recv(max_bytes)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/ssl.py", line 1292, in recv
+    return self.read(buflen)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/ssl.py", line 1165, in read
+    return self._sslobj.read(len)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 665, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 542, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 260, in generate_disguised_responses
+    disguised_response = _gen_with_retries(_llm_call)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 169, in _gen_with_retries
+    return call_fn()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 252, in _llm_call
+    return get_llm_output(
+  File "/home/nazcol/dementor-sync/scripts/serve/utils_llm.py", line 66, in get_llm_output
+    completion = client.chat.completions.create(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_utils/_utils.py", line 279, in wrapper
+    return func(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/resources/chat/completions/completions.py", line 914, in create
+    return self._post(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 1242, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 919, in request
+    return self._request(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 955, in _request
+    response = self._client.send(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 136, in handle_request
+    raise exc
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_backends/sync.py", line 128, in read
+    return self._sock.recv(max_bytes)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/ssl.py", line 1292, in recv
+    return self.read(buflen)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/ssl.py", line 1165, in read
+    return self._sslobj.read(len)
+KeyboardInterrupt
+Exception ignored in atexit callback: <function _start_and_connect_service.<locals>.teardown_atexit at 0x7b1ab5d1f910>
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/lib/service_connection.py", line 94, in teardown_atexit
+    conn.teardown(hooks.exit_code)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/lib/service_connection.py", line 226, in teardown
+    self._router.join()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/interface/router.py", line 75, in join
+    self._thread.join()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/threading.py", line 1096, in join
+    self._wait_for_tstate_lock()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/threading.py", line 1116, in _wait_for_tstate_lock
+    if lock.acquire(block, timeout):
+KeyboardInterrupt:

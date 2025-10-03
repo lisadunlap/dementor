@@ -1,0 +1,17 @@
+{"time":"2025-09-29T07:18:49.791198545Z","level":"INFO","msg":"stream: starting","core version":"0.19.9","symlink path":"/home/nazcol/dementor-sync/scripts/wandb/run-20250929_071849-4tvfpui0/logs/debug-core.log"}
+{"time":"2025-09-29T07:18:50.09934448Z","level":"INFO","msg":"created new stream","id":"4tvfpui0"}
+{"time":"2025-09-29T07:18:50.099459583Z","level":"INFO","msg":"stream: started","id":"4tvfpui0"}
+{"time":"2025-09-29T07:18:50.099479047Z","level":"INFO","msg":"handler: started","stream_id":"4tvfpui0"}
+{"time":"2025-09-29T07:18:50.0995199Z","level":"INFO","msg":"sender: started","stream_id":"4tvfpui0"}
+{"time":"2025-09-29T07:18:50.099554835Z","level":"INFO","msg":"writer: Do: started","stream_id":"4tvfpui0"}
+{"time":"2025-09-29T07:18:50.245130283Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-09-29T07:18:50.246561761Z","level":"ERROR","msg":"git repo not found","error":"repository does not exist"}
+{"time":"2025-09-29T07:18:57.455333674Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-09-29T07:18:57.455738787Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-09-29T07:18:58.054832364Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-09-29T07:18:58.22218314Z","level":"INFO","msg":"handler: operation stats","stats":{}}
+{"time":"2025-09-29T07:18:58.229156802Z","level":"INFO","msg":"stream: closing","id":"4tvfpui0"}
+{"time":"2025-09-29T07:18:58.229182523Z","level":"INFO","msg":"handler: closed","stream_id":"4tvfpui0"}
+{"time":"2025-09-29T07:18:58.229196827Z","level":"INFO","msg":"writer: Close: closed","stream_id":"4tvfpui0"}
+{"time":"2025-09-29T07:18:58.229227963Z","level":"INFO","msg":"sender: closed","stream_id":"4tvfpui0"}
+{"time":"2025-09-29T07:18:58.229629351Z","level":"INFO","msg":"stream: closed","id":"4tvfpui0"}

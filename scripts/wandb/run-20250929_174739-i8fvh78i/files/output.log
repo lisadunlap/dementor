@@ -1,0 +1,115 @@
+Generating random_sampling responses:   0%|                                                                                                     | 0/5 [00:00<?, ?it/s]ERROR:root:Error processing prompt 0: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+Generating random_sampling responses:  20%|██████████████████▌                                                                          | 1/5 [00:03<00:14,  3.53s/it]ERROR:root:Error processing prompt 1: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+Generating random_sampling responses:  40%|█████████████████████████████████████▏                                                       | 2/5 [00:07<00:10,  3.56s/it]ERROR:root:Error processing prompt 2: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+Generating random_sampling responses:  60%|███████████████████████████████████████████████████████▊                                     | 3/5 [00:10<00:07,  3.57s/it]ERROR:root:Error processing prompt 3: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+Generating random_sampling responses:  80%|██████████████████████████████████████████████████████████████████████████▍                  | 4/5 [00:14<00:03,  3.57s/it]ERROR:root:Error processing prompt 4: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+Generating random_sampling responses: 100%|█████████████████████████████████████████████████████████████████████████████████████████████| 5/5 [00:18<00:00,  3.67s/it]

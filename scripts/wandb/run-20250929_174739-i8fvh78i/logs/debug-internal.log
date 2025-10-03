@@ -1,0 +1,17 @@
+{"time":"2025-09-29T17:47:39.627193088Z","level":"INFO","msg":"stream: starting","core version":"0.19.9","symlink path":"/home/nazcol/dementor-sync/scripts/wandb/run-20250929_174739-i8fvh78i/logs/debug-core.log"}
+{"time":"2025-09-29T17:47:40.054503657Z","level":"INFO","msg":"created new stream","id":"i8fvh78i"}
+{"time":"2025-09-29T17:47:40.054559699Z","level":"INFO","msg":"stream: started","id":"i8fvh78i"}
+{"time":"2025-09-29T17:47:40.054586216Z","level":"INFO","msg":"writer: Do: started","stream_id":"i8fvh78i"}
+{"time":"2025-09-29T17:47:40.054594479Z","level":"INFO","msg":"sender: started","stream_id":"i8fvh78i"}
+{"time":"2025-09-29T17:47:40.054618964Z","level":"INFO","msg":"handler: started","stream_id":"i8fvh78i"}
+{"time":"2025-09-29T17:47:40.239642301Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-09-29T17:47:40.241132833Z","level":"ERROR","msg":"git repo not found","error":"repository does not exist"}
+{"time":"2025-09-29T17:47:59.817088372Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-09-29T17:47:59.817317716Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-09-29T17:48:00.820032178Z","level":"INFO","msg":"handler: operation stats","stats":{"operations":[{"desc":"uploading artifact run_artifacts_random_sampling_huggingface-meta-llama-Llama-3-8B-Instruct_as_gpt-4.1","runtime_seconds":1.008907184}],"total_operations":1}}
+{"time":"2025-09-29T17:48:01.294547516Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-09-29T17:48:01.591198663Z","level":"INFO","msg":"stream: closing","id":"i8fvh78i"}
+{"time":"2025-09-29T17:48:01.591235693Z","level":"INFO","msg":"handler: closed","stream_id":"i8fvh78i"}
+{"time":"2025-09-29T17:48:01.591272564Z","level":"INFO","msg":"sender: closed","stream_id":"i8fvh78i"}
+{"time":"2025-09-29T17:48:01.591257974Z","level":"INFO","msg":"writer: Close: closed","stream_id":"i8fvh78i"}
+{"time":"2025-09-29T17:48:01.591798756Z","level":"INFO","msg":"stream: closed","id":"i8fvh78i"}

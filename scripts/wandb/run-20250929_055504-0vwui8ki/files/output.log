@@ -1,0 +1,127 @@
+Generating random_sampling responses:   0%|                                                                                                                                  | 0/500 [00:00<?, ?it/s]ERROR:root:Error processing prompt 0: litellm.BadRequestError: LLM Provider NOT provided. Pass in the LLM provider you are trying to call. You passed model=meta-llama/Llama-3-8B-Instruct
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+ Pass model as E.g. For 'Huggingface' inference endpoints pass in `completion(model='huggingface/starcoder',..)` Learn more: https://docs.litellm.ai/docs/providers
+Generating random_sampling responses:   0%|▏                                                                                                                         | 1/500 [00:03<25:12,  3.03s/it]ERROR:root:Error processing prompt 1: litellm.BadRequestError: LLM Provider NOT provided. Pass in the LLM provider you are trying to call. You passed model=meta-llama/Llama-3-8B-Instruct
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+ Pass model as E.g. For 'Huggingface' inference endpoints pass in `completion(model='huggingface/starcoder',..)` Learn more: https://docs.litellm.ai/docs/providers
+Generating random_sampling responses:   0%|▍                                                                                                                         | 2/500 [00:06<25:05,  3.02s/it]ERROR:root:Error processing prompt 2: litellm.BadRequestError: LLM Provider NOT provided. Pass in the LLM provider you are trying to call. You passed model=meta-llama/Llama-3-8B-Instruct
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+ Pass model as E.g. For 'Huggingface' inference endpoints pass in `completion(model='huggingface/starcoder',..)` Learn more: https://docs.litellm.ai/docs/providers
+Generating random_sampling responses:   1%|▋                                                                                                                         | 3/500 [00:09<25:03,  3.02s/it]ERROR:root:Error processing prompt 3: litellm.BadRequestError: LLM Provider NOT provided. Pass in the LLM provider you are trying to call. You passed model=meta-llama/Llama-3-8B-Instruct
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+ Pass model as E.g. For 'Huggingface' inference endpoints pass in `completion(model='huggingface/starcoder',..)` Learn more: https://docs.litellm.ai/docs/providers
+Generating random_sampling responses:   1%|▉                                                                                                                         | 4/500 [00:13<27:50,  3.37s/it]
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 213, in _gen_with_retries
+    return call_fn()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 308, in _llm_call
+    resp = completion(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/utils.py", line 1285, in wrapper
+    raise e
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/utils.py", line 1163, in wrapper
+    result = original_function(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/main.py", line 3273, in completion
+    raise exception_type(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/main.py", line 1051, in completion
+    model, custom_llm_provider, dynamic_api_key, api_base = get_llm_provider(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/litellm_core_utils/get_llm_provider_logic.py", line 373, in get_llm_provider
+    raise e
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/litellm_core_utils/get_llm_provider_logic.py", line 350, in get_llm_provider
+    raise litellm.exceptions.BadRequestError(  # type: ignore
+litellm.exceptions.BadRequestError: litellm.BadRequestError: LLM Provider NOT provided. Pass in the LLM provider you are trying to call. You passed model=meta-llama/Llama-3-8B-Instruct
+ Pass model as E.g. For 'Huggingface' inference endpoints pass in `completion(model='huggingface/starcoder',..)` Learn more: https://docs.litellm.ai/docs/providers
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 818, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 318, in generate_disguised_responses
+    disguised_response = _gen_with_retries(_llm_call)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 217, in _gen_with_retries
+    time.sleep(base_delay * attempt)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 213, in _gen_with_retries
+    return call_fn()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 308, in _llm_call
+    resp = completion(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/utils.py", line 1285, in wrapper
+    raise e
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/utils.py", line 1163, in wrapper
+    result = original_function(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/main.py", line 3273, in completion
+    raise exception_type(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/main.py", line 1051, in completion
+    model, custom_llm_provider, dynamic_api_key, api_base = get_llm_provider(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/litellm_core_utils/get_llm_provider_logic.py", line 373, in get_llm_provider
+    raise e
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/litellm_core_utils/get_llm_provider_logic.py", line 350, in get_llm_provider
+    raise litellm.exceptions.BadRequestError(  # type: ignore
+litellm.exceptions.BadRequestError: litellm.BadRequestError: LLM Provider NOT provided. Pass in the LLM provider you are trying to call. You passed model=meta-llama/Llama-3-8B-Instruct
+ Pass model as E.g. For 'Huggingface' inference endpoints pass in `completion(model='huggingface/starcoder',..)` Learn more: https://docs.litellm.ai/docs/providers
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 818, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 318, in generate_disguised_responses
+    disguised_response = _gen_with_retries(_llm_call)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 217, in _gen_with_retries
+    time.sleep(base_delay * attempt)
+KeyboardInterrupt
+Exception ignored in atexit callback: <function _start_and_connect_service.<locals>.teardown_atexit at 0x76f761d452d0>
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/lib/service_connection.py", line 94, in teardown_atexit
+    conn.teardown(hooks.exit_code)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/lib/service_connection.py", line 226, in teardown
+    self._router.join()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/interface/router.py", line 75, in join
+    self._thread.join()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/threading.py", line 1096, in join
+    self._wait_for_tstate_lock()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/threading.py", line 1116, in _wait_for_tstate_lock
+    if lock.acquire(block, timeout):
+KeyboardInterrupt:

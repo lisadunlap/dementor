@@ -1,0 +1,17 @@
+ERROR:root:Could not locate base responses. Place CSVs under 'data/model-responses/<dataset>/{full,500}' (preferred) or legacy '.../base'. You can also pass explicit paths via --source_responses and --target_responses.
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 676, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 501, in main
+    source_df, target_df = load_model_responses(args.source_responses, args.target_responses)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 66, in load_model_responses
+    raise FileNotFoundError(f"Source model responses not found: {model_path}")
+FileNotFoundError: Source model responses not found: data/model-responses/generic/full/openai_gpt-4.1_responses-1000.csv
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 676, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 501, in main
+    source_df, target_df = load_model_responses(args.source_responses, args.target_responses)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 66, in load_model_responses
+    raise FileNotFoundError(f"Source model responses not found: {model_path}")
+FileNotFoundError: Source model responses not found: data/model-responses/generic/full/openai_gpt-4.1_responses-1000.csv

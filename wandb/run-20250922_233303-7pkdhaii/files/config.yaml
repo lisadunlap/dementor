@@ -1,0 +1,95 @@
+_wandb:
+    value:
+        cli_version: 0.19.9
+        code_path: code/scripts/disguise.py
+        m: []
+        python_version: 3.10.13
+        t:
+            "1":
+                - 1
+                - 5
+                - 11
+                - 30
+                - 41
+                - 49
+                - 53
+                - 55
+                - 95
+                - 97
+                - 105
+            "2":
+                - 1
+                - 5
+                - 11
+                - 30
+                - 41
+                - 49
+                - 53
+                - 55
+                - 95
+                - 97
+                - 105
+            "3":
+                - 13
+                - 16
+                - 23
+                - 55
+            "4": 3.10.13
+            "5": 0.19.9
+            "6": 4.51.0
+            "8":
+                - 5
+            "12": 0.19.9
+            "13": linux-x86_64
+al_batch_size:
+    value: 10
+al_d_regular:
+    value: 3
+al_max_iterations:
+    value: 5
+al_num_examples:
+    value: 5
+al_p_threshold:
+    value: 0.1
+al_q_threshold:
+    value: 0.1
+al_relaxation_factor:
+    value: 1.2
+al_seed:
+    value: null
+disguise_as:
+    value: openai/gpt-4.1
+example_selector:
+    value: al
+heuristics_only:
+    value: false
+judge_api_base:
+    value: https://api.openai.com/v1
+judge_api_key:
+    value: null
+judge_model:
+    value: openai/gpt-4.1-mini
+method:
+    value: vibe_base
+model:
+    value: openai/gpt-4.1
+no_wandb:
+    value: false
+num_samples:
+    value: 100
+openai_api_base:
+    value: https://api.openai.com/v1
+openai_api_key:
+    value: null
+output_dir:
+    value: /home/nazcol/dementor-sync/data/results/chatbot_arena/comparisons/disguised_vs_target/random_sampling
+prompts_file:
+    value: /home/nazcol/dementor-sync/data/datasets/chatbot_arena/chatbot_arena_prompts.txt
+run_name:
+    value: openai_gpt-4.1_disguised-openai_gpt-4.1_responses-100
+skip_evaluation:
+    value: false
+source_responses:
+    value: null
+target_responses:
+    value: null

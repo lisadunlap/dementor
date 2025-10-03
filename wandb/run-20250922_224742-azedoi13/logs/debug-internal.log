@@ -1,0 +1,17 @@
+{"time":"2025-09-22T22:47:42.457425145Z","level":"INFO","msg":"stream: starting","core version":"0.19.9","symlink path":"/home/nazcol/dementor-sync/wandb/run-20250922_224742-azedoi13/logs/debug-core.log"}
+{"time":"2025-09-22T22:47:42.793980102Z","level":"INFO","msg":"created new stream","id":"azedoi13"}
+{"time":"2025-09-22T22:47:42.794070113Z","level":"INFO","msg":"stream: started","id":"azedoi13"}
+{"time":"2025-09-22T22:47:42.794095551Z","level":"INFO","msg":"writer: Do: started","stream_id":"azedoi13"}
+{"time":"2025-09-22T22:47:42.794126813Z","level":"INFO","msg":"handler: started","stream_id":"azedoi13"}
+{"time":"2025-09-22T22:47:42.794191733Z","level":"INFO","msg":"sender: started","stream_id":"azedoi13"}
+{"time":"2025-09-22T22:47:42.972871964Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-09-22T22:47:42.974667839Z","level":"ERROR","msg":"git repo not found","error":"repository does not exist"}
+{"time":"2025-09-22T22:59:06.99287686Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-09-22T22:59:06.993080598Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-09-22T22:59:07.996251707Z","level":"INFO","msg":"handler: operation stats","stats":{"operations":[{"desc":"uploading artifact run_artifacts_vibe_based_openai-gpt-4.1_as_openai-gpt-4.1","runtime_seconds":1.011763854}],"total_operations":1}}
+{"time":"2025-09-22T22:59:08.409289348Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-09-22T22:59:08.559815559Z","level":"INFO","msg":"stream: closing","id":"azedoi13"}
+{"time":"2025-09-22T22:59:08.559850543Z","level":"INFO","msg":"handler: closed","stream_id":"azedoi13"}
+{"time":"2025-09-22T22:59:08.559868028Z","level":"INFO","msg":"writer: Close: closed","stream_id":"azedoi13"}
+{"time":"2025-09-22T22:59:08.559892099Z","level":"INFO","msg":"sender: closed","stream_id":"azedoi13"}
+{"time":"2025-09-22T22:59:08.560298756Z","level":"INFO","msg":"stream: closed","id":"azedoi13"}

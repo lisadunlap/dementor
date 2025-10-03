@@ -1,0 +1,149 @@
+ERROR 09-28 00:18:23 [config.py:103] Error retrieving file list: 404 Client Error. (Request ID: Root=1-68d87ecf-4106e0fc48b15da80f37a4a5;ae6ea573-c6f2-4929-a2fc-9491590e9c64)
+ERROR 09-28 00:18:23 [config.py:103]
+ERROR 09-28 00:18:23 [config.py:103] Repository Not Found for url: https://huggingface.co/api/models/Qwen/Qwen_Qwen3-8B/tree/main?recursive=True&expand=False.
+ERROR 09-28 00:18:23 [config.py:103] Please make sure you specified the correct `repo_id` and `repo_type`.
+ERROR 09-28 00:18:23 [config.py:103] If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication, retrying 1 of 2
+ERROR 09-28 00:18:25 [config.py:101] Error retrieving file list: 404 Client Error. (Request ID: Root=1-68d87ed1-586d1cfa22d5bf3b14c9fe0d;ac10b323-05f2-436c-9bb2-dd56e5abbaad)
+ERROR 09-28 00:18:25 [config.py:101]
+ERROR 09-28 00:18:25 [config.py:101] Repository Not Found for url: https://huggingface.co/api/models/Qwen/Qwen_Qwen3-8B/tree/main?recursive=True&expand=False.
+ERROR 09-28 00:18:25 [config.py:101] Please make sure you specified the correct `repo_id` and `repo_type`.
+ERROR 09-28 00:18:25 [config.py:101] If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/huggingface_hub/utils/_http.py", line 409, in hf_raise_for_status
+    response.raise_for_status()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/requests/models.py", line 1024, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error: Not Found for url: https://huggingface.co/api/models/Qwen/Qwen_Qwen3-8B/tree/main?recursive=True&expand=False
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/transformers_utils/config.py", line 258, in get_config
+    if is_gguf or file_or_path_exists(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/transformers_utils/config.py", line 180, in file_or_path_exists
+    return file_exists(str(model),
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/transformers_utils/config.py", line 155, in file_exists
+    file_list = list_repo_files(repo_id,
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/transformers_utils/config.py", line 144, in list_repo_files
+    return with_retry(lookup_files, "Error retrieving file list")
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/transformers_utils/config.py", line 98, in with_retry
+    return func()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/transformers_utils/config.py", line 134, in lookup_files
+    return hf_list_repo_files(repo_id,
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/huggingface_hub/hf_api.py", line 2994, in list_repo_files
+    return [
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/huggingface_hub/hf_api.py", line 2994, in <listcomp>
+    return [
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/huggingface_hub/hf_api.py", line 3131, in list_repo_tree
+    for path_info in paginate(path=tree_url, headers=headers, params={"recursive": recursive, "expand": expand}):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/huggingface_hub/utils/_pagination.py", line 37, in paginate
+    hf_raise_for_status(r)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/huggingface_hub/utils/_http.py", line 459, in hf_raise_for_status
+    raise _format(RepositoryNotFoundError, message, response) from e
+huggingface_hub.errors.RepositoryNotFoundError: 404 Client Error. (Request ID: Root=1-68d87ed1-586d1cfa22d5bf3b14c9fe0d;ac10b323-05f2-436c-9bb2-dd56e5abbaad)
+
+Repository Not Found for url: https://huggingface.co/api/models/Qwen/Qwen_Qwen3-8B/tree/main?recursive=True&expand=False.
+Please make sure you specified the correct `repo_id` and `repo_type`.
+If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/gen_cache_response.py", line 544, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/gen_cache_response.py", line 507, in main
+    responses = generator.generate_with_vllm(
+  File "/home/nazcol/dementor-sync/scripts/gen_cache_response.py", line 233, in generate_with_vllm
+    llm = LLM(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/utils.py", line 1096, in inner
+    return fn(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/entrypoints/llm.py", line 243, in __init__
+    self.llm_engine = LLMEngine.from_engine_args(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/engine/llm_engine.py", line 514, in from_engine_args
+    vllm_config = engine_args.create_engine_config(usage_context)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/engine/arg_utils.py", line 1137, in create_engine_config
+    model_config = self.create_model_config()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/engine/arg_utils.py", line 1026, in create_model_config
+    return ModelConfig(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/config.py", line 343, in __init__
+    hf_config = get_config(self.hf_config_path or self.model,
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/transformers_utils/config.py", line 283, in get_config
+    raise ValueError(error_message) from e
+ValueError: Invalid repository ID or local directory specified: 'Qwen/Qwen_Qwen3-8B'.
+Please verify the following requirements:
+1. Provide a valid Hugging Face repository ID.
+2. Specify a local directory that contains a recognized configuration file.
+   - For Hugging Face models: ensure the presence of a 'config.json'.
+   - For Mistral models: ensure the presence of a 'params.json'.
+
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/huggingface_hub/utils/_http.py", line 409, in hf_raise_for_status
+    response.raise_for_status()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/requests/models.py", line 1024, in raise_for_status
+    raise HTTPError(http_error_msg, response=self)
+requests.exceptions.HTTPError: 404 Client Error: Not Found for url: https://huggingface.co/api/models/Qwen/Qwen_Qwen3-8B/tree/main?recursive=True&expand=False
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/transformers_utils/config.py", line 258, in get_config
+    if is_gguf or file_or_path_exists(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/transformers_utils/config.py", line 180, in file_or_path_exists
+    return file_exists(str(model),
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/transformers_utils/config.py", line 155, in file_exists
+    file_list = list_repo_files(repo_id,
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/transformers_utils/config.py", line 144, in list_repo_files
+    return with_retry(lookup_files, "Error retrieving file list")
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/transformers_utils/config.py", line 98, in with_retry
+    return func()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/transformers_utils/config.py", line 134, in lookup_files
+    return hf_list_repo_files(repo_id,
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/huggingface_hub/utils/_validators.py", line 114, in _inner_fn
+    return fn(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/huggingface_hub/hf_api.py", line 2994, in list_repo_files
+    return [
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/huggingface_hub/hf_api.py", line 2994, in <listcomp>
+    return [
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/huggingface_hub/hf_api.py", line 3131, in list_repo_tree
+    for path_info in paginate(path=tree_url, headers=headers, params={"recursive": recursive, "expand": expand}):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/huggingface_hub/utils/_pagination.py", line 37, in paginate
+    hf_raise_for_status(r)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/huggingface_hub/utils/_http.py", line 459, in hf_raise_for_status
+    raise _format(RepositoryNotFoundError, message, response) from e
+huggingface_hub.errors.RepositoryNotFoundError: 404 Client Error. (Request ID: Root=1-68d87ed1-586d1cfa22d5bf3b14c9fe0d;ac10b323-05f2-436c-9bb2-dd56e5abbaad)
+
+Repository Not Found for url: https://huggingface.co/api/models/Qwen/Qwen_Qwen3-8B/tree/main?recursive=True&expand=False.
+Please make sure you specified the correct `repo_id` and `repo_type`.
+If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/gen_cache_response.py", line 544, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/gen_cache_response.py", line 507, in main
+    responses = generator.generate_with_vllm(
+  File "/home/nazcol/dementor-sync/scripts/gen_cache_response.py", line 233, in generate_with_vllm
+    llm = LLM(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/utils.py", line 1096, in inner
+    return fn(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/entrypoints/llm.py", line 243, in __init__
+    self.llm_engine = LLMEngine.from_engine_args(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/engine/llm_engine.py", line 514, in from_engine_args
+    vllm_config = engine_args.create_engine_config(usage_context)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/engine/arg_utils.py", line 1137, in create_engine_config
+    model_config = self.create_model_config()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/engine/arg_utils.py", line 1026, in create_model_config
+    return ModelConfig(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/config.py", line 343, in __init__
+    hf_config = get_config(self.hf_config_path or self.model,
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/vllm/transformers_utils/config.py", line 283, in get_config
+    raise ValueError(error_message) from e
+ValueError: Invalid repository ID or local directory specified: 'Qwen/Qwen_Qwen3-8B'.
+Please verify the following requirements:
+1. Provide a valid Hugging Face repository ID.
+2. Specify a local directory that contains a recognized configuration file.
+   - For Hugging Face models: ensure the presence of a 'config.json'.
+   - For Mistral models: ensure the presence of a 'params.json'.

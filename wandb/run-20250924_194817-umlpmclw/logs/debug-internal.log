@@ -1,0 +1,16 @@
+{"time":"2025-09-24T19:48:17.74937535Z","level":"INFO","msg":"stream: starting","core version":"0.19.9","symlink path":"/home/nazcol/dementor-sync/wandb/run-20250924_194817-umlpmclw/logs/debug-core.log"}
+{"time":"2025-09-24T19:48:18.055338111Z","level":"INFO","msg":"created new stream","id":"umlpmclw"}
+{"time":"2025-09-24T19:48:18.055405776Z","level":"INFO","msg":"stream: started","id":"umlpmclw"}
+{"time":"2025-09-24T19:48:18.055467284Z","level":"INFO","msg":"writer: Do: started","stream_id":"umlpmclw"}
+{"time":"2025-09-24T19:48:18.055479511Z","level":"INFO","msg":"sender: started","stream_id":"umlpmclw"}
+{"time":"2025-09-24T19:48:18.055496075Z","level":"INFO","msg":"handler: started","stream_id":"umlpmclw"}
+{"time":"2025-09-24T19:48:18.263994974Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-09-24T19:48:18.265607037Z","level":"ERROR","msg":"git repo not found","error":"repository does not exist"}
+{"time":"2025-09-24T19:51:12.492527852Z","level":"INFO","msg":"stream: closing","id":"umlpmclw"}
+{"time":"2025-09-24T19:51:12.492572627Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-09-24T19:51:12.492629474Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-09-24T19:51:12.913374582Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-09-24T19:51:13.063732277Z","level":"INFO","msg":"handler: closed","stream_id":"umlpmclw"}
+{"time":"2025-09-24T19:51:13.06378177Z","level":"INFO","msg":"writer: Close: closed","stream_id":"umlpmclw"}
+{"time":"2025-09-24T19:51:13.06381635Z","level":"INFO","msg":"sender: closed","stream_id":"umlpmclw"}
+{"time":"2025-09-24T19:51:13.064453531Z","level":"INFO","msg":"stream: closed","id":"umlpmclw"}

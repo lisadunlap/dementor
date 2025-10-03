@@ -1,0 +1,17 @@
+{"time":"2025-09-29T09:10:32.430205123Z","level":"INFO","msg":"stream: starting","core version":"0.19.9","symlink path":"/home/nazcol/dementor-sync/scripts/wandb/run-20250929_091032-vbltniuf/logs/debug-core.log"}
+{"time":"2025-09-29T09:10:32.739121505Z","level":"INFO","msg":"created new stream","id":"vbltniuf"}
+{"time":"2025-09-29T09:10:32.739199028Z","level":"INFO","msg":"stream: started","id":"vbltniuf"}
+{"time":"2025-09-29T09:10:32.739229191Z","level":"INFO","msg":"writer: Do: started","stream_id":"vbltniuf"}
+{"time":"2025-09-29T09:10:32.739241354Z","level":"INFO","msg":"sender: started","stream_id":"vbltniuf"}
+{"time":"2025-09-29T09:10:32.739351587Z","level":"INFO","msg":"handler: started","stream_id":"vbltniuf"}
+{"time":"2025-09-29T09:10:32.899936303Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-09-29T09:10:32.901455456Z","level":"ERROR","msg":"git repo not found","error":"repository does not exist"}
+{"time":"2025-09-29T09:50:50.645667548Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-09-29T09:50:50.645876011Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-09-29T09:50:51.648139219Z","level":"INFO","msg":"handler: operation stats","stats":{"operations":[{"desc":"uploading artifact run_artifacts_vibe_based_gpt-4.1_as_meta-llama-Meta-Llama-3-8B-Instruct","runtime_seconds":1.00802724,"subtasks":[{"desc":"gpt-4.1_as_llama-3-8b_scores.csv","runtime_seconds":0.582522763,"progress":"9.5MB/9.5MB"},{"desc":"gpt-4.1_as_llama-3-8b.csv","runtime_seconds":0.582343609,"progress":"7.7MB/7.7MB"}]}],"total_operations":1}}
+{"time":"2025-09-29T09:50:52.433245428Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-09-29T09:50:52.560375017Z","level":"INFO","msg":"stream: closing","id":"vbltniuf"}
+{"time":"2025-09-29T09:50:52.560428542Z","level":"INFO","msg":"handler: closed","stream_id":"vbltniuf"}
+{"time":"2025-09-29T09:50:52.560446032Z","level":"INFO","msg":"writer: Close: closed","stream_id":"vbltniuf"}
+{"time":"2025-09-29T09:50:52.560520228Z","level":"INFO","msg":"sender: closed","stream_id":"vbltniuf"}
+{"time":"2025-09-29T09:50:52.560936134Z","level":"INFO","msg":"stream: closed","id":"vbltniuf"}

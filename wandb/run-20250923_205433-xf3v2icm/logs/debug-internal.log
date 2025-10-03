@@ -1,0 +1,6 @@
+{"time":"2025-09-23T20:54:33.44843109Z","level":"INFO","msg":"stream: starting","core version":"0.19.9","symlink path":"/home/nazcol/dementor-sync/wandb/run-20250923_205433-xf3v2icm/logs/debug-core.log"}
+{"time":"2025-09-23T20:54:33.762138993Z","level":"INFO","msg":"created new stream","id":"xf3v2icm"}
+{"time":"2025-09-23T20:54:33.762227619Z","level":"INFO","msg":"stream: started","id":"xf3v2icm"}
+{"time":"2025-09-23T20:54:33.762309261Z","level":"INFO","msg":"writer: Do: started","stream_id":"xf3v2icm"}
+{"time":"2025-09-23T20:54:33.762322647Z","level":"INFO","msg":"sender: started","stream_id":"xf3v2icm"}
+{"time":"2025-09-23T20:54:33.76356699Z","level":"INFO","msg":"handler: started","stream_id":"xf3v2icm"}

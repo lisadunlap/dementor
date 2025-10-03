@@ -1,0 +1,10 @@
+metric,value
+semantic_score_mean,3.9495504495504496
+semantic_score_std,0.21892540632720073
+semantic_score_count,2002
+stylistic_score_mean,2.723276723276723
+stylistic_score_std,0.4474902552943032
+stylistic_score_count,2002
+heuristic_match_mean,0.34965034965034963
+heuristic_match_std,0.47697864030868536
+heuristic_match_count,2002

@@ -1,0 +1,17 @@
+{"time":"2025-09-26T17:29:18.862112895Z","level":"INFO","msg":"stream: starting","core version":"0.19.9","symlink path":"/home/nazcol/dementor-sync/wandb/run-20250926_172918-ooel2087/logs/debug-core.log"}
+{"time":"2025-09-26T17:29:19.181930357Z","level":"INFO","msg":"created new stream","id":"ooel2087"}
+{"time":"2025-09-26T17:29:19.182022517Z","level":"INFO","msg":"stream: started","id":"ooel2087"}
+{"time":"2025-09-26T17:29:19.182039834Z","level":"INFO","msg":"writer: Do: started","stream_id":"ooel2087"}
+{"time":"2025-09-26T17:29:19.182052267Z","level":"INFO","msg":"handler: started","stream_id":"ooel2087"}
+{"time":"2025-09-26T17:29:19.18214479Z","level":"INFO","msg":"sender: started","stream_id":"ooel2087"}
+{"time":"2025-09-26T17:29:19.358912326Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-09-26T17:29:19.360828374Z","level":"ERROR","msg":"git repo not found","error":"repository does not exist"}
+{"time":"2025-09-26T19:21:42.736015736Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-09-26T19:21:42.736475847Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-09-26T19:21:43.738959545Z","level":"INFO","msg":"handler: operation stats","stats":{"operations":[{"desc":"uploading artifact run_artifacts_random_sampling_gpt-4.1_as_gpt-4.1","runtime_seconds":1.007458878,"subtasks":[{"desc":"gpt-4.1_as_gpt-4.1.csv","runtime_seconds":0.52391709,"progress":"1.7MB/1.7MB"},{"desc":"gpt-4.1_as_gpt-4.1_scores.csv","runtime_seconds":0.523897843,"progress":"1.9MB/1.9MB"}]}],"total_operations":1}}
+{"time":"2025-09-26T19:21:44.466465407Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-09-26T19:21:44.605540039Z","level":"INFO","msg":"stream: closing","id":"ooel2087"}
+{"time":"2025-09-26T19:21:44.605567164Z","level":"INFO","msg":"handler: closed","stream_id":"ooel2087"}
+{"time":"2025-09-26T19:21:44.605582464Z","level":"INFO","msg":"writer: Close: closed","stream_id":"ooel2087"}
+{"time":"2025-09-26T19:21:44.605655373Z","level":"INFO","msg":"sender: closed","stream_id":"ooel2087"}
+{"time":"2025-09-26T19:21:44.60626107Z","level":"INFO","msg":"stream: closed","id":"ooel2087"}

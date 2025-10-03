@@ -1,0 +1,24 @@
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 821, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 147, in generate_disguised_responses
+    method = get_method(method_name, model, disguise_as,
+  File "/home/nazcol/dementor-sync/scripts/methods/get_method.py", line 84, in get_method
+    return ContrastiveWithALExamples(
+  File "/home/nazcol/dementor-sync/scripts/methods/contrastive_with_al_examples.py", line 55, in __init__
+    from utils.active_learning_selector import ActiveLearningSelector
+ModuleNotFoundError: No module named 'utils.active_learning_selector'; 'utils' is not a package
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 821, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 147, in generate_disguised_responses
+    method = get_method(method_name, model, disguise_as,
+  File "/home/nazcol/dementor-sync/scripts/methods/get_method.py", line 84, in get_method
+    return ContrastiveWithALExamples(
+  File "/home/nazcol/dementor-sync/scripts/methods/contrastive_with_al_examples.py", line 55, in __init__
+    from utils.active_learning_selector import ActiveLearningSelector
+ModuleNotFoundError: No module named 'utils.active_learning_selector'; 'utils' is not a package

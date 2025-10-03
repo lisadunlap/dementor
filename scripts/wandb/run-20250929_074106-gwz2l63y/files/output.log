@@ -1,0 +1,20 @@
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 821, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 147, in generate_disguised_responses
+    method = get_method(method_name, model, disguise_as,
+  File "/home/nazcol/dementor-sync/scripts/methods/get_method.py", line 97, in get_method
+    raise ValueError(f"Method '{method_name}' not found. Available methods: {available_methods}")
+ValueError: Method 'base' not found. Available methods: ['contrastive', 'vibe_based', 'stylistic', 'random_sampling', 'contrastive_with_al_examples', 'contrastive_al']
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 821, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 147, in generate_disguised_responses
+    method = get_method(method_name, model, disguise_as,
+  File "/home/nazcol/dementor-sync/scripts/methods/get_method.py", line 97, in get_method
+    raise ValueError(f"Method '{method_name}' not found. Available methods: {available_methods}")
+ValueError: Method 'base' not found. Available methods: ['contrastive', 'vibe_based', 'stylistic', 'random_sampling', 'contrastive_with_al_examples', 'contrastive_al']

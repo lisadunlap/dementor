@@ -1,0 +1,88 @@
+_wandb:
+    value:
+        cli_version: 0.19.9
+        code_path: code/gen_cache_response.py
+        m: []
+        python_version: 3.10.13
+        t:
+            "1":
+                - 1
+                - 5
+                - 11
+                - 30
+                - 41
+                - 49
+                - 53
+                - 55
+                - 95
+                - 97
+                - 105
+            "2":
+                - 1
+                - 5
+                - 11
+                - 30
+                - 41
+                - 49
+                - 53
+                - 55
+                - 95
+                - 97
+                - 105
+            "3":
+                - 13
+                - 23
+                - 55
+            "4": 3.10.13
+            "5": 0.19.9
+            "6": 4.51.0
+            "8":
+                - 5
+            "12": 0.19.9
+            "13": linux-x86_64
+batch_size:
+    value: 100
+cache_dir:
+    value: cache
+dataset:
+    value: /home/nazcol/dementor/dementor/disguising/model-responses/base_500_all_models/call_center_prompts.csv
+disable_wandb:
+    value: false
+dtype:
+    value: half
+generate_scripts:
+    value: false
+gpt_model:
+    value: null
+input_pattern:
+    value: ../model-responses/disguised/stylistic_clustering/**/temp0.7/*.csv
+max_model_len:
+    value: 8000
+max_prompt_tokens:
+    value: 1024
+max_tokens:
+    value: 1024
+model:
+    value: Qwen/Qwen3-8B
+multimodal:
+    value: false
+num_samples:
+    value: 500
+num_scripts:
+    value: 8
+output_dir:
+    value: data/model-responses/call_center
+script_dir:
+    value: scripts
+temperature:
+    value: 0.7
+tensor_parallel_size:
+    value: 2
+top_p:
+    value: 0.95
+use_serve_llm:
+    value: false
+use_vllm:
+    value: false
+wandb_project:
+    value: disguising-generations

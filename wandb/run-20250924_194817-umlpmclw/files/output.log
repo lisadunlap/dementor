@@ -1,0 +1,123 @@
+Generating random_sampling responses:   0%|                                                                                                                                              | 0/20 [00:00<?, ?it/s]ERROR:root:Error processing prompt 0: 'model_response'
+Generating random_sampling responses:   5%|██████▋                                                                                                                               | 1/20 [00:12<03:59, 12.62s/it]ERROR:root:Error processing prompt 1: 'model_response'
+Generating random_sampling responses:  10%|█████████████▍                                                                                                                        | 2/20 [00:24<03:40, 12.27s/it]ERROR:root:Error processing prompt 2: 'model_response'
+Generating random_sampling responses:  15%|████████████████████                                                                                                                  | 3/20 [00:35<03:14, 11.45s/it]ERROR:root:Error processing prompt 3: 'model_response'
+Generating random_sampling responses:  20%|██████████████████████████▊                                                                                                           | 4/20 [00:58<04:16, 16.01s/it]ERROR:root:Error processing prompt 4: 'model_response'
+Generating random_sampling responses:  25%|█████████████████████████████████▌                                                                                                    | 5/20 [01:22<04:45, 19.03s/it]ERROR:root:Error processing prompt 5: 'model_response'
+Generating random_sampling responses:  30%|████████████████████████████████████████▏                                                                                             | 6/20 [01:42<04:31, 19.37s/it]ERROR:root:Error processing prompt 6: 'model_response'
+Generating random_sampling responses:  35%|██████████████████████████████████████████████▉                                                                                       | 7/20 [01:49<03:19, 15.37s/it]ERROR:root:Error processing prompt 7: 'model_response'
+Generating random_sampling responses:  40%|█████████████████████████████████████████████████████▌                                                                                | 8/20 [01:55<02:29, 12.49s/it]ERROR:root:Error processing prompt 8: 'model_response'
+Generating random_sampling responses:  45%|████████████████████████████████████████████████████████████▎                                                                         | 9/20 [01:57<01:38,  9.00s/it]ERROR:root:Error processing prompt 9: 'model_response'
+Generating random_sampling responses:  50%|██████████████████████████████████████████████████████████████████▌                                                                  | 10/20 [02:01<01:15,  7.57s/it]ERROR:root:Error processing prompt 10: 'model_response'
+Generating random_sampling responses:  55%|█████████████████████████████████████████████████████████████████████████▏                                                           | 11/20 [02:22<01:44, 11.59s/it]ERROR:root:Error processing prompt 11: 'model_response'
+Generating random_sampling responses:  60%|███████████████████████████████████████████████████████████████████████████████▊                                                     | 12/20 [02:24<01:09,  8.63s/it]ERROR:root:Error processing prompt 12: 'model_response'
+Generating random_sampling responses:  65%|██████████████████████████████████████████████████████████████████████████████████████▍                                              | 13/20 [02:44<01:24, 12.03s/it]ERROR:root:Error processing prompt 13: 'model_response'
+Generating random_sampling responses:  70%|█████████████████████████████████████████████████████████████████████████████████████████████                                        | 14/20 [02:53<01:14, 12.40s/it]
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 736, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 583, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 293, in generate_disguised_responses
+    disguised_response = _gen_with_retries(_llm_call)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 202, in _gen_with_retries
+    return call_fn()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 285, in _llm_call
+    return get_llm_output(
+  File "/home/nazcol/dementor-sync/scripts/serve/utils_llm.py", line 66, in get_llm_output
+    completion = client.chat.completions.create(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_utils/_utils.py", line 279, in wrapper
+    return func(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/resources/chat/completions/completions.py", line 914, in create
+    return self._post(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 1242, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 919, in request
+    return self._request(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 955, in _request
+    response = self._client.send(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 136, in handle_request
+    raise exc
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_backends/sync.py", line 128, in read
+    return self._sock.recv(max_bytes)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/ssl.py", line 1292, in recv
+    return self.read(buflen)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/ssl.py", line 1165, in read
+    return self._sslobj.read(len)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 736, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 583, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 293, in generate_disguised_responses
+    disguised_response = _gen_with_retries(_llm_call)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 202, in _gen_with_retries
+    return call_fn()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 285, in _llm_call
+    return get_llm_output(
+  File "/home/nazcol/dementor-sync/scripts/serve/utils_llm.py", line 66, in get_llm_output
+    completion = client.chat.completions.create(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_utils/_utils.py", line 279, in wrapper
+    return func(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/resources/chat/completions/completions.py", line 914, in create
+    return self._post(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 1242, in post
+    return cast(ResponseT, self.request(cast_to, opts, stream=stream, stream_cls=stream_cls))
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 919, in request
+    return self._request(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 955, in _request
+    response = self._client.send(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 914, in send
+    response = self._send_handling_auth(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 942, in _send_handling_auth
+    response = self._send_handling_redirects(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 979, in _send_handling_redirects
+    response = self._send_single_request(request)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 1014, in _send_single_request
+    response = transport.handle_request(request)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_transports/default.py", line 250, in handle_request
+    resp = self._pool.handle_request(req)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py", line 256, in handle_request
+    raise exc from None
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection_pool.py", line 236, in handle_request
+    response = connection.handle_request(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/connection.py", line 103, in handle_request
+    return self._connection.handle_request(request)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 136, in handle_request
+    raise exc
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 106, in handle_request
+    ) = self._receive_response_headers(**kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 177, in _receive_response_headers
+    event = self._receive_event(timeout=timeout)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_sync/http11.py", line 217, in _receive_event
+    data = self._network_stream.read(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpcore/_backends/sync.py", line 128, in read
+    return self._sock.recv(max_bytes)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/ssl.py", line 1292, in recv
+    return self.read(buflen)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/ssl.py", line 1165, in read
+    return self._sslobj.read(len)
+KeyboardInterrupt

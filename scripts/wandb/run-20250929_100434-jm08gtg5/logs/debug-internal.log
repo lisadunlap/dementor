@@ -1,0 +1,17 @@
+{"time":"2025-09-29T10:04:34.068678333Z","level":"INFO","msg":"stream: starting","core version":"0.19.9","symlink path":"/home/nazcol/dementor-sync/scripts/wandb/run-20250929_100434-jm08gtg5/logs/debug-core.log"}
+{"time":"2025-09-29T10:04:34.484430309Z","level":"INFO","msg":"created new stream","id":"jm08gtg5"}
+{"time":"2025-09-29T10:04:34.484536792Z","level":"INFO","msg":"stream: started","id":"jm08gtg5"}
+{"time":"2025-09-29T10:04:34.484565625Z","level":"INFO","msg":"writer: Do: started","stream_id":"jm08gtg5"}
+{"time":"2025-09-29T10:04:34.484595872Z","level":"INFO","msg":"handler: started","stream_id":"jm08gtg5"}
+{"time":"2025-09-29T10:04:34.484689329Z","level":"INFO","msg":"sender: started","stream_id":"jm08gtg5"}
+{"time":"2025-09-29T10:04:34.634291612Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-09-29T10:04:34.635870316Z","level":"ERROR","msg":"git repo not found","error":"repository does not exist"}
+{"time":"2025-09-29T10:12:34.731285202Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-09-29T10:12:34.771448826Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-09-29T10:12:35.73405621Z","level":"INFO","msg":"handler: operation stats","stats":{"operations":[{"desc":"uploading artifact run_artifacts_contrastive_with_al_examples_gpt-4.1_as_meta-llama-Meta-Llama-3-8B-Instruct","runtime_seconds":1.007143404,"subtasks":[{"desc":"gpt-4.1_as_llama-3-8b.csv","runtime_seconds":0.641340797,"progress":"10.3MB/10.3MB"}]}],"total_operations":1}}
+{"time":"2025-09-29T10:12:36.446958777Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-09-29T10:12:36.619315914Z","level":"INFO","msg":"stream: closing","id":"jm08gtg5"}
+{"time":"2025-09-29T10:12:36.619341847Z","level":"INFO","msg":"handler: closed","stream_id":"jm08gtg5"}
+{"time":"2025-09-29T10:12:36.619356671Z","level":"INFO","msg":"writer: Close: closed","stream_id":"jm08gtg5"}
+{"time":"2025-09-29T10:12:36.61944888Z","level":"INFO","msg":"sender: closed","stream_id":"jm08gtg5"}
+{"time":"2025-09-29T10:12:36.619763399Z","level":"INFO","msg":"stream: closed","id":"jm08gtg5"}

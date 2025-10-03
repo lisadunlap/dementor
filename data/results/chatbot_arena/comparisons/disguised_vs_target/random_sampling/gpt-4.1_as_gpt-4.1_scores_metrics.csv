@@ -1,0 +1,10 @@
+metric,value
+semantic_score_mean,1.0
+semantic_score_std,0.0
+semantic_score_count,5
+stylistic_score_mean,1.0
+stylistic_score_std,0.0
+stylistic_score_count,5
+heuristic_match_mean,0.0
+heuristic_match_std,0.0
+heuristic_match_count,5

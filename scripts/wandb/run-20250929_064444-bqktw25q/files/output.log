@@ -1,0 +1,86 @@
+Generating random_sampling responses:   0%|                                                             | 0/5 [00:00<?, ?it/s]ERROR:root:Error processing prompt 0: Invalid repository ID or local directory specified: 'meta-llama/Llama-3-8b-instruct'.
+ERROR 09-29 06:44:46 [config.py:103] Error retrieving file list: 404 Client Error. (Request ID: Root=1-68da2add-32f0cefa27f6b14a3c8737d5;14c2a3b5-abcc-4dee-8e35-794fa6a14e47)
+ERROR 09-29 06:44:46 [config.py:103]
+ERROR 09-29 06:44:46 [config.py:103] Repository Not Found for url: https://huggingface.co/api/models/meta-llama/Llama-3-8b-instruct/tree/main?recursive=True&expand=False.
+ERROR 09-29 06:44:46 [config.py:103] Please make sure you specified the correct `repo_id` and `repo_type`.
+ERROR 09-29 06:44:46 [config.py:103] If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication, retrying 1 of 2
+ERROR 09-29 06:44:48 [config.py:101] Error retrieving file list: 404 Client Error. (Request ID: Root=1-68da2ae0-434c41a52f9c6bc745c01f68;b1c44a46-9ba9-4e79-8b61-5ba46572a5fc)
+ERROR 09-29 06:44:48 [config.py:101]
+ERROR 09-29 06:44:48 [config.py:101] Repository Not Found for url: https://huggingface.co/api/models/meta-llama/Llama-3-8b-instruct/tree/main?recursive=True&expand=False.
+ERROR 09-29 06:44:48 [config.py:101] Please make sure you specified the correct `repo_id` and `repo_type`.
+ERROR 09-29 06:44:48 [config.py:101] If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
+Please verify the following requirements:
+1. Provide a valid Hugging Face repository ID.
+2. Specify a local directory that contains a recognized configuration file.
+   - For Hugging Face models: ensure the presence of a 'config.json'.
+   - For Mistral models: ensure the presence of a 'params.json'.
+
+Generating random_sampling responses:  20%|██████████▌                                          | 1/5 [00:02<00:08,  2.23s/it]ERROR:root:Error processing prompt 1: Invalid repository ID or local directory specified: 'meta-llama/Llama-3-8b-instruct'.
+ERROR 09-29 06:44:48 [config.py:103] Error retrieving file list: 404 Client Error. (Request ID: Root=1-68da2ae0-08f17d096899d72977545cbd;40baba4c-1bbe-485e-9544-d47c76016ee2)
+ERROR 09-29 06:44:48 [config.py:103]
+ERROR 09-29 06:44:48 [config.py:103] Repository Not Found for url: https://huggingface.co/api/models/meta-llama/Llama-3-8b-instruct/tree/main?recursive=True&expand=False.
+ERROR 09-29 06:44:48 [config.py:103] Please make sure you specified the correct `repo_id` and `repo_type`.
+ERROR 09-29 06:44:48 [config.py:103] If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication, retrying 1 of 2
+ERROR 09-29 06:44:50 [config.py:101] Error retrieving file list: 404 Client Error. (Request ID: Root=1-68da2ae2-3718856c3094ef5148c3954f;373d3ad2-a9e9-4f73-95a1-ec6095bb584b)
+ERROR 09-29 06:44:50 [config.py:101]
+ERROR 09-29 06:44:50 [config.py:101] Repository Not Found for url: https://huggingface.co/api/models/meta-llama/Llama-3-8b-instruct/tree/main?recursive=True&expand=False.
+ERROR 09-29 06:44:50 [config.py:101] Please make sure you specified the correct `repo_id` and `repo_type`.
+ERROR 09-29 06:44:50 [config.py:101] If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
+Please verify the following requirements:
+1. Provide a valid Hugging Face repository ID.
+2. Specify a local directory that contains a recognized configuration file.
+   - For Hugging Face models: ensure the presence of a 'config.json'.
+   - For Mistral models: ensure the presence of a 'params.json'.
+
+Generating random_sampling responses:  40%|█████████████████████▏                               | 2/5 [00:04<00:06,  2.20s/it]ERROR:root:Error processing prompt 2: Invalid repository ID or local directory specified: 'meta-llama/Llama-3-8b-instruct'.
+ERROR 09-29 06:44:50 [config.py:103] Error retrieving file list: 404 Client Error. (Request ID: Root=1-68da2ae2-7b27455c1a13531d32a26d0c;387826ea-906d-4ee3-942d-910a642dd4c7)
+ERROR 09-29 06:44:50 [config.py:103]
+ERROR 09-29 06:44:50 [config.py:103] Repository Not Found for url: https://huggingface.co/api/models/meta-llama/Llama-3-8b-instruct/tree/main?recursive=True&expand=False.
+ERROR 09-29 06:44:50 [config.py:103] Please make sure you specified the correct `repo_id` and `repo_type`.
+ERROR 09-29 06:44:50 [config.py:103] If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication, retrying 1 of 2
+ERROR 09-29 06:44:52 [config.py:101] Error retrieving file list: 404 Client Error. (Request ID: Root=1-68da2ae4-0f5420427a11dba331c5b3c1;689dae21-d18e-4879-8fde-a9f19df7bce9)
+ERROR 09-29 06:44:52 [config.py:101]
+ERROR 09-29 06:44:52 [config.py:101] Repository Not Found for url: https://huggingface.co/api/models/meta-llama/Llama-3-8b-instruct/tree/main?recursive=True&expand=False.
+ERROR 09-29 06:44:52 [config.py:101] Please make sure you specified the correct `repo_id` and `repo_type`.
+ERROR 09-29 06:44:52 [config.py:101] If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
+Please verify the following requirements:
+1. Provide a valid Hugging Face repository ID.
+2. Specify a local directory that contains a recognized configuration file.
+   - For Hugging Face models: ensure the presence of a 'config.json'.
+   - For Mistral models: ensure the presence of a 'params.json'.
+
+Generating random_sampling responses:  60%|███████████████████████████████▊                     | 3/5 [00:06<00:04,  2.19s/it]ERROR:root:Error processing prompt 3: Invalid repository ID or local directory specified: 'meta-llama/Llama-3-8b-instruct'.
+ERROR 09-29 06:44:52 [config.py:103] Error retrieving file list: 404 Client Error. (Request ID: Root=1-68da2ae4-06adcba949e593024b729f08;a6fdc5b7-b422-412c-89c9-63028c172ad1)
+ERROR 09-29 06:44:52 [config.py:103]
+ERROR 09-29 06:44:52 [config.py:103] Repository Not Found for url: https://huggingface.co/api/models/meta-llama/Llama-3-8b-instruct/tree/main?recursive=True&expand=False.
+ERROR 09-29 06:44:52 [config.py:103] Please make sure you specified the correct `repo_id` and `repo_type`.
+ERROR 09-29 06:44:52 [config.py:103] If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication, retrying 1 of 2
+ERROR 09-29 06:44:54 [config.py:101] Error retrieving file list: 404 Client Error. (Request ID: Root=1-68da2ae6-3c881c857ac2f1d41404374b;1d80a2ca-f449-4921-a926-cf2a7a86bf82)
+ERROR 09-29 06:44:54 [config.py:101]
+ERROR 09-29 06:44:54 [config.py:101] Repository Not Found for url: https://huggingface.co/api/models/meta-llama/Llama-3-8b-instruct/tree/main?recursive=True&expand=False.
+ERROR 09-29 06:44:54 [config.py:101] Please make sure you specified the correct `repo_id` and `repo_type`.
+ERROR 09-29 06:44:54 [config.py:101] If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
+Please verify the following requirements:
+1. Provide a valid Hugging Face repository ID.
+2. Specify a local directory that contains a recognized configuration file.
+   - For Hugging Face models: ensure the presence of a 'config.json'.
+   - For Mistral models: ensure the presence of a 'params.json'.
+
+Generating random_sampling responses:  80%|██████████████████████████████████████████▍          | 4/5 [00:08<00:02,  2.19s/it]ERROR:root:Error processing prompt 4: Invalid repository ID or local directory specified: 'meta-llama/Llama-3-8b-instruct'.
+ERROR 09-29 06:44:54 [config.py:103] Error retrieving file list: 404 Client Error. (Request ID: Root=1-68da2ae6-1980147313b36a3d51e2435b;dad05cc0-a8ef-4aee-bfea-d6ed36ba0aa7)
+ERROR 09-29 06:44:54 [config.py:103]
+ERROR 09-29 06:44:54 [config.py:103] Repository Not Found for url: https://huggingface.co/api/models/meta-llama/Llama-3-8b-instruct/tree/main?recursive=True&expand=False.
+ERROR 09-29 06:44:54 [config.py:103] Please make sure you specified the correct `repo_id` and `repo_type`.
+ERROR 09-29 06:44:54 [config.py:103] If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication, retrying 1 of 2
+ERROR 09-29 06:44:56 [config.py:101] Error retrieving file list: 404 Client Error. (Request ID: Root=1-68da2ae8-5c9c501a30e1025e39b3062f;28e8230a-301b-4f97-b843-2c1a4bdceb93)
+ERROR 09-29 06:44:56 [config.py:101]
+ERROR 09-29 06:44:56 [config.py:101] Repository Not Found for url: https://huggingface.co/api/models/meta-llama/Llama-3-8b-instruct/tree/main?recursive=True&expand=False.
+ERROR 09-29 06:44:56 [config.py:101] Please make sure you specified the correct `repo_id` and `repo_type`.
+ERROR 09-29 06:44:56 [config.py:101] If you are trying to access a private or gated repo, make sure you are authenticated. For more details, see https://huggingface.co/docs/huggingface_hub/authentication
+Please verify the following requirements:
+1. Provide a valid Hugging Face repository ID.
+2. Specify a local directory that contains a recognized configuration file.
+   - For Hugging Face models: ensure the presence of a 'config.json'.
+   - For Mistral models: ensure the presence of a 'params.json'.
+
+Generating random_sampling responses: 100%|█████████████████████████████████████████████████████| 5/5 [00:10<00:00,  2.20s/it]

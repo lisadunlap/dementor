@@ -1,0 +1,66 @@
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/pandas/core/indexes/base.py", line 3805, in get_loc
+    return self._engine.get_loc(casted_key)
+  File "index.pyx", line 167, in pandas._libs.index.IndexEngine.get_loc
+  File "index.pyx", line 196, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas/_libs/hashtable_class_helper.pxi", line 7081, in pandas._libs.hashtable.PyObjectHashTable.get_item
+  File "pandas/_libs/hashtable_class_helper.pxi", line 7089, in pandas._libs.hashtable.PyObjectHashTable.get_item
+KeyError: 'model_response'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 821, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 147, in generate_disguised_responses
+    method = get_method(method_name, model, disguise_as,
+  File "/home/nazcol/dementor-sync/scripts/methods/get_method.py", line 84, in get_method
+    return ContrastiveWithALExamples(
+  File "/home/nazcol/dementor-sync/scripts/methods/contrastive_with_al_examples.py", line 39, in __init__
+    self._contrastive = ContrastiveSystemPrompting(
+  File "/home/nazcol/dementor-sync/scripts/methods/contrastive.py", line 45, in __init__
+    self._generate_contrastive_features()
+  File "/home/nazcol/dementor-sync/scripts/methods/contrastive.py", line 60, in _generate_contrastive_features
+    contrastive_prompt += f"Q: {row['prompt'][:100]}...\nA: {row['model_response'][:200]}...\n\n"
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/pandas/core/series.py", line 1121, in __getitem__
+    return self._get_value(key)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/pandas/core/series.py", line 1237, in _get_value
+    loc = self.index.get_loc(label)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/pandas/core/indexes/base.py", line 3812, in get_loc
+    raise KeyError(key) from err
+KeyError: 'model_response'
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/pandas/core/indexes/base.py", line 3805, in get_loc
+    return self._engine.get_loc(casted_key)
+  File "index.pyx", line 167, in pandas._libs.index.IndexEngine.get_loc
+  File "index.pyx", line 196, in pandas._libs.index.IndexEngine.get_loc
+  File "pandas/_libs/hashtable_class_helper.pxi", line 7081, in pandas._libs.hashtable.PyObjectHashTable.get_item
+  File "pandas/_libs/hashtable_class_helper.pxi", line 7089, in pandas._libs.hashtable.PyObjectHashTable.get_item
+KeyError: 'model_response'
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 821, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 147, in generate_disguised_responses
+    method = get_method(method_name, model, disguise_as,
+  File "/home/nazcol/dementor-sync/scripts/methods/get_method.py", line 84, in get_method
+    return ContrastiveWithALExamples(
+  File "/home/nazcol/dementor-sync/scripts/methods/contrastive_with_al_examples.py", line 39, in __init__
+    self._contrastive = ContrastiveSystemPrompting(
+  File "/home/nazcol/dementor-sync/scripts/methods/contrastive.py", line 45, in __init__
+    self._generate_contrastive_features()
+  File "/home/nazcol/dementor-sync/scripts/methods/contrastive.py", line 60, in _generate_contrastive_features
+    contrastive_prompt += f"Q: {row['prompt'][:100]}...\nA: {row['model_response'][:200]}...\n\n"
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/pandas/core/series.py", line 1121, in __getitem__
+    return self._get_value(key)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/pandas/core/series.py", line 1237, in _get_value
+    loc = self.index.get_loc(label)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/pandas/core/indexes/base.py", line 3812, in get_loc
+    raise KeyError(key) from err
+KeyError: 'model_response'

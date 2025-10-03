@@ -1,0 +1,682 @@
+"prompt","source_response","target_response","method","source_model","target_model"
+"Is it morally right to try to have a certain percentage of females on managerial positions?","The question of whether it is morally right to aim for a certain percentage of females in managerial positions is nuanced and can be considered from multiple ethical perspectives:
+
+### Arguments Supporting Targeted Female Representation
+
+- **Corrective Justice:** Many advocate for gender targets or quotas as a way to address historic and systemic discrimination that limited women’s advancement. From this view, it is morally right to implement measures that help balance the scales and ensure equal opportunity, especially where past bias has led to current imbalances.
+- **Fairness and Representation:** Ensuring that women are represented in leadership helps create organizations that better reflect the diversity of society and their workforce. This can promote fairness and provide role models, potentially breaking down persistent stereotypes.
+- **Utilitarian Perspective:** Diverse teams, including in leadership, are often shown to make better decisions and improve organizational performance. Increasing female representation may therefore benefit the organization and its stakeholders, leading to greater overall good.
+
+### Counterarguments
+
+- **Meritocracy Concerns:** Critics may argue that setting percentage targets risks undermining merit-based advancement. They worry that such policies could lead to positions being filled based on gender rather than solely on qualifications, which some see as unfair to other candidates.
+- **Tokenism:** There is also concern that quotas could lead to tokenism, where women are appointed to meet targets rather than based on capability, potentially devaluing their achievements and affecting morale.
+
+### Balancing Principles
+
+Many organizations seek a middle ground—**aiming for gender balance as a goal, while still prioritizing merit and ensuring equal opportunity** through unbiased recruitment, development, and promotion processes. The morality, therefore, may rest on intent and implementation: pursuing greater female representation to remedy unjust exclusion and promote diversity is often seen as morally justified, **provided it does not devolve into unfair preferential treatment**.
+
+### Conclusion
+
+It is generally considered morally right to strive for more balanced female representation in management when the purpose is to correct inequities, foster diversity, and ensure fair opportunity. However, the methods used to achieve this—whether rigid quotas or broader equity initiatives—should be carefully designed to uphold fairness and meritocracy for all candidates.","Summary:
+
+The call transcript documents an employee reaching out to the company's IT helpdesk. The automated system provides options for password support, application and device assistance, videoconferencing, and learning support, as well as instructions for self-service through an online portal. The system also offers information in Spanish about the transition to passwordless authentication, directing users to check their account status and choose relevant options for further assistance or password resets. After waiting on hold due to all agents being busy, the employee is eventually connected to a live agent, who requests their email address or employee number to proceed with support. The call’s main focus is on authentication and password-related support.","random_sampling","gpt-4.1","gpt-4.1"
+"What is the difference between marriage license and marriage certificate?","A **marriage license** and a **marriage certificate** are two distinct legal documents involved in the process of getting married:
+
+**Marriage License:**
+- This is the legal authorization required before you can get married.
+- Issued by a local government authority (usually a county clerk or similar office).
+- Both parties typically need to apply in person, provide identification, and sometimes undergo a waiting period.
+- The marriage license grants permission for the couple to legally marry, but it is not proof that the marriage has occurred.
+- In most places, the license must be signed by the couple, officiant, and witnesses after the wedding ceremony to become valid.
+
+**Marriage Certificate:**
+- This is the official document that proves a marriage has taken place.
+- Issued after the wedding ceremony, once the completed and signed marriage license is returned to the issuing office.
+- The marriage certificate serves as legal proof of marriage for name changes, insurance, taxes, and other legal purposes.
+- Couples can usually request certified copies of their marriage certificate from the office where the license was filed.
+
+**In summary:**  
+- You obtain a **marriage license** before the wedding as permission to get married.
+- You receive a **marriage certificate** after the ceremony as official proof that you are married.","Summary:
+
+The call transcript is from a company’s IT helpdesk phone system. The automated prompts guide callers to select options for password reset, account unlock, technology and business application support, or mobile device support. Callers are then asked to enter their 8-digit personnel number for identification. An announcement is made informing callers that there is a high call volume due to widespread performance issues with the “my key” system, which is redirecting users to a phishing warning page when they attempt to log in. The IT team is aware of the problem and actively working to resolve it. Callers are advised not to submit additional tickets or contact the service desk about this issue. Apologies are offered for any inconvenience, and callers are encouraged to visit the company’s tech support website for solutions or alternative contact options. All agents are currently busy, and callers are asked to continue holding if they need further assistance.","random_sampling","gpt-4.1","gpt-4.1"
+"explain function calling. how would you call a function?","Function calling is a core concept in programming where you execute or “invoke” a block of code (a function) that performs a specific task. A function is typically defined elsewhere in your code and can be called multiple times, potentially with different inputs (arguments), to reuse code and organize logic efficiently.
+
+### How Function Calling Works
+
+1. **Function Definition**: First, you define a function using a specific syntax, often with a keyword like `def` (Python), `function` (JavaScript), or a return type (C/C++, Java). The function can take parameters and may return a value.
+
+2. **Function Call**: To execute the code inside the function, you call it by writing its name followed by parentheses. If the function accepts arguments, you place the values inside the parentheses.
+
+### Example: Calling a Function
+
+**Python Example:**
+```python
+# Function definition
+def greet(name):
+    print(f""Hello, {name}!"")
+
+# Function call
+greet(""Alice"")  # Output: Hello, Alice!
+```
+
+**JavaScript Example:**
+```javascript
+// Function definition
+function greet(name) {
+    console.log(""Hello, "" + name + ""!"");
+}
+
+// Function call
+greet(""Bob""); // Output: Hello, Bob!
+```
+
+**General Steps to Call a Function:**
+1. Write the function name.
+2. Add parentheses `()`.
+3. Pass any required arguments inside the parentheses.
+4. Include the function call at the location in your code where you want the function to execute.
+
+**Summary:**  
+Function calling is the process of invoking a defined function to perform its task. To call a function, simply use its name with parentheses, adding any necessary arguments inside. This promotes code reuse, readability, and organization in programming.","Summary:
+
+The call begins with automated menu options and a notice about high call volumes due to issues with the myT system, advising users not to log additional tickets for that issue. After holding, the caller (an employee) is connected to a Service Desk agent. The agent verifies the caller’s identity by requesting their employee number, enterprise ID, and a callback number. The employee explains that they are following up on a previously submitted ticket because their computer will not turn on and they cannot access updates in the portal. The agent confirms the issue and informs the caller that the ticket has already been assigned to the local office, which will reach out directly for further assistance. The call concludes with both parties exchanging thanks and ending the conversation.","random_sampling","gpt-4.1","gpt-4.1"
+"How can I create a test set for a very rare category?","Creating a test set for a very rare category requires careful planning to ensure your model can be properly evaluated on the underrepresented class. Here are practical steps to help you build an effective test set:
+
+**1. Search and Collect All Available Instances:**  
+- **Review your dataset** and gather all samples of the rare category, no matter how few.
+- If possible, **expand your data source** (e.g., web scraping, additional data partners, manual labeling) to find more examples.
+
+**2. Annotate and Validate:**  
+- If your rare class is hard to identify, perform **manual review** or seek help from expert annotators to confirm the labels.
+
+**3. Augment the Data (if needed):**  
+- For situations where only a handful of rare examples exist, consider **data augmentation** techniques (e.g., paraphrasing for text, image transformations, GANs for images) with caution—augmentation is more suited for training, but can diversify the test set when the base samples are extremely limited.
+
+**4. Stratified Sampling for the Test Set:**  
+- **Separate out** a fixed percentage (e.g., 20-30%) of your rare class examples for the test set. In extreme cases (e.g., fewer than 10), you may reserve just 1–2 for testing.
+- Ensure you **mirror the sampling** for the majority classes, so the overall data distribution in the test set is realistic, but force inclusion of all rare class examples.
+
+**5. Consider Cross-Validation:**  
+- If you have only a few rare class samples, use **stratified k-fold cross-validation**. This allows every rare example to be in the test fold at least once and provides more robust evaluation.
+
+**6. Supplement with Synthetic or External Data (optional):**  
+- If internal samples are inadequate, you might supplement with **synthetic test cases** or use labeled data from similar domains as proxies.
+
+**7. Metric Choice:**  
+- Since accuracy on rare classes is hard to interpret, focus on **recall, precision, and F1-score** for the rare category, rather than just overall accuracy.
+
+**Summary Table Example:**
+| Step                    | Action                                                             |
+|-------------------------|--------------------------------------------------------------------|
+| 1. Data Collection      | Gather all known rare instances                                    |
+| 2. Validation           | Manually confirm labels                                            |
+| 3. (Optional) Augment   | Carefully augment if extremely scarce                              |
+| 4. Test Set Creation    | Reserve a subset and combine with majority class samples           |
+| 5. Cross-Validation     | Apply stratified k-fold if rare sample size is too small           |
+| 6. Supplementary Data   | Consider external or synthetic sources if needed                   |
+| 7. Evaluation Metrics   | Use class-specific precision, recall, and F1-score                 |
+
+**Key Considerations:**  
+- Never let the rare examples from the test set leak into your training set.
+- Document any synthetic or external data included in the test set for transparency.
+
+**In summary:**  
+Build the test set by exhaustively collecting, validating, and allocating rare category samples, optionally augmenting if necessary, and evaluating with class-specific metrics. If your rare class is extremely limited, use stratified cross-validation for fair assessment.","Summary:
+
+The call transcript begins with an automated menu providing options for Enterprise Password Reset, Account Unlock, and Technology/Application Support. Callers are instructed to visit a company website to check if their account is passwordless and are given further options based on their status. For issues such as being unable to log in due to a disabled account or a forgotten/expired password, callers are told to press 9 for assistance. The latter part of the transcript includes background conversation, apparently involving a child asking about the whereabouts of their father, which is unrelated to the IT support call. No specific IT issue or resolution is discussed in detail during the call.","random_sampling","gpt-4.1","gpt-4.1"
+"What is the best way to travel from Tel-Aviv to Jerusalem?","The best way to travel from Tel Aviv to Jerusalem depends on your priorities—speed, cost, comfort, and schedule flexibility. Here are the main options:
+
+**1. High-Speed Train:**  
+- **Description:** Israel Railways operates a frequent, modern high-speed train service between Tel Aviv (various stations) and Jerusalem (Yitzhak Navon Station).
+- **Duration:** About 35–45 minutes.
+- **Frequency:** Every 30 minutes or less during most hours.
+- **Advantages:** Fast, reliable, air-conditioned, affordable, avoids traffic.
+- **Things to Note:** Yitzhak Navon Station in Jerusalem is adjacent to the central bus station and light rail. Trains stop at several Tel Aviv stations (HaHagana, HaShalom, Savidor Center, University).
+- **Tickets:** Can be purchased at stations, ticket machines, or via the Rav-Kav card/app.
+
+**2. Bus:**  
+- **Description:** Intercity buses (mainly Egged lines 405, 480) run frequently between Tel Aviv’s central bus station or Arlozorov/Savidor terminal and Jerusalem’s central bus station.
+- **Duration:** 50–80 minutes, depending on traffic.
+- **Price:** Similar to train, often slightly less.
+- **Advantages:** Good for some locations not near train stations.
+- **Drawbacks:** Can be delayed by highway traffic, especially during rush hour or weekends.
+
+**3. Taxi/Private Car:**  
+- **Description:** Taxis and ride-hailing apps are available; you can also rent a car.
+- **Duration:** 45 minutes to 1.5 hours, depending on traffic.
+- **Cost:** Significantly more expensive than public transit.
+- **Advantages:** Door-to-door convenience, flexible schedule.
+- **Drawbacks:** Expensive, can be much slower during rush hour, parking in Jerusalem can be challenging.
+
+**Recommendation:**  
+**The high-speed train** is generally the best option for most travelers, offering speed, affordability, comfort, and reliability. Pair with local transit or taxi for your final destination within each city.
+
+**Tip:**  
+Check schedules in advance, especially if traveling on Fridays (when services reduce early for Shabbat) or Saturdays (limited service).","The call transcript captures an interaction between a company employee and the IT helpdesk’s automated system. The system provides various options related to password management and account access. The employee is prompted to press zero for enterprise password resets or account unlocks. Additional instructions are provided to check if the employee’s account is set up for passwordless login by visiting a specific website. If the employee is unable to log in due to a disabled account, they are instructed to press nine, and for forgotten passwords, further steps are suggested. The transcript primarily consists of the automated menu options, with no direct conversation with a live agent taking place during this snippet.","random_sampling","gpt-4.1","gpt-4.1"
+"Is it morally right to try to have a certain percentage of females on managerial positions?","Summary:
+
+The call transcript documents an employee reaching out to the company's IT helpdesk. The automated system provides options for password support, application and device assistance, videoconferencing, and learning support, as well as instructions for self-service through an online portal. The system also offers information in Spanish about the transition to passwordless authentication, directing users to check their account status and choose relevant options for further assistance or password resets. After waiting on hold due to all agents being busy, the employee is eventually connected to a live agent, who requests their email address or employee number to proceed with support. The call’s main focus is on authentication and password-related support.","Whether it is morally right to aim for a certain percentage of females in managerial positions is a nuanced question that touches on ethics, equality, and business practices.
+
+**Arguments in Favor:**
+- **Promoting Equality:** Advocates argue that setting goals or targets for female representation helps counteract historical and systemic barriers that have excluded women from leadership roles. Proactively increasing female participation can address lingering discrimination and unconscious bias.
+- **Correcting Imbalances:** Targets or quotas can be seen as corrective measures that recognize and seek to remedy past injustices. This can promote fairness in opportunities and access to career advancement.
+- **Social Good:** Diverse leadership teams can bring varied perspectives and can lead to better decision-making. Encouraging more women in managerial roles can set positive examples for future generations.
+
+**Arguments Against:**
+- **Meritocracy Concerns:** Critics argue that hiring or promoting based on gender rather than qualifications could be seen as unfair to other candidates and may undermine a sense of meritocracy.
+- **Tokenism:** There is a risk that women could be placed in managerial roles to meet targets rather than because they are the best fit, potentially leading to tokenism or undermining the credibility of female leaders.
+
+**Conclusion:**
+From a moral standpoint, many ethicists and organizations hold that striving for greater gender equality in leadership is justified if it aims to address systemic inequalities and does not completely disregard merit and individual abilities. The morality of setting specific percentage targets may depend on the context—such as existing disparities, organizational culture, and how these targets are implemented. Efforts that promote equal opportunity, minimize bias, and ensure fairness for all candidates are widely viewed as morally positive.
+
+In summary, aiming for a certain percentage of females in managerial positions can be morally right if it seeks to redress systemic barriers, is implemented thoughtfully, and continues to prioritize qualifications and genuine opportunity.","Summary:
+
+The call transcript documents an employee reaching out to the company's IT helpdesk. The automated system provides options for password support, application and device assistance, videoconferencing, and learning support, as well as instructions for self-service through an online portal. The system also offers information in Spanish about the transition to passwordless authentication, directing users to check their account status and choose relevant options for further assistance or password resets. After waiting on hold due to all agents being busy, the employee is eventually connected to a live agent, who requests their email address or employee number to proceed with support. The call’s main focus is on authentication and password-related support.","random_sampling","gpt-4.1","gpt-4.1"
+"What is the difference between marriage license and marriage certificate?","Summary:
+
+The call transcript is from a company’s IT helpdesk phone system. The automated prompts guide callers to select options for password reset, account unlock, technology and business application support, or mobile device support. Callers are then asked to enter their 8-digit personnel number for identification. An announcement is made informing callers that there is a high call volume due to widespread performance issues with the “my key” system, which is redirecting users to a phishing warning page when they attempt to log in. The IT team is aware of the problem and actively working to resolve it. Callers are advised not to submit additional tickets or contact the service desk about this issue. Apologies are offered for any inconvenience, and callers are encouraged to visit the company’s tech support website for solutions or alternative contact options. All agents are currently busy, and callers are asked to continue holding if they need further assistance.","A **marriage license** and a **marriage certificate** are two distinct legal documents related to marriage, each serving a different purpose in the process:
+
+---
+
+### Marriage License
+- **What it is:** A legal document issued by a government authority (usually a county or municipal clerk’s office) granting permission for two people to get married.
+- **When you get it:** Before the wedding ceremony. Couples must typically apply in person and may need to provide identification, complete paperwork, and, in some regions, pay a fee.
+- **Purpose:** It authorizes the couple to proceed with a marriage ceremony. In some places, there may be a waiting period after issuance before the ceremony may occur.
+- **Validity:** Most marriage licenses expire if the marriage isn't performed within a certain timeframe (often 30-90 days).
+
+### Marriage Certificate
+- **What it is:** An official document that proves a marriage has taken place.
+- **When you get it:** After the wedding ceremony. Once the marriage is performed, the officiant and witnesses sign the license, which is then returned to the issuing office. The government office then records the marriage and issues a marriage certificate.
+- **Purpose:** It provides legal proof of marriage and is used for name changes, updating marital status, and legal matters involving family, taxes, or immigration.
+
+---
+
+**In summary:**  
+- A **marriage license** is the authorization to get married (permission, obtained *before* the ceremony).  
+- A **marriage certificate** is the official record of the marriage, provided *after* the ceremony is performed and registered.","Summary:
+
+The call transcript is from a company’s IT helpdesk phone system. The automated prompts guide callers to select options for password reset, account unlock, technology and business application support, or mobile device support. Callers are then asked to enter their 8-digit personnel number for identification. An announcement is made informing callers that there is a high call volume due to widespread performance issues with the “my key” system, which is redirecting users to a phishing warning page when they attempt to log in. The IT team is aware of the problem and actively working to resolve it. Callers are advised not to submit additional tickets or contact the service desk about this issue. Apologies are offered for any inconvenience, and callers are encouraged to visit the company’s tech support website for solutions or alternative contact options. All agents are currently busy, and callers are asked to continue holding if they need further assistance.","random_sampling","gpt-4.1","gpt-4.1"
+"explain function calling. how would you call a function?","Summary:
+
+The call begins with automated menu options and a notice about high call volumes due to issues with the myT system, advising users not to log additional tickets for that issue. After holding, the caller (an employee) is connected to a Service Desk agent. The agent verifies the caller’s identity by requesting their employee number, enterprise ID, and a callback number. The employee explains that they are following up on a previously submitted ticket because their computer will not turn on and they cannot access updates in the portal. The agent confirms the issue and informs the caller that the ticket has already been assigned to the local office, which will reach out directly for further assistance. The call concludes with both parties exchanging thanks and ending the conversation.","Function calling refers to the process of executing a function that has been defined in a program. A function is a reusable block of code designed to perform a specific task; calling (or invoking) a function means instructing the computer to execute the code within that block.
+
+**How does function calling work?**
+- A function is typically defined somewhere in your code with a name and, optionally, parameters (inputs).
+- To execute the function, you ""call"" it by writing its name followed by parentheses `()`. If the function requires parameters, you provide values for those parameters inside the parentheses.
+
+**General Syntax:**
+```python
+def function_name(parameters):
+    # code block
+    return result
+
+# Function call:
+function_name(arguments)
+```
+
+**Example in Python:**
+```python
+def greet(name):
+    print(""Hello, "" + name + ""!"")
+
+greet(""Alice"")   # This is a function call. Output: Hello, Alice!
+```
+
+- Here, `greet` is the function name.
+- When you write `greet(""Alice"")`, you are calling the function and passing in the argument `""Alice""`.
+
+**Function Calling in Other Languages:**
+The syntax is similar in many languages, though small differences might exist.
+
+**JavaScript Example:**
+```javascript
+function add(a, b) {
+  return a + b;
+}
+
+let result = add(3, 5); // Function call, result is 8
+```
+
+**Summary:**  
+To call a function, write its name followed by parentheses, including any required arguments. Function calling triggers the execution of the function’s code and returns a value if defined.","Summary:
+
+The call begins with automated menu options and a notice about high call volumes due to issues with the myT system, advising users not to log additional tickets for that issue. After holding, the caller (an employee) is connected to a Service Desk agent. The agent verifies the caller’s identity by requesting their employee number, enterprise ID, and a callback number. The employee explains that they are following up on a previously submitted ticket because their computer will not turn on and they cannot access updates in the portal. The agent confirms the issue and informs the caller that the ticket has already been assigned to the local office, which will reach out directly for further assistance. The call concludes with both parties exchanging thanks and ending the conversation.","random_sampling","gpt-4.1","gpt-4.1"
+"How can I create a test set for a very rare category?","Summary:
+
+The call transcript begins with an automated menu providing options for Enterprise Password Reset, Account Unlock, and Technology/Application Support. Callers are instructed to visit a company website to check if their account is passwordless and are given further options based on their status. For issues such as being unable to log in due to a disabled account or a forgotten/expired password, callers are told to press 9 for assistance. The latter part of the transcript includes background conversation, apparently involving a child asking about the whereabouts of their father, which is unrelated to the IT support call. No specific IT issue or resolution is discussed in detail during the call.","Creating a test set for a **very rare category** can be challenging due to the limited number of examples available. Below are strategies and considerations to help you construct a meaningful and effective test set:
+
+---
+
+### 1. **Collect All Available Labeled Instances**
+- Gather every known instance from your dataset that belongs to the rare category.  
+- Explore historical data, archives, and previous versions of datasets.
+
+### 2. **Augment with Expert Labeling**
+- If the rare category is important, consider enlisting subject matter experts to **label additional data**.
+- Use targeted data acquisition (e.g., manual search, keyword filters) to identify likely candidates for the rare class, then have these reviewed and labeled by experts.
+
+### 3. **Synthetic Data Generation**
+- If permitted by your application, use **data augmentation** or **synthetic data** techniques:
+    - For images: Use rotations, cropping, color shifts, generative models (GANs).
+    - For text: Paraphrasing, back-translation, or controlled text generation.
+    - For tabular: Synthetic minority oversampling (SMOTE) or similar algorithms.
+- Note: Clearly mark synthetic examples in your test set analysis, as they may not capture all real-world variability.
+
+### 4. **Cross-Validation Approach**
+- When sample size is extremely limited, use **k-fold cross-validation** (even leave-one-out) to maximize the use of the rare instances for evaluation.
+- Rotate through possible splits so every rare example gets a chance to be in the test set.
+
+### 5. **Bootstrapping from Related Categories**
+- Include examples from similar or neighboring categories (if applicable) to broaden the test set, but analyze the performance on the rare category separately.
+
+### 6. **Downsample Other Categories for Balance**
+- Consider **downsampling** more common categories in your test set so that the rare category is proportionally better represented, making performance metrics more interpretable.
+
+### 7. **Transparency & Limitations**
+- Carefully **document the size and nature** of your test set:
+    - Number of rare instances used
+    - Methods of collection or augmentation
+    - Potential biases or limitations in the coverage
+
+---
+
+#### Example Workflow
+
+1. **Search & Labeling:** Identify and hand-label as many examples as possible for the rare class.
+2. **Test Set Construction:** Set aside all rare class examples for the test set.
+3. **Augment (if necessary):** Optionally generate or collect more data.
+4. **Split:** Create the test set containing all rare examples (or as many as feasible), with a balanced subset from other classes.
+5. **Evaluate with Care:** Use suitable metrics (e.g., precision, recall, F1 for the rare class), and interpret with consideration of small sample size.
+
+---
+
+### **Summary Table**
+
+| Method                      | Use When ...                                   | Caveats                                 |
+|-----------------------------|------------------------------------------------|------------------------------------------|
+| Expert Labeling             | You can invest time/resources                  | Labor intensive                         |
+| Data Augmentation           | Real instances are too few                     | May not reflect true variability        |
+| Leave-One-Out CV            | <10 instances                                 | High variance in estimates              |
+| Downsampling Other Classes  | You want balanced metrics                      | May reduce realism of class proportions |
+
+---
+
+**Key Takeaway:**  
+For very rare categories, use **all available data**, supplement with expert labeling or synthetic data as appropriate, employ robust evaluation strategies like cross-validation, and transparently communicate the size and limitations of your test set. This ensures your evaluation is as fair and informative as possible given the constraints.","Summary:
+
+The call transcript begins with an automated menu providing options for Enterprise Password Reset, Account Unlock, and Technology/Application Support. Callers are instructed to visit a company website to check if their account is passwordless and are given further options based on their status. For issues such as being unable to log in due to a disabled account or a forgotten/expired password, callers are told to press 9 for assistance. The latter part of the transcript includes background conversation, apparently involving a child asking about the whereabouts of their father, which is unrelated to the IT support call. No specific IT issue or resolution is discussed in detail during the call.","random_sampling","gpt-4.1","gpt-4.1"
+"What is the best way to travel from Tel-Aviv to Jerusalem?","The call transcript captures an interaction between a company employee and the IT helpdesk’s automated system. The system provides various options related to password management and account access. The employee is prompted to press zero for enterprise password resets or account unlocks. Additional instructions are provided to check if the employee’s account is set up for passwordless login by visiting a specific website. If the employee is unable to log in due to a disabled account, they are instructed to press nine, and for forgotten passwords, further steps are suggested. The transcript primarily consists of the automated menu options, with no direct conversation with a live agent taking place during this snippet.","The best way to travel from Tel Aviv to Jerusalem depends on your priorities—speed, convenience, budget, and flexibility. Here are the main options:
+
+**1. Train**
+- **Fastest & Most Convenient:** The high-speed train connects Tel Aviv’s HaHagana, HaShalom, or Savidor Center stations to Jerusalem Yitzhak Navon station in about 35–45 minutes.
+- **Frequency:** Trains run approximately every 30 minutes during the day (less frequent late at night/Saturdays).
+- **Comfort:** Modern and air-conditioned, with luggage space and free Wi-Fi.
+- **Cost:** ~₪18 each way (prices may vary; discounts for children, students, seniors).
+- **Location:** Jerusalem Navon station is centrally located near the Central Bus Station and light rail.
+
+**2. Bus**
+- **Alternative Option:** Egged buses (#405 from Tel Aviv Central Bus Station or #480 from Savidor Center) run to Jerusalem’s Central Bus Station.
+- **Duration:** Around 50–70 minutes, depending on traffic.
+- **Frequency:** Frequent departures throughout the day.
+- **Cost:** Similar to train fares.
+
+**3. Shared Taxi (Sherut)**
+- **Flexible Time:** Shared vans (sherut) run 24/7 (including Shabbat), departing when full.
+- **Pickup/Dropoff:** Near the central bus/train stations in both cities.
+- **Duration:** 45–75 minutes, traffic-dependent.
+- **Cost:** Slightly higher than bus (~₪30–₪40).
+
+**4. Car/Taxi**
+- **Private Car:** About 45 minutes to 1.5 hours, depending on traffic and time of day.
+- **Taxi:** Most expensive (~₪300+, can vary widely).
+- **Parking:** Can be difficult/expensive in Jerusalem.
+
+**Summary:**  
+For most travelers, the **high-speed train** offers the best combination of speed, comfort, reliability, and central location. Buses and shared taxis are good alternatives, especially late at night or if traveling on Shabbat, when trains do not run. Taxis or private cars offer the most flexibility but at a higher cost.
+
+**Tip:** Always check schedules in advance, especially on weekends and holidays, as public transport options reduce or stop during Shabbat (Friday evening to Saturday night).","The call transcript captures an interaction between a company employee and the IT helpdesk’s automated system. The system provides various options related to password management and account access. The employee is prompted to press zero for enterprise password resets or account unlocks. Additional instructions are provided to check if the employee’s account is set up for passwordless login by visiting a specific website. If the employee is unable to log in due to a disabled account, they are instructed to press nine, and for forgotten passwords, further steps are suggested. The transcript primarily consists of the automated menu options, with no direct conversation with a live agent taking place during this snippet.","random_sampling","gpt-4.1","gpt-4.1"
+"Is it morally right to try to have a certain percentage of females on managerial positions?","Summary:
+
+The call transcript documents an employee reaching out to the company's IT helpdesk. The automated system provides options for password support, application and device assistance, videoconferencing, and learning support, as well as instructions for self-service through an online portal. The system also offers information in Spanish about the transition to passwordless authentication, directing users to check their account status and choose relevant options for further assistance or password resets. After waiting on hold due to all agents being busy, the employee is eventually connected to a live agent, who requests their email address or employee number to proceed with support. The call’s main focus is on authentication and password-related support.","The question of whether it is morally right to strive for a certain percentage of females in managerial positions is complex and depends on underlying ethical principles, societal context, and the means used to achieve this aim.
+
+**Arguments Supporting the Practice:**
+- **Correcting Historical Injustice:** Many argue that women have faced systemic barriers and discrimination in the workplace. Actively promoting gender diversity can help correct these imbalances and advance equal opportunity, which is considered a matter of justice and fairness.
+- **Utilitarian Benefits:** Research suggests that diverse leadership teams can lead to better decision-making, improved company performance, and more inclusive workplaces. Promoting gender diversity, therefore, can be seen as beneficial for organizations and society.
+- **Role Models and Breaking Stereotypes:** Ensuring female representation in management may inspire other women and challenge persistent gender stereotypes, fostering broader social change.
+
+**Potential Ethical Concerns:**
+- **Meritocracy and Tokenism:** Critics argue that setting targets or quotas could compromise merit-based advancement or lead to perceptions of tokenism. Some believe positions should be filled solely by qualifications and ability, regardless of gender.
+- **Reverse Discrimination:** There is a concern that focusing on a specific percentage could result in unfair treatment of other groups, potentially disadvantaging equally qualified male candidates solely due to their gender.
+
+**Moral Evaluation:**
+Generally, if the goal is to ensure equal opportunity, address unjust barriers, and promote diversity without resorting to unfair or discriminatory practices, many find such efforts morally justified. The ethics become more nuanced if achieving specific targets leads to unfair exclusion or overlooks merit.
+
+**Conclusion:**
+Striving for gender balance in management can be morally right if it seeks to promote fairness, correct historical injustices, and enhance organizational and societal outcomes. However, it is important that such efforts are implemented transparently and equitably, focusing on creating equal opportunities rather than rigid quotas, to avoid unintended negative consequences. The morality ultimately depends on the methods used and the motivations behind them.","Summary:
+
+The call transcript documents an employee reaching out to the company's IT helpdesk. The automated system provides options for password support, application and device assistance, videoconferencing, and learning support, as well as instructions for self-service through an online portal. The system also offers information in Spanish about the transition to passwordless authentication, directing users to check their account status and choose relevant options for further assistance or password resets. After waiting on hold due to all agents being busy, the employee is eventually connected to a live agent, who requests their email address or employee number to proceed with support. The call’s main focus is on authentication and password-related support.","random_sampling","gpt-4.1","gpt-4.1"
+"What is the difference between marriage license and marriage certificate?","Summary:
+
+The call transcript is from a company’s IT helpdesk phone system. The automated prompts guide callers to select options for password reset, account unlock, technology and business application support, or mobile device support. Callers are then asked to enter their 8-digit personnel number for identification. An announcement is made informing callers that there is a high call volume due to widespread performance issues with the “my key” system, which is redirecting users to a phishing warning page when they attempt to log in. The IT team is aware of the problem and actively working to resolve it. Callers are advised not to submit additional tickets or contact the service desk about this issue. Apologies are offered for any inconvenience, and callers are encouraged to visit the company’s tech support website for solutions or alternative contact options. All agents are currently busy, and callers are asked to continue holding if they need further assistance.","**A marriage license** and **a marriage certificate** are two distinct legal documents related to the process of getting married:
+
+---
+
+### Marriage License
+- **Definition:** A marriage license is a legal document issued by a government authority (typically a county or municipal office) that grants a couple permission to marry.
+- **When Issued:** It is obtained **before** the wedding ceremony.
+- **Purpose:** It acts as official approval for the marriage to take place. Without a license, most jurisdictions will not recognize the marriage as legal.
+- **Usage:** The couple must present the marriage license to the officiant before the ceremony can be performed.
+
+### Marriage Certificate
+- **Definition:** A marriage certificate is the official record that proves a couple is legally married.
+- **When Issued:** It is issued **after** the marriage ceremony has been performed, signed by the officiant and witnesses, and properly filed with the appropriate government office (e.g., the county clerk).
+- **Purpose:** It serves as official, legal proof of the marriage for purposes such as changing names, applying for benefits, or updating legal documents.
+- **Usage:** The married couple (or applicants) can request certified copies of their marriage certificate for legal and personal use.
+
+---
+
+**In summary:**  
+A marriage license is needed before the marriage to authorize it; a marriage certificate is obtained after the marriage as official proof that it occurred.","Summary:
+
+The call transcript is from a company’s IT helpdesk phone system. The automated prompts guide callers to select options for password reset, account unlock, technology and business application support, or mobile device support. Callers are then asked to enter their 8-digit personnel number for identification. An announcement is made informing callers that there is a high call volume due to widespread performance issues with the “my key” system, which is redirecting users to a phishing warning page when they attempt to log in. The IT team is aware of the problem and actively working to resolve it. Callers are advised not to submit additional tickets or contact the service desk about this issue. Apologies are offered for any inconvenience, and callers are encouraged to visit the company’s tech support website for solutions or alternative contact options. All agents are currently busy, and callers are asked to continue holding if they need further assistance.","random_sampling","gpt-4.1","gpt-4.1"
+"explain function calling. how would you call a function?","Summary:
+
+The call begins with automated menu options and a notice about high call volumes due to issues with the myT system, advising users not to log additional tickets for that issue. After holding, the caller (an employee) is connected to a Service Desk agent. The agent verifies the caller’s identity by requesting their employee number, enterprise ID, and a callback number. The employee explains that they are following up on a previously submitted ticket because their computer will not turn on and they cannot access updates in the portal. The agent confirms the issue and informs the caller that the ticket has already been assigned to the local office, which will reach out directly for further assistance. The call concludes with both parties exchanging thanks and ending the conversation.","**Function Calling Explained**
+
+In programming, a *function* is a reusable block of code designed to perform a specific task. *Function calling* is the process of executing (or invoking) that function.
+
+**How Does Function Calling Work?**
+
+When you *call* a function, you use its name followed by parentheses `()`. If the function requires input information (called parameters or arguments), you include those values within the parentheses. Calling a function transfers control to the function code, executes it, and then optionally returns a result to the caller.
+
+**Syntax Examples**
+
+Below are simple examples in two popular languages:
+
+**Python:**
+```python
+def greet(name):
+    print(f""Hello, {name}!"")
+
+greet(""Alice"")           # This is a function call.
+```
+- `greet` is the function name.
+- `""Alice""` is the argument passed to the function.
+- `greet(""Alice"")` is the function call.
+
+**JavaScript:**
+```javascript
+function add(a, b) {
+    return a + b;
+}
+
+let sum = add(5, 3); // Function call returns 8, assigned to sum.
+```
+- `add` is the function name.
+- `5, 3` are the arguments.
+- `add(5, 3)` is the function call.
+
+**General Steps to Call a Function:**
+1. Write the function name.
+2. Add parentheses `()` after the function name.
+3. If required, place arguments or parameters within the parentheses.
+4. Optionally use the function’s return value (assign, print, etc.).
+
+**Summary:**  
+Function calling means invoking a function to execute its code. You do this by writing its name followed by parentheses, including any necessary arguments. The function then runs and may return a result you can use in your program.","Summary:
+
+The call begins with automated menu options and a notice about high call volumes due to issues with the myT system, advising users not to log additional tickets for that issue. After holding, the caller (an employee) is connected to a Service Desk agent. The agent verifies the caller’s identity by requesting their employee number, enterprise ID, and a callback number. The employee explains that they are following up on a previously submitted ticket because their computer will not turn on and they cannot access updates in the portal. The agent confirms the issue and informs the caller that the ticket has already been assigned to the local office, which will reach out directly for further assistance. The call concludes with both parties exchanging thanks and ending the conversation.","random_sampling","gpt-4.1","gpt-4.1"
+"How can I create a test set for a very rare category?","Summary:
+
+The call transcript begins with an automated menu providing options for Enterprise Password Reset, Account Unlock, and Technology/Application Support. Callers are instructed to visit a company website to check if their account is passwordless and are given further options based on their status. For issues such as being unable to log in due to a disabled account or a forgotten/expired password, callers are told to press 9 for assistance. The latter part of the transcript includes background conversation, apparently involving a child asking about the whereabouts of their father, which is unrelated to the IT support call. No specific IT issue or resolution is discussed in detail during the call.","Creating a test set for a very rare category can be challenging due to the scarcity of labeled examples. Here’s a structured approach:
+
+**1. Gather Existing Data**
+- **Search your dataset:** Identify and extract all available examples of the rare category, if any exist.
+- **Review previous annotations:** Sometimes the rare class is mislabeled or missed; re-examine ambiguous or unlabeled data for overlooked instances.
+
+**2. Augment the Data**
+- **Manual collection:** Look for external sources (public datasets, web scraping, domain experts) to supplement the rare category with real-world examples.
+- **Synthetic data:** Where appropriate, generate synthetic samples (using techniques like data augmentation, SMOTE, or generative models), but use with caution—especially for the test set—to avoid unrealistic data skew.
+
+**3. Use Human-in-the-Loop**
+- **Active learning:** Use your model to flag ambiguous or high-uncertainty samples from a large unlabeled pool, and have humans annotate those. This approach can be efficient in surfacing rare cases.
+
+**4. Balance Your Test Set (within reason)**
+- Due to scarcity, your test set may remain small. That’s okay—just be transparent about its size when reporting metrics.
+- If possible, ensure a minimum count (say, 10–20+ examples) of the rare category to allow for meaningful evaluation, balancing with majority classes as needed.
+
+**5. Validate and Curate**
+- **Quality control:** Manually review and validate that each rare-class example in the test set is labeled accurately. Errors are costly when counts are low.
+- **Diversity:** Try to sample diverse examples of the rare category (different subtypes, contexts, etc.) for robust evaluation.
+
+**6. Supplement Evaluation**
+- Since very rare categories can make standard metrics unreliable, report confidence intervals or use stratified cross-validation.
+- Consider qualitative evaluation: have experts assess model performance on the curated rare-class set.
+
+**Summary**
+
+- Extract all known rare-class examples from your data.
+- Seek and label additional samples (external sources, human review, active learning).
+- Curate a small but high-quality and diverse test set.
+- Document its size and limitations.
+- Use appropriate evaluation metrics and consider expert review.
+
+If possible, continuously update your test set as more rare-category data becomes available. Transparent reporting is key—state clearly how your test set was built and its limitations.","Summary:
+
+The call transcript begins with an automated menu providing options for Enterprise Password Reset, Account Unlock, and Technology/Application Support. Callers are instructed to visit a company website to check if their account is passwordless and are given further options based on their status. For issues such as being unable to log in due to a disabled account or a forgotten/expired password, callers are told to press 9 for assistance. The latter part of the transcript includes background conversation, apparently involving a child asking about the whereabouts of their father, which is unrelated to the IT support call. No specific IT issue or resolution is discussed in detail during the call.","random_sampling","gpt-4.1","gpt-4.1"
+"What is the best way to travel from Tel-Aviv to Jerusalem?","The call transcript captures an interaction between a company employee and the IT helpdesk’s automated system. The system provides various options related to password management and account access. The employee is prompted to press zero for enterprise password resets or account unlocks. Additional instructions are provided to check if the employee’s account is set up for passwordless login by visiting a specific website. If the employee is unable to log in due to a disabled account, they are instructed to press nine, and for forgotten passwords, further steps are suggested. The transcript primarily consists of the automated menu options, with no direct conversation with a live agent taking place during this snippet.","The best way to travel from Tel Aviv to Jerusalem depends on your priorities—speed, convenience, comfort, and budget. Here are the most popular options:
+
+**1. Train:**  
+- **Description:** The high-speed train is one of the most efficient and comfortable methods.  
+- **Duration:** About 30–40 minutes.  
+- **Frequency:** Trains run frequently throughout the day, typically every 30 minutes.  
+- **Location:** Trains depart from Tel Aviv’s four main train stations and arrive at the Jerusalem Yitzhak Navon station (adjacent to the Central Bus Station).  
+- **Advantages:** Fast, air-conditioned, scenic, affordable.  
+- **Tickets:** Purchase at the station, via app, or online (Israel Railways).
+
+**2. Bus:**  
+- **Description:** Intercity buses (primarily Egged bus line 480 or 405) run between the central bus stations of both cities.  
+- **Duration:** Around 50–70 minutes, depending on traffic.  
+- **Frequency:** Departures every 10–20 minutes during the day.  
+- **Advantages:** Convenient if starting near a bus station; economical.  
+- **Tickets:** Purchase at the station or with a Rav-Kav card.
+
+**3. Taxi or Private Transfer:**  
+- **Description:** Taxis are available 24/7 and can be hailed or booked in advance. Private transfers can be arranged via shuttle companies or ride apps.  
+- **Duration:** 45–70 minutes, traffic dependent.  
+- **Cost:** Significantly higher than public transport.  
+- **Advantages:** Door-to-door service, flexible timing, most comfortable for groups or with luggage.
+
+**Summary Recommendation:**  
+For most travelers, the **high-speed train** offers the best combination of speed, comfort, reliability, and price. If you need direct service to a specific address or are traveling late at night, a taxi or private transfer may be preferable. Buses are also a viable and economical option, especially from the central stations.
+
+**Tips:**  
+- Check schedules in advance, especially on Fridays and Saturdays, as services are limited during Shabbat (Friday sunset to Saturday night).
+- Both train and bus stations are easily accessible via local public transit in Tel Aviv and Jerusalem.  
+- For tickets and up-to-date timetables, consult the Israel Railways website or the Egged bus company website.","The call transcript captures an interaction between a company employee and the IT helpdesk’s automated system. The system provides various options related to password management and account access. The employee is prompted to press zero for enterprise password resets or account unlocks. Additional instructions are provided to check if the employee’s account is set up for passwordless login by visiting a specific website. If the employee is unable to log in due to a disabled account, they are instructed to press nine, and for forgotten passwords, further steps are suggested. The transcript primarily consists of the automated menu options, with no direct conversation with a live agent taking place during this snippet.","random_sampling","gpt-4.1","gpt-4.1"
+"Is it morally right to try to have a certain percentage of females on managerial positions?","Summary:
+
+The call transcript documents an employee reaching out to the company's IT helpdesk. The automated system provides options for password support, application and device assistance, videoconferencing, and learning support, as well as instructions for self-service through an online portal. The system also offers information in Spanish about the transition to passwordless authentication, directing users to check their account status and choose relevant options for further assistance or password resets. After waiting on hold due to all agents being busy, the employee is eventually connected to a live agent, who requests their email address or employee number to proceed with support. The call’s main focus is on authentication and password-related support.","The question of whether it is morally right to aim for a certain percentage of females in managerial positions centers on values such as fairness, equality of opportunity, and the pursuit of social justice.
+
+**Arguments in Favor:**
+
+- **Correcting Historical Imbalances:** Many societies have had a history of gender discrimination, especially in leadership roles. Setting targets or goals for female representation can be viewed as an attempt to correct these imbalances and promote equal opportunity.
+- **Promotion of Diversity:** Diverse teams, including gender diversity, can lead to better decision-making, creativity, and performance. Encouraging female representation can thus be morally justified on the grounds that it benefits organizations and society.
+- **Breaking Systemic Barriers:** Women may face invisible barriers (e.g., unconscious bias, lack of role models, networking opportunities) that prevent them from advancing. Setting targets can help address these issues.
+
+**Arguments Against:**
+
+- **Merit and Individual Fairness:** Some argue that positions should be awarded solely on merit, and that setting targets could lead to positive discrimination or the perception that women are being promoted because of their gender rather than their qualifications.
+- **Autonomy and Choice:** Individuals may resist feeling “selected” to fulfill a quota rather than for their distinct talents and preferences, which could undermine self-worth or morale.
+
+**Contextual Moral Considerations:**
+
+- If targets are set as aspirational goals (to guide recruitment and development efforts) rather than rigid quotas that override qualifications, many find them ethically permissible or even commendable.
+- The morality may depend on whether the measures are transparent, inclusive, and designed to complement—rather than replace—meritocratic principles.
+
+**Conclusion:**
+
+Many ethicists and organizations conclude that **setting targets to increase female representation in management can be morally right if done thoughtfully**, as it seeks to address inequity and systemic bias while still respecting fairness and competence. Care should be taken to ensure such measures enhance opportunity without compromising individual merit or fostering resentment.
+
+Ultimately, the morality rests on the intent, implementation, and broader context—balancing justice, fairness, and the pursuit of equal opportunity.","Summary:
+
+The call transcript documents an employee reaching out to the company's IT helpdesk. The automated system provides options for password support, application and device assistance, videoconferencing, and learning support, as well as instructions for self-service through an online portal. The system also offers information in Spanish about the transition to passwordless authentication, directing users to check their account status and choose relevant options for further assistance or password resets. After waiting on hold due to all agents being busy, the employee is eventually connected to a live agent, who requests their email address or employee number to proceed with support. The call’s main focus is on authentication and password-related support.","random_sampling","gpt-4.1","gpt-4.1"
+"What is the difference between marriage license and marriage certificate?","Summary:
+
+The call transcript is from a company’s IT helpdesk phone system. The automated prompts guide callers to select options for password reset, account unlock, technology and business application support, or mobile device support. Callers are then asked to enter their 8-digit personnel number for identification. An announcement is made informing callers that there is a high call volume due to widespread performance issues with the “my key” system, which is redirecting users to a phishing warning page when they attempt to log in. The IT team is aware of the problem and actively working to resolve it. Callers are advised not to submit additional tickets or contact the service desk about this issue. Apologies are offered for any inconvenience, and callers are encouraged to visit the company’s tech support website for solutions or alternative contact options. All agents are currently busy, and callers are asked to continue holding if they need further assistance.","A **marriage license** and a **marriage certificate** are two distinct documents involved in the process of getting married:
+
+---
+
+**Marriage License:**  
+- This is a legal document issued by a government authority (such as a city or county clerk) that grants permission for a couple to marry.
+- It is usually obtained before the wedding ceremony.
+- The couple must typically meet certain requirements (like age, identification, any necessary waiting period, and sometimes blood tests or premarital counseling) and both parties must appear in person to apply.
+- The marriage license is presented to the officiant before the ceremony and serves as proof that the couple is eligible to marry.
+
+**Marriage Certificate:**  
+- This is an official record that the marriage has taken place.
+- After the wedding ceremony, the officiant and witnesses sign the marriage license, which is then returned to the issuing authority.
+- Once processed, the couple can request a marriage certificate, which serves as legal proof of the marriage.
+- The marriage certificate is often required for changing your name, updating marital status for legal or financial records, immigration purposes, and more.
+
+---
+
+**In summary:**  
+- The marriage license grants permission to marry—received *before* the ceremony.
+- The marriage certificate confirms the marriage actually happened—received *after* the ceremony.","Summary:
+
+The call transcript is from a company’s IT helpdesk phone system. The automated prompts guide callers to select options for password reset, account unlock, technology and business application support, or mobile device support. Callers are then asked to enter their 8-digit personnel number for identification. An announcement is made informing callers that there is a high call volume due to widespread performance issues with the “my key” system, which is redirecting users to a phishing warning page when they attempt to log in. The IT team is aware of the problem and actively working to resolve it. Callers are advised not to submit additional tickets or contact the service desk about this issue. Apologies are offered for any inconvenience, and callers are encouraged to visit the company’s tech support website for solutions or alternative contact options. All agents are currently busy, and callers are asked to continue holding if they need further assistance.","random_sampling","gpt-4.1","gpt-4.1"
+"explain function calling. how would you call a function?","Summary:
+
+The call begins with automated menu options and a notice about high call volumes due to issues with the myT system, advising users not to log additional tickets for that issue. After holding, the caller (an employee) is connected to a Service Desk agent. The agent verifies the caller’s identity by requesting their employee number, enterprise ID, and a callback number. The employee explains that they are following up on a previously submitted ticket because their computer will not turn on and they cannot access updates in the portal. The agent confirms the issue and informs the caller that the ticket has already been assigned to the local office, which will reach out directly for further assistance. The call concludes with both parties exchanging thanks and ending the conversation.","**Function calling** refers to the process of invoking or executing a function in a programming language. A *function* is a reusable block of code designed to perform a specific task, and ""calling"" it causes that block of code to run, often passing data to it (called **arguments** or **parameters**) and optionally receiving a result (called a **return value**).
+
+### How Function Calling Works
+
+1. **Define a Function:**  
+   First, the function must be defined (created) in your code, specifying any parameters it takes and what it does.
+
+   Example in Python:
+   ```python
+   def greet(name):
+       print(""Hello, "" + name + ""!"")
+   ```
+
+2. **Call the Function:**  
+   To run the function, write its name followed by parentheses. If the function requires arguments, pass them inside the parentheses.
+
+   Example of calling the function:
+   ```python
+   greet(""Alice"")
+   # Output: Hello, Alice!
+   ```
+
+3. **Return Values (optional):**  
+   Some functions return a value that you can capture.
+
+   Example:
+   ```python
+   def add(a, b):
+       return a + b
+
+   result = add(3, 4)  # result is now 7
+   ```
+
+### In Summary
+
+- **Define** the function with parameters if necessary.
+- **Call** the function by using its name and providing any required arguments.
+- Optionally, **capture** the return value if the function provides one.
+
+The exact syntax and calling convention can vary depending on the programming language, but the core concepts are the same.","Summary:
+
+The call begins with automated menu options and a notice about high call volumes due to issues with the myT system, advising users not to log additional tickets for that issue. After holding, the caller (an employee) is connected to a Service Desk agent. The agent verifies the caller’s identity by requesting their employee number, enterprise ID, and a callback number. The employee explains that they are following up on a previously submitted ticket because their computer will not turn on and they cannot access updates in the portal. The agent confirms the issue and informs the caller that the ticket has already been assigned to the local office, which will reach out directly for further assistance. The call concludes with both parties exchanging thanks and ending the conversation.","random_sampling","gpt-4.1","gpt-4.1"
+"How can I create a test set for a very rare category?","Summary:
+
+The call transcript begins with an automated menu providing options for Enterprise Password Reset, Account Unlock, and Technology/Application Support. Callers are instructed to visit a company website to check if their account is passwordless and are given further options based on their status. For issues such as being unable to log in due to a disabled account or a forgotten/expired password, callers are told to press 9 for assistance. The latter part of the transcript includes background conversation, apparently involving a child asking about the whereabouts of their father, which is unrelated to the IT support call. No specific IT issue or resolution is discussed in detail during the call.","Creating a test set for a very rare category—often called an imbalanced or minority class—is a common challenge in data science and machine learning. Here’s a structured approach you can take:
+
+---
+
+**1. Identify and Understand the Category**
+- Clearly define what qualifies as the ""rare"" category (label, criteria).
+- Quantify its frequency in your dataset.
+
+**2. Collect All Available Instances**
+- Aggregate all examples belonging to the rare category from your existing data.
+- If possible, gather more data from external sources or through targeted data collection methods (e.g., web-scraping, surveys, manual annotation).
+
+**3. Split Carefully**
+- If you have very few instances (e.g., <100), consider cross-validation approaches (e.g., stratified k-fold) instead of a simple train/test split.
+- Alternatively, reserve a fixed percentage (e.g., 10-30%) of the rare examples exclusively for the test set, ensuring none are leaked into training.
+
+**4. Augment if Possible**
+- Consider data augmentation techniques where appropriate (text paraphrasing, synthetic image generation, etc.) to artificially increase the sample size in your test set.
+- Use augmentation cautiously, as artificially generated data might not fully represent true outliers.
+
+**5. Build a Balanced Test Set**
+- Your test set should include all available rare instances and a selection of majority class examples (randomly sampled or matched by relevant criteria) to mimic a realistic distribution or to “overweight” the rare category for evaluation purposes.
+
+**6. Ensure Isolation**
+- Remove any data leaks: Make sure no information about the rare test examples is present in training data or through feature engineering.
+
+**7. Evaluate Effectively**
+- Use performance metrics suitable for imbalanced scenarios (e.g., precision, recall, F1-score, ROC-AUC, PR-AUC for the rare class).
+
+---
+
+**Example Workflow:**
+1. You have 20,000 samples, only 30 of which belong to your rare category.
+2. Set aside 10 rare examples for the test set.
+3. Add 100 randomly selected non-rare examples to the test set for balance and realism.
+4. The remaining 20 rare examples go to training/validation (or use cross-validation).
+5. Make sure your evaluation focuses on the rare category’s detection performance.
+
+---
+
+**Tips:**
+- If you have *extremely* few examples (e.g., <10), consider collecting more data, seeking expert annotation, or using anomaly detection methods.
+- Document any sampling or resampling strategy as it may impact how results are interpreted.
+
+---
+
+By following these steps, you can build a reliable test set that enables robust evaluation of your model’s ability to identify and classify very rare categories.","Summary:
+
+The call transcript begins with an automated menu providing options for Enterprise Password Reset, Account Unlock, and Technology/Application Support. Callers are instructed to visit a company website to check if their account is passwordless and are given further options based on their status. For issues such as being unable to log in due to a disabled account or a forgotten/expired password, callers are told to press 9 for assistance. The latter part of the transcript includes background conversation, apparently involving a child asking about the whereabouts of their father, which is unrelated to the IT support call. No specific IT issue or resolution is discussed in detail during the call.","random_sampling","gpt-4.1","gpt-4.1"
+"What is the best way to travel from Tel-Aviv to Jerusalem?","The call transcript captures an interaction between a company employee and the IT helpdesk’s automated system. The system provides various options related to password management and account access. The employee is prompted to press zero for enterprise password resets or account unlocks. Additional instructions are provided to check if the employee’s account is set up for passwordless login by visiting a specific website. If the employee is unable to log in due to a disabled account, they are instructed to press nine, and for forgotten passwords, further steps are suggested. The transcript primarily consists of the automated menu options, with no direct conversation with a live agent taking place during this snippet.","The best way to travel from Tel Aviv to Jerusalem depends on your preferences for speed, cost, and convenience. Here are the main options:
+
+**1. High-Speed Train**
+- **Overview:** The high-speed train operated by Israel Railways runs directly from Tel Aviv’s main railway stations (HaHagana, HaShalom, or Savidor Center) to Jerusalem Yitzhak Navon Station.
+- **Duration:** Approximately 35–45 minutes.
+- **Frequency:** Trains depart every 30–60 minutes throughout most of the day.
+- **Cost:** Around 24 NIS (one way).
+- **Advantages:** Fast, reliable, comfortable, climate-controlled, no traffic concerns, and the Jerusalem Navon station is centrally located near the entrance to the city.
+
+**2. Bus**
+- **Overview:** Direct buses (Egged lines 405 and 480) run from Tel Aviv Central Bus Station (line 405) and Tel Aviv Arlozorov Terminal (Savidor Merkaz, line 480) to Jerusalem Central Bus Station.
+- **Duration:** Around 50–60 minutes, but can be significantly longer during rush hours.
+- **Frequency:** Departures every 10–20 minutes throughout the day.
+- **Cost:** Similar to the train (around 19–24 NIS).
+- **Advantages:** Frequent service, easy connection with other parts of each city.
+
+**3. Shared Taxi (Sherut/Minibus)**
+- **Overview:** These operate 24/7 between the Tel Aviv Central Bus Station and Jerusalem.
+- **Duration:** About 45–60 minutes (traffic dependent).
+- **Cost:** Slightly higher than bus/train (~35–40 NIS).
+- **Advantages:** Depart when full, run late at night and on Shabbat (when trains and most buses do not operate).
+
+**4. Private Car/Taxi**
+- **Overview:** You can travel by private car or regular taxi.
+- **Duration:** 45–90 minutes, depending on traffic.
+- **Cost:** Taxi fare is significantly higher (200–300 NIS one way).
+- **Advantages:** Door-to-door, flexibility of departure time, especially useful late at night or with luggage.
+
+**Recommendation:**
+For most travelers, the **high-speed train** is the best option: it’s quick, comfortable, affordable, and unaffected by road traffic. It’s an especially good choice during rush hours or bad weather. If you’re traveling late at night, early in the morning, or during Shabbat, a **sherut (shared taxi)** is your best bet.
+
+**Additional Tips:**
+- Make sure to check the train schedule, as service is limited on Friday afternoons and Saturdays (Shabbat).
+- Purchase tickets in advance or use a Rav-Kav (Israel’s public transit card) for buses/trains.
+- During holidays or peak hours, trains and buses can be busy; plan ahead.
+
+If you need tailored advice based on time of day, special needs, or onward travel in Jerusalem, just ask!","The call transcript captures an interaction between a company employee and the IT helpdesk’s automated system. The system provides various options related to password management and account access. The employee is prompted to press zero for enterprise password resets or account unlocks. Additional instructions are provided to check if the employee’s account is set up for passwordless login by visiting a specific website. If the employee is unable to log in due to a disabled account, they are instructed to press nine, and for forgotten passwords, further steps are suggested. The transcript primarily consists of the automated menu options, with no direct conversation with a live agent taking place during this snippet.","random_sampling","gpt-4.1","gpt-4.1"

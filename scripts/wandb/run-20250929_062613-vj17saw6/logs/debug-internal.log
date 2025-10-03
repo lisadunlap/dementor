@@ -1,0 +1,8 @@
+{"time":"2025-09-29T06:26:13.688547179Z","level":"INFO","msg":"stream: starting","core version":"0.19.9","symlink path":"/home/nazcol/dementor-sync/scripts/wandb/run-20250929_062613-vj17saw6/logs/debug-core.log"}
+{"time":"2025-09-29T06:26:14.003321599Z","level":"INFO","msg":"created new stream","id":"vj17saw6"}
+{"time":"2025-09-29T06:26:14.003418799Z","level":"INFO","msg":"stream: started","id":"vj17saw6"}
+{"time":"2025-09-29T06:26:14.003445393Z","level":"INFO","msg":"writer: Do: started","stream_id":"vj17saw6"}
+{"time":"2025-09-29T06:26:14.003452229Z","level":"INFO","msg":"handler: started","stream_id":"vj17saw6"}
+{"time":"2025-09-29T06:26:14.003532325Z","level":"INFO","msg":"sender: started","stream_id":"vj17saw6"}
+{"time":"2025-09-29T06:26:14.229285532Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-09-29T06:26:14.230934694Z","level":"ERROR","msg":"git repo not found","error":"repository does not exist"}

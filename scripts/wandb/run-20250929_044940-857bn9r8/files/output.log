@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 763, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 575, in main
+    if not os.path.exists(args.prompts_file):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/genericpath.py", line 19, in exists
+    os.stat(path)
+TypeError: stat: path should be string, bytes, os.PathLike or integer, not NoneType
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 763, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 575, in main
+    if not os.path.exists(args.prompts_file):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/genericpath.py", line 19, in exists
+    os.stat(path)
+TypeError: stat: path should be string, bytes, os.PathLike or integer, not NoneType

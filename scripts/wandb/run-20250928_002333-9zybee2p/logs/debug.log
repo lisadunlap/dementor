@@ -1,0 +1,24 @@
+2025-09-28 00:23:33,342 INFO    MainThread:2344719 [wandb_setup.py:_flush():67] Current SDK version is 0.19.9
+2025-09-28 00:23:33,342 INFO    MainThread:2344719 [wandb_setup.py:_flush():67] Configure stats pid to 2344719
+2025-09-28 00:23:33,342 INFO    MainThread:2344719 [wandb_setup.py:_flush():67] Loading settings from /home/nazcol/.config/wandb/settings
+2025-09-28 00:23:33,342 INFO    MainThread:2344719 [wandb_setup.py:_flush():67] Loading settings from /home/nazcol/dementor-sync/scripts/wandb/settings
+2025-09-28 00:23:33,342 INFO    MainThread:2344719 [wandb_setup.py:_flush():67] Loading settings from environment variables
+2025-09-28 00:23:33,342 INFO    MainThread:2344719 [wandb_init.py:setup_run_log_directory():662] Logging user logs to /home/nazcol/dementor-sync/scripts/wandb/run-20250928_002333-9zybee2p/logs/debug.log
+2025-09-28 00:23:33,343 INFO    MainThread:2344719 [wandb_init.py:setup_run_log_directory():663] Logging internal logs to /home/nazcol/dementor-sync/scripts/wandb/run-20250928_002333-9zybee2p/logs/debug-internal.log
+2025-09-28 00:23:33,343 INFO    MainThread:2344719 [wandb_init.py:init():781] calling init triggers
+2025-09-28 00:23:33,343 INFO    MainThread:2344719 [wandb_init.py:init():786] wandb.init called with sweep_config: {}
+config: {'_wandb': {'code_path': 'code/gen_cache_response.py'}}
+2025-09-28 00:23:33,343 INFO    MainThread:2344719 [wandb_init.py:init():809] starting backend
+2025-09-28 00:23:33,343 INFO    MainThread:2344719 [wandb_init.py:init():813] sending inform_init request
+2025-09-28 00:23:33,348 INFO    MainThread:2344719 [backend.py:_multiprocessing_setup():101] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2025-09-28 00:23:33,348 INFO    MainThread:2344719 [wandb_init.py:init():823] backend started and connected
+2025-09-28 00:23:33,351 INFO    MainThread:2344719 [wandb_init.py:init():915] updated telemetry
+2025-09-28 00:23:33,353 INFO    MainThread:2344719 [wandb_init.py:init():939] communicating run to backend with 90.0 second timeout
+2025-09-28 00:23:33,998 INFO    MainThread:2344719 [wandb_init.py:init():1014] starting run threads in backend
+2025-09-28 00:23:34,380 INFO    MainThread:2344719 [wandb_run.py:_console_start():2454] atexit reg
+2025-09-28 00:23:34,381 INFO    MainThread:2344719 [wandb_run.py:_redirect():2306] redirect: wrap_raw
+2025-09-28 00:23:34,381 INFO    MainThread:2344719 [wandb_run.py:_redirect():2371] Wrapping output streams.
+2025-09-28 00:23:34,381 INFO    MainThread:2344719 [wandb_run.py:_redirect():2394] Redirects installed.
+2025-09-28 00:23:34,383 INFO    MainThread:2344719 [wandb_init.py:init():1056] run started, returning control to user process
+2025-09-28 00:23:34,384 INFO    MainThread:2344719 [wandb_run.py:_config_callback():1327] config_cb None None {'model': 'Qwen/Qwen3-8B', 'use_serve_llm': False, 'use_vllm': False, 'gpt_model': None, 'dataset': '/home/nazcol/dementor/dementor/disguising/model-responses/base_500_all_models/call_center_prompts.csv', 'output_dir': 'data/model-responses/call_center', 'num_samples': 500, 'max_prompt_tokens': 1024, 'temperature': 0.7, 'top_p': 0.95, 'max_tokens': 1024, 'multimodal': False, 'max_model_len': 8000, 'tensor_parallel_size': 2, 'batch_size': 100, 'generate_scripts': False, 'script_dir': 'scripts', 'num_scripts': 8, 'input_pattern': '../model-responses/disguised/stylistic_clustering/**/temp0.7/*.csv', 'cache_dir': 'cache', 'disable_wandb': False, 'wandb_project': 'disguising-generations', 'dtype': 'half'}
+2025-09-28 00:23:53,176 INFO    MsgRouterThr:2344719 [mailbox.py:close():129] [no run ID] Closing mailbox, abandoning 1 handles.

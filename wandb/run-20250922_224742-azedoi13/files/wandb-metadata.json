@@ -1,0 +1,113 @@
+{
+  "os": "Linux-6.8.0-31-generic-x86_64-with-glibc2.39",
+  "python": "CPython 3.10.13",
+  "startedAt": "2025-09-22T22:47:42.451058Z",
+  "args": [
+    "--model",
+    "openai/gpt-4.1",
+    "--disguise_as",
+    "openai/gpt-4.1",
+    "--method",
+    "random_sampling",
+    "--source_responses",
+    "/home/nazcol/dementor-sync/data/model-responses/call_center/gpt-4.1.csv",
+    "--target_responses",
+    "/home/nazcol/dementor-sync/data/model-responses/call_center/gpt-4.1.csv",
+    "--output_dir",
+    "/home/nazcol/dementor-sync/data/results/call_center/comparisons/disguised_vs_target/random_sampling",
+    "--openai-api-base",
+    "https://api.openai.com/v1",
+    "--method",
+    "vibe_based"
+  ],
+  "program": "/home/nazcol/dementor-sync/scripts/disguise.py",
+  "codePath": "scripts/disguise.py",
+  "email": "dogaanazcol@gmail.com",
+  "root": "/home/nazcol/dementor-sync",
+  "host": "nian",
+  "executable": "/home/nazcol/.pyenv/versions/3.10.13/bin/python",
+  "codePathLocal": "scripts/disguise.py",
+  "cpu_count": 28,
+  "cpu_count_logical": 56,
+  "gpu": "NVIDIA TITAN RTX",
+  "gpu_count": 10,
+  "disk": {
+    "/": {
+      "total": "959660232704",
+      "used": "88745697280"
+    }
+  },
+  "memory": {
+    "total": "539589341184"
+  },
+  "cpu": {
+    "count": 28,
+    "countLogical": 56
+  },
+  "gpu_nvidia": [
+    {
+      "name": "NVIDIA TITAN RTX",
+      "memoryTotal": "25769803776",
+      "cudaCores": 4608,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA TITAN RTX",
+      "memoryTotal": "25769803776",
+      "cudaCores": 4608,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA GeForce RTX 2080 Ti",
+      "memoryTotal": "11811160064",
+      "cudaCores": 4352,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA GeForce RTX 2080 Ti",
+      "memoryTotal": "11811160064",
+      "cudaCores": 4352,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA TITAN RTX",
+      "memoryTotal": "25769803776",
+      "cudaCores": 4608,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA GeForce RTX 2080 Ti",
+      "memoryTotal": "11811160064",
+      "cudaCores": 4352,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA GeForce RTX 2080 Ti",
+      "memoryTotal": "11811160064",
+      "cudaCores": 4352,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA TITAN RTX",
+      "memoryTotal": "25769803776",
+      "cudaCores": 4608,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA TITAN RTX",
+      "memoryTotal": "25769803776",
+      "cudaCores": 4608,
+      "architecture": "Turing"
+    },
+    {
+      "name": "NVIDIA GeForce RTX 2080 Ti",
+      "memoryTotal": "11811160064",
+      "cudaCores": 4352,
+      "architecture": "Turing"
+    }
+  ],
+  "slurm": {
+    "conf": "/etc/slurm/slurm.conf"
+  },
+  "cudaVersion": "12.5"
+}

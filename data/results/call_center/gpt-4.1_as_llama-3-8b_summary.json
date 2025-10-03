@@ -1,0 +1,39 @@
+{
+  "method": "contrastive_with_al_examples",
+  "model": "gpt-4.1",
+  "disguise_as": "meta-llama/Meta-Llama-3-8B-Instruct",
+  "num_samples": 500,
+  "method_kwargs": {
+    "al_num_examples": 5,
+    "al_d_regular": 3,
+    "al_p_threshold": 0.1,
+    "al_q_threshold": 0.1,
+    "al_batch_size": 10,
+    "al_max_iterations": 5,
+    "al_relaxation_factor": 1.2,
+    "al_seed": null,
+    "example_selector": "al"
+  },
+  "results_file": "/home/nazcol/dementor-sync/data/results/call_center/gpt-4.1_as_llama-3-8b.csv",
+  "scores_file": "/home/nazcol/dementor-sync/data/results/call_center/gpt-4.1_as_llama-3-8b_scores.csv",
+  "metrics_csv": "/home/nazcol/dementor-sync/data/results/call_center/gpt-4.1_as_llama-3-8b_scores_metrics.csv",
+  "selection_statistics": {
+    "total_responses": 500,
+    "total_queries": 750,
+    "quality_score_mean": 0.0,
+    "quality_score_std": 0.0,
+    "quality_score_range": [
+      0.0,
+      0.0
+    ],
+    "selected_examples": 5,
+    "p_threshold_final": 0.1,
+    "q_threshold_final": 0.1
+  },
+  "uncertainty_analysis": {
+    "mean_uncertainty": 0.0,
+    "std_uncertainty": 0.0,
+    "min_uncertainty": 0.0,
+    "max_uncertainty": 0.0
+  }
+}

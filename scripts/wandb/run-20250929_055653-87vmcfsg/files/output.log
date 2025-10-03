@@ -1,0 +1,343 @@
+Generating random_sampling responses:   0%|                                                           | 0/500 [00:00<?, ?it/s]ERROR:root:Error processing prompt 0: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+Generating random_sampling responses:   0%|                                                   | 1/500 [00:03<29:38,  3.56s/it]ERROR:root:Error processing prompt 1: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+Generating random_sampling responses:   0%|▏                                                  | 2/500 [00:07<29:29,  3.55s/it]ERROR:root:Error processing prompt 2: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+Generating random_sampling responses:   1%|▎                                                  | 3/500 [00:10<30:01,  3.63s/it]ERROR:root:Error processing prompt 3: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+Generating random_sampling responses:   1%|▍                                                  | 4/500 [00:14<29:51,  3.61s/it]ERROR:root:Error processing prompt 4: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+Generating random_sampling responses:   1%|▌                                                  | 5/500 [00:18<29:46,  3.61s/it]ERROR:root:Error processing prompt 5: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+Generating random_sampling responses:   1%|▌                                                  | 6/500 [00:21<29:38,  3.60s/it]ERROR:root:Error processing prompt 6: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+Generating random_sampling responses:   1%|▋                                                  | 7/500 [00:25<29:32,  3.60s/it]ERROR:root:Error processing prompt 7: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+Generating random_sampling responses:   2%|▊                                                  | 8/500 [00:32<32:57,  4.02s/it]
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/llms/huggingface/common_utils.py", line 84, in _fetch_inference_provider_mapping
+    response.raise_for_status()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_models.py", line 829, in raise_for_status
+    raise HTTPStatusError(message, request=request, response=self)
+httpx.HTTPStatusError: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/main.py", line 2254, in completion
+    response = base_llm_http_handler.completion(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/llms/custom_httpx/llm_http_handler.py", line 315, in completion
+    data = provider_config.transform_request(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/llms/huggingface/chat/transformation.py", line 131, in transform_request
+    provider_mapping = _fetch_inference_provider_mapping(model_id)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/llms/huggingface/common_utils.py", line 98, in _fetch_inference_provider_mapping
+    raise HuggingFaceError(
+litellm.llms.huggingface.common_utils.HuggingFaceError: Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 213, in _gen_with_retries
+    return call_fn()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 308, in _llm_call
+    resp = completion(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/utils.py", line 1285, in wrapper
+    raise e
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/utils.py", line 1163, in wrapper
+    result = original_function(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/main.py", line 3273, in completion
+    raise exception_type(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/litellm_core_utils/exception_mapping_utils.py", line 2271, in exception_type
+    raise e
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/litellm_core_utils/exception_mapping_utils.py", line 1530, in exception_type
+    raise AuthenticationError(
+litellm.exceptions.AuthenticationError: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 818, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 318, in generate_disguised_responses
+    disguised_response = _gen_with_retries(_llm_call)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 217, in _gen_with_retries
+    time.sleep(base_delay * attempt)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/llms/huggingface/common_utils.py", line 84, in _fetch_inference_provider_mapping
+    response.raise_for_status()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_models.py", line 829, in raise_for_status
+    raise HTTPStatusError(message, request=request, response=self)
+httpx.HTTPStatusError: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/main.py", line 2254, in completion
+    response = base_llm_http_handler.completion(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/llms/custom_httpx/llm_http_handler.py", line 315, in completion
+    data = provider_config.transform_request(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/llms/huggingface/chat/transformation.py", line 131, in transform_request
+    provider_mapping = _fetch_inference_provider_mapping(model_id)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/llms/huggingface/common_utils.py", line 98, in _fetch_inference_provider_mapping
+    raise HuggingFaceError(
+litellm.llms.huggingface.common_utils.HuggingFaceError: Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 213, in _gen_with_retries
+    return call_fn()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 308, in _llm_call
+    resp = completion(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/utils.py", line 1285, in wrapper
+    raise e
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/utils.py", line 1163, in wrapper
+    result = original_function(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/main.py", line 3273, in completion
+    raise exception_type(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/litellm_core_utils/exception_mapping_utils.py", line 2271, in exception_type
+    raise e
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/litellm_core_utils/exception_mapping_utils.py", line 1530, in exception_type
+    raise AuthenticationError(
+litellm.exceptions.AuthenticationError: litellm.AuthenticationError: HuggingfaceException - Failed to fetch provider mapping: Client error '401 Unauthorized' for url 'https://huggingface.co/api/models/meta-llama/Llama-3-8B-Instruct?expand=inferenceProviderMapping'
+For more information check: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/401
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 818, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 318, in generate_disguised_responses
+    disguised_response = _gen_with_retries(_llm_call)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 217, in _gen_with_retries
+    time.sleep(base_delay * attempt)
+KeyboardInterrupt
+Exception ignored in atexit callback: <function _start_and_connect_service.<locals>.teardown_atexit at 0x77024dd45240>
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/lib/service_connection.py", line 94, in teardown_atexit
+    conn.teardown(hooks.exit_code)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/lib/service_connection.py", line 226, in teardown
+    self._router.join()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/interface/router.py", line 75, in join
+    self._thread.join()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/threading.py", line 1096, in join
+    self._wait_for_tstate_lock()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/threading.py", line 1116, in _wait_for_tstate_lock
+    if lock.acquire(block, timeout):
+KeyboardInterrupt:
+Exception ignored in atexit callback: <function shutdown at 0x77024fb80b80>
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/ray/_private/client_mode_hook.py", line 103, in wrapper
+    return func(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/ray/_private/worker.py", line 1903, in shutdown
+    from ray.dag.compiled_dag_node import _shutdown_all_compiled_dags
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/ray/dag/__init__.py", line 1, in <module>
+    from ray.dag.dag_node import DAGNode
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/ray/dag/dag_node.py", line 2, in <module>
+    from ray.experimental.channel.auto_transport_type import AutoTransportType
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/ray/experimental/channel/__init__.py", line 1, in <module>
+    from ray.experimental.channel.cached_channel import CachedChannel
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/ray/experimental/channel/cached_channel.py", line 4, in <module>
+    from ray.experimental.channel.common import ChannelInterface
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/ray/experimental/channel/common.py", line 435, in <module>
+    class AwaitableBackgroundReader(ReaderInterface):
+KeyboardInterrupt:

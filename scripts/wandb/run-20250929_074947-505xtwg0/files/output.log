@@ -1,0 +1,65 @@
+Generating base responses:   0%|                                                                      | 0/500 [00:00<?, ?it/s]ERROR:root:Error processing prompt 0: 'str' object has no attribute 'get'
+Generating base responses:   0%|                                                              | 1/500 [00:03<24:59,  3.00s/it]ERROR:root:Error processing prompt 1: 'str' object has no attribute 'get'
+Generating base responses:   0%|▏                                                             | 2/500 [00:06<24:56,  3.00s/it]ERROR:root:Error processing prompt 2: 'str' object has no attribute 'get'
+Generating base responses:   1%|▎                                                             | 3/500 [00:09<24:53,  3.00s/it]ERROR:root:Error processing prompt 3: 'str' object has no attribute 'get'
+Generating base responses:   1%|▍                                                             | 4/500 [00:12<24:50,  3.00s/it]ERROR:root:Error processing prompt 4: 'str' object has no attribute 'get'
+Generating base responses:   1%|▌                                                             | 5/500 [00:15<24:47,  3.00s/it]ERROR:root:Error processing prompt 5: 'str' object has no attribute 'get'
+Generating base responses:   1%|▋                                                             | 6/500 [00:18<24:44,  3.00s/it]ERROR:root:Error processing prompt 6: 'str' object has no attribute 'get'
+Generating base responses:   1%|▊                                                             | 7/500 [00:21<24:41,  3.00s/it]ERROR:root:Error processing prompt 7: 'str' object has no attribute 'get'
+Generating base responses:   2%|▉                                                             | 8/500 [00:24<24:38,  3.00s/it]ERROR:root:Error processing prompt 8: 'str' object has no attribute 'get'
+Generating base responses:   2%|█                                                             | 9/500 [00:28<25:36,  3.13s/it]
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 213, in _gen_with_retries
+    return call_fn()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 295, in _llm_call
+    system_prompt_text, history_msgs, user_prompt_text = _split_messages(disguised_messages)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 265, in _split_messages
+    role = m.get('role')
+AttributeError: 'str' object has no attribute 'get'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 821, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 304, in generate_disguised_responses
+    disguised_response = _gen_with_retries(_llm_call)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 217, in _gen_with_retries
+    time.sleep(base_delay * attempt)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 213, in _gen_with_retries
+    return call_fn()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 295, in _llm_call
+    system_prompt_text, history_msgs, user_prompt_text = _split_messages(disguised_messages)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 265, in _split_messages
+    role = m.get('role')
+AttributeError: 'str' object has no attribute 'get'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 821, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 304, in generate_disguised_responses
+    disguised_response = _gen_with_retries(_llm_call)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 217, in _gen_with_retries
+    time.sleep(base_delay * attempt)
+KeyboardInterrupt
+Exception ignored in atexit callback: <function _start_and_connect_service.<locals>.teardown_atexit at 0x7cdaa4737d00>
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/lib/service_connection.py", line 94, in teardown_atexit
+    conn.teardown(hooks.exit_code)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/lib/service_connection.py", line 226, in teardown
+    self._router.join()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/interface/router.py", line 75, in join
+    self._thread.join()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/threading.py", line 1096, in join
+    self._wait_for_tstate_lock()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/threading.py", line 1116, in _wait_for_tstate_lock
+    if lock.acquire(block, timeout):
+KeyboardInterrupt:

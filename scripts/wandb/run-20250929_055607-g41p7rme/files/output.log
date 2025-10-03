@@ -1,0 +1,136 @@
+Generating random_sampling responses:   0%|                                                           | 0/500 [00:00<?, ?it/s]ERROR:root:Error processing prompt 0: litellm.APIError: HuggingfaceException - Model meta-llama/Meta-Llama-3-8B-Instruct is not supported for provider hf-inference
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+Generating random_sampling responses:   0%|                                                   | 1/500 [00:05<44:29,  5.35s/it]
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+
+
+[1;31mGive Feedback / Get Help: https://github.com/BerriAI/litellm/issues/new[0m
+LiteLLM.Info: If you need to debug this error, use `litellm._turn_on_debug()'.
+
+
+[1;31mProvider List: https://docs.litellm.ai/docs/providers[0m
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/main.py", line 2254, in completion
+    response = base_llm_http_handler.completion(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/llms/custom_httpx/llm_http_handler.py", line 315, in completion
+    data = provider_config.transform_request(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/llms/huggingface/chat/transformation.py", line 133, in transform_request
+    raise HuggingFaceError(
+litellm.llms.huggingface.common_utils.HuggingFaceError: Model meta-llama/Meta-Llama-3-8B-Instruct is not supported for provider hf-inference
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 213, in _gen_with_retries
+    return call_fn()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 308, in _llm_call
+    resp = completion(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/utils.py", line 1285, in wrapper
+    raise e
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/utils.py", line 1163, in wrapper
+    result = original_function(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/main.py", line 3273, in completion
+    raise exception_type(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/litellm_core_utils/exception_mapping_utils.py", line 2271, in exception_type
+    raise e
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/litellm_core_utils/exception_mapping_utils.py", line 1569, in exception_type
+    raise APIError(
+litellm.exceptions.APIError: litellm.APIError: HuggingfaceException - Model meta-llama/Meta-Llama-3-8B-Instruct is not supported for provider hf-inference
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 818, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 318, in generate_disguised_responses
+    disguised_response = _gen_with_retries(_llm_call)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 217, in _gen_with_retries
+    time.sleep(base_delay * attempt)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/main.py", line 2254, in completion
+    response = base_llm_http_handler.completion(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/llms/custom_httpx/llm_http_handler.py", line 315, in completion
+    data = provider_config.transform_request(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/llms/huggingface/chat/transformation.py", line 133, in transform_request
+    raise HuggingFaceError(
+litellm.llms.huggingface.common_utils.HuggingFaceError: Model meta-llama/Meta-Llama-3-8B-Instruct is not supported for provider hf-inference
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 213, in _gen_with_retries
+    return call_fn()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 308, in _llm_call
+    resp = completion(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/utils.py", line 1285, in wrapper
+    raise e
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/utils.py", line 1163, in wrapper
+    result = original_function(*args, **kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/main.py", line 3273, in completion
+    raise exception_type(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/litellm_core_utils/exception_mapping_utils.py", line 2271, in exception_type
+    raise e
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/litellm/litellm_core_utils/exception_mapping_utils.py", line 1569, in exception_type
+    raise APIError(
+litellm.exceptions.APIError: litellm.APIError: HuggingfaceException - Model meta-llama/Meta-Llama-3-8B-Instruct is not supported for provider hf-inference
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 818, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 318, in generate_disguised_responses
+    disguised_response = _gen_with_retries(_llm_call)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 217, in _gen_with_retries
+    time.sleep(base_delay * attempt)
+KeyboardInterrupt
+Exception ignored in atexit callback: <function _start_and_connect_service.<locals>.teardown_atexit at 0x762489337c70>
+Traceback (most recent call last):
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/lib/service_connection.py", line 94, in teardown_atexit
+    conn.teardown(hooks.exit_code)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/lib/service_connection.py", line 226, in teardown
+    self._router.join()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/wandb/sdk/interface/router.py", line 75, in join
+    self._thread.join()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/threading.py", line 1096, in join
+    self._wait_for_tstate_lock()
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/threading.py", line 1116, in _wait_for_tstate_lock
+    if lock.acquire(block, timeout):
+KeyboardInterrupt:

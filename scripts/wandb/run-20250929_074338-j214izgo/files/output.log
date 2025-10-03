@@ -1,0 +1,20 @@
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 821, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 147, in generate_disguised_responses
+    method = get_method(method_name, model, disguise_as,
+  File "/home/nazcol/dementor-sync/scripts/methods/get_method.py", line 63, in get_method
+    return BaseSystemPrompting(model, disguise_as, disguise_df=disguise_df)
+NameError: name 'BaseSystemPrompting' is not defined. Did you mean: 'VibeBasedSystemPrompting'?
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 821, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 616, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 147, in generate_disguised_responses
+    method = get_method(method_name, model, disguise_as,
+  File "/home/nazcol/dementor-sync/scripts/methods/get_method.py", line 63, in get_method
+    return BaseSystemPrompting(model, disguise_as, disguise_df=disguise_df)
+NameError: name 'BaseSystemPrompting' is not defined. Did you mean: 'VibeBasedSystemPrompting'?

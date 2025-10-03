@@ -1,0 +1,17 @@
+{"time":"2025-09-29T06:57:22.609813074Z","level":"INFO","msg":"stream: starting","core version":"0.19.9","symlink path":"/home/nazcol/dementor-sync/scripts/wandb/run-20250929_065722-umdlqi1c/logs/debug-core.log"}
+{"time":"2025-09-29T06:57:23.039680923Z","level":"INFO","msg":"created new stream","id":"umdlqi1c"}
+{"time":"2025-09-29T06:57:23.039762822Z","level":"INFO","msg":"stream: started","id":"umdlqi1c"}
+{"time":"2025-09-29T06:57:23.039789137Z","level":"INFO","msg":"writer: Do: started","stream_id":"umdlqi1c"}
+{"time":"2025-09-29T06:57:23.039802555Z","level":"INFO","msg":"sender: started","stream_id":"umdlqi1c"}
+{"time":"2025-09-29T06:57:23.039895157Z","level":"INFO","msg":"handler: started","stream_id":"umdlqi1c"}
+{"time":"2025-09-29T06:57:23.273449504Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-09-29T06:57:23.275324338Z","level":"ERROR","msg":"git repo not found","error":"repository does not exist"}
+{"time":"2025-09-29T06:57:30.705133917Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-09-29T06:57:30.705357413Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-09-29T06:57:31.707719572Z","level":"INFO","msg":"handler: operation stats","stats":{"operations":[{"desc":"uploading artifact run_artifacts_random_sampling_huggingface-Qwen-Qwen3-8B_as_gpt-4.1","runtime_seconds":1.009274379}],"total_operations":1}}
+{"time":"2025-09-29T06:57:31.849963104Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-09-29T06:57:31.983191828Z","level":"INFO","msg":"stream: closing","id":"umdlqi1c"}
+{"time":"2025-09-29T06:57:31.983228579Z","level":"INFO","msg":"handler: closed","stream_id":"umdlqi1c"}
+{"time":"2025-09-29T06:57:31.983245988Z","level":"INFO","msg":"writer: Close: closed","stream_id":"umdlqi1c"}
+{"time":"2025-09-29T06:57:31.983313734Z","level":"INFO","msg":"sender: closed","stream_id":"umdlqi1c"}
+{"time":"2025-09-29T06:57:31.983701042Z","level":"INFO","msg":"stream: closed","id":"umdlqi1c"}
