@@ -1,3 +1,21 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:fb8017d727b8e871dd02e9335b9eeb034b9ae0cf22d29c9c5640d4cfde8098c6
-size 526
+style_function,response1,response2,match
+ALL CAPS,0.0,0.1,0.9
+Blockquotes,0.0,0.0,1.0
+Bullets,0.0,1.0,0.0
+Code Formatting,0.0,0.0,1.0
+Emojis,0.0,0.0,1.0
+Exclamations,0.0,0.0,1.0
+First-Person Pronouns,0.0,0.0,1.0
+Greeting (Start),0.0,0.0,1.0
+Header/Title,0.0,0.0,1.0
+Links,0.0,0.0,1.0
+List,0.0,1.0,0.0
+Long Sentences,0.0,0.8,0.2
+Markdown,0.0,1.0,0.0
+Math Symbols,0.0,1.0,0.0
+Numbered Steps,0.0,0.0,1.0
+Parentheses,0.0,0.5,0.5
+Questions,0.0,0.1,0.9
+Repetition,0.0,1.0,0.0
+Sign-off (End),0.0,0.0,1.0
+Starts with List,0.0,0.0,1.0

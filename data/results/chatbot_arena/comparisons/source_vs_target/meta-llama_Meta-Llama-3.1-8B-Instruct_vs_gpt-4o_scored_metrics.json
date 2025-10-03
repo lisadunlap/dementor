@@ -1,3 +1,11 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:5138bd84c7ac7126fd896d983e2e62ca2486779042eca68108e5ed6a88a12097
-size 372
+{
+  "semantic_score_mean": 3.4124336618650495,
+  "semantic_score_std": 1.0501954756787546,
+  "semantic_score_count": 1319,
+  "stylistic_score_mean": 3.0197119029567854,
+  "stylistic_score_std": 0.5193432079270628,
+  "stylistic_score_count": 1319,
+  "heuristic_match_mean": 0.8910159211523881,
+  "heuristic_match_std": 0.06236389529819831,
+  "heuristic_match_count": 1319
+}

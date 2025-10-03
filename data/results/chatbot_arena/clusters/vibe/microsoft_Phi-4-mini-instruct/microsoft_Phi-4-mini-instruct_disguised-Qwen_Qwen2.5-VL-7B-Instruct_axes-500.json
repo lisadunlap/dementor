@@ -1,3 +1,56 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:1184f255d6aff63edaedb2caec74e52a988937b5b1395a952d962bff26bea3c4
-size 4732
+{
+  "trait_axes": {
+    "Response Length": {
+      "0": "Responses are very brief, lacking detail or elaboration.",
+      "10": "Responses are lengthy and detailed, providing extensive information."
+    },
+    "Formality": {
+      "0": "Responses are highly casual, using informal language and slang.",
+      "10": "Responses are very formal, using professional and academic language."
+    },
+    "Emotional Tone": {
+      "0": "Responses are neutral or detached, lacking emotional engagement.",
+      "10": "Responses are warm and empathetic, conveying strong emotional engagement."
+    },
+    "Use of Technical Jargon": {
+      "0": "Responses avoid technical terms, using simple and plain language.",
+      "10": "Responses are rich in technical jargon, assuming a high level of expertise."
+    },
+    "Information Organization": {
+      "0": "Responses are poorly structured, lacking clear organization.",
+      "10": "Responses are well-structured, using headers, sections, and logical flow."
+    },
+    "Use of Humor": {
+      "0": "Responses are serious and devoid of humor.",
+      "10": "Responses incorporate humor and wit, making them more engaging."
+    },
+    "Clarity of Explanations": {
+      "0": "Responses are vague and unclear, leaving room for confusion.",
+      "10": "Responses are clear and concise, providing thorough explanations."
+    },
+    "Engagement with User": {
+      "0": "Responses are impersonal, lacking direct engagement with the user.",
+      "10": "Responses are highly engaging, using personal pronouns and addressing the user directly."
+    },
+    "Handling of Ambiguity": {
+      "0": "Responses struggle with unclear prompts, providing little guidance.",
+      "10": "Responses effectively address ambiguity, offering clarifications and options."
+    },
+    "Use of Examples": {
+      "0": "Responses rarely include examples or illustrations.",
+      "10": "Responses frequently use examples to clarify and support explanations."
+    }
+  },
+  "samples": [
+    "Apple smartphones, such as the iPhone, are popular for a variety of reasons:\n\n1. Brand reputation: Apple has built a strong reputation for quality, innovation, and design. The company's commitment to user experience and attention to detail is evident in it...(truncated)",
+    "I'm happy to help you solve an equation. Please provide the equation you need assistance with.",
+    "To solve this problem, we need to understand the pattern of toggling the doors. Let's break it down step-by-step:\n\n1. **First Pass**: You toggle every door. This means the door status will be toggled to the opposite (open becomes closed, closed becomes ope...(truncated)",
+    "I'm sorry, as an AI language model, I don't have the ability to physically access your pocket or see what's inside. However, you can easily find out by taking out your phone or any other items you might have in your pocket.",
+    "In the realm of mass, where scales reveal,\nA curious question, let us see:\nOne kilogram of feathers, and one kilogram of steel,\nWhose weight would you say is the clear?\n\nBy mass, they both start, at the same point they meet,\nYet feathers, with their light,...(truncated)",
+    "It's important to approach the topic of neurodiversity with sensitivity and respect. Treating neurodivergent individuals with respect and understanding is crucial for fostering a supportive environment. Here are some actions that can be considered insensit...(truncated)",
+    "In finance, the terms \"required return\" and \"unlevered cost of equity\" are related but distinct concepts. Let's break down each term and how they might be connected in the context of an unlevered equity investment.\n\n### Required Return\nThe required return ...(truncated)",
+    "The sum of all integers from 1 to 10 can be calculated using the formula for the sum of the first \\( n \\) positive integers:\n\n\\[\nS = \\frac{n(n+1)}{2}\n\\]\n\nHere, \\( n = 10 \\).\n\nSubstituting \\( n = 10 \\) into the formula, we get:\n\n\\[\nS = \\frac{10(10+1)}{2}\n\\]\n\n\\[\nS = \\frac{10 \\times 11}{2}\n\\]\n\n\\[\nS = \\frac{110}{2}\n\\]\n\n\\[\nS = 55\n\\]\n\nSo, the sum of all integers from 1 to 10 is 55.",
+    "Creating a definitive list of the 10 most difficult piano pieces can be subjective as what is challenging for one pianist might be easier for another. However, here is a list of pieces that are widely considered to be among the most technically demanding a...(truncated)",
+    "When discussing books on manipulation, it's important to note that some books in this genre can be controversial and potentially harmful if used inappropriately. These books often focus on understanding human psychology, communication, and influence, which...(truncated)"
+  ]
+}

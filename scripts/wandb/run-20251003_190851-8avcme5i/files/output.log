@@ -1,0 +1,61 @@
+Generating random_sampling responses:   1%|▏                                   | 3/500 [00:07<20:25,  2.47s/it]
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 842, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 628, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 310, in generate_disguised_responses
+    disguised_response = _gen_with_retries(_llm_call)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 219, in _gen_with_retries
+    return call_fn()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 302, in _llm_call
+    return get_llm_output(
+  File "/home/nazcol/dementor-sync/scripts/serve/utils_llm.py", line 51, in get_llm_output
+    client = OpenAI(base_url=("https://api.openai.com/v1" if model != "llama-3-8b" else LLAMA_URL))
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_client.py", line 134, in __init__
+    super().__init__(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 825, in __init__
+    self._client = http_client or SyncHttpxClientWrapper(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 755, in __init__
+    super().__init__(**kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 688, in __init__
+    self._transport = self._init_transport(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 731, in _init_transport
+    return HTTPTransport(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_transports/default.py", line 153, in __init__
+    ssl_context = create_ssl_context(verify=verify, cert=cert, trust_env=trust_env)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_config.py", line 40, in create_ssl_context
+    ctx = ssl.create_default_context(cafile=certifi.where())
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/ssl.py", line 766, in create_default_context
+    context.load_verify_locations(cafile, capath, cadata)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 842, in <module>
+    main()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 628, in main
+    results_df, method_stats = generate_disguised_responses(
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 310, in generate_disguised_responses
+    disguised_response = _gen_with_retries(_llm_call)
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 219, in _gen_with_retries
+    return call_fn()
+  File "/home/nazcol/dementor-sync/scripts/disguise.py", line 302, in _llm_call
+    return get_llm_output(
+  File "/home/nazcol/dementor-sync/scripts/serve/utils_llm.py", line 51, in get_llm_output
+    client = OpenAI(base_url=("https://api.openai.com/v1" if model != "llama-3-8b" else LLAMA_URL))
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_client.py", line 134, in __init__
+    super().__init__(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 825, in __init__
+    self._client = http_client or SyncHttpxClientWrapper(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/openai/_base_client.py", line 755, in __init__
+    super().__init__(**kwargs)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 688, in __init__
+    self._transport = self._init_transport(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_client.py", line 731, in _init_transport
+    return HTTPTransport(
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_transports/default.py", line 153, in __init__
+    ssl_context = create_ssl_context(verify=verify, cert=cert, trust_env=trust_env)
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/site-packages/httpx/_config.py", line 40, in create_ssl_context
+    ctx = ssl.create_default_context(cafile=certifi.where())
+  File "/home/nazcol/.pyenv/versions/3.10.13/lib/python3.10/ssl.py", line 766, in create_default_context
+    context.load_verify_locations(cafile, capath, cadata)
+KeyboardInterrupt

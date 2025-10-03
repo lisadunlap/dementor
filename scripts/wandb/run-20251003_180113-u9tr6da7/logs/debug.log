@@ -1,0 +1,24 @@
+2025-10-03 18:01:13,752 INFO    MainThread:1776623 [wandb_setup.py:_flush():67] Current SDK version is 0.19.9
+2025-10-03 18:01:13,752 INFO    MainThread:1776623 [wandb_setup.py:_flush():67] Configure stats pid to 1776623
+2025-10-03 18:01:13,752 INFO    MainThread:1776623 [wandb_setup.py:_flush():67] Loading settings from /home/nazcol/.config/wandb/settings
+2025-10-03 18:01:13,753 INFO    MainThread:1776623 [wandb_setup.py:_flush():67] Loading settings from /home/nazcol/dementor-sync/scripts/wandb/settings
+2025-10-03 18:01:13,753 INFO    MainThread:1776623 [wandb_setup.py:_flush():67] Loading settings from environment variables
+2025-10-03 18:01:13,753 INFO    MainThread:1776623 [wandb_init.py:setup_run_log_directory():662] Logging user logs to /home/nazcol/dementor-sync/scripts/wandb/run-20251003_180113-u9tr6da7/logs/debug.log
+2025-10-03 18:01:13,753 INFO    MainThread:1776623 [wandb_init.py:setup_run_log_directory():663] Logging internal logs to /home/nazcol/dementor-sync/scripts/wandb/run-20251003_180113-u9tr6da7/logs/debug-internal.log
+2025-10-03 18:01:13,753 INFO    MainThread:1776623 [wandb_init.py:init():781] calling init triggers
+2025-10-03 18:01:13,753 INFO    MainThread:1776623 [wandb_init.py:init():786] wandb.init called with sweep_config: {}
+config: {'model': 'gpt-4.1', 'disguise_as': 'meta-llama/Meta-Llama-3-8B-Instruct', 'method': 'random_sampling', 'tensor_paralel_size': 2, 'al_num_examples': 5, 'al_d_regular': 3, 'al_p_threshold': 0.1, 'al_q_threshold': 0.1, 'al_batch_size': 10, 'al_max_iterations': 5, 'al_relaxation_factor': 1.2, 'al_seed': None, 'example_selector': 'al', 'source_responses': '/home/nazcol/dementor-sync/data/model-responses/gsm8k/500/openai_gpt-4.1_responses.csv', 'target_responses': '/home/nazcol/dementor-sync/data/model-responses/gsm8k/500/meta-llama_Meta-Llama-3-8B-Instruct_responses.csv', 'prompts_file': None, 'num_samples': 2, 'output_dir': '/home/nazcol/dementor-sync/data/results/call_center/', 'skip_evaluation': False, 'heuristics_only': False, 'judge_model': 'openai/gpt-4.1-mini', 'judge_api_base': 'https://api.openai.com/v1', 'judge_api_key': None, 'no_wandb': False, 'run_name': 'gpt-4.1_disguised-meta-llama_Meta-Llama-3-8B-Instruct_responses-2', 'openai_api_base': None, 'openai_api_key': None, '_wandb': {'code_path': 'code/scripts/disguise.py'}}
+2025-10-03 18:01:13,753 INFO    MainThread:1776623 [wandb_init.py:init():809] starting backend
+2025-10-03 18:01:13,754 INFO    MainThread:1776623 [wandb_init.py:init():813] sending inform_init request
+2025-10-03 18:01:13,762 INFO    MainThread:1776623 [backend.py:_multiprocessing_setup():101] multiprocessing start_methods=fork,spawn,forkserver, using: spawn
+2025-10-03 18:01:13,762 INFO    MainThread:1776623 [wandb_init.py:init():823] backend started and connected
+2025-10-03 18:01:13,767 INFO    MainThread:1776623 [wandb_init.py:init():915] updated telemetry
+2025-10-03 18:01:13,783 INFO    MainThread:1776623 [wandb_init.py:init():939] communicating run to backend with 90.0 second timeout
+2025-10-03 18:01:14,197 INFO    MainThread:1776623 [wandb_init.py:init():1014] starting run threads in backend
+2025-10-03 18:01:14,668 INFO    MainThread:1776623 [wandb_run.py:_console_start():2454] atexit reg
+2025-10-03 18:01:14,669 INFO    MainThread:1776623 [wandb_run.py:_redirect():2306] redirect: wrap_raw
+2025-10-03 18:01:14,669 INFO    MainThread:1776623 [wandb_run.py:_redirect():2371] Wrapping output streams.
+2025-10-03 18:01:14,669 INFO    MainThread:1776623 [wandb_run.py:_redirect():2394] Redirects installed.
+2025-10-03 18:01:14,674 INFO    MainThread:1776623 [wandb_init.py:init():1056] run started, returning control to user process
+2025-10-03 18:01:14,675 INFO    MainThread:1776623 [wandb_run.py:_config_callback():1327] config_cb None None {'model': 'gpt-4.1', 'disguise_as': 'meta-llama/Meta-Llama-3-8B-Instruct', 'method': 'random_sampling', 'tensor_paralel_size': 2, 'al_num_examples': 5, 'al_d_regular': 3, 'al_p_threshold': 0.1, 'al_q_threshold': 0.1, 'al_batch_size': 10, 'al_max_iterations': 5, 'al_relaxation_factor': 1.2, 'al_seed': None, 'example_selector': 'al', 'source_responses': '/home/nazcol/dementor-sync/data/model-responses/gsm8k/500/openai_gpt-4.1_responses.csv', 'target_responses': '/home/nazcol/dementor-sync/data/model-responses/gsm8k/500/meta-llama_Meta-Llama-3-8B-Instruct_responses.csv', 'prompts_file': None, 'num_samples': 2, 'output_dir': '/home/nazcol/dementor-sync/data/results/call_center/', 'skip_evaluation': False, 'heuristics_only': False, 'judge_model': 'openai/gpt-4.1-mini', 'judge_api_base': 'https://api.openai.com/v1', 'judge_api_key': None, 'no_wandb': False, 'run_name': 'gpt-4.1_disguised-meta-llama_Meta-Llama-3-8B-Instruct_responses-2', 'openai_api_base': None, 'openai_api_key': None}
+2025-10-03 18:01:14,708 INFO    MsgRouterThr:1776623 [mailbox.py:close():129] [no run ID] Closing mailbox, abandoning 2 handles.

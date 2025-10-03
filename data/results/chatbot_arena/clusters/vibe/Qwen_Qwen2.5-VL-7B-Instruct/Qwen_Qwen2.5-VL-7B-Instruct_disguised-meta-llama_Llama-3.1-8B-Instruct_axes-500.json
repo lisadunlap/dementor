@@ -1,3 +1,56 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:0d41e9a292d36198f71581e85c7af4aeab8684add2466420ec5b16495b21a439
-size 5780
+{
+  "trait_axes": {
+    "Response Length": {
+      "0": "Responses are very short, lacking detail and depth.",
+      "10": "Responses are long, detailed, and comprehensive."
+    },
+    "Formality": {
+      "0": "Responses are highly casual and informal, using slang and colloquial language.",
+      "10": "Responses are very formal, using professional and academic language."
+    },
+    "Emotional Tone": {
+      "0": "Responses are neutral or flat, lacking emotional engagement.",
+      "10": "Responses are warm, friendly, and emotionally engaging."
+    },
+    "Use of Lists": {
+      "0": "Responses are unstructured and lack any form of organization.",
+      "10": "Responses frequently use bullet points or numbered lists for clarity."
+    },
+    "Clarity of Explanation": {
+      "0": "Responses are vague and difficult to understand.",
+      "10": "Responses are clear, well-structured, and easy to follow."
+    },
+    "Use of Technical Jargon": {
+      "0": "Responses avoid technical terms and use very simple language.",
+      "10": "Responses frequently use technical jargon and complex terminology."
+    },
+    "Engagement with User": {
+      "0": "Responses are impersonal and do not engage with the user's input.",
+      "10": "Responses actively engage with the user, asking clarifying questions and acknowledging their input."
+    },
+    "Handling of Ambiguity": {
+      "0": "Responses struggle with unclear prompts and provide little guidance.",
+      "10": "Responses effectively address ambiguity and provide thoughtful, nuanced answers."
+    },
+    "Creativity in Expression": {
+      "0": "Responses are straightforward and lack creativity.",
+      "10": "Responses are imaginative, using metaphors, analogies, and creative language."
+    },
+    "Confidence in Responses": {
+      "0": "Responses are tentative and filled with qualifiers.",
+      "10": "Responses are assertive and convey a strong sense of confidence."
+    }
+  },
+  "samples": [
+    "There are several reasons why Apple smartphones, particularly iPhones, have become so popular over the years. Here are some of the key factors contributing to their widespread success:\n\n1. **Design and Build Quality**: Apple is known for its sleek and prem...(truncated)",
+    "I'd be happy to help solve an equation. However, you didn't specify which equation you'd like me to solve. Can you please provide the equation you're working with, such as:\n\n- A simple algebraic equation (e.g. 2x + 3 = 5)\n- A quadratic equation (e.g. x^2 + 4x + 4 = 0)\n- A linear equation (e.g. 3x - 2 = 7)\n- Or something else?\n\nPlease provide the equation, and I'll do my best to help you solve it.",
+    "To solve this problem, we need to understand the pattern of which doors are toggled.\n\nThe first time through, every door is toggled. \nThe second time through, every 2nd door is toggled again. This means that all the doors that were initially toggled will b...(truncated)",
+    "That's a tricky question. Since I'm a text-based AI assistant, I don't have the ability to physically see or interact with your surroundings, including your pocket. However, I can try to help you recall or think about what might be in your pocket.\n\nCan you take a moment to check your pocket and see if you can remember what's inside?",
+    "In realm of physics, a question's raised,\nAbout mass and weight, in a curious gaze.\nOne kilogram of feathers, so light and so bright,\nCompared to steel, a metal in sight.\n\nThe answer lies not in weight, but in mass,\nFor mass is a measure of the atoms' pass...(truncated)",
+    "I can't answer that.",
+    "No, an 8% return on an unlevered equity investment and an unlevered cost of equity of 8% are not the same.\n\nReturn on an unlevered equity investment refers to the return expected on the equity of a company that is not financed with debt. It's a measure of how much value the company creates for its shareholders. This return is often expressed as a percentage of the company's equity value.\n\nOn the other hand, unlevered cost of equity, also known as the cost of equity without debt, is the expected return required by investors for an unlevered investment. This is the rate at which investors would expect to earn if they were to invest in a company with no debt.\n\nThe cost of equity without debt is typically calculated using the Capital Asset Pricing Model (CAPM) or other models that take into account the risk-free rate, the market risk premium, and the company's beta (a measure of its systematic risk).\n\nWhile the return on an unlevered equity investment is a historical or expected return, the unlevered cost of equity is a forward-looking required return. These two concepts are related but distinct, and they serve different purposes in finance and investment analysis.",
+    "To find the sum of all integers from 1 to 10, you can use the formula for the sum of an arithmetic series:\n\nSum = (n * (a1 + an)) / 2\n\nwhere:\nn = number of terms (in this case, 10)\na1 = first term (in this case, 1)\nan = last term (in this case, 10)\n\nPlugging in the values, we get:\n\nSum = (10 * (1 + 10)) / 2\nSum = (10 * 11) / 2\nSum = 110 / 2\nSum = 55\n\nSo, the sum of all integers from 1 to 10 is 55.",
+    "Creating a definitive list of the most difficult piano pieces can be subjective, as it often depends on individual pianists' skills and experiences. However, based on general consensus and expert opinions, here's a list of 10 notoriously challenging piano ...(truncated)",
+    "Please note that the following books on manipulation are for informational and educational purposes only. They may not promote or encourage manipulative behavior, but rather provide insights into the tactics and strategies used by manipulators.\n\nHere are s...(truncated)"
+  ]
+}

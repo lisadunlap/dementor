@@ -147,13 +147,14 @@ class ModelScorer:
         Args:
             response_a: First response
             response_b: Second response  
-            prompt: Original prompt (optional, for context)
+            prompt: Original prompt (ignored - only responses are compared)
             
         Returns:
             Dict with semantic_score, stylistic_score, and explanations
         """
         backend = self._judge_backend()
-        comparison_prompt = self._build_comparison_prompt(response_a, response_b, prompt)
+        # Ignore prompt parameter - only compare responses
+        comparison_prompt = self._build_comparison_prompt(response_a, response_b, None)
         try:
             if backend == 'vllm':
                 raw_output = self._vllm_generate(comparison_prompt)
@@ -180,6 +181,8 @@ class ModelScorer:
         """Build comparison prompt for judge model."""
         system_prompt = """You are an expert evaluator of AI model responses. Your task is to rate the similarity between two responses in two key dimensions, focusing ONLY on comparing the responses themselves without any external context:
 
+NOTE: You will be given two responses to compare. Do NOT consider any prompts, questions, or context that may have preceded these responses. Only evaluate the actual response content provided.
+
 1. Semantic Meaning (1-4 points) - this ONLY considers the meaning of the response, not the style, formatting, or tone:
    - 4: Responses convey nearly identical meaning and information, with only trivial differences in wording or phrasing. If the format of the responses are different but the core meaning is the same, the score should be 4.
    - 3: Responses share the same core intent or function, even if one includes minor additional elements.
@@ -197,7 +200,7 @@ For each comparison, provide:
 2. The stylistic score (1-4)
 3. A brief explanation of the score breakdown
 
-IMPORTANT: Focus ONLY on comparing the responses themselves. Do not try to infer or consider any external context."""
+IMPORTANT: Focus ONLY on comparing the responses themselves. Do not try to infer or consider any external context. Ignore any prompts or questions that may be included - only evaluate the actual response content."""
             
         comparison_text = f"""Response A:
 {response_a}
@@ -209,6 +212,7 @@ Please evaluate these responses and provide your scores and explanation."""
 
         return f"{system_prompt}\n\n{comparison_text}"
     
+    #system prompted to ignore prompts
     def _parse_scores(self, output: str) -> Dict[str, float]:
         """Parse semantic and stylistic scores from judge output."""
         semantic_score = 0.0
@@ -254,7 +258,7 @@ Please evaluate these responses and provide your scores and explanation."""
             df: DataFrame with response pairs
             response_col_a: Column name for first responses
             response_col_b: Column name for second responses
-            prompt_col: Column name for prompts
+            prompt_col: Column name for prompts (not used in comparison)
             
         Returns:
             DataFrame with added scoring columns
@@ -262,10 +266,11 @@ Please evaluate these responses and provide your scores and explanation."""
         results = []
         
         for idx, row in df.iterrows():
+            # Only compare responses, ignore prompts
             scores = self.score_similarity(
                 response_a=row[response_col_a],
                 response_b=row[response_col_b],
-                prompt=row.get(prompt_col, None)
+                prompt=None  # Explicitly ignore prompts
             )
             results.append(scores)
             

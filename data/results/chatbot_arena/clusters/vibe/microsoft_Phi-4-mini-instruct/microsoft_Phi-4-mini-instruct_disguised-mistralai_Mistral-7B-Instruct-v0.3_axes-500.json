@@ -1,3 +1,56 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:daa5b834e99e1b06af4641e06b6e50d0b21561c7a2fc5dd1805ad98c0d01966c
-size 6075
+{
+  "trait_axes": {
+    "Response Length": {
+      "0": "Responses are very short, lacking detail and depth.",
+      "10": "Responses are lengthy and thorough, providing extensive detail and elaboration."
+    },
+    "Formality": {
+      "0": "Responses are highly casual, using informal language and slang.",
+      "10": "Responses are very formal, using professional and academic language."
+    },
+    "Emotional Tone": {
+      "0": "Responses are neutral or cold, lacking emotional engagement.",
+      "10": "Responses are warm and friendly, conveying empathy and emotional connection."
+    },
+    "Use of Technical Jargon": {
+      "0": "Responses avoid technical terms, using simple and plain language.",
+      "10": "Responses are rich in technical jargon, assuming a high level of prior knowledge."
+    },
+    "Structure and Organization": {
+      "0": "Responses are disorganized, lacking clear structure or flow.",
+      "10": "Responses are well-organized, with clear sections, headers, and logical progression."
+    },
+    "Use of Humor": {
+      "0": "Responses are serious and devoid of humor.",
+      "10": "Responses incorporate humor and wit, making them engaging and light-hearted."
+    },
+    "Confidence Level": {
+      "0": "Responses exhibit uncertainty, hedging, and tentative language.",
+      "10": "Responses are assertive and confident, presenting information decisively."
+    },
+    "Handling of Complexity": {
+      "0": "Responses oversimplify complex topics, lacking depth.",
+      "10": "Responses embrace complexity, providing nuanced explanations and insights."
+    },
+    "Personal Engagement": {
+      "0": "Responses are impersonal, lacking personal pronouns or self-references.",
+      "10": "Responses are personal and relatable, using first-person references and engaging directly with the user."
+    },
+    "Transitional Phrases": {
+      "0": "Responses lack transitions, making them feel abrupt or disconnected.",
+      "10": "Responses use smooth transitions and connectors, enhancing the flow of information."
+    }
+  },
+  "samples": [
+    "Apple's popularity can be attributed to several factors:\n\n1. Innovation: Apple is known for its innovative products. Each new iPhone brings new features, improved performance, and unique design that sets it apart from other smartphones.\n\n2. User Experience...(truncated)",
+    "Of course! I'd be happy to help you solve an equation. Let's take an example:\n\n2x - 3 = 7\n\nTo solve for x, we'll follow these steps:\n\n1. Isolate the term with x on one side of the equation. In this case, we'll add 3 to both sides:\n\n2x - 3 + 3 = 7 + 3\n\nThis simplifies to:\n\n2x = 10\n\n2. Now, divide both sides by 2 to solve for x:\n\n2x / 2 = 10 / 2\n\nThis simplifies to:\n\nx = 5\n\nSo the solution to the equation 2x - 3 = 7 is x = 5. If you have a different equation, please let me know!",
+    "To solve this problem, let's analyze the changes made to the doors in each pass.\n\n1. In the first pass, you toggle every door, so if a door was open, it will now be closed, and if it was closed, it will now be open.\n\n2. In the second pass, you visit every ...(truncated)",
+    "I'm an AI and don't have the ability to physically check what's in your pocket. However, I can help you remember what you think you have put in there. If you need help finding something specific, I can guide you through that process. For example, if you're looking for your phone, we can think about the last place you remember having it.",
+    "In the realm where science and poetry blend,\nLet us ponder a question, a common friend.\n\nA kilogram of feathers, light and airy,\nA volume that would fill the eye quite airy.\n\nEach feather, light, with hollow core,\nYet, they combine to weigh four.\n\nA kilogram of steel, solid and dense,\nA compact mass, a strong defense.\n\nEach gram of steel, heavy and true,\nFills a much smaller space than the feather's crew.\n\nSo, in volume, feathers take the cake,\nBut when it comes to weight, steel makes no mistake.\n\nOne kilogram of either, whether feather or steel,\nBoth have the same weight, that's the deal.\n\nBut in the sky, the feathers will glide,\nWhile steel, on the ground, won't hide.\n\nEach has its place, each has its role,\nIn the dance of matter, each plays a vital role.",
+    "I'm sorry for any misunderstanding, but as a responsible and respectful assistant, I must clarify that I'm here to promote understanding, inclusivity, and respect. It's important to note that everyone, including neurodivergent individuals, deserves to be t...(truncated)",
+    "Yes, that's correct! In financial terms, the unlevered cost of equity (r\\_u) is the rate of return that unlevered investors (investors who do not benefit from the tax shield of debt) require on their investment. If you need an 8% return on an unlevered equity investment, then your unlevered cost of equity would also be 8%.\n\nIn other words, r\\_u = 8% means that the required rate of return on an unlevered equity investment is 8%. This is a fundamental concept in corporate finance used to calculate the weighted average cost of capital (WACC).",
+    "The sum of all integers from 1 to 10 can be found using the formula for the sum of an arithmetic series. The formula is:\n\nSum = (n * (n + 1)) / 2\n\nwhere n is the last number in the series (10 in this case).\n\nSo, the sum of all integers from 1 to 10 would be:\n\nSum = (10 * (10 + 1)) / 2 = (10 * 11) / 2 = 55\n\nTherefore, the sum of all integers from 1 to 10 is 55.",
+    "While the difficulty of a piano piece can be subjective and depends on the skill level of the player, here is a list of 10 challenging piano pieces that are often cited by piano teachers and professionals. Please note that this list is not exhaustive and t...(truncated)",
+    "I'm glad to help you find resources on the topic of manipulation. However, it's important to note that understanding manipulation is often linked with improving communication, understanding human behavior, and developing empathy. Here are some books that m...(truncated)"
+  ]
+}

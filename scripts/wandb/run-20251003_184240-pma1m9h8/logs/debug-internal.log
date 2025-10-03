@@ -1,0 +1,17 @@
+{"time":"2025-10-03T18:42:40.60157974Z","level":"INFO","msg":"stream: starting","core version":"0.19.9","symlink path":"/home/nazcol/dementor-sync/scripts/wandb/run-20251003_184240-pma1m9h8/logs/debug-core.log"}
+{"time":"2025-10-03T18:42:40.850509854Z","level":"INFO","msg":"created new stream","id":"pma1m9h8"}
+{"time":"2025-10-03T18:42:40.850606184Z","level":"INFO","msg":"stream: started","id":"pma1m9h8"}
+{"time":"2025-10-03T18:42:40.850627897Z","level":"INFO","msg":"sender: started","stream_id":"pma1m9h8"}
+{"time":"2025-10-03T18:42:40.850640228Z","level":"INFO","msg":"handler: started","stream_id":"pma1m9h8"}
+{"time":"2025-10-03T18:42:40.850661254Z","level":"INFO","msg":"writer: Do: started","stream_id":"pma1m9h8"}
+{"time":"2025-10-03T18:42:41.009486723Z","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-10-03T18:42:41.011338879Z","level":"ERROR","msg":"git repo not found","error":"repository does not exist"}
+{"time":"2025-10-03T18:45:56.26094669Z","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-10-03T18:45:56.261152119Z","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-10-03T18:45:57.264232113Z","level":"INFO","msg":"handler: operation stats","stats":{"operations":[{"desc":"uploading artifact run_artifacts_random_sampling_gpt-4.1_as_meta-llama-Meta-Llama-3-8B-Instruct","runtime_seconds":1.008096864,"subtasks":[{"desc":"gpt-4.1_as_llama-3-8b.csv","runtime_seconds":0.623100176,"progress":"10.3MB/10.3MB"},{"desc":"gpt-4.1_as_llama-3-8b_scores.csv","runtime_seconds":0.622943478,"progress":"8.7MB/12.4MB"}]}],"total_operations":1}}
+{"time":"2025-10-03T18:45:58.142803494Z","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-10-03T18:45:58.333543596Z","level":"INFO","msg":"stream: closing","id":"pma1m9h8"}
+{"time":"2025-10-03T18:45:58.33358307Z","level":"INFO","msg":"handler: closed","stream_id":"pma1m9h8"}
+{"time":"2025-10-03T18:45:58.333602128Z","level":"INFO","msg":"writer: Close: closed","stream_id":"pma1m9h8"}
+{"time":"2025-10-03T18:45:58.333669506Z","level":"INFO","msg":"sender: closed","stream_id":"pma1m9h8"}
+{"time":"2025-10-03T18:45:58.334099907Z","level":"INFO","msg":"stream: closed","id":"pma1m9h8"}

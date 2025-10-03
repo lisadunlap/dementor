@@ -1,3 +1,21 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:c0de0b85651c9e87960b47959c7620a0541533510c9fd3f76f2b5565c2debcef
-size 1153
+model,style_function,disguised_vs_target_match,target_vs_source_match,match_delta
+Meta-Llama-3-8B-Instruct,ALL CAPS,0.9,1.0,-0.09999999999999998
+Meta-Llama-3-8B-Instruct,Blockquotes,1.0,1.0,0.0
+Meta-Llama-3-8B-Instruct,Bullets,0.0,0.0,0.0
+Meta-Llama-3-8B-Instruct,Code Formatting,1.0,1.0,0.0
+Meta-Llama-3-8B-Instruct,Emojis,1.0,1.0,0.0
+Meta-Llama-3-8B-Instruct,Exclamations,1.0,0.7,0.30000000000000004
+Meta-Llama-3-8B-Instruct,First-Person Pronouns,1.0,0.9,0.09999999999999998
+Meta-Llama-3-8B-Instruct,Greeting (Start),1.0,1.0,0.0
+Meta-Llama-3-8B-Instruct,Header/Title,1.0,1.0,0.0
+Meta-Llama-3-8B-Instruct,Links,1.0,1.0,0.0
+Meta-Llama-3-8B-Instruct,List,0.0,0.1,-0.1
+Meta-Llama-3-8B-Instruct,Long Sentences,0.2,0.4,-0.2
+Meta-Llama-3-8B-Instruct,Markdown,0.0,0.9,-0.9
+Meta-Llama-3-8B-Instruct,Math Symbols,0.0,1.0,-1.0
+Meta-Llama-3-8B-Instruct,Numbered Steps,1.0,0.9,0.09999999999999998
+Meta-Llama-3-8B-Instruct,Parentheses,0.5,0.4,0.09999999999999998
+Meta-Llama-3-8B-Instruct,Questions,0.9,0.9,0.0
+Meta-Llama-3-8B-Instruct,Repetition,0.0,1.0,-1.0
+Meta-Llama-3-8B-Instruct,Sign-off (End),1.0,1.0,0.0
+Meta-Llama-3-8B-Instruct,Starts with List,1.0,1.0,0.0

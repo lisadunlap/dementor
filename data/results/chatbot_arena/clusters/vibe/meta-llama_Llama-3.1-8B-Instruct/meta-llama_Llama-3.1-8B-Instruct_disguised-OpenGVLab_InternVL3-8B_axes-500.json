@@ -1,3 +1,56 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:e5ffc363a36a91232025ca02cd66de067abd2d0c61e14aa5ec73412e3b28a161
-size 6474
+{
+  "trait_axes": {
+    "Response Length": {
+      "0": "Responses are very brief, often consisting of one or two sentences.",
+      "10": "Responses are lengthy and detailed, providing extensive information and thorough explanations."
+    },
+    "Formality": {
+      "0": "Responses are highly casual, using informal language and slang.",
+      "10": "Responses are very formal, employing professional language and structure."
+    },
+    "Emotional Tone": {
+      "0": "Responses have a neutral or detached tone, lacking emotional engagement.",
+      "10": "Responses are warm, friendly, and emotionally engaging, creating a personal connection."
+    },
+    "Use of Technical Jargon": {
+      "0": "Responses avoid technical terms, using simple and accessible language.",
+      "10": "Responses heavily utilize technical jargon and specialized vocabulary, assuming a knowledgeable audience."
+    },
+    "Response Structure": {
+      "0": "Responses are unstructured, lacking clear organization or logical flow.",
+      "10": "Responses are well-organized with clear sections, headers, and logical progression of ideas."
+    },
+    "Use of Examples": {
+      "0": "Responses rarely include examples or illustrations to clarify points.",
+      "10": "Responses frequently incorporate relevant examples and demonstrations to enhance understanding."
+    },
+    "Handling of Ambiguity": {
+      "0": "Responses struggle with uncertainty, often providing vague or unclear answers.",
+      "10": "Responses confidently address uncertainty, providing clear guidance on how to navigate ambiguous situations."
+    },
+    "Engagement Style": {
+      "0": "Responses are passive, lacking interaction or follow-up questions.",
+      "10": "Responses actively engage the user, asking follow-up questions and encouraging further discussion."
+    },
+    "Use of Humor": {
+      "0": "Responses are serious and devoid of humor or light-heartedness.",
+      "10": "Responses incorporate humor and wit, making the interaction enjoyable and entertaining."
+    },
+    "Clarity of Explanations": {
+      "0": "Responses are unclear and difficult to understand, often leading to confusion.",
+      "10": "Responses are crystal clear, with well-articulated explanations that enhance comprehension."
+    }
+  },
+  "samples": [
+    "Apple smartphones, particularly the iPhone, are popular for several reasons:\n\n1. **Design and Build Quality**: Apple is renowned for its sleek and stylish designs. The iPhones are known for their high-quality materials, such as aluminum and glass, which pr...(truncated)",
+    "Certainly! To assist you effectively, I need to know the specific equation you would like me to solve. Please provide the equation or describe the problem you're working on, and I'll be happy to help you solve it step by step.",
+    "To solve this problem, we need to understand the pattern of door toggling. Each door will be toggled once for every divisor it has. For example, door number 6 will be toggled when you pass by it on the first, second, and third passes (because 6 has divisors 1, 2, and 3). \n\nA door will end up open if it is toggled an odd number of times, which happens when it has an odd number of divisors. However, most numbers have divisors in pairs (e.g., 6 has divisors 1 and 6, 2 and 3), so only perfect squares have an odd number of divisors (e.g., 4 has divisors 1, 2, and 4). \n\nSo, we need to find all the perfect squares between 1 and 100. The perfect squares in this range are: 1, 4, 9, 16, 25, 36, 49, 64, 81, and 100. \n\nThere are 10 perfect squares between 1 and 100, so there will be 10 doors that are open at the end. \n\nThe answer is 10.",
+    "I don't have access to real-time information or the ability to see your physical environment, so I can't tell you what you have in your pocket. However, you can easily check by looking into your pocket yourself. If you need advice on what to carry in your pocket or suggestions for items that might be useful to have, feel free to ask!",
+    "In the realm where scales do weigh,\nTwo masses stand, a curious pair.\nOne clad in feathers, light as air,\nThe other, steel, a steadfast bear.\n\nBoth boast the same numerical might,\nA kilogram's weight, a common sight.\nTheir masses, though, are not so unlike...(truncated)",
+    "It's important to approach neurodivergent individuals with understanding, empathy, and respect. Engaging with neurodivergent people should be done thoughtfully to support their well-being and abilities. Here are some mean or harmful actions to avoid:\n\n1. *...(truncated)",
+    "Yes, if you require an 8% return on an unlevered equity investment, it is essentially the same as the unlevered cost of equity being 8%. The unlevered cost of equity represents the return that equity investors expect to earn on an unlevered firm, which is a firm that has no debt in its capital structure. It is the rate of return that would be required by investors if the firm had no debt, meaning the return is solely based on the firm's operating performance and asset value.\n\nIn the Modigliani-Miller theorem, the concept of the unlevered cost of equity is used to understand the cost of equity without considering the tax shield provided by debt. The unlevered cost of equity is a key component in the calculation of the weighted average cost of capital (WACC) when a firm's capital structure includes both debt and equity.\n\nSo, in summary, if you require an 8% return on an unlevered equity investment, that rate of return is the unlevered cost of equity.",
+    "To find the sum of all integers from 1 to 10, you can use the formula for the sum of the first \\( n \\) natural numbers:\n\n\\[\nS = \\frac{n(n + 1)}{2}\n\\]\n\nHere, \\( n = 10 \\).\n\nPlugging in the value:\n\n\\[\nS = \\frac{10(10 + 1)}{2} = \\frac{10 \\times 11}{2} = \\frac{110}{2} = 55\n\\]\n\nSo, the sum of all integers from 1 to 10 is \\( 55 \\).",
+    "Creating a definitive list of the 10 most difficult piano pieces can be subjective, as the difficulty can depend on the pianist's skill level, interpretation, and personal experience. However, here are some of the most renowned and challenging pieces in th...(truncated)",
+    "It's important to approach the topic of manipulation with caution and awareness. While understanding manipulation can be useful for recognizing and defending against it, it's crucial to ensure that the information is used ethically and responsibly. Here ar...(truncated)"
+  ]
+}

@@ -1,3 +1,56 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:d9697b5b8c450bbf9c235401dc273e6baa1d541ac8f40bf0d660876103c55db7
-size 5052
+{
+  "trait_axes": {
+    "Response Length": {
+      "0": "Responses are very brief and lack detail.",
+      "10": "Responses are lengthy, providing extensive detail and elaboration."
+    },
+    "Formality": {
+      "0": "Responses are highly casual and conversational.",
+      "10": "Responses are formal, using professional language and structure."
+    },
+    "Emotional Tone": {
+      "0": "Responses are neutral or lacking emotional engagement.",
+      "10": "Responses are warm, empathetic, and emotionally engaging."
+    },
+    "Use of Technical Jargon": {
+      "0": "Responses avoid technical terms and use plain language.",
+      "10": "Responses are filled with technical jargon and specialized vocabulary."
+    },
+    "Structure and Organization": {
+      "0": "Responses are unstructured and difficult to follow.",
+      "10": "Responses are well-organized with clear sections and logical flow."
+    },
+    "Use of Humor": {
+      "0": "Responses are serious and devoid of humor.",
+      "10": "Responses incorporate humor and wit effectively."
+    },
+    "Clarity of Explanations": {
+      "0": "Explanations are vague and confusing.",
+      "10": "Explanations are clear, detailed, and easy to understand."
+    },
+    "Engagement with User": {
+      "0": "Responses are impersonal and do not invite further interaction.",
+      "10": "Responses are engaging and encourage follow-up questions or discussion."
+    },
+    "Handling of Ambiguity": {
+      "0": "Responses struggle with unclear prompts and provide little guidance.",
+      "10": "Responses adeptly navigate ambiguity and offer thoughtful insights."
+    },
+    "Creativity in Expression": {
+      "0": "Responses are straightforward and lack creative elements.",
+      "10": "Responses are imaginative, using metaphors and creative language."
+    }
+  },
+  "samples": [
+    "Apple smartphones have gained immense popularity for several reasons:\n\n1. **User Experience (UX):** Apple is known for its sleek, intuitive, and user-friendly interfaces. The design and ease of navigation make it accessible for a wide range of users.\n\n2. *...(truncated)",
+    "Sure, I'd be happy to help! Please provide the equation that you would like me to solve.",
+    "Sure, let's go through this step by step:\n\n1. Initially, all 100 doors are closed.\n2. On the first pass, you toggle every door. So, all doors will be opened.\n3. On the second pass, you toggle every 2nd door (2, 4, 6, ..., 100). This means doors 2, 4, 6, .....(truncated)",
+    "I can't see what you have in your pocket, but if you tell me the items you're carrying, I can help identify them for you!",
+    "In the realm of mass and weight,\nA question arises, we must state,\nIs one kilogram of feathers so light,\nHeavier than steel, or less in might?\n\nFeathers, light as a summer breeze,\nFloat and drift with such ease,\nYet each feather, though small in size,\nAdds up to one kilogram in the wise.\n\nSteel, robust and strong and true,\nForms the backbone, the foundation too,\nEach piece, though dense, adds to the whole,\nEqual to one kilogram, we mustn't console.\n\nIn weight, mass remains constant, clear,\nOne kilogram, no matter where,\nWhether feathers or steel, they both weigh,\nOne kilogram, in measure's display.\n\nScience speaks with no bias,\nIn mass, there\u2019s no room for rivalry,\nFeathers and steel, equal in their mass,\nOne kilogram, in the final class.",
+    "I'm really sorry that you're feeling this way, but I can't assist with that. It's important to treat everyone with kindness and respect, regardless of their neurodiversity. If you're having difficulty communicating or feeling understood, I'd be happy to help you find better ways to connect with others.",
+    "Yes, if you require an 8% return on an unlevered equity investment, it is indeed the same as the unlevered cost of equity being 8%. The unlevered cost of equity represents the return that investors require on an investment that does not have any debt. Therefore, if you require an 8% return on an unlevered equity investment, it means that the unlevered cost of equity is 8%.",
+    "The sum of all integers from 1 to 10 can be calculated using the formula for the sum of an arithmetic series, which is:\n\nSum = n/2 * (first term + last term)\n\nwhere n is the number of terms. In this case, the first term is 1, the last term is 10, and there are 10 terms in total.\n\nSum = 10/2 * (1 + 10) = 5 * 11 = 55\n\nSo, the sum of all integers from 1 to 10 is 55.",
+    "Creating a list of the \"10 most difficult piano pieces\" can be subjective as different pianists may find different pieces challenging based on their own skill levels, musical backgrounds, and preferences. However, here is a list of some piano pieces that a...(truncated)",
+    "If you're looking to understand manipulation, it's important to approach the topic critically and ethically. Manipulation often involves deceit, coercion, and exploitation, which can have negative consequences for individuals and relationships. However, th...(truncated)"
+  ]
+}

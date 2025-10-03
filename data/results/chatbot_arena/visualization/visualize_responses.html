@@ -1,3 +1,970 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:9e69ae3c532862166793634d5a21df66f0ec5f31b7a7b0fbf35d70c02c625c2f
-size 32125
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Response Browser</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['\\(', '\\)'], ['$', '$']],
+                displayMath: [['\\[', '\\]'], ['$$', '$$']],
+                processEscapes: true,
+                processEnvironments: true
+            },
+            options: {
+                skipHtmlTags: ['script', 'noscript', 'style', 'textarea', 'pre']
+            }
+        };
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: #ffffff;
+            color: #2c3e50;
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        .header {
+            margin-bottom: 32px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+
+        .header h1 {
+            font-size: 28px;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 16px;
+        }
+
+        .controls {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            padding: 24px;
+            margin-bottom: 24px;
+            border-radius: 6px;
+        }
+
+        .file-upload {
+            margin-bottom: 24px;
+        }
+
+        .file-upload label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: #495057;
+        }
+
+        .file-upload input[type="file"] {
+            width: 100%;
+             padding: 12px;
+            border: 2px solid #ced4da;
+            border-radius: 4px;
+            background: white;
+            font-size: 14px;
+        }
+
+        .prompt-controls {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .prompt-controls label {
+            font-weight: 500;
+            color: #495057;
+            margin-right: 8px;
+        }
+
+        .prompt-controls select {
+            padding: 10px 14px;
+            border: 2px solid #ced4da;
+            border-radius: 4px;
+            background: white;
+            font-size: 14px;
+            min-width: 280px;
+        }
+
+        .model-filter {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .model-selector {
+            position: relative;
+        }
+
+        .model-toggle-btn {
+            background: none;
+            border: none;
+            padding: 0;
+            font: inherit;
+            cursor: pointer;
+            outline: inherit;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .toggle-arrow {
+            transition: transform 0.2s ease;
+        }
+
+        .model-toggle-btn.collapsed .toggle-arrow {
+            transform: rotate(-90deg);
+        }
+
+        .model-checkboxes {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 8px;
+            z-index: 10;
+            min-width: 200px;
+            max-height: 300px;
+            overflow-y: auto;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+
+        .model-checkboxes.hidden {
+            display: none;
+        }
+
+        .model-checkbox-item {
+            display: flex;
+            align-items: center;
+            padding: 4px 0;
+            font-size: 14px;
+        }
+
+        .model-checkboxes input[type="checkbox"] {
+            margin-right: 8px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 16px;
+            font-size: 14px;
+            color: #6c757d;
+        }
+
+        .chart-container {
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .chart-container h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 16px;
+        }
+
+        .chart-wrapper {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .prompt-display {
+            background: #f8f9fa;
+            border: 2px solid #e9ecef;
+            padding: 20px;
+            margin-bottom: 24px;
+            border-radius: 6px;
+        }
+
+        .prompt-display h3 {
+            font-size: 18px;
+            font-weight: 600;
+            color: #495057;
+            margin-bottom: 12px;
+        }
+
+        .prompt-text {
+            background: white;
+            padding: 16px;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #495057;
+        }
+
+        .responses-container {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .responses-container.grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            gap: 24px;
+        }
+
+        .response-item {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 6px;
+            padding: 12px;
+        }
+
+        .model-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+            cursor: pointer;
+            user-select: none;
+            padding: 4px 0;
+            border-radius: 4px;
+        }
+
+        .model-header:hover {
+            background: #e9ecef;
+        }
+
+        .model-header.collapsed {
+            margin-bottom: 0;
+        }
+
+        .toggle-icon {
+            color: #6c757d;
+            font-size: 14px;
+            transition: transform 0.2s ease;
+            margin-left: 12px;
+        }
+
+        .model-header.collapsed .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .model-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+            color: white;
+        }
+
+        .response-text {
+            font-family: 'Proxima Nova', -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #495057;
+            max-height: 400px;
+            overflow-y: auto;
+            background: white;
+            padding: 12px;
+            border: 1px solid #e1e4e8;
+            border-radius: 4px;
+        }
+
+        .response-text.collapsed {
+            display: none;
+        }
+
+        .response-text h1, .response-text h2, .response-text h3, .response-text h4, .response-text h5, .response-text h6 {
+            margin: 8px 0 4px 0;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+
+        .response-text h1 { font-size: 20px; }
+        .response-text h2 { font-size: 18px; }
+        .response-text h3 { font-size: 16px; }
+        .response-text h4 { font-size: 15px; }
+        .response-text h5 { font-size: 14px; }
+        .response-text h6 { font-size: 13px; }
+
+        .response-text p {
+            margin: 6px 0;
+        }
+
+        .response-text p:first-child {
+            margin-top: 0;
+        }
+
+        .response-text ul, .response-text ol {
+            margin: 6px 0;
+            padding-left: 24px;
+        }
+
+        .response-text li {
+            margin: 4px 0;
+        }
+
+        .response-text blockquote {
+            border-left: 3px solid #dee2e6;
+            margin: 12px 0;
+            padding: 8px 16px;
+            background: #f8f9fa;
+            font-style: italic;
+        }
+
+        .response-text code {
+            background: #f1f3f4;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 13px;
+            color: #d73a49;
+        }
+
+        .response-text pre {
+            background: #f6f8fa;
+            border: 1px solid #e1e4e8;
+            border-radius: 4px;
+            padding: 12px;
+            margin: 12px 0;
+            overflow-x: auto;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 13px;
+            line-height: 1.45;
+        }
+
+        .response-text pre code {
+            background: none;
+            padding: 0;
+            color: inherit;
+        }
+
+        .response-text strong {
+            font-weight: 600;
+        }
+
+        .response-text em {
+            font-style: italic;
+        }
+
+        .response-text a {
+            color: #0366d6;
+            text-decoration: none;
+        }
+
+        .response-text a:hover {
+            text-decoration: underline;
+        }
+
+        .response-text table {
+            border-collapse: collapse;
+            margin: 12px 0;
+            width: 100%;
+        }
+
+        .response-text th, .response-text td {
+            border: 1px solid #dee2e6;
+            padding: 8px 12px;
+            text-align: left;
+        }
+
+        .response-text th {
+            background: #f8f9fa;
+            font-weight: 600;
+        }
+
+        .think-content {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 12px;
+            margin: 12px 0;
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+            font-size: 13px;
+            color: #856404;
+            position: relative;
+        }
+
+        .think-content::before {
+            content: "💭 Thinking";
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            font-size: 12px;
+            color: #856404;
+        }
+
+        .response-text::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .response-text::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+
+        .response-text::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+
+        .response-text::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+
+        .no-data {
+            text-align: center;
+            padding: 60px 20px;
+            color: #6c757d;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+        }
+
+        .no-data h3 {
+            font-size: 20px;
+            margin-bottom: 12px;
+            color: #495057;
+            font-weight: 600;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #6c757d;
+            background: white;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .prompt-controls {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .prompt-controls select {
+                min-width: 100%;
+            }
+
+            .responses-container.grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Model Response Browser</h1>
+            <p>Compare model responses across prompts</p>
+        </div>
+
+        <div class="controls">
+            <div class="file-upload">
+                <label for="csvFile">CSV File:</label>
+                <input type="file" id="csvFile" accept=".csv" />
+            </div>
+            
+            <div class="prompt-controls">
+                <label for="promptSelect">Prompt:</label>
+                <select id="promptSelect">
+                    <option value="">Select a prompt...</option>
+                </select>
+                <label for="layoutSelect">Layout:</label>
+                <select id="layoutSelect">
+                    <option value="vertical">Vertical</option>
+                    <option value="grid">Side by Side</option>
+                </select>
+                <div class="model-filter">
+                    <label>Models:</label>
+                    <div class="model-selector">
+                        <button type="button" id="modelToggle" class="model-toggle-btn">
+                            <span id="modelToggleText">All Models Selected</span>
+                            <span class="toggle-arrow">▼</span>
+                        </button>
+                        <div id="modelCheckboxes" class="model-checkboxes hidden">
+                            <!-- Checkboxes will be populated here -->
+                        </div>
+                    </div>
+                </div>
+                <div class="stats" id="stats"></div>
+            </div>
+        </div>
+
+        <div id="content">
+            <div class="no-data">
+                <h3>Upload CSV File</h3>
+                <p>Upload your CSV file to start browsing model responses.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let csvData = [];
+        let uniquePrompts = [];
+        let uniqueModels = [];
+        let selectedModels = new Set();
+        let wordLengthChart = null;
+
+        // Simple color palette for model badges
+        const modelColors = [
+            '#8b9dc3', '#dda0dd', '#87ceeb', '#f0b27a', '#aed6f1',
+            '#a9dfbf', '#f7dc6f', '#bb8fce', '#85c1e9', '#82e0aa',
+            '#f8c471', '#d7bde2', '#7fb3d3', '#c39bd3', '#76d7c4'
+        ];
+
+        // Load the default file on page load
+        window.addEventListener('load', async () => {
+            try {
+                const response = await window.fs.readFile('all_10_responses.csv', { encoding: 'utf8' });
+                parseCSV(response);
+            } catch (error) {
+                console.log('Default file not available, waiting for upload');
+            }
+        });
+
+        document.getElementById('csvFile').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    parseCSV(e.target.result);
+                };
+                reader.readAsText(file);
+            }
+        });
+
+        function parseCSV(csvText) {
+            document.getElementById('content').innerHTML = '<div class="loading">Loading data...</div>';
+            
+            Papa.parse(csvText, {
+                header: true,
+                dynamicTyping: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    csvData = results.data.filter(row => row.prompt && row.model_response && row.model);
+                    
+                    // Get unique prompts and models
+                    uniquePrompts = [...new Set(csvData.map(row => row.prompt))];
+                    uniqueModels = [...new Set(csvData.map(row => row.model))].sort();
+                    
+                    // Initialize all models as selected
+                    selectedModels = new Set(uniqueModels);
+                    
+                    // Populate prompt selector
+                    const promptSelect = document.getElementById('promptSelect');
+                    promptSelect.innerHTML = '<option value="">Select a prompt...</option>';
+                    
+                    uniquePrompts.forEach((prompt, index) => {
+                        const option = document.createElement('option');
+                        option.value = index;
+                        option.textContent = prompt.length > 80 ? prompt.substring(0, 80) + '...' : prompt;
+                        promptSelect.appendChild(option);
+                    });
+                    
+                    // Populate model selector
+                    populateModelSelector();
+                    
+                    // Update stats
+                    updateStats();
+                    
+                    // Show initial message
+                    document.getElementById('content').innerHTML = `
+                        <div class="no-data">
+                            <h3>Data Loaded</h3>
+                            <p>Select a prompt to view model responses.</p>
+                        </div>
+                    `;
+                },
+                error: function(error) {
+                    document.getElementById('content').innerHTML = `
+                        <div class="no-data">
+                            <h3>Error Loading File</h3>
+                            <p>Please ensure your CSV has columns: prompt, model_response, model</p>
+                        </div>
+                    `;
+                }
+            });
+        }
+
+        function updateStats() {
+            const uniqueModels = [...new Set(csvData.map(row => row.model))];
+            const statsHtml = `
+                <span>${csvData.length} responses</span>
+                <span>${uniquePrompts.length} prompts</span>
+                <span>${uniqueModels.length} models</span>
+            `;
+            document.getElementById('stats').innerHTML = statsHtml;
+        }
+
+        function populateModelSelector() {
+            const modelCheckboxes = document.getElementById('modelCheckboxes');
+            modelCheckboxes.innerHTML = '';
+            
+            uniqueModels.forEach(model => {
+                const item = document.createElement('div');
+                item.className = 'model-checkbox-item';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `model_${model}`;
+                checkbox.value = model;
+                checkbox.checked = selectedModels.has(model);
+                checkbox.addEventListener('change', handleModelToggle);
+                
+                const label = document.createElement('label');
+                label.htmlFor = `model_${model}`;
+                label.textContent = model;
+                
+                item.appendChild(checkbox);
+                item.appendChild(label);
+                modelCheckboxes.appendChild(item);
+            });
+            
+            updateModelToggleText();
+        }
+
+        function handleModelToggle(event) {
+            const model = event.target.value;
+            if (event.target.checked) {
+                selectedModels.add(model);
+            } else {
+                selectedModels.delete(model);
+            }
+            updateModelToggleText();
+            
+            // Refresh display if a prompt is selected
+            const selectedIndex = document.getElementById('promptSelect').value;
+            if (selectedIndex !== '') {
+                displayResponses();
+            }
+        }
+
+        function updateModelToggleText() {
+            const toggleText = document.getElementById('modelToggleText');
+            const selectedCount = selectedModels.size;
+            const totalCount = uniqueModels.length;
+            
+            if (selectedCount === totalCount) {
+                toggleText.textContent = 'All Models Selected';
+            } else if (selectedCount === 0) {
+                toggleText.textContent = 'No Models Selected';
+            } else {
+                toggleText.textContent = `${selectedCount} of ${totalCount} Models Selected`;
+            }
+        }
+
+        // Add event listener for model toggle button
+        document.getElementById('modelToggle').addEventListener('click', function() {
+            const checkboxes = document.getElementById('modelCheckboxes');
+            const arrow = this.querySelector('.toggle-arrow');
+            
+            if (checkboxes.classList.contains('hidden')) {
+                checkboxes.classList.remove('hidden');
+                arrow.textContent = '▲';
+            } else {
+                checkboxes.classList.add('hidden');
+                arrow.textContent = '▼';
+            }
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            const modelSelector = document.querySelector('.model-selector');
+            const checkboxes = document.getElementById('modelCheckboxes');
+            
+            if (!modelSelector.contains(event.target)) {
+                checkboxes.classList.add('hidden');
+                document.querySelector('.toggle-arrow').textContent = '▼';
+            }
+        });
+
+        function createWordLengthChart(responses) {
+            // Group responses by model and get word lengths
+            const modelData = {};
+            responses.forEach(response => {
+                if (!modelData[response.model]) {
+                    modelData[response.model] = [];
+                }
+                modelData[response.model].push(response.response_word_length || 0);
+            });
+
+            // Prepare data for chart
+            const labels = Object.keys(modelData);
+            const data = labels.map(model => {
+                const lengths = modelData[model];
+                return lengths.reduce((a, b) => a + b, 0) / lengths.length; // Average word length
+            });
+
+            const ctx = document.getElementById('wordLengthChart').getContext('2d');
+            
+            // Destroy existing chart if it exists
+            if (wordLengthChart) {
+                wordLengthChart.destroy();
+            }
+
+            wordLengthChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Average Word Count',
+                        data: data,
+                        backgroundColor: labels.map((_, index) => modelColors[index % modelColors.length]),
+                        borderColor: labels.map((_, index) => modelColors[index % modelColors.length]),
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Word Count'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Models'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        title: {
+                            display: true,
+                            text: 'Average Response Word Length by Model'
+                        }
+                    }
+                }
+            });
+        }
+
+        document.getElementById('promptSelect').addEventListener('change', function() {
+            const selectedIndex = this.value;
+            if (selectedIndex === '') {
+                document.getElementById('content').innerHTML = `
+                    <div class="no-data">
+                        <h3>Select Prompt</h3>
+                        <p>Choose a prompt to view model responses.</p>
+                    </div>
+                `;
+                return;
+            }
+
+            displayResponses();
+        });
+
+        document.getElementById('layoutSelect').addEventListener('change', function() {
+            const selectedIndex = document.getElementById('promptSelect').value;
+            if (selectedIndex !== '') {
+                displayResponses();
+            }
+        });
+
+        function displayResponses() {
+            const selectedIndex = document.getElementById('promptSelect').value;
+            const layout = document.getElementById('layoutSelect').value;
+            
+            const selectedPrompt = uniquePrompts[selectedIndex];
+            const allResponses = csvData.filter(row => row.prompt === selectedPrompt);
+            
+            // Filter responses by selected models
+            const responses = allResponses.filter(response => selectedModels.has(response.model));
+            
+            // Sort responses by model name
+            responses.sort((a, b) => a.model.localeCompare(b.model));
+            
+            const containerClass = layout === 'grid' ? 'responses-container grid' : 'responses-container';
+            
+            let html = `
+                <div class="chart-container">
+                    <h3>Word Length Analysis</h3>
+                    <div class="chart-wrapper">
+                        <canvas id="wordLengthChart"></canvas>
+                    </div>
+                </div>
+                <div class="prompt-display">
+                    <h3>Prompt</h3>
+                    <div class="prompt-text">${selectedPrompt}</div>
+                </div>
+                <div class="${containerClass}">
+            `;
+            
+            responses.forEach((response, index) => {
+                const colorIndex = index % modelColors.length;
+                const color = modelColors[colorIndex];
+                
+                html += `
+                    <div class="response-item">
+                        <div class="model-header" onclick="toggleResponse(this)">
+                            <span class="model-badge" style="background-color: ${color}">${response.model}</span>
+                            <span class="toggle-icon">▼</span>
+                        </div>
+                        <div class="response-text">${processText(response.model_response)}</div>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            document.getElementById('content').innerHTML = html;
+            
+            // Create chart after DOM is updated
+            setTimeout(() => createWordLengthChart(responses), 100);
+            
+            // Render math expressions
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                window.MathJax.typesetPromise();
+            }
+        }
+
+        function toggleResponse(header) {
+            const content = header.nextElementSibling;
+            const icon = header.querySelector('.toggle-icon');
+            
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                header.classList.remove('collapsed');
+                icon.textContent = '▼';
+            } else {
+                content.classList.add('collapsed');
+                header.classList.add('collapsed');
+                icon.textContent = '▶';
+            }
+        }
+
+        function renderMarkdown(text) {
+            return text
+                // Headers
+                .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+                .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+                .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+                
+                // Bold and italic
+                .replace(/\*\*\*(.*?)\*\*\*/g, '<strong><em>$1</em></strong>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                
+                // Code blocks
+                .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+                .replace(/`(.*?)`/g, '<code>$1</code>')
+                
+                // Links
+                .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>')
+                
+                // Lists
+                .replace(/^\* (.+)$/gm, '<li>$1</li>')
+                .replace(/^- (.+)$/gm, '<li>$1</li>')
+                .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+                
+                // Blockquotes
+                .replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>')
+                
+                // Line breaks and paragraphs
+                .replace(/\n\n/g, '</p><p>')
+                .replace(/\n/g, '<br>');
+        }
+
+        function processThinkTokens(text) {
+            // Handle complete think blocks: <think>content</think>
+            text = text.replace(/<think>([\s\S]*?)<\/think>/g, '<div class="think-content">$1</div>');
+            
+            // Handle cases with only closing think tags (thinking content before </think>)
+            // Look for content that appears to be thinking followed by </think>
+            text = text.replace(/([^>]*?)<\/think>/g, function(match, content) {
+                // Only process if this doesn't seem to be part of an already processed think block
+                if (!content.includes('<div class="think-content">')) {
+                    // Try to find where thinking likely started (look for reasoning patterns)
+                    const thinkingPatterns = [
+                        /Let me think about this\.\.\./,
+                        /I need to consider/,
+                        /First, I'll/,
+                        /Let me analyze/,
+                        /I should think through/
+                    ];
+                    
+                    let thinkingStart = 0;
+                    for (let pattern of thinkingPatterns) {
+                        const match = content.match(pattern);
+                        if (match) {
+                            thinkingStart = match.index;
+                            break;
+                        }
+                    }
+                    
+                    if (thinkingStart > 0) {
+                        const beforeThinking = content.substring(0, thinkingStart);
+                        const thinkingContent = content.substring(thinkingStart);
+                        return beforeThinking + '<div class="think-content">' + thinkingContent + '</div>';
+                    } else {
+                        // If no clear thinking pattern found, treat the whole content as thinking
+                        return '<div class="think-content">' + content + '</div>';
+                    }
+                }
+                return match;
+            });
+            
+            return text;
+        }
+
+        function processText(text) {
+            // First handle think tokens
+            let processed = processThinkTokens(text);
+            
+            // Then process markdown
+            processed = renderMarkdown(processed);
+            
+            // Wrap in paragraph tags
+            processed = '<p>' + processed + '</p>';
+            
+            // Fix list wrapping
+            processed = processed.replace(/(<li>.*?<\/li>)/gs, function(match) {
+                return '<ul>' + match + '</ul>';
+            });
+            
+            // Clean up empty paragraphs
+            processed = processed.replace(/<p><\/p>/g, '');
+            processed = processed.replace(/<p><br><\/p>/g, '');
+            
+            return processed;
+        }
+    </script>
+</body>
+</html>

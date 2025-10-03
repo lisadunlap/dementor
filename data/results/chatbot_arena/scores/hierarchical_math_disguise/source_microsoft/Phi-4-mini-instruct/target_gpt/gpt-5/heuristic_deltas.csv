@@ -1,3 +1,21 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:c47644fe2c5cfc1b8e06fa57b05566a253ff49cf17bddcc077a1bafe7fe30a93
-size 1376
+model,style_function,disguised_vs_target_match,target_vs_source_match,match_delta
+Microsoft-Phi-4-mini-instruct,ALL CAPS,0.986,0.988,-0.0020000000000000018
+Microsoft-Phi-4-mini-instruct,Blockquotes,1.0,1.0,0.0
+Microsoft-Phi-4-mini-instruct,Bullets,0.936,0.112,0.8240000000000001
+Microsoft-Phi-4-mini-instruct,Code Formatting,1.0,1.0,0.0
+Microsoft-Phi-4-mini-instruct,Emojis,0.99,0.99,0.0
+Microsoft-Phi-4-mini-instruct,Exclamations,0.998,0.998,0.0
+Microsoft-Phi-4-mini-instruct,First-Person Pronouns,0.58,0.622,-0.04200000000000004
+Microsoft-Phi-4-mini-instruct,Greeting (Start),1.0,1.0,0.0
+Microsoft-Phi-4-mini-instruct,Header/Title,1.0,0.906,0.09399999999999997
+Microsoft-Phi-4-mini-instruct,Links,1.0,1.0,0.0
+Microsoft-Phi-4-mini-instruct,List,0.936,0.128,0.808
+Microsoft-Phi-4-mini-instruct,Long Sentences,0.65,0.512,0.138
+Microsoft-Phi-4-mini-instruct,Markdown,0.938,0.89,0.04799999999999993
+Microsoft-Phi-4-mini-instruct,Math Symbols,0.938,0.938,0.0
+Microsoft-Phi-4-mini-instruct,Numbered Steps,0.994,0.972,0.02200000000000002
+Microsoft-Phi-4-mini-instruct,Parentheses,0.632,0.64,-0.008000000000000007
+Microsoft-Phi-4-mini-instruct,Questions,0.996,0.998,-0.0020000000000000018
+Microsoft-Phi-4-mini-instruct,Repetition,0.938,0.938,0.0
+Microsoft-Phi-4-mini-instruct,Sign-off (End),1.0,1.0,0.0
+Microsoft-Phi-4-mini-instruct,Starts with List,0.998,0.988,0.010000000000000009

@@ -1,3 +1,4 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:0dbe03fecb3d269733345e97971eb839540e3444c8e449d2ab45118a8d2056a3
-size 124
+metric,value
+heuristic_match_mean,0.8910159211523881
+heuristic_match_std,0.06236389529819831
+heuristic_match_count,1319

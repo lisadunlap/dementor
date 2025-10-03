@@ -1,3 +1,56 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:f810d40a6469d7e3c44c6f370d3f40c5de61c6d6c0c60b204fc1d2fb35208954
-size 5410
+{
+  "trait_axes": {
+    "Response Length": {
+      "0": "Responses are very brief and lack detail.",
+      "10": "Responses are lengthy, providing extensive detail and thorough explanations."
+    },
+    "Formality": {
+      "0": "Responses are highly casual and informal, using slang or colloquial language.",
+      "10": "Responses are highly formal, employing professional language and structure."
+    },
+    "Emotional Tone": {
+      "0": "Responses have a neutral or detached emotional tone.",
+      "10": "Responses convey a warm, friendly, or enthusiastic emotional tone."
+    },
+    "Use of Technical Jargon": {
+      "0": "Responses avoid technical terms and use plain language exclusively.",
+      "10": "Responses are rich in technical jargon and specialized terminology."
+    },
+    "Information Organization": {
+      "0": "Responses are disorganized and lack clear structure.",
+      "10": "Responses are well-organized, with clear sections, headers, and logical flow."
+    },
+    "Use of Examples": {
+      "0": "Responses provide no examples or illustrations.",
+      "10": "Responses include multiple relevant examples to clarify points."
+    },
+    "Complexity of Sentence Structure": {
+      "0": "Responses consist of simple, short sentences.",
+      "10": "Responses feature complex, varied sentence structures with advanced syntax."
+    },
+    "Handling of Ambiguity": {
+      "0": "Responses show uncertainty and do not address ambiguous prompts effectively.",
+      "10": "Responses confidently address ambiguity and provide clear, reasoned interpretations."
+    },
+    "Engagement Style": {
+      "0": "Responses are passive and do not encourage further interaction.",
+      "10": "Responses actively engage the user, encouraging questions and dialogue."
+    },
+    "Clarity of Explanations": {
+      "0": "Responses are unclear and difficult to understand.",
+      "10": "Responses are crystal clear, making complex concepts easily understandable."
+    }
+  },
+  "samples": [
+    "Hello! I'm here and ready to help. How can I assist you today?",
+    "Eating poop is not recommended. Consuming feces can introduce harmful bacteria, viruses, or parasites into your body, potentially leading to serious health issues. If you have concerns or questions about your health, consider speaking with a healthcare professional for advice.",
+    "Orthogonality, in the context of fears about Unfriendly AI, is a concept that helps explain why creating a powerful artificial intelligence (AI) could be risky, even if it operates according to its intended design. To understand this, imagine that intellig...(truncated)",
+    "Neural Magic achieves faster model execution primarily through techniques like model pruning, efficient inference algorithms, and leveraging modern CPU architectures. Here\u2019s a closer look at the strategies they use:\n\n1. **Model Pruning**: This involves rem...(truncated)",
+    "To achieve this, you can use a combination of HTML, CSS, and JavaScript. Below is an example of how you can create an input field with an SVG icon positioned on the right side, which can trigger a function when clicked.\n\nHere's a simple implementation:\n\n``...(truncated)",
+    "Certainly! To create a professional-looking 2D plot with TikZ and pgfplots, you can leverage some features for styling and shading. Below is the LaTeX code that will do exactly what you're asking for. This code uses TikZ for drawing and pgfplots for plotti...(truncated)",
+    "To find out what power of 10 is equivalent to \\(1000^5\\), we start by expressing \\(1000\\) as a power of 10. We know that:\n\n\\[ 1000 = 10^3. \\]\n\nThen, raising both sides to the power of 5, we have:\n\n\\[ 1000^5 = (10^3)^5. \\]\n\nUsing the property of exponents \\((a^m)^n = a^{m \\cdot n}\\), we can simplify this expression:\n\n\\[ (10^3)^5 = 10^{3 \\cdot 5} = 10^{15}. \\]\n\nTherefore, \\(1000^5\\) is equivalent to \\(10^{15}\\).",
+    "Ice floats in water primarily because it is less dense than liquid water. This occurs due to the unique molecular structure of water. As water cools and approaches its freezing point, the molecules begin to arrange themselves into a crystalline structure that is more open and spacious than in their liquid form. This structure is maintained by hydrogen bonds, which hold the water molecules at a fixed distance apart, creating a solid that occupies more volume than the same mass of water in liquid form. Consequently, ice has a lower density than liquid water, allowing it to float. This property is quite unusual and is crucial for many environmental and ecological processes, such as insulating bodies of water and providing habitats for certain organisms.",
+    "To solve a Diophantine equation, which involves finding integer solutions to polynomial equations, you must consider the specific type of equation you're dealing with, as techniques can vary significantly. Here are some general approaches:\n\n1. **Linear Dio...(truncated)",
+    "To spell \"peach\" using the given substitution rules:\n\n- 'p' is substituted with 'm'\n- 'e' is substituted with 'a'\n- 'a' is substituted with 'n'\n- 'c' is substituted with 'g'\n- 'h' is substituted with 'o'\n\nApplying these substitutions to \"peach\":\n\n- 'p' becomes 'm'\n- 'e' becomes 'a'\n- 'a' becomes 'n'\n- 'c' becomes 'g'\n- 'h' becomes 'o'\n\nTherefore, \"peach\" is spelled as \"mango\" under these rules."
+  ]
+}
