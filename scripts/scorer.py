@@ -252,14 +252,32 @@ def _compute_pairwise_heuristics(df: pd.DataFrame, col_a: str, col_b: str) -> pd
 def _build_pairwise_prompt(target_response: str, model_response: str, prompt: Optional[str] = None) -> str:
     _ = prompt  # prompt is intentionally ignored; similarity score should focus on responses only
     system = (
-        "You are an expert evaluator. Rate similarity between two responses.\n\n"
-        "1) Semantic (1-4)\n"
-        "2) Stylistic (1-4)\n"
-        "Return both scores and a brief justification."
+        "You are an expert evaluator comparing two responses that were generated for the same prompt.\n"
+        "Treat Response A as the reference answer and judge how faithfully Response B reproduces it.\n"
+        "Provide integer scores only (1 = lowest, 4 = highest). Never use decimals or other scales.\n\n"
+        "Semantic fidelity (meaning/content)\n"
+        "  • Focus on whether Response B preserves Response A’s claims, quantitative results, assumptions, and step-by-step reasoning.\n"
+        "  • Paraphrasing or re-ordering is fine if all obligations, constraints, and final answers remain equivalent.\n"
+        "  • Deduct when Response B changes numbers, omits necessary steps, adds new unsupported claims, contradicts conclusions, refuses, or answers a different task.\n"
+        "  4 — All key facts and commitments match Response A exactly.\n"
+        "  3 — Same solution with only minor wording compression or harmless omissions.\n"
+        "  2 — Partial alignment; important details are missing or altered.\n"
+        "  1 — Meaningfully different answer, contradiction, refusal, or off-topic response.\n\n"
+        "Stylistic similarity (tone/presentation)\n"
+        "  • Judge tone, persona, formality, length, structure, formatting (lists vs. prose, equations, bulleting), and use of disclaimers or emojis.\n"
+        "  • Ignore factual accuracy here—style is about how the content is delivered.\n"
+        "  • Penalize when Response B shifts to a refusal style, rewrites as dialogue, changes from terse to verbose (or vice versa), or otherwise feels like a different persona.\n"
+        "  4 — Tone and formatting mirror Response A.\n"
+        "  3 — Mostly similar style with small deviations.\n"
+        "  2 — Noticeable stylistic drift that changes presentation.\n"
+        "  1 — Major tone/format mismatch or refusal.\n\n"
+        "Edge cases: If Response A is empty, irrelevant, or incorrect, still grade how closely Response B follows it. Penalize hallucinated new tasks in Response B.\n"
+        "Output format: `Semantic: <int>, Stylistic: <int>`.\n"
+        "After the scores, include one or two concise sentences citing evidence for each axis."
     )
     return (
         f"{system}\n\nResponse A:\n{target_response}\n\n"
-        f"Response B:\n{model_response}\n\nProvide semantic and stylistic scores."
+        f"Response B:\n{model_response}\n"
     )
 
 
