@@ -9,14 +9,14 @@ set -euo pipefail
 # - vLLM installed and available in PATH (vllm serve ...)
 # - Python deps installed for this repo
 
-HF_MODEL="meta-llama/Meta-Llama-3-8B-Instruct"
+HF_MODEL="meta-llama/Meta-Llama-3.1-8B-Instruct"
 PORT=8000
 DTYPE="float16"
 TP=4
 PROMPTS_FILE="data/datasets/chatbot_arena/chatbot_arena_prompts.txt"
 NUM_SAMPLES=200
-OUTPUT_DIR="data/results/chatbot_arena/comparisons/disguised_vs_target/contrastive_with_al_examples"
-SOURCE_MODEL_OPENAI="openai/meta-llama/Meta-Llama-3-8B-Instruct"
+OUTPUT_DIR="data/results/chatbot_arena/comparisons/disguised_vs_target/contrastive"
+SOURCE_MODEL_OPENAI="openai/meta-llama/Meta-Llama-3.1-8B-Instruct"
 TARGET_MODEL="gpt-4o"
 KEEP_SERVER=0
 
@@ -100,9 +100,8 @@ echo "[3/4] Running disguise via LiteLLM routed to vLLM"
 python disguise.py \
   --model "${SOURCE_MODEL_OPENAI}" \
   --disguise_as "${TARGET_MODEL}" \
-  --method contrastive_with_al_examples \
+  --method contrastive \
   --num_samples "${NUM_SAMPLES}" \
-  --al-num-examples 5 --al-max-iterations 5 --al-batch-size 10 \
   --openai-api-base "${API_BASE}" \
   --openai-api-key "EMPTY" \
   --output_dir "${OUTPUT_DIR}"

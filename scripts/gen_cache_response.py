@@ -202,7 +202,7 @@ class CachedResponseGenerator:
         self._ensure_csv_header(output_path)
         params = {
             'temperature': kwargs.get('temperature', 0.0),
-            'top_p': kwargs.get('top_p', 0.95),
+            'top_p': kwargs.get('top_p', 1),
             'max_tokens': kwargs.get('max_tokens', 1024)
         }
         

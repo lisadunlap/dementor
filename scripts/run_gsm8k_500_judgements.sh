@@ -3,8 +3,8 @@ set -euo pipefail
 
 # GSM8K-500 judgements (single-file only):
 # - Base source (openai_gpt-4.1)
-# - Base target (meta-llama_Meta-Llama-3-8B-Instruct)
-# - Disguised random_sampling (openai_gpt-4.1_as_meta-llama_Meta-Llama-3-8B-Instruct)
+# - Base target (meta-llama_Meta-Llama-3.1-8B-Instruct)
+# - Disguised random_sampling (openai_gpt-4.1_as_meta-llama_Meta-Llama-3.1-8B-Instruct)
 # - Base source run2 (generate + score)
 
 PROMPTS="data/datasets/gsm8k/gsm8k_prompts_500.csv"
@@ -13,8 +13,8 @@ SRC_MODEL_ID="openai/gpt-4.1"
 SRC_NAME="openai_gpt-4.1"
 SRC_BASE_CSV="data/model-responses/gsm8k/500/openai_gpt-4.1_responses.csv"
 
-TGT_NAME="meta-llama_Meta-Llama-3-8B-Instruct"
-TGT_BASE_CSV="data/model-responses/gsm8k/500/meta-llama_Meta-Llama-3-8B-Instruct_responses.csv"
+TGT_NAME="meta-llama_Meta-Llama-3.1-8B-Instruct"
+TGT_BASE_CSV="data/model-responses/gsm8k/500/meta-llama_Meta-Llama-3.1-8B-Instruct_responses.csv"
 
 DISGUISED_RAW_CSV="data/results/gsm8k/500/random_sampling/${SRC_NAME}_as_${TGT_NAME}.csv"
 

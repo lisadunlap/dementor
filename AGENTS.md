@@ -11,10 +11,9 @@ Dementor is a research project for "stealing the souls of LLMs" - techniques to 
 The project is organized around these key components:
 
 ### Disguise Methods (`scripts/methods/`)
-- **Base methods**: `RandomSampleDisguise`, `JustNameIt`, `VibeBasedDisguise` 
-- **Clustering methods**: `FeatureClustering` with stylistic, vibe, or embedding-based clustering
-- **Math-specific methods**: `HierarchicalMathDisguise`, `EnsembleMathDisguise`
-- **Active learning**: `ActiveLearningDisguise` with adaptive selection
+- **Base methods**: `RandomSamplingSystemPrompting`, `JustNameIt`, `BehavioralBasedSystemPrompting` 
+- **Clustering methods**: `FeatureClustering` with stylistic, behavioral, or embedding-based clustering
+- **Math-specific methods**: `EnsembleMathDisguise`
 - All methods inherit from `MethodBase` and implement `forward(prompt: str) -> str`
 
 ### Main Scripts
@@ -54,7 +53,7 @@ python scripts/run_pipeline.py \
   --prompts_file data/datasets/gsm8k/gsm8k_prompts.txt \
   --source-model meta-llama/Meta-Llama-3.1-8B-Instruct \
   --target-model gpt-4o \
-  --method contrastive_with_al_examples
+  --method contrastive
 
 # Results organized under data/results/<dataset>/ with:
 # - comparisons/source_vs_target/ (source vs target baseline comparison and scores)
@@ -89,16 +88,12 @@ python -c "from scripts.scorer import score_pairwise; score_pairwise('input.csv'
 ### Test Model Serving
 ```bash
 # Start VLLM server
-vllm serve meta-llama/Meta-Llama-3-8B-Instruct --dtype half --tensor_parallel_size 4 --port 8000
+vllm serve meta-llama/Meta-Llama-3.1-8B-Instruct --dtype half --tensor_parallel_size 4 --port 8000
 
 # Test connection
 python serve/utils_llm.py  # Uncomment model in test_get_llm_output function
 ```
 
-### Run Single Test
-```bash
-python test_active_learning_disguise.py
-```
 
 ## File Organization
 
@@ -114,18 +109,16 @@ python test_active_learning_disguise.py
 
 ### Core Streamlined Methods (Recommended)
 - **`contrastive_system_prompting`**: Learns differences between source and target models
-- **`vibe_based_system_prompting`**: Captures personality and communication patterns  
+- **`behavioral_based_system_prompting`**: Captures personality and communication patterns  
 - **`random_sampling_system_prompting`**: Clean example-based disguise with system prompts
 
 ### Legacy Methods (For Compatibility)
 Get method names from `scripts/methods/get_method.py`:
 - `random_sample_{1,3,5}_examples`: Sample-based approaches
 - `just_name_it`: Simple name-based instruction
-- `vibe_based_disguise`: GPT-4o identified behavioral differences
+- `behavioral_based_disguise`: GPT-4o identified behavioral differences
 - `stylistic_clustering`: Cluster by formatting/length features  
-- `hierarchical_math_disguise`: Math-domain specific approach
 - `ensemble_math_disguise`: Multiple math disguise strategies
-- `active_learning_disguise`: Adaptive example selection
 
 ## Model Response Paths
 

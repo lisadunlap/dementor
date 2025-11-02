@@ -2,10 +2,9 @@
 """
 Streamlined disguise script for the core methods:
 - contrastive
-- vibe_based
+- behavioral_based
 - stylistic
 - random_sampling
-- contrastive_with_al_examples (composite: contrastive + AL-selected examples)
 """
 import argparse
 import os
@@ -269,16 +268,6 @@ def generate_disguised_responses(
             logging.error(f"Error processing prompt {i}: {e}")
             continue
     # Gather method-level stats if available (e.g., AL selection)
-    try:
-        if hasattr(method, '_al_selector') and getattr(method, '_al_selector') is not None:
-            sel = getattr(method, '_al_selector')
-            if hasattr(sel, 'get_selection_statistics'):
-                method_stats['selection_statistics'] = sel.get_selection_statistics()
-            if hasattr(sel, 'get_uncertainty_analysis'):
-                method_stats['uncertainty_analysis'] = sel.get_uncertainty_analysis()
-    except Exception as e:
-        logging.warning(f"Could not collect method stats: {e}")
-    
     return pd.DataFrame(results), method_stats
 
 
@@ -295,27 +284,23 @@ def main():
                        help="Target model to mimic (e.g., gpt-4o)")
     
     # Method selection
-    parser.add_argument("--method", type=str, 
-                       choices=["contrastive", "vibe_based", "stylistic", 
-                               "random_sampling", "contrastive_with_al_examples", "contrastive_al"],
-                       default="random_sampling",
-                       help="Disguise method to use")
-
-    # Active Learning settings (for active_learning and contrastive_with_al_examples)
-    parser.add_argument("--al-num-examples", type=int, default=5, help="Number of examples to include via AL")
-    parser.add_argument("--al-d-regular", type=int, default=3, help="Degree for initial d-regular graph")
-    parser.add_argument("--al-p-threshold", type=float, default=0.1, help="Bottom P fraction for |Δ| filter (0-1)")
-    parser.add_argument("--al-q-threshold", type=float, default=0.1, help="Bottom Q fraction for degree filter (0-1)")
-    parser.add_argument("--al-batch-size", type=int, default=10, help="Pairs to query per AL iteration")
-    parser.add_argument("--al-max-iterations", type=int, default=5, help="Max AL iterations")
-    parser.add_argument("--al-relaxation-factor", type=float, default=1.2, help="Relax thresholds factor when few candidates")
-    parser.add_argument("--al-seed", type=int, default=None, help="Seed for AL selection")
-    parser.add_argument("--example-selector", choices=["embedding_delta", "al", "clustering", "random"], default="embedding_delta",
-                        help="How to choose in-context examples for composite method")
-    parser.add_argument("--selector-embedding-model", type=str, default="intfloat/e5-small-v2",
-                        help="HF embedding model to use for embedding_delta selector")
-    parser.add_argument("--selector-pool-multiplier", type=int, default=5,
-                        help="Pool multiplier for top-|Δ| candidates before clustering (embedding_delta)")
+    parser.add_argument(
+        "--method",
+        type=str,
+        choices=[
+            "contrastive",
+            "behavioral_based",
+            "stylistic",
+            "random_sampling",
+            "just_name_it",
+            "stylistic_clustering",
+            "stylistic_clustering_resample",
+            "embedding_clustering",
+            "behavioral_clustering",
+        ],
+        default="contrastive",
+        help="Disguise method to use",
+    )
     
     # Data paths
     parser.add_argument("--source_responses", type=str, 
@@ -363,6 +348,12 @@ def main():
     # Defer creating output directory until after resolving dataset + defaults
 
     # Optionally route LiteLLM calls to a local vLLM server
+    # Preserve original OpenAI routing so analyzer models can still reach OpenAI if needed
+    if "OPENAI_API_BASE" in os.environ and "ORIGINAL_OPENAI_API_BASE" not in os.environ:
+        os.environ["ORIGINAL_OPENAI_API_BASE"] = os.environ["OPENAI_API_BASE"]
+    if "OPENAI_API_KEY" in os.environ and "ORIGINAL_OPENAI_API_KEY" not in os.environ:
+        os.environ["ORIGINAL_OPENAI_API_KEY"] = os.environ["OPENAI_API_KEY"]
+
     if args.openai_api_base:
         os.environ["OPENAI_API_BASE"] = args.openai_api_base
     if args.openai_api_key:
@@ -503,29 +494,13 @@ def main():
     pair_id = f"{src_id}_as_{tgt_id}"
     results_file = os.path.join(args.output_dir, f"{pair_id}.csv")
 
-    # Prepare method kwargs (for AL variants)
-    method_kwargs = {
-        'al_num_examples': args.al_num_examples,
-        'al_d_regular': args.al_d_regular,
-        'al_p_threshold': args.al_p_threshold,
-        'al_q_threshold': args.al_q_threshold,
-        'al_batch_size': args.al_batch_size,
-        'al_max_iterations': args.al_max_iterations,
-        'al_relaxation_factor': args.al_relaxation_factor,
-        'al_seed': args.al_seed,
-        'example_selector': args.example_selector,
-        # Selector-specific
-        'selector_embedding_model': args.selector_embedding_model,
-        'selector_pool_multiplier': args.selector_pool_multiplier,
-    }
-
     # Generate disguised responses
     logging.info(f"Generating responses using {args.method}...")
     results_df, method_stats = generate_disguised_responses(
         args.method, args.model, args.disguise_as,
         source_df, target_df, prompts, args.num_samples,
         temperature=args.temperature,
-        method_kwargs=method_kwargs,
+        method_kwargs=None,
         output_file=results_file,
     )
     

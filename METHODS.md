@@ -4,7 +4,7 @@ This document summarizes the core methods in this repository and how to use them
 
 Important context:
 - The focus of this repo is the Disguise Methods in `scripts/methods/` — practical strategies for making one model behave like another via prompting.
-- Earlier utility-estimation codepaths (e.g., “superstimuli”, “utility-alignment”) were inspiration only and have been removed; their ideas are reflected in our composite selection strategies.
+- Earlier utility-estimation codepaths (e.g., “superstimuli”, “utility-alignment”) were inspiration only and have been removed; their ideas primarily informed past example-selection experiments.
 
 We list Disguise Methods first. A short reference to the (historical) utility-estimation concepts is included at the end for completeness.
 
@@ -14,8 +14,7 @@ We list Disguise Methods first. A short reference to the (historical) utility-es
   - Vibe-Based Disguise
   - Random Sample k Examples
   - Stylistic Disguise
-  - Clustering Variants (stylistic/vibe/embedding)
-  - Active Learning Disguise (iterative example selection)
+- Clustering Variants (stylistic/behavioral/embedding)
 
 - Utility Estimation (temporary inspiration, will be removed later)
   - Bradley–Terry (Static)
@@ -36,9 +35,9 @@ Method registry: `scripts/methods/get_method.py` (clean names in quotes below).
   - What it does: Compares source vs target responses to extract explicit distinguishing features; turns them into actionable system instructions.
   - When to use: You have both datasets and want targeted guidance on “what to change”.
 
-- "vibe_based"
-  - Class: `core_methods.VibeBasedSystemPrompting`
-  - What it does: Builds a deep “vibe/essence” profile (cognitive style, tone, interaction patterns) from target data; uses it in the system prompt.
+- "behavioral_based"
+  - Class: `core_methods.BehavioralBasedSystemPrompting`
+  - What it does: Builds a deep behavioral profile (cognitive style, tone, interaction patterns) from target data; uses it in the system prompt.
   - When to use: Personality/feel matters beyond formatting.
 
 - "random_sampling"
@@ -52,39 +51,15 @@ Method registry: `scripts/methods/get_method.py` (clean names in quotes below).
   - When to use: Structure and presentation patterns are the main gap.
 
 ### Clustering Variants (Representative Sampling)
-- `stylistic_clustering`, `stylistic_clustering_resample`, `vibe_clustering`, `embedding_clustering`
-  - Cluster responses on different feature spaces (stylistic/vibe/embeddings) and select representatives.
+- `stylistic_clustering`, `stylistic_clustering_resample`, `behavioral_clustering`, `embedding_clustering`
+  - Cluster responses on different feature spaces (stylistic/behavioral/embeddings) and select representatives.
   - When to use: You want example diversity/coverage without manual curation.
-
-### Active Learning (as a selection backend)
-- Used as an example selection strategy within composite methods (not a standalone method).
-- Focus: pick informative in-context examples (quality/uncertainty) rather than generate a rulebook.
-
-### Composite Method
-- "contrastive_with_al_examples" (alias: "contrastive_al")
-  - Class: `core_methods.ContrastiveWithALExamples`
-  - What it does: Combines contrastive rules (explicit guidelines) with AL-selected examples for the context window.
-  - When to use: You want both a clear rulebook and strong exemplars in one run.
-
-CLI knobs for Active Learning and selectors (composite):
-- `--al-num-examples`: number of examples to include (default: 5)
-- `--al-d-regular`: initial degree for regular graph seeding (default: 3)
-- `--al-p-threshold`, `--al-q-threshold`: bottom fractions (0–1) for ambiguity and coverage filters (default: 0.1 each)
-- `--al-batch-size`: pairs per iteration (default: 10)
-- `--al-max-iterations`: iterations (default: 5)
-- `--al-relaxation-factor`: relax thresholds when too few candidates (default: 1.2)
-- `--al-seed`: random seed
-Selectors (used by `contrastive_with_al_examples` via `--example-selector`):
-- `embedding_delta` (default): coverage over normalized embedding deltas `e_t − e_s` with k‑means; knobs: `--selector-embedding-model` (default: `intfloat/e5-small-v2`), `--selector-pool-multiplier` (default: 5)
-- `al`: iterative active learning selector (pairwise/Thurstonian on math features)
-- `clustering`: style‑feature k‑means over target responses
-- `random`: uniform sample
 
 ### How to Get a Method
 ```python
 from scripts.methods.get_method import get_method
 method = get_method(
-    method_name="vibe_based",          # or: contrastive | random_sampling | stylistic
+    method_name="behavioral_based",    # or: contrastive | random_sampling | stylistic
     model="source-model",              # model to run
     disguise_as="target-model",        # model to mimic
     disguise_df=target_df,              # DataFrame of target examples (required for most methods)
@@ -99,9 +74,9 @@ Notes:
 
 ### Choosing Methods (Disguise)
 - Fast baseline: "random_sampling" (k=5) or "stylistic" if structure is key.
-- Distinctive personality: "vibe_based" (optionally with a few examples).
+- Distinctive personality: "behavioral_based" (optionally with a few examples).
 - Explicit change-list from source→target: "contrastive".
-- Automated, stronger example selection: `embedding_delta` (default in composite), `active_learning`, or a clustering variant.
+- Need diverse exemplars: use clustering variants to select representative target responses.
 
 ---
 
@@ -123,20 +98,17 @@ If you experiment here, recommended defaults are Thurstonian + Active Learning (
 
 ### Quick Decision Tree:
 - **Fast baseline**: `random_sampling` for quick trials with good examples
-- **Distinctive personality**: `vibe_based` when personality/communication style matters
+- **Distinctive personality**: `behavioral_based` when personality/communication style matters
 - **Structural patterns**: `stylistic` when formatting and structure are key
 - **Explicit guidance**: `contrastive` when you want clear rules about what to change
-- **Best of both**: `contrastive_with_al_examples` for rules + smart example selection
 
 ### Available Methods
 Get method names from `scripts/methods/get_method.py`:
 - `random_sample_{1,3,5}_examples`: Sample-based approaches
 - `just_name_it`: Simple name-based instruction
-- `vibe_based_disguise`: GPT-4o identified behavioral differences
+- `behavioral_based_disguise`: GPT-4o identified behavioral differences
 - `stylistic_clustering`: Cluster by formatting/length features
-- `hierarchical_math_disguise`: Math-domain specific approach
 - `ensemble_math_disguise`: Multiple math disguise strategies
-- `active_learning_disguise`: Adaptive example selection
 
 ## Usage Examples
 
@@ -146,7 +118,7 @@ python scripts/run_pipeline.py \
   --prompts_file data/datasets/gsm8k/gsm8k_prompts.txt \
   --source-model meta-llama/Meta-Llama-3.1-8B-Instruct \
   --target-model gpt-4o \
-  --method contrastive_with_al_examples
+  --method contrastive
 ```
 
 ### Individual Components

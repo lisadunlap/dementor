@@ -85,7 +85,7 @@ Core Scripts:
     pipeline_parser.add_argument('--source-model', required=True, help='Source model')
     pipeline_parser.add_argument('--target-model', required=True, help='Target model')
     pipeline_parser.add_argument('--prompts', help='Prompts file', default='data/datasets/gsm8k/gsm8k_prompts.txt')
-    pipeline_parser.add_argument('--method', default='contrastive_with_al_examples', help='Disguise method')
+    pipeline_parser.add_argument('--method', default='contrastive', help='Disguise method')
     
     # Score command
     score_parser = subparsers.add_parser('score', help='Score model comparison')

@@ -18,7 +18,7 @@ python scripts/run_pipeline.py \
   --prompts_file data/datasets/gsm8k/gsm8k_prompts.txt \
   --source-model meta-llama/Meta-Llama-3.1-8B-Instruct \
   --target-model gpt-4o \
-  --method contrastive_with_al_examples
+  --method contrastive
 ```
 
 ## Local Generation (HF vs vLLM)
@@ -73,9 +73,8 @@ python scripts/generate_responses.py \
 python disguise.py \
   --model openai/meta-llama/Llama-3.1-8B-Instruct \
   --disguise_as gpt-4o \
-  --method contrastive_with_al_examples \
+  --method contrastive \
   --num_samples 200 \
-  --al-num-examples 5 --al-max-iterations 5 --al-batch-size 10 \
   --openai-api-base http://localhost:8000/v1 \
   --openai-api-key EMPTY
 ```
@@ -92,11 +91,11 @@ Helper script
 - You can also use the provided helper to run this end‑to‑end locally:
   ```bash
   bash scripts/run_local_vllm.sh \
-    --hf-model meta-llama/Meta-Llama-3-8B-Instruct \
+    --hf-model meta-llama/Meta-Llama-3.1-8B-Instruct \
     --port 8000 --dtype float16 --tp 4 \
-  --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
+    --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
     --num_samples 200 --output_dir data/results/chatbot_arena/disguised \
-    --source-model-openai openai/meta-llama/Meta-Llama-3-8B-Instruct \
+    --source-model-openai openai/meta-llama/Meta-Llama-3.1-8B-Instruct \
     --target-model gpt-4o
   ```
 
@@ -111,10 +110,10 @@ python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --m
 - Uses clean system prompting for instructions
 - Simple, effective, and fast
 
-### 2. Vibe-Based (`--method vibe_based_system_prompting`)
+### 2. Behavioral-Based (`--method behavioral_based_system_prompting`)
 **Best for**: Capturing personality and deep communication essence
 ```bash
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based_system_prompting
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method behavioral_based_system_prompting
 ```
 - Analyzes target model's communication style, personality, and behavioral patterns
 - Creates sophisticated "essence profile" capturing how the model thinks and responds
@@ -127,7 +126,7 @@ python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --m
 ```
 - Analyzes and replicates measurable stylistic features (formatting, length, structure)
 - Focuses on surface-level patterns that can be quantified
-- Complements vibe-based analysis with concrete metrics
+- Complements behavioral-based analysis with concrete metrics
 
 ### 4. Contrastive (`--method contrastive_system_prompting`)
 **Best for**: Learning specific differences between models
@@ -137,27 +136,6 @@ python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --m
 - Compares source and target models to identify distinguishing features
 - Learns what makes the target model unique vs the source; produces explicit, actionable guidelines (system prompt)
 - Requires both source and target model response data
-- Pairs well with AL‑selected examples (see the Composite method below)
-
-### Composite: Contrastive + Example Selection (`--method contrastive_with_al_examples`)
-**Best for**: Clear rules plus strong in‑context exemplars
-```bash
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o \
-  --method contrastive_with_al_examples --num_samples 200 \
-  --al-num-examples 5 --al-max-iterations 5 --al-batch-size 10 \
-  --example-selector embedding_delta \
-  --selector-embedding-model intfloat/e5-small-v2 \
-  --selector-pool-multiplier 5
-```
-- Produces a contrastive system prompt (explicit guidelines) AND selects informative examples for the context window.
-- Default selection is `embedding_delta`: computes embedding differences (target − source) and selects diverse, high‑magnitude deltas via k‑means coverage.
-- Switch example selection via `--example-selector embedding_delta|al|clustering|random`.
-
-Selector notes
-- `embedding_delta` (default): inner‑joins source/target by `prompt`; make sure both CSVs share prompts and have expected columns (source→`model_response`, target→`target_response`). Tunables: `--selector-embedding-model`, `--selector-pool-multiplier`.
-- `al`: Active Learning selector (pairwise/Thurstonian on math‑style features).
-- `clustering`: style‑feature k‑means over target responses.
-- `random`: uniform sample.
 
 Scoring
 - Single-file scoring (base models): `python -m scripts.scorer single data/model-responses/<dataset>/full/<model>.csv --output data/results/<dataset>/scores/<model>/scored.csv`
@@ -177,10 +155,9 @@ dementor/
 │   ├── stylistic_analysis.py        # Heuristic analysis functions
 │   └── methods/
 │       ├── contrastive.py           # Contrastive method
-│       ├── vibe_based.py            # Vibe-based method
+│       ├── behavioral_based.py      # Behavioral-based method
 │       ├── random_sampling.py       # Random sampling method
 │       ├── stylistic.py             # Stylistic method
-│       ├── contrastive_with_al_examples.py # Composite method
 │       ├── get_method.py            # Method registry
 │       ├── utils/                   # Shared utilities
 │       └── extras/                  # Legacy/specialized methods
@@ -197,9 +174,9 @@ Additional:
 - We use official model identifiers in artifact filenames and tags, with only minimal sanitization for filesystem safety.
 - Sanitization rule: replace `/` and `:` with `_`.
 - Examples:
-  - Source responses: `data/model-responses/gsm8k/full/meta-llama_Meta-Llama-3-8B-Instruct.csv`
-  - Disguised vs target: `data/results/gsm8k/comparisons/disguised_vs_target/<method>/gpt-4.1_as_meta-llama_Meta-Llama-3-8B-Instruct.csv`
-  - Baseline comparison: `data/results/gsm8k/comparisons/source_vs_target/openai_gpt-4o-mini_vs_meta-llama_Meta-Llama-3-8B-Instruct.csv`
+  - Source responses: `data/model-responses/gsm8k/full/meta-llama_Meta-Llama-3.1-8B-Instruct.csv`
+  - Disguised vs target: `data/results/gsm8k/comparisons/disguised_vs_target/<method>/gpt-4.1_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv`
+  - Baseline comparison: `data/results/gsm8k/comparisons/source_vs_target/openai_gpt-4o-mini_vs_meta-llama_Meta-Llama-3.1-8B-Instruct.csv`
 
 Note: Older runs may contain short-name artifacts (e.g., `llama-3-8b`). These are deprecated; new runs and tools write official names.
 ```
@@ -222,7 +199,7 @@ The framework provides two types of evaluation:
 ### Basic Usage
 ```bash
 # Generate 200 disguised responses
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based --num_samples 200
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method behavioral_based --num_samples 200
 
 # Use custom prompts
 python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive --prompts_file my_prompts.txt
@@ -231,7 +208,7 @@ python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --m
 python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling --skip_evaluation
 
 # Heuristics only (faster evaluation)
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based --heuristics_only
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method behavioral_based --heuristics_only
 ```
 
 ### With Experiment Tracking
@@ -269,13 +246,12 @@ PY
 | Method | Strengths | Best Use Case | Speed |
 |--------|-----------|---------------|-------|
 | **random_sampling** | Simple, reliable baseline | When you have good target examples | Fast |
-| **vibe_based** | Captures deep communication essence | Models with distinctive personality | Medium |
+| **behavioral_based** | Captures deep communication essence | Models with distinctive personality | Medium |
 | **stylistic** | Measurable surface features | Consistent formatting/structure patterns | Fast |
-| **contrastive** | Explicit change-list and rules; pairs well with AL-selected examples | Understanding model distinctions | Slow |
-| **contrastive_with_al_examples** | Clear rules + strong exemplars | When examples improve mimicry | Medium |
+| **contrastive** | Explicit change-list and rules | Understanding model distinctions | Slow |
 
 ## Recommended Combinations
-- Contrastive + AL-selected examples: clear rules + strong exemplars.
+- Contrastive + curated target examples: clear rules with targeted exemplars.
 - Vibe-based + a few curated examples: capture personality with concrete anchors.
 - Stylistic + clustering: enforce structure and pick representative examples automatically.
 
@@ -283,22 +259,14 @@ PY
 -- Contrastive (rules-only)
   - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive --num_samples 200
 
--- Contrastive + AL-selected examples (composite)
-  - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o \
-      --method contrastive_with_al_examples --num_samples 200 \
-      --al-num-examples 5 --al-max-iterations 5 --al-batch-size 10
-
 -- Random-k examples baseline
   - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling --num_samples 200
 
 -- Vibe-based (personality) with examples
-  - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method vibe_based --num_samples 200
+  - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method behavioral_based --num_samples 200
 
 -- Scoring with summary metrics
   - python -m scripts.scorer pairwise --input data/results/chatbot_arena/disguised/my_run.csv --output data/results/chatbot_arena/scores/my_run_scored/scored.csv
-
-Note on “Contrastive + AL-selected examples”
-- This repo now provides a composite method (`contrastive_with_al_examples`) that generates contrastive rules and automatically selects informative examples via Active Learning for the context window.
 
 ## Pipelines (Step-by-step)
 
@@ -323,14 +291,13 @@ Benchmark style archetypes
 - Curated style/persona response CSVs are inputs and now live under `data/datasets/benchmarks/style_archetypes/`.
 - These are not generated artifacts; they are used for analysis/visualization and reference.
 
-2) Run disguise (rules + selected examples)
+2) Run disguise (contrastive rules)
 ```bash
 python scripts/disguise.py \
   --model openai/gpt-4o-mini \
   --disguise_as gpt-4o \
-  --method contrastive_with_al_examples \
+  --method contrastive \
   --num_samples 200 \
-  --al-num-examples 5 --al-max-iterations 5 --al-batch-size 10 \
   --source_responses data/model-responses/chatbot_arena/full/openai_gpt-4o-mini.csv \
   --target_responses data/model-responses/chatbot_arena/full/openai_gpt-4o.csv
 ```
@@ -348,7 +315,7 @@ python scripts/run_pipeline.py \
   --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
   --source-model openai/gpt-4o-mini \
   --target-model gpt-4o \
-  --method contrastive_with_al_examples \
+  --method contrastive \
   --num_samples 200
 ```
 
@@ -382,7 +349,7 @@ python scripts/run_pipeline.py \
 
 ## 🧠 How Vibe-Based Disguise Works
 
-The vibe-based method goes beyond surface-level mimicry to capture the **essence** of how a model communicates:
+The behavioral-based method goes beyond surface-level mimicry to capture the **essence** of how a model communicates:
 
 1. **Deep Analysis**: Examines cognitive style, personality traits, interaction patterns
 2. **Essence Profiling**: Creates actionable personality guidelines 
@@ -400,7 +367,7 @@ The stylistic method focuses on **measurable, surface-level features** that can 
 3. **Structural Guidelines**: Creates specific rules for replicating measurable style elements
 4. **Verification-Friendly**: Produces patterns that can be easily verified with heuristics
 
-This complements vibe-based analysis by providing concrete, measurable targets for style replication.
+This complements behavioral-based analysis by providing concrete, measurable targets for style replication.
 
 ## 📊 Understanding Results
 
@@ -410,7 +377,7 @@ This complements vibe-based analysis by providing concrete, measurable targets f
 - **High heuristic match**: Surface patterns match well
 
 ### Troubleshooting Low Scores:
-- Try different methods (vibe-based often works better for distinctive models)
+- Try different methods (behavioral-based often works better for distinctive models)
 - Increase number of target examples
 - Check that target model responses are representative
 - Use contrastive method when models are very different
@@ -445,7 +412,7 @@ The core methods can be customized:
 from scripts.methods.get_method import get_method
 
 # Vibe-based with custom settings
-method = get_method('vibe_based', 'source-model', 'target-model', disguise_df=target_data)
+method = get_method('behavioral_based', 'source-model', 'target-model', disguise_df=target_data)
 
 # Contrastive with both datasets
 method = get_method('contrastive', 'source-model', 'target-model', disguise_df=target_data, source_df=source_data)
@@ -461,7 +428,7 @@ Run a small end-to-end validation:
 python validate_end_to_end.py \
   --model openai/gpt-4o-mini \
   --disguise_as gpt-4o \
-  --method contrastive_with_al_examples \
+  --method contrastive \
   --num_samples 20
 ```
 
@@ -478,7 +445,7 @@ This repository includes a minimal GitHub Actions workflow (`.github/workflows/s
 
 ---
 
-**Clean. Focused. Effective.** Three methods, one framework, reliable disguises.
+**Clean. Focused. Effective.** Four methods, one framework, reliable disguises.
 ### Model Setup (LiteLLM providers)
 - For API providers, set the provider env var(s) before running `disguise.py`, e.g.:
   - OpenAI: `export OPENAI_API_KEY=...`

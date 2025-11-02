@@ -64,7 +64,7 @@ def get_llm_output(
 
     logging.debug("LLM Cache Miss")
     completion = client.chat.completions.create(
-        model=("meta-llama/Meta-Llama-3-8B-Instruct" if model == "llama-3-8b" else model),
+        model=("meta-llama/Meta-Llama-3.1-8B-Instruct" if model == "llama-3-8b" else model),
         messages=messages,
         max_tokens=max_tokens,
         extra_body={"stop_token_ids": [128009]} if model == "llama-3-8b" else None,

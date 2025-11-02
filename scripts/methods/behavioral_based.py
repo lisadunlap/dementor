@@ -1,6 +1,6 @@
 """
-Vibe-based disguise method.
-Identifies and replicates the target model's "vibe" (personality, tone, patterns).
+Behavioral-based disguise method.
+Identifies and replicates the target model's communication behaviors (personality, tone, patterns).
 """
 import logging
 import os
@@ -27,10 +27,10 @@ except ImportError:
     from utils import get_token_count
 
 
-class VibeBasedSystemPrompting(MethodBase):
+class BehavioralBasedSystemPrompting(MethodBase):
     """
-    Vibe-based system prompting: identifies and replicates the "vibes" of target model.
-    Focuses on personality, tone, and behavioral patterns.
+    Behavioral-based system prompting: identifies and replicates the behavioral essence of the target model.
+    Focuses on personality, tone, and interaction patterns.
     """
     
     def __init__(self, model: str, disguise_as: str, disguise_df: pd.DataFrame = None, 
@@ -39,17 +39,17 @@ class VibeBasedSystemPrompting(MethodBase):
         self.disguise_df = disguise_df.copy() if disguise_df is not None else None
         self.use_examples = use_examples
         self.num_examples = num_examples
-        self.vibe_profile = None
+        self.behavior_profile = None
         
         if disguise_df is not None:
             self.disguise_df["token_length"] = self.disguise_df["target_response"].apply(get_token_count)
-            self._generate_vibe_profile()
+            self._generate_behavior_profile()
     
-    def _generate_vibe_profile(self):
-        """Generate sophisticated vibe profile capturing the essence of target model communication."""
-        vibe_samples = self.disguise_df.sample(min(12, len(self.disguise_df)))
+    def _generate_behavior_profile(self):
+        """Generate sophisticated behavioral profile capturing the essence of target model communication."""
+        behavior_samples = self.disguise_df.sample(min(12, len(self.disguise_df)))
         
-        vibe_prompt = f"""Analyze the deep communication essence and "vibe" of this AI model. This is critical for disguise purposes - you need to capture the CORE of how this model communicates, not just surface patterns.
+        behavior_prompt = f"""Analyze the deep communication essence and behavior of this AI model. This is critical for disguise purposes - you need to capture the CORE of how this model communicates, not just surface patterns.
 
 Focus on these sophisticated aspects:
 
@@ -63,10 +63,10 @@ Focus on these sophisticated aspects:
 
 Examples of {self.disguise_as} responses:
 """
-        for _, row in vibe_samples.iterrows():
-            vibe_prompt += f"Q: {row['prompt']}\nA: {row['target_response'][:500]}{'...' if len(row['target_response']) > 500 else ''}\n\n"
+        for _, row in behavior_samples.iterrows():
+            behavior_prompt += f"Q: {row['prompt']}\nA: {row['target_response'][:500]}{'...' if len(row['target_response']) > 500 else ''}\n\n"
         
-        vibe_prompt += f"""
+        behavior_prompt += f"""
 Based on this analysis, create a comprehensive "essence profile" of {self.disguise_as} that captures:
 
 1. The model's core communication personality (2-3 key traits)
@@ -80,6 +80,11 @@ Make this actionable - write it as instructions that would allow another AI to a
         try:
             # Default to GPT-4.1-mini for analysis unless overridden
             analysis_model = os.getenv("ANALYSIS_MODEL", "openai/gpt-4.1-mini")
+            analysis_api_base = os.getenv("ANALYSIS_API_BASE")
+            analysis_api_key = os.getenv(
+                "ANALYSIS_API_KEY",
+                os.getenv("ORIGINAL_OPENAI_API_KEY", os.getenv("OPENAI_API_KEY")),
+            )
             # Use cached completion for persistent caching
             try:
                 import sys
@@ -91,28 +96,32 @@ Make this actionable - write it as instructions that would allow another AI to a
                 from scripts.cached_llm import cached_completion
                 response = cached_completion(
                     model=analysis_model,
-                    messages=[{"role": "user", "content": vibe_prompt}],
-                    temperature=0.1
+                    messages=[{"role": "user", "content": behavior_prompt}],
+                    temperature=0.0,
+                    api_base=analysis_api_base,
+                    api_key=analysis_api_key,
                 )
-                self.vibe_profile = response.choices[0].message.content
+                self.behavior_profile = response.choices[0].message.content
             except ImportError:
                 # Fallback to standard litellm
                 response = completion(
                     model=analysis_model,
-                    messages=[{"role": "user", "content": vibe_prompt}],
-                    temperature=0.1
+                    messages=[{"role": "user", "content": behavior_prompt}],
+                    temperature=0.0,
+                    api_base=analysis_api_base,
+                    api_key=analysis_api_key,
                 )
-                self.vibe_profile = response.choices[0].message.content
+                self.behavior_profile = response.choices[0].message.content
         except Exception as e:
-            logging.warning(f"Failed to generate vibe profile: {e}")
-            self.vibe_profile = f"Respond with the characteristic communication style and deep personality essence of {self.disguise_as}."
+            logging.warning(f"Failed to generate behavioral profile: {e}")
+            self.behavior_profile = f"Respond with the characteristic communication style and deep personality essence of {self.disguise_as}."
     
     def forward(self, prompt: str) -> List[Dict[str, str]]:
-        """Generate vibe-based system prompt."""
+        """Generate behavioral-based system prompt."""
         base_instruction = f"You are {self.disguise_as}. Embody this personality and communication style:"
         
-        if self.vibe_profile:
-            system_prompt = f"{base_instruction}\n\n{self.vibe_profile}"
+        if self.behavior_profile:
+            system_prompt = f"{base_instruction}\n\n{self.behavior_profile}"
         else:
             system_prompt = f"{base_instruction}\n\nRespond in the distinctive style and personality of {self.disguise_as}."
         

@@ -19,7 +19,7 @@ try:
         model="gpt-4o",
         messages=[{"role": "user", "content": prompts[0]}],
         max_tokens=100,
-        temperature=0.7
+        temperature=0.0
     )
     print(f"API response: {response[:100]}...")
 except Exception as e:

@@ -2,7 +2,7 @@
 """
 Orchestrate a full pipeline over a prompts file:
 - Generate base outputs for source and target models (if not present or --overwrite)
-- Run disguise (contrastive or composite)
+- Run disguise (contrastive)
 - Score outputs and write metrics
 
 Usage:
@@ -10,7 +10,7 @@ Usage:
     --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
     --source-model openai/gpt-4o-mini \
     --target-model gpt-4o \
-    --method contrastive_with_al_examples
+    --method contrastive
 """
 import argparse
 import os
@@ -77,15 +77,11 @@ def main():
     parser.add_argument("--prompts_file", required=True)
     parser.add_argument("--source-model", required=True)
     parser.add_argument("--target-model", required=True)
-    parser.add_argument("--method", default="contrastive_with_al_examples",
-                        choices=["contrastive", "contrastive_with_al_examples", "contrastive_al"]) 
+    parser.add_argument("--method", default="contrastive",
+                        choices=["contrastive"]) 
     parser.add_argument("--num_samples", type=int, default=200)
     parser.add_argument("--output_dir", default=None)
     parser.add_argument("--overwrite", action="store_true")
-    # AL knobs
-    parser.add_argument("--al-num-examples", type=int, default=5)
-    parser.add_argument("--al-max-iterations", type=int, default=5)
-    parser.add_argument("--al-batch-size", type=int, default=10)
     # LiteLLM routing to local vLLM (optional)
     parser.add_argument("--openai-api-base", default=None, help="Route LiteLLM to local vLLM OpenAI-compatible endpoint")
     parser.add_argument("--openai-api-key", default=None, help="Pass API key/placeholder for local vLLM")
@@ -221,9 +217,6 @@ def main():
             '--source_responses', str(src_out),
             '--target_responses', str(tgt_out)]
     if 'contrastive' in args.method:
-        dcmd += ['--al-num-examples', str(getattr(args, 'al_num_examples')),
-                 '--al-max-iterations', str(getattr(args, 'al_max_iterations')),
-                 '--al-batch-size', str(getattr(args, 'al_batch_size'))]
     # Pass routing flags to disguise
     if args.openai_api_base:
         dcmd += ['--openai-api-base', args.openai_api_base]

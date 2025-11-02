@@ -37,20 +37,20 @@ class MetricSummary:
 
 
 SUMMARY_PATHS: Dict[str, Path] = {
-    "base (gpt-4.1 vs llama 3 8b)": Path(
+    "base (gpt-4.1 vs llama 3.1 8b)": Path(
         "data/results/gsm8k/500/scores/meta-llama_vs_gpt4.1/summary.json"
     ),
-    "vibe_based": Path(
-        "data/results/gsm8k/500/vibe_based/scores/"
-        "openai_gpt-4.1_as_meta-llama_Meta-Llama-3-8B-Instruct/summary.json"
+    "behavioral_based": Path(
+        "data/results/gsm8k/500/behavioral_based/scores/"
+        "openai_gpt-4.1_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json"
     ),
     "random_sampling": Path(
         "data/results/gsm8k/500/random_sampling/scores/"
-        "openai_gpt-4.1_as_meta-llama_Meta-Llama-3-8B-Instruct/summary.json"
+        "openai_gpt-4.1_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json"
     ),
-    "contrastive_with_al_examples": Path(
-        "data/results/gsm8k/500/contrastive_with_al_examples/scores/"
-        "openai_gpt-4.1_as_meta-llama_Meta-Llama-3-8B-Instruct/summary.json"
+    "contrastive": Path(
+        "data/results/gsm8k/500/contrastive/scores/"
+        "openai_gpt-4.1_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json"
     ),
 }
 

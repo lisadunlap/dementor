@@ -9,12 +9,11 @@ Usage:
   python validate_end_to_end.py \
     --model openai/gpt-4o-mini \
     --disguise_as gpt-4o \
-    --method contrastive_with_al_examples \
+    --method contrastive \
     --num_samples 20
 
 Notes:
  - Requires provider API key(s) for LiteLLM in your environment (e.g. OPENAI_API_KEY).
- - For AL-based methods, install `networkx`.
  - For local LLM judge scoring, install `vllm` and run scorer with --output for metrics.
 """
 import argparse
@@ -33,14 +32,10 @@ def main():
     parser = argparse.ArgumentParser(description="Run a small end-to-end validation")
     parser.add_argument("--model", required=True, help="Source model (LiteLLM id, e.g., openai/gpt-4o-mini)")
     parser.add_argument("--disguise_as", required=True, help="Target model label")
-    parser.add_argument("--method", default="contrastive_with_al_examples", help="disguise method")
+    parser.add_argument("--method", default="contrastive", help="disguise method")
     parser.add_argument("--num_samples", type=int, default=20)
     parser.add_argument("--output_dir", default="results/validation")
     parser.add_argument("--prompts_file", default="data/datasets/chatbot_arena/chatbot_arena_prompts.txt")
-    # AL knobs
-    parser.add_argument("--al-num-examples", type=int, default=5)
-    parser.add_argument("--al-max-iterations", type=int, default=3)
-    parser.add_argument("--al-batch-size", type=int, default=10)
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -54,9 +49,6 @@ def main():
         "--num_samples", str(args.num_samples),
         "--output_dir", args.output_dir,
         "--prompts_file", args.prompts_file,
-        "--al-num-examples", str(args.__dict__["al-num-examples"]),
-        "--al-max-iterations", str(args.__dict__["al-max-iterations"]),
-        "--al-batch-size", str(args.__dict__["al-batch-size"]),
     ]
     code = run(gen_cmd)
     if code != 0:

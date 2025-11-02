@@ -134,7 +134,7 @@ Provide exactly {n_axes} trait axes."""
         axes_response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": axes_prompt}],
-            temperature=0.3
+            temperature=0.0
         )
         
         axes_text = axes_response.choices[0].message.content
@@ -183,7 +183,7 @@ Provide exactly one integer score (0-10) for each of the {n_axes} traits."""
             rating_response = client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[{"role": "user", "content": rating_prompt}],
-                temperature=0.1
+                temperature=0.0
             )
             
             rating_text = rating_response.choices[0].message.content
