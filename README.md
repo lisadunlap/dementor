@@ -19,6 +19,34 @@ python scripts/run_pipeline.py \
   --source-model meta-llama/Meta-Llama-3.1-8B-Instruct \
   --target-model gpt-4o \
   --method contrastive
+
+### Running Disguise with a Local vLLM Server
+
+If Meta-Llama generations come from a local vLLM instance but helper calls still need OpenAI (contrastive / behavioral analyzers, or the text-embedding endpoint used by embedding clustering), use this pattern for every disguise run:
+
+```bash
+# Analyzer calls (contrastive, behavioral) → OpenAI
+export ANALYSIS_API_BASE="https://api.openai.com/v1"
+# Embedding lookups (embedding_clustering) → OpenAI (defaults to key in .env)
+export EMBEDDING_API_BASE="https://api.openai.com/v1"
+
+python scripts/disguise.py \
+  --model meta-llama/Meta-Llama-3.1-8B-Instruct \
+  --disguise_as openai/gpt-4.1-mini \
+  --method <method_name> \
+  --prompts_file data/datasets/gsm8k/gsm8k_prompts_500.csv \
+  --num_samples 500 \
+  --source_responses data/model-responses/gsm8k/500/meta-llama_Meta-Llama-3.1-8B-Instruct_responses.csv \
+  --target_responses data/model-responses/gsm8k/500/openai_gpt-4.1-mini_responses.csv \
+  --openai-api-base http://localhost:8000/v1 \
+  --openai-api-key dummy \
+  --no_wandb
+```
+
+- Swap `<method_name>` with any disguise method (`random_sampling`, `contrastive`, `behavioral_based`, `stylistic_clustering`, `embedding_clustering`, `just_name_it`, etc.).
+- `--openai-api-base` / `--openai-api-key dummy` route the source model to your local vLLM server.
+- `ANALYSIS_API_BASE` ensures contrastive / behavioral analyzers hit OpenAI with the key from `.env`.
+- `EMBEDDING_API_BASE` (optional) pins embedding_clustering’s calls to the OpenAI text-embedding-3-small endpoint.
 ```
 
 ## Local Generation (HF vs vLLM)

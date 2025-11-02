@@ -13,6 +13,81 @@ import lmdb
 from litellm import completion
 import litellm
 
+# Optional per-model routing via environment configuration
+_MODEL_ALIAS_MAP: Dict[str, Dict[str, str] | str] = {}
+_MODEL_CONFIG_MAP: Dict[str, Dict[str, str]] = {}
+
+_alias_env = os.getenv("LITELLM_MODEL_ALIAS")
+if _alias_env:
+    try:
+        _MODEL_ALIAS_MAP = json.loads(_alias_env)
+        if hasattr(litellm, "set_model_aliases"):
+            # Newer litellm exposes helper; use it when available
+            litellm.set_model_aliases(_MODEL_ALIAS_MAP)  # type: ignore[attr-defined]
+    except Exception as alias_err:  # pragma: no cover - logging only
+        logging.warning(f"Could not apply LITELLM_MODEL_ALIAS: {alias_err}")
+        _MODEL_ALIAS_MAP = {}
+
+_config_env = os.getenv("LITELLM_CONFIG")
+if _config_env:
+    try:
+        _MODEL_CONFIG_MAP = json.loads(_config_env)
+    except Exception as config_err:  # pragma: no cover - logging only
+        logging.warning(f"Could not parse LITELLM_CONFIG: {config_err}")
+        _MODEL_CONFIG_MAP = {}
+
+
+def _apply_model_routing(model: str, kwargs: Dict[str, Any]) -> tuple[str, Dict[str, Any]]:
+    """Apply alias/config routing for the requested model."""
+    effective_model = model
+    updated_kwargs = dict(kwargs)  # shallow copy to avoid mutating caller
+
+    alias_entry = _MODEL_ALIAS_MAP.get(model)
+    if not alias_entry:
+        alias_env = os.getenv("LITELLM_MODEL_ALIAS")
+        if alias_env:
+            try:
+                alias_map = json.loads(alias_env)
+                alias_entry = alias_map.get(model)
+            except Exception:
+                alias_entry = None
+    provider_hint = None
+
+    if alias_entry:
+        if isinstance(alias_entry, str):
+            effective_model = alias_entry
+        elif isinstance(alias_entry, dict):
+            effective_model = alias_entry.get("model", effective_model)
+            for key in ("api_base", "api_key", "api_type", "api_version"):
+                if alias_entry.get(key) and key not in updated_kwargs:
+                    updated_kwargs[key] = alias_entry[key]
+            provider_hint = alias_entry.get("custom_llm_provider") or alias_entry.get("litellm_provider")
+
+    config_entry = _MODEL_CONFIG_MAP.get(model) or _MODEL_CONFIG_MAP.get(effective_model)
+    if not config_entry:
+        config_env = os.getenv("LITELLM_CONFIG")
+        if config_env:
+            try:
+                config_map = json.loads(config_env)
+                config_entry = config_map.get(model) or config_map.get(effective_model)
+            except Exception:
+                config_entry = None
+    if config_entry:
+        for key in ("api_base", "api_key", "api_type", "api_version"):
+            if config_entry.get(key) and key not in updated_kwargs:
+                updated_kwargs[key] = config_entry[key]
+        provider_hint = provider_hint or config_entry.get("custom_llm_provider") or config_entry.get("litellm_provider")
+
+    if provider_hint:
+        updated_kwargs.setdefault("custom_llm_provider", provider_hint)
+        updated_kwargs.setdefault("litellm_provider", provider_hint)
+    if "api_base" in updated_kwargs and "custom_llm_provider" not in updated_kwargs:
+        # default to openai-compatible when routing via custom base
+        updated_kwargs["custom_llm_provider"] = "openai"
+        updated_kwargs.setdefault("litellm_provider", "openai")
+
+    return effective_model, updated_kwargs
+
 # Import from serve utilities
 from serve.utils_general import (
     get_from_cache,
@@ -52,6 +127,7 @@ class CachedLLM:
             "max_tokens": kwargs.get("max_tokens"),
             "temperature": kwargs.get("temperature", 0.0),
             "top_p": kwargs.get("top_p"),
+            "api_base": kwargs.get("api_base"),
             # Add other relevant parameters that affect output
         }
         # Remove None values
@@ -70,11 +146,14 @@ class CachedLLM:
         Returns:
             Completion response (same format as litellm.completion)
         """
+        effective_model, routed_kwargs = _apply_model_routing(model, kwargs)
+        kwargs = routed_kwargs
+
         if not self.enable_cache:
-            return completion(model=model, messages=messages, **kwargs)
+            return completion(model=effective_model, messages=messages, **kwargs)
 
         # Create cache key
-        cache_key = self.create_cache_key(model, messages, **kwargs)
+        cache_key = self.create_cache_key(effective_model, messages, **kwargs)
 
         # Try to get from persistent cache first
         with cache_lock:
@@ -129,7 +208,7 @@ class CachedLLM:
         logging.debug("LLM Cache Miss")
 
         # Make the actual API call
-        response = completion(model=model, messages=messages, **kwargs)
+        response = completion(model=effective_model, messages=messages, **kwargs)
 
         # Cache the response
         with cache_lock:
@@ -191,8 +270,9 @@ def cached_completion(model: str, messages: List[Dict], enable_cache: bool = Tru
     """
     if enable_cache:
         return cached_llm.completion(model=model, messages=messages, **kwargs)
-    else:
-        return completion(model=model, messages=messages, **kwargs)
+
+    effective_model, routed_kwargs = _apply_model_routing(model, kwargs)
+    return completion(model=effective_model, messages=messages, **routed_kwargs)
 
 
 def get_cache_stats() -> Dict[str, Any]:
