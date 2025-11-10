@@ -3,17 +3,26 @@ import re
 from tqdm import tqdm
 from litellm import embedding
 from typing import List
+import os
 
 def get_model_embeddings(embeddings: List[str]) -> np.ndarray:
     """
     Get the embeddings for the source and target model's responses using litellm
     """
+    model_name = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
+    api_base = os.getenv("EMBEDDING_API_BASE") or os.getenv("ORIGINAL_OPENAI_API_BASE") or os.getenv("ANALYSIS_API_BASE")
+    api_key = os.getenv("EMBEDDING_API_KEY") or os.getenv("ORIGINAL_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
+    provider_hint = os.getenv("EMBEDDING_PROVIDER", "openai")
+
     embeddings_list = []
     for row in tqdm(embeddings, desc="Getting embeddings"):
         embedding_vec = embedding(
-            model="text-embedding-3-small",
+            model=model_name,
             input=row,
             caching=True,
+            api_base=api_base,
+            api_key=api_key,
+            custom_llm_provider=provider_hint,
         )
         embedding_vec = embedding_vec["data"][0]["embedding"]
         embeddings_list.append(embedding_vec)

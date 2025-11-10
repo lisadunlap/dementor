@@ -249,6 +249,7 @@ def load_run(selected_path: str, custom_path: str) -> Tuple[
     str,
     str,
     str,
+    str,
 ]:
     path = (custom_path or "").strip() or selected_path
     if not path:
@@ -258,10 +259,42 @@ def load_run(selected_path: str, custom_path: str) -> Tuple[
     dataset, subset, method = _infer_dataset_subset(Path(path))
     source_model = df.get("source_model", pd.Series(["?"])).iloc[0]
     target_model = df.get("target_model", pd.Series(["?"])).iloc[0]
+    # Fallback: infer source/target from filename pattern "<src>_as_<tgt>.csv"
+    try:
+        stem = Path(path).stem
+        if (not source_model or source_model == "?") and "_as_" in stem:
+            parts = stem.split("_as_", 1)
+            if parts and parts[0]:
+                source_model = parts[0]
+        if (not target_model or target_model == "?") and "_as_" in stem:
+            parts = stem.split("_as_", 1)
+            if len(parts) > 1 and parts[1]:
+                target_model = parts[1]
+    except Exception:
+        pass
 
     choices, summary = _make_prompt_choices(df, search_term="")
     if not choices:
         raise gr.Error("No prompts found in this CSV.")
+
+    # Attempt to infer a system prompt/template from common columns
+    sys_prompt = ""
+    for col in ("system_prompt", "prompt_template", "template", "completion_template"):
+        if col in df.columns:
+            val = str(df[col].iloc[0])
+            if val and val != "nan":
+                sys_prompt = val
+                break
+
+    # Fallbacks:
+    # 1) If file appears to be an OpenAI SFT/DPO eval (model id prefix), default to the generator system prompt
+    try:
+        if not sys_prompt:
+            fname = Path(path).name
+            if fname.startswith("openai_gpt-4.1-mini"):
+                sys_prompt = "You are a helpful assistant."
+    except Exception:
+        pass
 
     metadata_lines = [
         f"**File:** `{path}`",
@@ -286,6 +319,7 @@ def load_run(selected_path: str, custom_path: str) -> Tuple[
         "method": method,
         "source_model": source_model,
         "target_model": target_model,
+        "system_prompt": sys_prompt,
     }
 
     metadata = "\n".join(metadata_lines)
@@ -302,6 +336,7 @@ def load_run(selected_path: str, custom_path: str) -> Tuple[
         gr.update(choices=choices, value=choices[0]),
         summary,
         metadata,
+        sys_prompt,
         source_suggestion,
         target_suggestion,
         prompt_text,
@@ -466,6 +501,7 @@ def build_interface() -> gr.Blocks:
             status = gr.Markdown(elem_classes=["right-note"])
 
         metadata = gr.Markdown(visible=False)
+        system_prompt_box = gr.Textbox(label="System prompt / template", lines=3, interactive=False, elem_classes=["mono"])
 
         search_term = gr.Textbox(
             label="Filter prompts",
@@ -524,6 +560,59 @@ def build_interface() -> gr.Blocks:
             source_path = gr.Textbox(label="Source baseline CSV or compare CSV (A)")
             show_source = gr.Checkbox(label="Show source baseline column", value=True)
 
+        with gr.Accordion("Scores", open=False):
+            score_path = gr.Textbox(label="Path to scored.csv (pairwise)")
+            score_summary = gr.Markdown()
+            row_score = gr.Markdown()
+
+        def _load_scores(path: str):
+            if not path:
+                return {}, ""
+            try:
+                sdf = pd.read_csv(path)
+                # Build maps by prompt
+                by_prompt = {}
+                for _, r in sdf.iterrows():
+                    p = str(r.get("prompt", ""))
+                    if p:
+                        by_prompt[p] = r.to_dict()
+                # Choose a primary metric
+                candidate_cols = [
+                    "win_rate",
+                    "preference_win",
+                    "preference_score",
+                    "score",
+                    "similarity",
+                    "accuracy",
+                ]
+                cols = [c for c in sdf.columns if sdf[c].dtype.kind in ("i", "u", "f")]
+                primary = next((c for c in candidate_cols if c in cols), None)
+                # Fallback: first numeric that looks like a score
+                if primary is None:
+                    for c in cols:
+                        lc = c.lower()
+                        if lc.startswith("win") or "score" in lc or "similar" in lc or lc.startswith("acc"):
+                            primary = c
+                            break
+                summary_lines = []
+                if primary is not None:
+                    vals = sdf[primary].dropna().astype(float)
+                    if len(vals) > 1:
+                        mean = float(vals.mean())
+                        stderr = float(vals.std(ddof=1)) / (len(vals) ** 0.5)
+                        ci95 = 1.96 * stderr
+                        summary_lines.append(f"- **{primary}**: {mean:.4f} ± {ci95:.4f} (95% CI)")
+                    else:
+                        summary_lines.append(f"- **{primary}**: {float(vals.iloc[0]) if len(vals)==1 else 'n/a'}")
+                # Also include other numeric means
+                numeric_means = sdf.select_dtypes(include=["number"]).mean().to_dict()
+                extras = {k: round(v, 4) for k, v in numeric_means.items() if k != (primary or "") and (k.lower().startswith(("win", "score", "similar", "acc")))}
+                summary_lines.extend([f"- **{k}**: {v}" for k, v in extras.items()])
+                summary = "\n".join(summary_lines) if summary_lines else "(no numeric metrics found)"
+                return by_prompt, f"### Score summary\n{summary}"
+            except Exception as e:
+                return {}, f"Failed to load scores: {e}"
+
         with gr.Accordion("Run metadata", open=False):
             meta_area = gr.Markdown()
 
@@ -536,6 +625,7 @@ def build_interface() -> gr.Blocks:
                 prompt_update,
                 summary,
                 meta_text,
+                sys_prompt,
                 source_suggestion,
                 target_suggestion,
                 prompt_text,
@@ -553,16 +643,23 @@ def build_interface() -> gr.Blocks:
             source_update = gr.update(value=source_text if show_src else "", visible=show_src)
             source_dropdown_update = gr.update(value=_path_to_label(source_suggestion))
             target_dropdown_update = gr.update(value=_path_to_label(target_suggestion))
+            # Update dynamic titles with model names
+            src = new_state.get("source_model", "?")
+            tgt = new_state.get("target_model", "?")
+            disguised_label = f"Disguised ({src} → {tgt})"
+            target_label = f"Target ({tgt})"
+
             return (
                 new_state,
                 prompt_update,
                 status_text,
                 meta_text,
+                gr.update(value=sys_prompt or "", visible=bool(sys_prompt)),
                 source_suggestion,
                 target_suggestion,
                 prompt_text,
-                disguised_text,
-                target_text,
+                gr.update(value=disguised_text, label=disguised_label),
+                gr.update(value=target_text, label=target_label),
                 info_text,
                 source_update,
                 source_dropdown_update,
@@ -604,6 +701,7 @@ def build_interface() -> gr.Blocks:
                 prompt_dropdown,
                 status,
                 metadata,
+                system_prompt_box,
                 source_path,
                 target_path,
                 prompt_box,
@@ -628,6 +726,7 @@ def build_interface() -> gr.Blocks:
                 prompt_dropdown,
                 status,
                 metadata,
+                system_prompt_box,
                 source_path,
                 target_path,
                 prompt_box,
@@ -650,6 +749,36 @@ def build_interface() -> gr.Blocks:
             fn=lambda s, choice, tgt_path, show_src, src_path: _update_example(s, choice, tgt_path, show_src, src_path),
             inputs=[state, prompt_dropdown, target_path, show_source, source_path],
             outputs=[prompt_box, disguised_box, target_box, info_box, source_box],
+        )
+
+        # Scores wiring: load on path, update per-row
+        def _on_score_path(path):
+            score_map, summary_md = _load_scores(path)
+            return score_map, summary_md
+
+        score_state = gr.State({})
+        score_path.change(fn=_on_score_path, inputs=[score_path], outputs=[score_state, score_summary])
+
+        def _update_row_score(score_map, s, choice):
+            if not score_map or not s or not choice:
+                return ""
+            idx = _parse_choice(choice)
+            df = pd.DataFrame(s["records"])
+            if idx < 0 or idx >= len(df):
+                return ""
+            p = df.iloc[idx].get("prompt", "")
+            row = score_map.get(p)
+            if not row:
+                return ""
+            # Render a compact subset
+            keys = [k for k in row.keys() if any(x in k.lower() for x in ("win", "score", "similar", "pref", "acc"))]
+            view = "\n".join([f"- **{k}**: {row[k]}" for k in sorted(set(keys))])
+            return f"### Row scores\n{view}" if view else ""
+
+        prompt_dropdown.change(
+            fn=_update_row_score,
+            inputs=[score_state, state, prompt_dropdown],
+            outputs=[row_score],
         )
 
         target_csv_dropdown.change(
@@ -682,6 +811,7 @@ def build_interface() -> gr.Blocks:
                     prompt_dropdown,
                     status,
                     metadata,
+                    system_prompt_box,
                     source_path,
                     target_path,
                     prompt_box,

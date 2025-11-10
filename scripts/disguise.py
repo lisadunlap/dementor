@@ -12,6 +12,7 @@ import pandas as pd
 import os
 import logging
 import time
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -32,6 +33,7 @@ from litellm import completion
 import litellm
 from tqdm import tqdm
 import wandb
+from cached_llm import register_model_config
 
 # Enable caching for API calls (not for vLLM/local servers)
 if not hasattr(litellm, 'cache') or litellm.cache is None:
@@ -202,41 +204,52 @@ def generate_disguised_responses(
             else:
                 # LiteLLM: decide routing and provider
                 routed_model = model
-                api_base = os.getenv('OPENAI_API_BASE')
-                api_key = os.getenv('OPENAI_API_KEY')
+                generation_api_base = os.getenv('GENERATION_API_BASE')
+                generation_api_key = os.getenv('GENERATION_API_KEY')
+                generation_provider = os.getenv('GENERATION_PROVIDER')
+                api_base = generation_api_base
+                api_key = generation_api_key
+
                 # Force official base for OpenAI models
                 if model_lower.startswith('openai/gpt-'):
                     os.environ['OPENAI_API_BASE'] = 'https://api.openai.com/v1'
                     api_base = 'https://api.openai.com/v1'
-                # If a local OpenAI-compatible base is set and no provider prefix, wrap with openai/
-                if api_base and not _has_provider_prefix(model):
+                    if not generation_provider:
+                        generation_provider = 'openai'
+
+                if not api_base and (not generation_provider or generation_provider == 'openai'):
+                    api_base = os.getenv('OPENAI_API_BASE')
+                if not api_key and (not generation_provider or generation_provider == 'openai'):
+                    api_key = os.getenv('OPENAI_API_KEY')
+
+                provider_hint = generation_provider
+                if api_base and not provider_hint and not _has_provider_prefix(model):
                     routed_model = f"openai/{model}"
 
                 def _llm_call():
                     # Use cached completion for persistent caching
+                    call_kwargs = {
+                        'model': routed_model,
+                        'messages': disguised_messages,
+                        'temperature': temperature,
+                        'max_tokens': max_new_tokens,
+                        'request_timeout': 60,
+                    }
+                    if api_base:
+                        call_kwargs['api_base'] = api_base
+                    if api_key:
+                        call_kwargs['api_key'] = api_key
+                    if provider_hint:
+                        if provider_hint != 'openai' or not _has_provider_prefix(routed_model):
+                            call_kwargs.setdefault('custom_llm_provider', provider_hint)
+                            call_kwargs.setdefault('litellm_provider', provider_hint)
                     try:
                         from cached_llm import cached_completion
-                        resp = cached_completion(
-                            model=routed_model,
-                            messages=disguised_messages,
-                            temperature=temperature,
-                            max_tokens=max_new_tokens,
-                            api_base=api_base if api_base else None,
-                            api_key=api_key if api_key else None,
-                            request_timeout=60,
-                        )
+                        resp = cached_completion(**call_kwargs)
                         return resp.choices[0].message.content
                     except ImportError:
                         # Fallback to standard litellm
-                        resp = completion(
-                            model=routed_model,
-                            messages=disguised_messages,
-                            temperature=temperature,
-                            max_tokens=max_new_tokens,
-                            api_base=api_base if api_base else None,
-                            api_key=api_key if api_key else None,
-                            request_timeout=60,
-                        )
+                        resp = completion(**call_kwargs)
                         return resp["choices"][0]["message"]["content"]
                 disguised_response = _gen_with_retries(_llm_call)
 
@@ -275,13 +288,33 @@ def generate_disguised_responses(
 
 
 def main():
+    env_defaults = {
+        "model": os.getenv("DISGUISE_MODEL"),
+        "disguise_as": os.getenv("DISGUISE_TARGET_MODEL"),
+        "source_responses": os.getenv("DISGUISE_SOURCE_RESPONSES"),
+        "target_responses": os.getenv("DISGUISE_TARGET_RESPONSES"),
+        "prompts_file": os.getenv("DISGUISE_PROMPTS_FILE"),
+        "output_dir": os.getenv("DISGUISE_OUTPUT_DIR"),
+        "num_samples": os.getenv("DISGUISE_NUM_SAMPLES"),
+    }
+
     parser = argparse.ArgumentParser(description="Streamlined disguise experiments")
-    
+
     # Required arguments
-    parser.add_argument("--model", type=str, required=True, 
-                       help="Source model to disguise (e.g., google/gemma-3-1b-it)")
-    parser.add_argument("--disguise_as", type=str, required=True,
-                       help="Target model to mimic (e.g., gpt-4o)")
+    parser.add_argument(
+        "--model",
+        type=str,
+        required=env_defaults["model"] is None,
+        default=env_defaults["model"],
+        help="Source model to disguise (e.g., google/gemma-3-1b-it)",
+    )
+    parser.add_argument(
+        "--disguise_as",
+        type=str,
+        required=env_defaults["disguise_as"] is None,
+        default=env_defaults["disguise_as"],
+        help="Target model to mimic (e.g., gpt-4o)",
+    )
     
     # Method selection
     parser.add_argument(
@@ -303,21 +336,40 @@ def main():
     )
     
     # Data paths
-    parser.add_argument("--source_responses", type=str, 
-                       help="Path to source model responses CSV (auto-detect if not provided)")
-    parser.add_argument("--target_responses", type=str,
-                       help="Path to target model responses CSV (auto-detect if not provided)")
-    parser.add_argument("--prompts_file", type=str,
-                       default="data/datasets/chatbot_arena/chatbot_arena_prompts.txt",
-                       help="File with prompts (one per line)")
+    parser.add_argument(
+        "--source_responses",
+        type=str,
+        default=env_defaults["source_responses"],
+        help="Path to source model responses CSV (auto-detect if not provided)",
+    )
+    parser.add_argument(
+        "--target_responses",
+        type=str,
+        default=env_defaults["target_responses"],
+        help="Path to target model responses CSV (auto-detect if not provided)",
+    )
+    parser.add_argument(
+        "--prompts_file",
+        type=str,
+        default="data/datasets/chatbot_arena/chatbot_arena_prompts.txt",
+        help="File with prompts (one per line)",
+    )
     
     # Experiment settings
-    parser.add_argument("--num_samples", type=int, default=100,
-                       help="Number of responses to generate")
+    parser.add_argument(
+        "--num_samples",
+        type=int,
+        default=100,
+        help="Number of responses to generate",
+    )
     parser.add_argument("--temperature", type=float, default=0.0,
                        help="Temperature for generation (0.0 for deterministic)")
-    parser.add_argument("--output_dir", type=str, default=None,
-                       help="Output directory for results")
+    parser.add_argument(
+        "--output_dir",
+        type=str,
+        default=env_defaults["output_dir"],
+        help="Output directory for results",
+    )
     
     # Evaluation settings
     parser.add_argument("--skip_evaluation", action="store_true",
@@ -341,9 +393,61 @@ def main():
                        help="Override OPENAI_API_BASE for LiteLLM (e.g., http://localhost:8000/v1)")
     parser.add_argument("--openai-api-key", type=str, default=None,
                        help="Override OPENAI_API_KEY for LiteLLM (placeholder allowed for local)")
+
+    # Granular API routing overrides
+    parser.add_argument("--generation-api-base", type=str, default=None,
+                       help="API base for source model generation (overrides GENERATION_API_BASE env)")
+    parser.add_argument("--generation-api-key", type=str, default=None,
+                       help="API key for source model generation (overrides GENERATION_API_KEY env)")
+    parser.add_argument("--generation-provider", type=str, default=None,
+                       help="LiteLLM provider hint for source model generation")
+
+    parser.add_argument("--analysis-api-base", type=str, default=None,
+                       help="API base for analyzer models (contrastive/behavioral)")
+    parser.add_argument("--analysis-api-key", type=str, default=None,
+                       help="API key for analyzer models")
+    parser.add_argument("--analysis-provider", type=str, default=None,
+                       help="LiteLLM provider hint for analyzer calls")
+
+    parser.add_argument("--embedding-api-base", type=str, default=None,
+                       help="API base for embedding lookups (embedding_clustering)")
+    parser.add_argument("--embedding-api-key", type=str, default=None,
+                       help="API key for embedding lookups")
+    parser.add_argument("--embedding-provider", type=str, default=None,
+                       help="LiteLLM provider hint for embedding calls")
     
     args = parser.parse_args()
     setup_logging()
+
+    def _maybe_override(value, fallback, *, compare_default=None, transform=lambda x: x):
+        if fallback is None:
+            return value
+        if compare_default is not None and value != compare_default:
+            return value
+        try:
+            return transform(fallback)
+        except Exception:
+            return value
+
+    prompts_default = parser.get_default("prompts_file")
+    args.prompts_file = _maybe_override(
+        args.prompts_file,
+        env_defaults["prompts_file"],
+        compare_default=prompts_default,
+    )
+    num_samples_default = parser.get_default("num_samples")
+    args.num_samples = _maybe_override(
+        args.num_samples,
+        env_defaults["num_samples"],
+        compare_default=num_samples_default,
+        transform=int,
+    )
+    if not args.source_responses and env_defaults["source_responses"]:
+        args.source_responses = env_defaults["source_responses"]
+    if not args.target_responses and env_defaults["target_responses"]:
+        args.target_responses = env_defaults["target_responses"]
+    if args.output_dir is None and env_defaults["output_dir"]:
+        args.output_dir = env_defaults["output_dir"]
     
     # Defer creating output directory until after resolving dataset + defaults
 
@@ -358,6 +462,45 @@ def main():
         os.environ["OPENAI_API_BASE"] = args.openai_api_base
     if args.openai_api_key:
         os.environ["OPENAI_API_KEY"] = args.openai_api_key
+
+    # Generation routing (source model)
+    generation_api_base = args.generation_api_base or os.getenv("GENERATION_API_BASE")
+    generation_api_key = args.generation_api_key or os.getenv("GENERATION_API_KEY")
+    generation_provider = args.generation_provider or os.getenv("GENERATION_PROVIDER")
+    generation_config = {}
+    if generation_api_base:
+        generation_config["api_base"] = generation_api_base
+        os.environ["GENERATION_API_BASE"] = generation_api_base
+    if generation_api_key:
+        generation_config["api_key"] = generation_api_key
+        os.environ["GENERATION_API_KEY"] = generation_api_key
+    if generation_provider:
+        generation_config["custom_llm_provider"] = generation_provider
+        os.environ["GENERATION_PROVIDER"] = generation_provider
+    if generation_config:
+        register_model_config(args.model, generation_config)
+
+    # Analysis routing (contrastive / behavioral)
+    analysis_api_base = args.analysis_api_base or os.getenv("ANALYSIS_API_BASE")
+    analysis_api_key = args.analysis_api_key or os.getenv("ANALYSIS_API_KEY")
+    analysis_provider = args.analysis_provider or os.getenv("ANALYSIS_PROVIDER")
+    if analysis_api_base:
+        os.environ["ANALYSIS_API_BASE"] = analysis_api_base
+    if analysis_api_key:
+        os.environ["ANALYSIS_API_KEY"] = analysis_api_key
+    if analysis_provider:
+        os.environ["ANALYSIS_PROVIDER"] = analysis_provider
+
+    # Embedding routing (embedding_clustering)
+    embedding_api_base = args.embedding_api_base or os.getenv("EMBEDDING_API_BASE")
+    embedding_api_key = args.embedding_api_key or os.getenv("EMBEDDING_API_KEY")
+    embedding_provider = args.embedding_provider or os.getenv("EMBEDDING_PROVIDER")
+    if embedding_api_base:
+        os.environ["EMBEDDING_API_BASE"] = embedding_api_base
+    if embedding_api_key:
+        os.environ["EMBEDDING_API_KEY"] = embedding_api_key
+    if embedding_provider:
+        os.environ["EMBEDDING_PROVIDER"] = embedding_provider
 
     # Hard-guard: if generation model is an OpenAI-hosted model, force official base
     try:
@@ -381,6 +524,13 @@ def main():
         p = (prompts_path or "").lower()
         if "_500" in p or "/500" in p or p.endswith("500.csv"):
             return "500"
+        stem = Path(prompts_path or "").stem.lower()
+        eval_match = re.search(r"eval[_-]?(\d+)", stem)
+        if eval_match:
+            return f"eval{eval_match.group(1)}"
+        train_match = re.search(r"train[_-]?(\d+)", stem)
+        if train_match:
+            return f"train{train_match.group(1)}"
         return "full"
     subset = _infer_subset(args.prompts_file)
 

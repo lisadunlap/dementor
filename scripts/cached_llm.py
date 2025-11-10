@@ -53,14 +53,20 @@ def _apply_model_routing(model: str, kwargs: Dict[str, Any]) -> tuple[str, Dict[
                 alias_entry = None
     provider_hint = None
 
+    def _maybe_set(key: str, value: Any) -> None:
+        if value is None:
+            return
+        current = updated_kwargs.get(key)
+        if not current:
+            updated_kwargs[key] = value
+
     if alias_entry:
         if isinstance(alias_entry, str):
             effective_model = alias_entry
         elif isinstance(alias_entry, dict):
             effective_model = alias_entry.get("model", effective_model)
             for key in ("api_base", "api_key", "api_type", "api_version"):
-                if alias_entry.get(key) and key not in updated_kwargs:
-                    updated_kwargs[key] = alias_entry[key]
+                _maybe_set(key, alias_entry.get(key))
             provider_hint = alias_entry.get("custom_llm_provider") or alias_entry.get("litellm_provider")
 
     config_entry = _MODEL_CONFIG_MAP.get(model) or _MODEL_CONFIG_MAP.get(effective_model)
@@ -74,19 +80,31 @@ def _apply_model_routing(model: str, kwargs: Dict[str, Any]) -> tuple[str, Dict[
                 config_entry = None
     if config_entry:
         for key in ("api_base", "api_key", "api_type", "api_version"):
-            if config_entry.get(key) and key not in updated_kwargs:
-                updated_kwargs[key] = config_entry[key]
+            _maybe_set(key, config_entry.get(key))
         provider_hint = provider_hint or config_entry.get("custom_llm_provider") or config_entry.get("litellm_provider")
 
-    if provider_hint:
-        updated_kwargs.setdefault("custom_llm_provider", provider_hint)
-        updated_kwargs.setdefault("litellm_provider", provider_hint)
-    if "api_base" in updated_kwargs and "custom_llm_provider" not in updated_kwargs:
-        # default to openai-compatible when routing via custom base
+    if provider_hint and provider_hint != "openai":
+        if not updated_kwargs.get("custom_llm_provider"):
+            updated_kwargs["custom_llm_provider"] = provider_hint
+        if not updated_kwargs.get("litellm_provider"):
+            updated_kwargs["litellm_provider"] = provider_hint
+    api_base_val = updated_kwargs.get("api_base")
+    if api_base_val and api_base_val != "https://api.openai.com/v1" and not updated_kwargs.get("custom_llm_provider"):
+        # default to openai-compatible when routing via custom base without explicit provider
         updated_kwargs["custom_llm_provider"] = "openai"
-        updated_kwargs.setdefault("litellm_provider", "openai")
+        if not updated_kwargs.get("litellm_provider"):
+            updated_kwargs["litellm_provider"] = "openai"
 
     return effective_model, updated_kwargs
+
+
+def register_model_config(model: str, config: Dict[str, str]) -> None:
+    """Register or update per-model routing configuration at runtime."""
+    if not isinstance(config, dict):  # defensive, shouldn't happen
+        return
+    cleaned = {k: v for k, v in config.items() if v}
+    if cleaned:
+        _MODEL_CONFIG_MAP[model] = cleaned
 
 # Import from serve utilities
 from serve.utils_general import (

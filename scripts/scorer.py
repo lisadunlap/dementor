@@ -312,15 +312,11 @@ def score_pairwise_dataframe(
     df: pd.DataFrame,
     *,
     judge_model: str,
-    heuristics_only: bool,
 ) -> pd.DataFrame:
     result = df.copy()
     heuristics = _compute_pairwise_heuristics(result, 'target_response', 'model_response')
     for column in heuristics.columns:
         result[column] = heuristics[column]
-
-    if heuristics_only:
-        return result
 
     scores: List[Dict[str, object]] = []
     for _, row in result.iterrows():
@@ -357,14 +353,13 @@ def score_pairwise(
     output_path: str,
     *,
     judge_model: str = "openai/gpt-4.1-mini",
-    heuristics_only: bool = False,
 ) -> pd.DataFrame:
     df = _read_csv_robust(input_file)
     for column in ('model_response', 'target_response'):
         if column not in df.columns:
             raise ValueError("Input must contain columns: model_response and target_response")
 
-    scored = score_pairwise_dataframe(df, judge_model=judge_model, heuristics_only=heuristics_only)
+    scored = score_pairwise_dataframe(df, judge_model=judge_model)
 
     out_path = Path(output_path)
     out_dir = out_path.parent or Path('.')
@@ -384,7 +379,6 @@ def score_pairwise(
         'input_file': input_file,
         'num_samples': len(scored),
         'judge_model': judge_model,
-        'heuristics_only': heuristics_only,
         'metrics': metrics,
     }
     summary_path = out_dir / 'summary.json'
@@ -401,7 +395,6 @@ def score_model_comparison(
     output_file: Optional[str] = None,
     *,
     judge_model: str = "openai/gpt-4.1-mini",
-    heuristics_only: bool = False,
     openai_api_base: Optional[str] = None,
     openai_api_key: Optional[str] = None,
 ) -> pd.DataFrame:
@@ -444,7 +437,6 @@ def score_model_comparison(
             str(out_path),
             str(score_path),
             judge_model=judge_model,
-            heuristics_only=heuristics_only,
         )
     finally:
         if original_base is not None:
@@ -525,14 +517,12 @@ def _build_parser() -> argparse.ArgumentParser:
     pairwise.add_argument('--input', required=True, help='CSV with prompt, model_response, target_response columns.')
     pairwise.add_argument('--output', required=True, help='Destination file path (directory inferred).')
     pairwise.add_argument('--judge-model', default='openai/gpt-4.1-mini', help='LLM judge model.')
-    pairwise.add_argument('--heuristics-only', action='store_true', help='Skip LLM judge and compute heuristics only.')
 
     compare = subparsers.add_parser('compare', help='Merge two response files and score pairwise.')
     compare.add_argument('--a', required=True, help='Source model CSV (prompt, model_response).')
     compare.add_argument('--b', required=True, help='Target model CSV (prompt, model_response).')
     compare.add_argument('--output', required=True, help='Merged comparison CSV path.')
     compare.add_argument('--judge-model', default='openai/gpt-4.1-mini', help='LLM judge model.')
-    compare.add_argument('--heuristics-only', action='store_true', help='Skip LLM semantic/stylistic judge.')
     compare.add_argument('--openai-api-base', default=None, help='Override OPENAI_API_BASE for judge routing.')
     compare.add_argument('--openai-api-key', default=None, help='Override OPENAI_API_KEY for judge routing.')
 
@@ -563,7 +553,6 @@ def main(argv: Optional[List[str]] = None) -> None:
             input_file=args.input,
             output_path=args.output,
             judge_model=args.judge_model,
-            heuristics_only=args.heuristics_only,
         )
     elif args.command == 'compare':
         score_model_comparison(
@@ -571,7 +560,6 @@ def main(argv: Optional[List[str]] = None) -> None:
             target_file=args.b,
             output_file=args.output,
             judge_model=args.judge_model,
-            heuristics_only=args.heuristics_only,
             openai_api_base=args.openai_api_base,
             openai_api_key=args.openai_api_key,
         )
