@@ -198,6 +198,8 @@ Additional:
 - `examples/` — provider setup and copy‑paste commands
 - `scripts/smoke_test.py` — offline smoke test (no API keys)
 - `scripts/serve/` — optional helpers for vLLM/local serving experiments
+- `workflows/README.md` — instructions for the SFT + DPO workflows, dataset setup, and adapter registry usage.
+- `run_gsm8k_finetune_responses.sh` — helper to regenerate the 200-sample GSM8K evaluation responses (and judge scores) for all four finetune adapters (Tinker/OpenAI, SFT/DPO).
 
 ## Filename Convention
 

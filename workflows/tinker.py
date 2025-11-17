@@ -5,6 +5,7 @@ import math
 import random
 import re
 from dataclasses import dataclass
+from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Iterable, Optional, Sequence
@@ -299,7 +300,12 @@ def load_lora_kwargs(config_arg: Optional[str]) -> dict:
     return json.loads(config_arg)
 
 
-def record_adapter_mapping(weights_name: str, sampler_path: str, registry_path: Path) -> None:
+def record_adapter_mapping(
+    weights_name: str,
+    sampler_path: str,
+    registry_path: Path,
+    metadata: Optional[dict[str, object]] = None,
+) -> None:
     """Persist adapter name -> sampler path locally for reuse."""
     registry_path.parent.mkdir(parents=True, exist_ok=True)
     if registry_path.exists():
@@ -310,7 +316,10 @@ def record_adapter_mapping(weights_name: str, sampler_path: str, registry_path: 
             registry = {}
     else:
         registry = {}
-    registry[weights_name] = sampler_path
+    entry: dict[str, object] = {"path": sampler_path}
+    if metadata:
+        entry.update(metadata)
+    registry[weights_name] = entry
     with registry_path.open("w", encoding="utf-8") as fh:
         json.dump(registry, fh, indent=2, sort_keys=True)
     print(f"Recorded adapter mapping in {registry_path}: {weights_name} -> {sampler_path}")
@@ -324,18 +333,26 @@ def list_available_models(service_client: tinker.ServiceClient) -> list[str]:
 
 def _save_sampler_checkpoint(
     training_client: tinker.TrainingClient,
-    weights_name: str,
+    alias_name: str,
     registry_path: Path,
 ) -> Optional[str]:
+    """Save sampler weights under a unique name and record alias mapping."""
+    unique_suffix = datetime.utcnow().strftime("%Y%m%d%H%M%S")
+    unique_name = f"{alias_name}_{unique_suffix}"
     try:
-        sampler_res = training_client.save_weights_for_sampler(name=weights_name).result()
+        sampler_res = training_client.save_weights_for_sampler(name=unique_name).result()
     except Exception as exc:  # pragma: no cover - passthrough for existing behavior
         print(f"Warning: could not record sampler path: {exc}")
         return None
 
     sampler_path = getattr(sampler_res, "path", None)
     if isinstance(sampler_path, str) and sampler_path:
-        record_adapter_mapping(weights_name, sampler_path, registry_path)
+        metadata = {"adapter_name": unique_name}
+        record_adapter_mapping(alias_name, sampler_path, registry_path, metadata=metadata)
+        print(
+            f"Sampler stored under internal name '{unique_name}'. "
+            f"Alias '{alias_name}' now points to {sampler_path}."
+        )
         return sampler_path
     return None
 

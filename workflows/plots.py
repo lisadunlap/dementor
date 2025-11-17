@@ -4,7 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, List, Optional, Sequence
 
-import plotly.graph_objects as go
+import matplotlib.pyplot as plt
 
 
 @dataclass(frozen=True)
@@ -65,26 +65,28 @@ def plot_convergence(
     *,
     title: str = "Finetuning Convergence",
 ) -> Path:
-    """Render one or more convergence series into an interactive Plotly HTML plot."""
+    """Render convergence series into a static PNG plot."""
     if not series_list:
         raise ValueError("series_list must contain at least one ConvergenceSeries.")
 
-    figure = go.Figure()
+    fig, ax = plt.subplots(figsize=(8, 4.5))
     for series in series_list:
-        figure.add_scatter(
-            x=series.steps,
-            y=series.values,
-            mode="lines+markers",
-            name=f"{series.label} · {series.metric_name}",
+        ax.plot(
+            series.steps,
+            series.values,
+            marker="o",
+            linewidth=1.5,
+            markersize=3,
+            label=f"{series.label} · {series.metric_name}",
         )
-    figure.update_layout(
-        title=title,
-        xaxis_title="Step",
-        yaxis_title="Metric Value",
-        template="plotly_white",
-        legend_title="Run · Metric",
-    )
+    ax.set_title(title)
+    ax.set_xlabel("Step")
+    ax.set_ylabel("Metric Value")
+    ax.legend(loc="best")
+    ax.grid(True, linewidth=0.3, linestyle="--", alpha=0.5)
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    figure.write_html(str(output_path), include_plotlyjs="cdn")
+    fig.tight_layout()
+    fig.savefig(output_path, dpi=200)
+    plt.close(fig)
     return output_path

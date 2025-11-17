@@ -48,10 +48,10 @@ def sync_openai_metrics(job_map: Dict[str, Path]) -> None:
 
         out_dir = job_map[model_id] / "plots"
         out_dir.mkdir(parents=True, exist_ok=True)
-        html_name = "openai_sft.html" if "sft_" in str(job_map[model_id]) else "openai_dpo.html"
-        html_path = out_dir / html_name
-        plot_convergence([series], html_path, title=f"{model_id} convergence")
-        print(f"[sync] Wrote {html_path}")
+        plot_name = "openai_sft.png" if "sft_" in str(job_map[model_id]) else "openai_dpo.png"
+        plot_path = out_dir / plot_name
+        plot_convergence([series], plot_path, title=f"{model_id} convergence")
+        print(f"[sync] Wrote {plot_path}")
 
 
 if __name__ == "__main__":

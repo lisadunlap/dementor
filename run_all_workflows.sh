@@ -8,15 +8,18 @@ from workflows.tinker import SFTDatasetConfig
 cfg = SFTWorkflowConfig(
     provider="tinker",
     dataset=SFTDatasetConfig(
-        train_csv=Path("data/model-responses/gsm8k/splits/seed42/train_300/meta-llama_Meta-Llama-3.1-8B-Instruct_responses_train300_seed42.csv"),
-        eval_csv=Path("data/model-responses/gsm8k/splits/seed42/eval_200/meta-llama_Meta-Llama-3.1-8B-Instruct_responses_eval200_seed42.csv"),
+        train_csv=Path("data/model-responses/gsm8k/splits/seed42/train_300/openai_gpt-4.1-mini_responses_train300_seed42.csv"),
+        eval_csv=Path("data/model-responses/gsm8k/splits/seed42/eval_200/openai_gpt-4.1-mini_responses_eval200_seed42.csv"),
         prompt_column="prompt",
         completion_column="model_response",
     ),
     output_dir=Path("data/results/workflows/sft_llama-3.1-8b-instruct_as_gpt-4.1-mini"),
     tinker=TinkerSFTParams(
         base_model="meta-llama/Llama-3.1-8B-Instruct",
-        weights_name="sft_llama-3.1-8b-instruct_as_gpt-4.1-mini",
+        weights_name="gsm8k_llama-3.1-8b-instruct",
+        batch_size=16,
+        epochs=6,
+        learning_rate=1e-4,
     ),
 )
 run_sft_workflow(cfg)
@@ -41,8 +44,8 @@ cfg = SFTWorkflowConfig(
     openai=OpenAISFTJobConfig(
         model="gpt-4.1-mini-2025-04-14",
         system_prompt="You are a patient math tutor.",
-        epochs=3,
-        batch_size=25,
+        epochs=6,
+        batch_size=16,
     ),
 )
 run_sft_workflow(cfg)
@@ -69,6 +72,10 @@ cfg = DPOWorkflowConfig(
     tinker=TinkerDPOParams(
         model_name="meta-llama/Llama-3.1-8B-Instruct",
         log_path=Path("data/results/workflows/dpo_llama-3.1-8b-instruct_as_gpt-4.1-mini/logs"),
+        batch_size=16,
+        num_epochs=3,
+        renderer_name="llama3",
+        save_every=20,
     ),
 )
 run_dpo_workflow(cfg)
@@ -94,8 +101,8 @@ cfg = DPOWorkflowConfig(
     output_dir=Path("data/results/workflows/dpo_gpt-4.1-mini_as_llama-3.1-8b-instruct"),
     openai=OpenAIDPOParams(
         model="gpt-4.1-mini-2025-04-14",
-        epochs=1,
-        batch_size=25,
+        epochs=3,
+        batch_size=16,
         beta=0.1,
     ),
 )

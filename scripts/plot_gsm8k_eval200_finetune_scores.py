@@ -2,8 +2,9 @@
 
 This script aggregates the semantic and stylistic LLM-judge metrics stored in the
 ``scored_metrics.csv`` files that live under ``data/results/gsm8k/eval200`` and
-renders a grouped bar chart comparing all 12 runs.  It also emits a tabular CSV
-summary that can be shared directly.
+renders a grouped bar chart comparing all 12 runs.  The visualization is written
+as an interactive Plotly HTML document, and a tabular CSV summary is emitted for
+quick reference.
 """
 from __future__ import annotations
 
@@ -36,8 +37,9 @@ METHOD_ORDER: Tuple[str, ...] = (
     "contrastive",
     "stylistic_clustering",
     "embedding_clustering",
-    "just_name_it",
 )
+
+EXCLUDED_METHODS = {"just_name_it"}
 
 
 @dataclass
@@ -112,6 +114,7 @@ def _collect_runs(root: Path, expected_count: int) -> List[RunMetrics]:
         raise FileNotFoundError(f"No scored_metrics.csv files found under {root}")
 
     runs = [_build_run_summary(path, root) for path in paths]
+    runs = [run for run in runs if run.method not in EXCLUDED_METHODS]
     runs.sort(key=lambda item: _sort_key(item.method, item.pair_id))
 
     for run in runs:
@@ -221,7 +224,13 @@ def _parse_args() -> argparse.Namespace:
         "--output-image",
         type=Path,
         default=Path("figures/gsm8k_eval200_finetune_scores.png"),
-        help="Where to write the Plotly PNG visualization.",
+        help="Path for the static PNG visualization.",
+    )
+    parser.add_argument(
+        "--output-html",
+        type=Path,
+        default=None,
+        help="Optional path for an interactive Plotly HTML export.",
     )
     parser.add_argument(
         "--output-csv",
@@ -247,10 +256,18 @@ def main() -> None:
     _write_summary_csv(rows, args.output_csv)
 
     figure = _build_figure(runs)
-    args.output_image.parent.mkdir(parents=True, exist_ok=True)
-    figure.write_image(str(args.output_image), scale=2, width=1100, height=650)
+
+    if args.output_image:
+        args.output_image.parent.mkdir(parents=True, exist_ok=True)
+        figure.write_image(str(args.output_image), scale=2, width=1100, height=650)
+        print(f"Saved PNG visualization to {args.output_image}")
+
+    if args.output_html:
+        args.output_html.parent.mkdir(parents=True, exist_ok=True)
+        figure.write_html(str(args.output_html), include_plotlyjs="cdn")
+        print(f"Saved interactive visualization to {args.output_html}")
+
     print(f"Wrote summary table to {args.output_csv}")
-    print(f"Saved visualization to {args.output_image}")
 
 
 if __name__ == "__main__":

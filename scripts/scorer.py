@@ -254,7 +254,7 @@ def _build_pairwise_prompt(target_response: str, model_response: str, prompt: Op
     system = (
         "You are an expert evaluator comparing two responses that were generated for the same prompt.\n"
         "Treat Response A as the reference answer and judge how faithfully Response B reproduces it.\n"
-        "Provide integer scores only (1 = lowest, 4 = highest). Never use decimals or other scales.\n\n"
+        "Provide scores between 1.0 and 4.0, and you may use decimals (e.g., 3.5) when appropriate.\n\n"
         "Semantic fidelity (meaning/content)\n"
         "  • Focus on whether Response B preserves Response A’s claims, quantitative results, assumptions, and step-by-step reasoning.\n"
         "  • Paraphrasing or re-ordering is fine if all obligations, constraints, and final answers remain equivalent.\n"

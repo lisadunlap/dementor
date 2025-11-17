@@ -130,7 +130,7 @@ def run_sft_workflow(config: SFTWorkflowConfig) -> SFTWorkflowResult:
             lora_kwargs=params.lora_kwargs,
         )
         convergence = None
-        plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "tinker_sft.html")
+        plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "tinker_sft.png")
         series = series_from_loss_history(outcome.loss_history, label=params.weights_name)
         if series:
             convergence = plot_convergence([series], plot_path, title="Tinker SFT Convergence")
@@ -154,7 +154,7 @@ def run_sft_workflow(config: SFTWorkflowConfig) -> SFTWorkflowResult:
         job_config=params,
     )
     convergence = None
-    plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "openai_sft.html")
+    plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "openai_sft.png")
     series = series_from_metric_rows(metric_rows, "train_loss", label=params.model)
     if series:
         convergence = plot_convergence([series], plot_path, title="OpenAI SFT Convergence")
@@ -312,7 +312,7 @@ def run_dpo_workflow(config: DPOWorkflowConfig) -> DPOWorkflowResult:
         convergence = None
         series = _load_tinker_jsonl_series(run_log, "dpo_loss", label=params.model_name)
         if series:
-            plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "tinker_dpo.html")
+            plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "tinker_dpo.png")
             convergence = plot_convergence([series], plot_path, title="Tinker DPO Convergence")
         return DPOWorkflowResult(
             provider="tinker",
@@ -357,7 +357,7 @@ def run_dpo_workflow(config: DPOWorkflowConfig) -> DPOWorkflowResult:
         if params.wait_for_completion:
             poll_job(client, job_id)
         metric_rows = collect_job_metrics(client, job_id)
-        plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "openai_dpo.html")
+        plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "openai_dpo.png")
         series = series_from_metric_rows(metric_rows, "train_loss", label=params.model)
         if series:
             convergence = plot_convergence([series], plot_path, title="OpenAI DPO Convergence")

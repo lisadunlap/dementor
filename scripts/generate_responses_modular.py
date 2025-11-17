@@ -71,6 +71,21 @@ def _write_rows(output_csv: Path, rows: Iterable[dict]) -> None:
         writer.writerows(rows)
 
 
+def _strip_chat_markup(text: str) -> str:
+    """Remove common Llama-style chat markers for cleaner outputs."""
+    cleaned = text
+    for marker in (
+        "<|start_header_id|>assistant<|end_header_id|>",
+        "<|assistant|>",
+    ):
+        if marker in cleaned:
+            cleaned = cleaned.split(marker, 1)[1]
+            break
+    for token in ("<|eot_id|>", "<|eom_id|>"):
+        cleaned = cleaned.replace(token, "")
+    return cleaned.strip()
+
+
 def _gen_with_tinker(
     *,
     adapter_name: Optional[str],
@@ -80,13 +95,14 @@ def _gen_with_tinker(
     prompt_template: str,
     stop: Optional[List[str]],
     max_tokens: int,
+    renderer_name: Optional[str],
+    model_label: Optional[str] = None,
 ) -> List[dict]:
     import tinker
     from tinker import types
 
     service = tinker.ServiceClient()
     sampling = None
-    # Prefer adapter name first; only fall back to model_path if name lookup fails
     if adapter_name:
         try:
             if hasattr(service, "get_sampling_client"):
@@ -108,16 +124,40 @@ def _gen_with_tinker(
         training_for_tokenizer = service.create_lora_training_client(base_model=bm)
         tokenizer = training_for_tokenizer.get_tokenizer()
 
+    def _render_prompt(raw_prompt: str) -> str:
+        template_applied = prompt_template.format(prompt=raw_prompt)
+        if renderer_name and hasattr(tokenizer, "apply_chat_template"):
+            try:
+                messages = [{"role": "user", "content": template_applied}]
+                rendered = tokenizer.apply_chat_template(
+                    messages,
+                    tokenize=False,
+                    add_generation_prompt=True,
+                )
+                if isinstance(rendered, str):
+                    return rendered
+            except Exception:
+                pass
+        return template_applied
+
     rows: List[dict] = []
     for p in prompts:
-        text = prompt_template.format(prompt=p)
+        text = _render_prompt(p)
         encoded = tokenizer.encode(text, add_special_tokens=True)
         model_input = types.ModelInput.from_ints(tokens=encoded)
         params = types.SamplingParams(max_tokens=max_tokens, temperature=0.0, stop=stop)
         future = sampling.sample(prompt=model_input, sampling_params=params, num_samples=1)
         result = future.result()
         reply = tokenizer.decode(result.sequences[0].tokens)
-        rows.append({"prompt": p, "model_response": reply, "model": adapter_name})
+        if renderer_name:
+            reply = _strip_chat_markup(reply)
+        rows.append(
+            {
+                "prompt": p,
+                "model_response": reply,
+                "model": model_label or adapter_name or model_path,
+            }
+        )
     return rows
 
 
@@ -252,6 +292,12 @@ def parse_args() -> argparse.Namespace:
         default="meta-llama/Llama-3.1-8B-Instruct",
         help="Base model to fetch tokenizer if SamplingClient lacks one.",
     )
+    tinker_p.add_argument(
+        "--renderer-name",
+        type=str,
+        default=None,
+        help="Optional renderer name (e.g., llama3) to mimic the training chat template.",
+    )
 
     # OpenAI(-compatible) backend
     oai_p = sub.add_parser("openai", help="Use OpenAI or OpenAI-compatible endpoint (optionally with base_url)")
@@ -297,12 +343,26 @@ def main() -> None:
             raise EnvironmentError("Please set TINKER_API_KEY for the Tinker backend.")
         # Resolve model_path from registry if adapter_name provided
         model_path = args.model_path
+        resolved_adapter_name = args.adapter_name
         if not model_path and args.adapter_name and args.adapter_registry and args.adapter_registry.exists():
             try:
                 with args.adapter_registry.open("r", encoding="utf-8") as fh:
                     reg = json.load(fh)
-                model_path = reg.get(args.adapter_name)
-                if model_path:
+                entry = reg.get(args.adapter_name)
+                registry_path = None
+                registry_renderer = None
+                if isinstance(entry, dict):
+                    registry_path = entry.get("path")
+                    registry_renderer = entry.get("renderer_name")
+                    actual_name = entry.get("adapter_name")
+                    if actual_name:
+                        resolved_adapter_name = actual_name
+                else:
+                    registry_path = entry
+                if registry_path:
+                    model_path = registry_path
+                    if args.renderer_name is None and registry_renderer:
+                        args.renderer_name = registry_renderer
                     print(f"Resolved adapter '{args.adapter_name}' to model path from registry: {model_path}")
             except Exception:
                 pass
@@ -310,13 +370,15 @@ def main() -> None:
         if not model_path and not args.adapter_name:
             raise ValueError("Provide either --model-path or --adapter-name for Tinker backend.")
         rows = _gen_with_tinker(
-            adapter_name=args.adapter_name,
+            adapter_name=resolved_adapter_name,
             model_path=(model_path or None),
             base_model=args.base_model,
             prompts=prompts,
             prompt_template=args.prompt_template,
             stop=(args.stop if args.stop else None),
             max_tokens=args.max_tokens,
+            renderer_name=args.renderer_name,
+            model_label=args.adapter_name,
         )
     elif args.backend == "openai":
         if "OPENAI_API_KEY" not in os.environ and not args.base_url:
@@ -340,5 +402,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
-
