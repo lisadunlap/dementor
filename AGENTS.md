@@ -33,8 +33,6 @@ The project is organized around these key components:
 ### Setup
 ```bash
 pip install -r requirements.txt
-# For math-specific methods, also install:
-pip install -r math_disguise_requirements.txt
 ```
 
 ### Caching
