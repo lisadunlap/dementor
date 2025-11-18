@@ -18,12 +18,12 @@ The project is organized around these key components:
 
 ### Main Scripts
 - **`scripts/disguise.py`**: Core disguise script that applies methods to transform model responses
-- **Scoring**: Use `python -m scripts.scorer pairwise --input input.csv --output scores/run_name/scored.csv` for LLM judge + heuristics.
+- **Scoring**: Use `python -m scripts.scorer pairwise --input input.csv --output scores/run_name/scored.csv` for the LLM judge (semantic + stylistic scores).
 - **`scripts/prompt_llm_new.py`**: Generate responses from models for evaluation
-- **`scripts/generate_responses.py`**: Generate base responses for evaluation datasets
+- **`scripts/generate_responses.py`**: Generate base responses for evaluation datasets (use the `basic` subcommand for provider/HF/vLLM models)
 
 ### Data Flow
-1. Generate base responses using `prompt_llm_new.py` or `scripts/generate_responses.py`
+1. Generate base responses using `prompt_llm_new.py` or `scripts/generate_responses.py basic`
 2. Apply disguise methods via `disguise.py` to transform responses  
 3. Score disguised vs target responses using `scripts/scorer.py`
 4. Results stored in `data/results/` and base responses in `data/model-responses/`
@@ -43,16 +43,16 @@ The framework includes persistent LMDB-based caching for all API calls:
 - **Persistent**: Cache survives across sessions, reducing API costs
 - **Location**: `cache/llm_cache/` directory
 - **Benefits**: Faster responses, reduced costs, consistent results
-- **Clear cache**: `python -c "from scripts.cached_llm import clear_cache; clear_cache()"`
-- **Stats**: `python -c "from scripts.cached_llm import get_cache_stats; print(get_cache_stats())"`
+- **Clear cache**: `python -c "from scripts.cache_llm import clear_cache; clear_cache()"`
+- **Stats**: `python -c "from scripts.cache_llm import get_cache_stats; print(get_cache_stats())"`
 
 ### Streamlined Workflow (Recommended)
 ```bash
 # Run complete pipeline: generate responses, compare baseline, disguise, and score
 python scripts/run_pipeline.py \
-  --prompts_file data/datasets/gsm8k/gsm8k_prompts.txt \
+  --prompts_file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
   --source-model meta-llama/Meta-Llama-3.1-8B-Instruct \
-  --target-model gpt-4o \
+  --target-model openai/gpt-4.1-mini \
   --method contrastive
 
 # Results organized under data/results/<dataset>/ with:
@@ -65,10 +65,14 @@ python scripts/run_pipeline.py \
 ```bash
 # Generate model responses
 python scripts/prompt_llm_new.py --model google/gemma-3-1b-it --num_samples 1000
-python scripts/generate_responses.py --model google/gemma-3-1b-it --prompts_file data/datasets/gsm8k/gsm8k_prompts.txt
+python scripts/generate_responses.py \
+  --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
+  --output-csv data/model-responses/gsm8k/full/google_gemma-3-1b-it.csv \
+  basic \
+  --model google/gemma-3-1b-it
 
 # Apply disguise methods
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sample_3_examples
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as openai/gpt-4.1-mini --method random_sample_3_examples
 
 # Run evaluations
 python -m scripts.scorer pairwise \
@@ -80,9 +84,6 @@ python -m scripts.scorer pairwise \
 ```bash
 # Using new scoring utilities
 python -c "from scripts.scorer import score_pairwise; score_pairwise('input.csv', 'output_dir/scored.csv', judge_model='openai/gpt-4.1-mini')"
-
-# Heuristics only (faster)
-python -c "from scripts.scorer import score_pairwise; score_pairwise('input.csv', 'output_dir/scored.csv', heuristics_only=True)"
 ```
 
 ### Test Model Serving

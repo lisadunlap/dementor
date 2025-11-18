@@ -15,9 +15,9 @@ pip install -r math_disguise_requirements.txt
 
 # Run streamlined pipeline (recommended)
 python scripts/run_pipeline.py \
-  --prompts_file data/datasets/gsm8k/gsm8k_prompts.txt \
+  --prompts_file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
   --source-model meta-llama/Meta-Llama-3.1-8B-Instruct \
-  --target-model gpt-4o \
+  --target-model meta-llama/Meta-Llama-3.1-8B-Instruct \
   --method contrastive
 
 ### Running Disguise with a Local vLLM Server
@@ -53,7 +53,7 @@ python scripts/disguise.py \
 
 ## Local Generation (HF vs vLLM)
 
-You can run models locally in two ways when generating base outputs (via `scripts/generate_responses.py`):
+You can run models locally or via provider APIs using the `basic` backend of `scripts/generate_responses.py`:
 
 - Hugging Face Transformers (prefix `hf:`)
   - Example: `--model hf:meta-llama/Llama-3.1-8B-Instruct`
@@ -70,11 +70,11 @@ You can run models locally in two ways when generating base outputs (via `script
   - Install: `pip install vllm`
 
 Provider APIs (default)
-- If you pass a provider model (e.g., `openai/gpt-4o-mini`), we use LiteLLM and your API keys.
+- If you pass a provider model (e.g., `openai/gpt-4.1-mini`), we use LiteLLM and your API keys.
 - No local model weights required.
 
 Where this is used
-- Local/provider selection is used by `scripts/generate_responses.py` when producing base outputs.
+- Local/provider selection is used by `scripts/generate_responses.py basic` when producing base outputs.
 - The disguise step (`disguise.py`) uses LiteLLM by default. To run disguise against a local vLLM server, pass:
   - `--openai-api-base http://localhost:8000/v1` (or your vLLM endpoint)
   - `--openai-api-key EMPTY` (placeholder is ok for local)
@@ -91,9 +91,10 @@ vllm serve meta-llama/Llama-3.1-8B-Instruct \
 2) Generate base outputs via LiteLLM routed to vLLM (optional; you can also use the explicit `vllm:` backend)
 ```bash
 python scripts/generate_responses.py \
+  --prompts-file data/datasets/chatbot_arena/chatbot_arena_prompts.csv \
+  --output-csv data/model-responses/chatbot_arena/full/llama31_8b.csv \
+  basic \
   --model openai/meta-llama/Llama-3.1-8B-Instruct \
-  --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
-  --output data/model-responses/chatbot_arena/full/llama31_8b.csv \
   --openai-api-base http://localhost:8000/v1 \
   --openai-api-key EMPTY
 ```
@@ -102,19 +103,18 @@ python scripts/generate_responses.py \
 ```bash
 python disguise.py \
   --model openai/meta-llama/Llama-3.1-8B-Instruct \
-  --disguise_as gpt-4o \
+  --disguise_as openai/gpt-4.1-mini \
   --method contrastive \
   --num_samples 200 \
   --openai-api-base http://localhost:8000/v1 \
   --openai-api-key EMPTY
 ```
 
-4) Score and aggregate as usual
+4) Score and inspect as usual
 ```bash
 python -m scripts.scorer pairwise \
   --input data/results/chatbot_arena/disguised/my_run.csv \
   --output data/results/chatbot_arena/scores/my_run_scored/scored.csv
-python scripts/aggregate_metrics.py --root data/results/chatbot_arena --output data/results/chatbot_arena/summary.csv --markdown data/results/chatbot_arena/summary.md
 ```
 
 Helper script
@@ -123,49 +123,20 @@ Helper script
   bash scripts/run_local_vllm.sh \
     --hf-model meta-llama/Meta-Llama-3.1-8B-Instruct \
     --port 8000 --dtype float16 --tp 4 \
-    --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
+    --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.csv \
     --num_samples 200 --output_dir data/results/chatbot_arena/disguised \
     --source-model-openai openai/meta-llama/Meta-Llama-3.1-8B-Instruct \
-    --target-model gpt-4o
+    --target-model openai/gpt-4.1-mini
   ```
 
 ## Disguise Methods
 
-### 1. Random Sampling (`--method random_sampling_system_prompting`)
-**Best for**: Reliable baseline performance with good target model responses
-```bash
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling_system_prompting
-```
-- Randomly samples examples from target model responses
-- Uses clean system prompting for instructions
-- Simple, effective, and fast
-
-### 2. Behavioral-Based (`--method behavioral_based_system_prompting`)
-**Best for**: Capturing personality and deep communication essence
-```bash
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method behavioral_based_system_prompting
-```
-- Analyzes target model's communication style, personality, and behavioral patterns
-- Creates sophisticated "essence profile" capturing how the model thinks and responds
-- Focuses on cognitive style, emotional resonance, and interaction patterns
-
-### 3. Stylistic (`--method stylistic_system_prompting`)
-**Best for**: Replicating measurable surface-level patterns
-```bash
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method stylistic_system_prompting
-```
-- Analyzes and replicates measurable stylistic features (formatting, length, structure)
-- Focuses on surface-level patterns that can be quantified
-- Complements behavioral-based analysis with concrete metrics
-
-### 4. Contrastive (`--method contrastive_system_prompting`)
-**Best for**: Learning specific differences between models
-```bash
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive_system_prompting
-```
-- Compares source and target models to identify distinguishing features
-- Learns what makes the target model unique vs the source; produces explicit, actionable guidelines (system prompt)
-- Requires both source and target model response data
+| Method | Summary | Typical Use |
+| --- | --- | --- |
+| Random Sampling | Builds a few-shot prompt directly from target responses. | Quick baselines when target answers are strong and consistent. |
+| Behavioral-Based | Learns persona/tone/structure from target outputs and turns them into a rich system prompt. | When you need the mimic to adopt the target model’s “voice.” |
+| Stylistic | Enforces measurable formatting traits (length, markdown, lists, code). | When evaluation focuses on surface style or formatting fidelity. |
+| Contrastive | Learns explicit corrections by comparing source vs target responses. | When the two models diverge sharply and you want targeted deltas. |
 
 Scoring
 - Single-file scoring (base models): `python -m scripts.scorer single data/model-responses/<dataset>/full/<model>.csv --output data/results/<dataset>/scores/<model>/scored.csv`
@@ -180,9 +151,20 @@ dementor/
 ├── scripts/
 │   ├── run_pipeline.py              # Streamlined end-to-end pipeline (recommended)
 │   ├── disguise.py                  # Core disguise script
-│   ├── generate_responses.py        # Generate model responses
+│   ├── generate_responses.py        # Finetune adapters + basic provider/HF/vLLM generation
 │   ├── scorer.py                    # Unified scoring CLI (single, pairwise, compare, merge)
-│   ├── stylistic_analysis.py        # Heuristic analysis functions
+│   ├── stylistic_analysis.py        # Style heuristics used by scoring/methods
+│   ├── gsm8k/                       # GSM8K-specific workflow runners
+│   │   ├── run_all_workflows.sh
+│   │   ├── run_openai_workflows.sh
+│   │   └── run_gsm8k_finetune_responses.sh
+│   │   ├── plot_gsm8k_eval200_finetune_scores.py
+│   │   └── cleanup_gsm8k_results.sh
+│   ├── tools/                       # One-off maintenance utilities
+│   │   ├── compute_deltas.py
+│   │   ├── convert_convergence_html.py
+│   │   ├── summarize_three_way.py
+│   │   └── save_tinker_adapter.py
 │   └── methods/
 │       ├── contrastive.py           # Contrastive method
 │       ├── behavioral_based.py      # Behavioral-based method
@@ -195,11 +177,12 @@ dementor/
 └── results/                         # Generated responses and scores
 
 Additional:
-- `examples/` — provider setup and copy‑paste commands
-- `scripts/smoke_test.py` — offline smoke test (no API keys)
-- `scripts/serve/` — optional helpers for vLLM/local serving experiments
-- `workflows/README.md` — instructions for the SFT + DPO workflows, dataset setup, and adapter registry usage.
-- `run_gsm8k_finetune_responses.sh` — helper to regenerate the 200-sample GSM8K evaluation responses (and judge scores) for all four finetune adapters (Tinker/OpenAI, SFT/DPO).
+- `examples/` — provider setup and copy‑paste commands.
+- `scripts/smoke_test.py` — offline smoke test (no API keys).
+- `scripts/serve/` — optional helpers for vLLM/local serving experiments.
+- `scripts/gsm8k/` — GSM8K workflow + maintenance scripts (e.g., `scripts/gsm8k/run_all_workflows.sh`, `scripts/gsm8k/run_gsm8k_finetune_responses.sh`, `scripts/gsm8k/run_openai_workflows.sh`, `scripts/gsm8k/cleanup_gsm8k_results.sh`, `scripts/gsm8k/plot_gsm8k_eval200_finetune_scores.py`).
+- `scripts/tools/` — low-frequency maintenance utilities (e.g., convergence HTML → PNG converter, score delta calculator, manual Tinker adapter saver).
+- `workflows/README.md` — instructions for SFT + DPO workflows, dataset setup, and adapter registry usage that reference the `scripts/gsm8k/` launchers.
 
 ## Filename Convention
 
@@ -208,7 +191,7 @@ Additional:
 - Examples:
   - Source responses: `data/model-responses/gsm8k/full/meta-llama_Meta-Llama-3.1-8B-Instruct.csv`
   - Disguised vs target: `data/results/gsm8k/comparisons/disguised_vs_target/<method>/gpt-4.1_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv`
-  - Baseline comparison: `data/results/gsm8k/comparisons/source_vs_target/openai_gpt-4o-mini_vs_meta-llama_Meta-Llama-3.1-8B-Instruct.csv`
+  - Baseline comparison: `data/results/gsm8k/comparisons/source_vs_target/openai_gpt-4.1-mini_vs_meta-llama_Meta-Llama-3.1-8B-Instruct.csv`
 
 Note: Older runs may contain short-name artifacts (e.g., `llama-3-8b`). These are deprecated; new runs and tools write official names.
 ```
@@ -231,26 +214,25 @@ The framework provides two types of evaluation:
 ### Basic Usage
 ```bash
 # Generate 200 disguised responses
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method behavioral_based --num_samples 200
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as openai/gpt-4.1-mini --method behavioral_based --num_samples 200
 
 # Use custom prompts
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive --prompts_file my_prompts.txt
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as openai/gpt-4.1-mini --method contrastive --prompts_file my_prompts.csv
 
 # Skip evaluation (generation only)
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling --skip_evaluation
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as openai/gpt-4.1-mini --method random_sampling --skip_evaluation
 
 # Heuristics only (faster evaluation)
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method behavioral_based --heuristics_only
 ```
 
 ### With Experiment Tracking
 ```bash
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive --use_wandb --run_name "contrastive_experiment_v1"
+python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as openai/gpt-4.1-mini --method contrastive --use_wandb --run_name "contrastive_experiment_v1"
 ```
 
 ### Scoring and Summaries
 ```bash
-# Score a CSV of response pairs with LLM judge + heuristics
+# Score a CSV of response pairs with the LLM judge
 python -m scripts.scorer pairwise \
   --input data/results/chatbot_arena/disguised/my_run.csv \
   --output data/results/chatbot_arena/scores/my_run_scored/scored.csv
@@ -259,7 +241,6 @@ python -m scripts.scorer pairwise \
 python -m scripts.scorer pairwise \
   --input data/results/chatbot_arena/disguised/my_run.csv \
   --output data/results/chatbot_arena/scores/my_run_scored/scored.csv \
-  --heuristics-only
 
 # Programmatic usage: compute averages
 python - << 'PY'
@@ -269,7 +250,7 @@ df = score_pairwise(
     'data/results/chatbot_arena/scores/my_run_scored/scored.csv',
     judge_model='openai/gpt-4.1-mini',
 )
-print(df[['semantic_score', 'stylistic_score', 'heuristic_match_score']].mean())
+print(df[['semantic_score', 'stylistic_score']].mean())
 PY
 ```
 
@@ -289,13 +270,13 @@ PY
 
 ## Recommended Pipelines (Commands)
 -- Contrastive (rules-only)
-  - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method contrastive --num_samples 200
+  - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as openai/gpt-4.1-mini --method contrastive --num_samples 200
 
 -- Random-k examples baseline
-  - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sampling --num_samples 200
+  - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as openai/gpt-4.1-mini --method random_sampling --num_samples 200
 
 -- Vibe-based (personality) with examples
-  - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method behavioral_based --num_samples 200
+  - python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as openai/gpt-4.1-mini --method behavioral_based --num_samples 200
 
 -- Scoring with summary metrics
   - python -m scripts.scorer pairwise --input data/results/chatbot_arena/disguised/my_run.csv --output data/results/chatbot_arena/scores/my_run_scored/scored.csv
@@ -307,14 +288,16 @@ For larger datasets (e.g., GSM8K), prefer explicit steps over a single mega-comm
 1) Generate base outputs for each model
 ```bash
 python scripts/generate_responses.py \
-  --model openai/gpt-4o-mini \
-  --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
-  --output data/model-responses/chatbot_arena/full/openai_gpt-4o-mini.csv
+  --prompts-file data/datasets/chatbot_arena/chatbot_arena_prompts.csv \
+  --output-csv data/model-responses/chatbot_arena/full/openai_gpt-4.1-mini.csv \
+  basic \
+  --model openai/gpt-4.1-mini
 
 python scripts/generate_responses.py \
-  --model openai/gpt-4o \
-  --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
-  --output data/model-responses/chatbot_arena/full/openai_gpt-4o.csv
+  --prompts-file data/datasets/chatbot_arena/chatbot_arena_prompts.csv \
+  --output-csv data/model-responses/chatbot_arena/full/meta-llama_Meta-Llama-3.1-8B-Instruct.csv \
+  basic \
+  --model meta-llama/Meta-Llama-3.1-8B-Instruct
 ```
 
 Note: The canonical location for base model outputs is `data/model-responses/<dataset>/full/` (and optionally `/500/`). The `disguise.py` script will auto‑detect source/target CSVs there first and will still fall back to legacy `data/model-responses/base/` if present. You can always override with `--source_responses` and `--target_responses`.
@@ -326,12 +309,12 @@ Benchmark style archetypes
 2) Run disguise (contrastive rules)
 ```bash
 python scripts/disguise.py \
-  --model openai/gpt-4o-mini \
-  --disguise_as gpt-4o \
+  --model openai/gpt-4.1-mini \
+  --disguise_as meta-llama/Meta-Llama-3.1-8B-Instruct \
   --method contrastive \
   --num_samples 200 \
-  --source_responses data/model-responses/chatbot_arena/full/openai_gpt-4o-mini.csv \
-  --target_responses data/model-responses/chatbot_arena/full/openai_gpt-4o.csv
+  --source_responses data/model-responses/chatbot_arena/full/openai_gpt-4.1-mini.csv \
+  --target_responses data/model-responses/chatbot_arena/full/meta-llama_Meta-Llama-3.1-8B-Instruct.csv
 ```
 
 3) Score and get metrics
@@ -344,9 +327,9 @@ python -m scripts.scorer pairwise \
 Optional one-liner orchestrator
 ```bash
 python scripts/run_pipeline.py \
-  --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
-  --source-model openai/gpt-4o-mini \
-  --target-model gpt-4o \
+  --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.csv \
+  --source-model openai/gpt-4.1-mini \
+  --target-model meta-llama/Meta-Llama-3.1-8B-Instruct \
   --method contrastive \
   --num_samples 200
 ```
@@ -354,59 +337,36 @@ python scripts/run_pipeline.py \
 ## Scripts Overview
 
 - `scripts/generate_responses.py`
-  - Generates base model outputs for a prompts file, with simple caching by prompt.
-  - Backends: LiteLLM providers (default), local HuggingFace via `hf:` prefix, local vLLM via `vllm:` prefix.
-  - Example: `python scripts/generate_responses.py --model openai/gpt-4o-mini --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt --output data/model-responses/chatbot_arena/full/openai_gpt-4o-mini.csv`
+  - Finetune-aware generation utility. Use the `basic` subcommand for raw provider/HF/vLLM sampling, or the `tinker`/`openai` subcommands to sample LoRA adapters.
+  - Prompts file: CSV with a `prompt` column is the default; `.txt` (one prompt per line) still works for lightweight datasets.
+  - Example: `python scripts/generate_responses.py --prompts-file data/datasets/chatbot_arena/chatbot_arena_prompts.csv --output-csv data/model-responses/chatbot_arena/full/openai_gpt-4.1-mini.csv basic --model openai/gpt-4.1-mini`
 
 - `scripts/scorer.py`
   - Unified CLI for single-file scoring, pairwise scoring, comparison + scoring, and legacy merges.
   - Examples:
-    - `python -m scripts.scorer single data/model-responses/chatbot_arena/full/openai_gpt-4o-mini.csv --output data/results/chatbot_arena/scores/openai_gpt-4o-mini/scored.csv`
+- `python -m scripts.scorer single data/model-responses/chatbot_arena/full/openai_gpt-4.1-mini.csv --output data/results/chatbot_arena/scores/openai_gpt-4.1-mini/scored.csv`
     - `python -m scripts.scorer compare --a base/modelA.csv --b base/modelB.csv --output results/compare_A_vs_B.csv --judge-model openai/gpt-4.1-mini`
 
 - `scripts/run_pipeline.py`
   - Optional orchestrator that runs: generate base (both models) → baseline compare (source vs target) → disguise (disguised vs target) → score → optional aggregation + W&B table + three‑way summary. Uses cache to avoid recomputing.
   - Example shown above in Pipelines.
 
-- `scripts/aggregate_metrics.py`
-  - Aggregates `scored_metrics.csv` (and legacy `*_scores_metrics.json`) files to a CSV and optional Markdown; optionally logs a W&B summary table.
-  - Example shown in Evaluation → Aggregating Metrics.
-
-- `scripts/summarize_three_way.py`
+- `scripts/tools/summarize_three_way.py`
   - Produces a compact table comparing baseline (source vs target) and disguised vs target metrics; can also log to W&B.
   - Example shown in Evaluation → Aggregating Metrics.
 
+- `scripts/tools/save_tinker_adapter.py`
+  - Load a saved Tinker state URI and register it under a friendly adapter alias in `data/tinker_adapters.json`.
+
 - `scripts/smoke_test.py`
-  - Offline smoke test (no API keys): checks method.forward behavior and heuristics-only scoring pipeline.
-
-## 🧠 How Vibe-Based Disguise Works
-
-The behavioral-based method goes beyond surface-level mimicry to capture the **essence** of how a model communicates:
-
-1. **Deep Analysis**: Examines cognitive style, personality traits, interaction patterns
-2. **Essence Profiling**: Creates actionable personality guidelines 
-3. **Behavioral Capture**: Identifies unique quirks, language patterns, response architecture
-4. **Sophisticated Prompting**: Uses comprehensive personality profile for authentic disguise
-
-This creates more authentic disguises that capture not just what a model says, but **how** it thinks and communicates.
-
-## 📏 How Stylistic System Prompting Works
-
-The stylistic method focuses on **measurable, surface-level features** that can be quantified and replicated:
-
-1. **Quantitative Analysis**: Measures concrete features like response length, sentence structure, formatting patterns
-2. **Pattern Detection**: Identifies consistent use of markdown, bullet points, code blocks, headers
-3. **Structural Guidelines**: Creates specific rules for replicating measurable style elements
-4. **Verification-Friendly**: Produces patterns that can be easily verified with heuristics
-
-This complements behavioral-based analysis by providing concrete, measurable targets for style replication.
+- Offline smoke test (no API keys): checks method.forward behavior and basic scoring pipeline.
 
 ## 📊 Understanding Results
 
 ### Good Disguise Indicators:
 - **Semantic scores 3-4**: Content meaning preserved
 - **Stylistic scores 3-4**: Style successfully mimicked  
-- **High heuristic match**: Surface patterns match well
+- **Stylistic scores 3-4**: Style successfully mimicked  
 
 ### Troubleshooting Low Scores:
 - Try different methods (behavioral-based often works better for distinctive models)
@@ -419,7 +379,7 @@ This complements behavioral-based analysis by providing concrete, measurable tar
 ### Input Files Expected:
 - Target model responses: `data/model-responses/<dataset>/full/{model_name}.csv`
 - Source model responses: `data/model-responses/<dataset>/full/{source_model}.csv` (for contrastive)
-- Prompts: Text file with one prompt per line (default: `data/datasets/chatbot_arena/chatbot_arena_prompts.txt`)
+- Prompts: CSV with a `prompt` column (default: `data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv`; chatbot arena ships `data/datasets/chatbot_arena/chatbot_arena_prompts.csv`). Plain-text lists (e.g., `data/datasets/chatbot_arena/chatbot_arena_prompts.txt`) remain supported if you prefer one prompt per line.
 
 ### Output Files Generated:
 Results and scores are saved under `data/results/<dataset>/comparisons/...` with method-specific subfolders.
@@ -458,8 +418,8 @@ disguised_messages = method.forward("Your prompt here")
 Run a small end-to-end validation:
 ```bash
 python validate_end_to_end.py \
-  --model openai/gpt-4o-mini \
-  --disguise_as gpt-4o \
+  --model openai/gpt-4.1-mini \
+  --disguise_as meta-llama/Meta-Llama-3.1-8B-Instruct \
   --method contrastive \
   --num_samples 20
 ```
@@ -470,7 +430,7 @@ This generates a small run, scores it, and writes metrics JSON/CSV.
 ```bash
 python scripts/smoke_test.py
 ```
-Runs a tiny test without API keys: checks method.forward formatting and heuristic scoring pipeline.
+Runs a tiny test without API keys: checks method.forward formatting and basic scoring pipeline.
 
 ### CI
 This repository includes a minimal GitHub Actions workflow (`.github/workflows/smoke.yml`) that runs the offline smoke test on pushes and PRs to main/master using only lightweight dependencies (pandas, numpy, tqdm).
@@ -485,18 +445,6 @@ This repository includes a minimal GitHub Actions workflow (`.github/workflows/s
   - Together: `export TOGETHER_AI_API_KEY=...`
   - X.AI: `export XAI_API_KEY=...`
   - Google: `export GEMINI_API_KEY=...`
-  - Then pass `--model` as a provider-qualified name (e.g., `openai/gpt-4o-mini`).
+  - Then pass `--model` as a provider-qualified name (e.g., `openai/gpt-4.1-mini`).
 ### W&B Integration
 - Enable logging with `--use_wandb` on `disguise.py`.
-### Aggregating Metrics and W&B Table
-Aggregate all run metrics under a directory and optionally log a W&B table:
-```bash
-python scripts/aggregate_metrics.py --root data/results/chatbot_arena \
-  --output results/summary.csv --markdown results/summary.md \
-  --use-wandb --wandb-project streamlined-disguise --wandb-run-name metrics-aggregate
-```
-This writes a summary CSV/MD and logs a W&B Table and artifact.
-
-- Defaults to project `streamlined-disguise`; override via `WANDB_PROJECT` if needed.
-- Logs summary metrics (semantic/stylistic means, heuristic match) and, when possible, uploads the following as a W&B artifact:
-  - results CSV, scored CSV, metrics JSON/CSV, and run summary JSON (composite method)

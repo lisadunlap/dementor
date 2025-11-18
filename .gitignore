@@ -183,3 +183,6 @@ claude
 *.pyc
 __pycache__/
 .DS_Store
+
+# Environment setup scripts
+setup_anthropic_env.sh

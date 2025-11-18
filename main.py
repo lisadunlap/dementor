@@ -32,10 +32,10 @@ Available Operations:
   score           Score model comparisons with LLM judge + heuristics
 
 Examples:
-  python main.py generate --model gpt-4o --prompts data/datasets/gsm8k/gsm8k_prompts.txt
-  python main.py disguise --model llama-3.1-8b --disguise_as gpt-4o --method contrastive
+  python main.py generate --model openai/gpt-4.1-mini --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv --output-csv data/model-responses/gsm8k/full/openai_gpt-4.1-mini.csv
+  python main.py disguise --model llama-3.1-8b --disguise_as openai/gpt-4.1-mini --method contrastive
   python main.py compare --a model_a.csv --b model_b.csv --output comparison.csv
-  python main.py pipeline --source-model llama-3.1-8b --target-model gpt-4o
+  python main.py pipeline --source-model llama-3.1-8b --target-model openai/gpt-4.1-mini
 
 Directory Structure:
   scripts/         All executable scripts and methods
@@ -58,10 +58,14 @@ Core Scripts:
     
     # Generate command
     gen_parser = subparsers.add_parser('generate', help='Generate model responses')
-    gen_parser.add_argument('--model', required=True, help='Model to use')
-    gen_parser.add_argument('--prompts', required=True, help='Prompts file')
-    gen_parser.add_argument('--output', help='Output CSV file')
-    gen_parser.add_argument('--num_samples', type=int, default=200, help='Number of samples')
+    gen_parser.add_argument('--model', required=True, help='Model to use (openai/..., hf:..., vllm:...).')
+    gen_parser.add_argument('--prompts-file', required=True, help='Prompts file (CSV or TXT).')
+    gen_parser.add_argument('--output-csv', required=True, help='Output CSV path.')
+    gen_parser.add_argument('--system', default=None, help='Optional system message.')
+    gen_parser.add_argument('--max-tokens', type=int, default=512)
+    gen_parser.add_argument('--temperature', type=float, default=0.0)
+    gen_parser.add_argument('--openai-api-base', default=None, help='Override OPENAI_API_BASE for LiteLLM provider.')
+    gen_parser.add_argument('--openai-api-key', default=None, help='Override OPENAI_API_KEY for LiteLLM provider.')
     
     # Disguise command  
     disguise_parser = subparsers.add_parser('disguise', help='Apply disguise methods')
@@ -84,7 +88,7 @@ Core Scripts:
     pipeline_parser = subparsers.add_parser('pipeline', help='Run complete pipeline')
     pipeline_parser.add_argument('--source-model', required=True, help='Source model')
     pipeline_parser.add_argument('--target-model', required=True, help='Target model')
-    pipeline_parser.add_argument('--prompts', help='Prompts file', default='data/datasets/gsm8k/gsm8k_prompts.txt')
+    pipeline_parser.add_argument('--prompts', help='Prompts file', default='data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv')
     pipeline_parser.add_argument('--method', default='contrastive', help='Disguise method')
     
     # Score command
@@ -102,7 +106,7 @@ Core Scripts:
         
     # Map commands to scripts
     script_map = {
-        'generate': ('scripts/generate_responses.py', None),
+        'generate': ('scripts/generate_responses.py', 'basic'),
         'disguise': ('scripts/disguise.py', None), 
         'compare': ('scripts/scorer.py', 'compare'),
         'pipeline': ('scripts/run_pipeline.py', None),

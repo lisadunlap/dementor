@@ -15,13 +15,13 @@ ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-from openai import OpenAI
+from openai import OpenAI as OpenAIClient
 from workflows.openai import collect_job_metrics
 from workflows.plots import plot_convergence, series_from_metric_rows
 
 
 def sync_openai_metrics(job_map: Dict[str, Path]) -> None:
-    client = OpenAI()
+    client = OpenAIClient()
 
     # Resolve job ids (fine_tuned_model -> job id)
     pending = {model_id: None for model_id in job_map}

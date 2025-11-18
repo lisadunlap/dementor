@@ -42,7 +42,7 @@ def _read_csv_robust(path: str) -> pd.DataFrame:
 
 def _llm_generate(messages: List[dict], model: str, temperature: float, max_tokens: int) -> str:
     try:
-        from scripts.cached_llm import cached_completion
+        from scripts.cache_llm import cached_completion
 
         resp = cached_completion(model=model, messages=messages, temperature=temperature, max_tokens=max_tokens)
         return resp.choices[0].message.content

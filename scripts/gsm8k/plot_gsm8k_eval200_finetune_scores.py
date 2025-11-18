@@ -19,8 +19,8 @@ from typing import Dict, Iterable, List, Sequence, Tuple
 import plotly.graph_objects as go
 
 if __package__ is None or __package__ == "":
-    # Ensure the repository root is on sys.path when executing as `python scripts/...`.
-    repo_root = Path(__file__).resolve().parents[1]
+    # Ensure the repository root is on sys.path when executing directly.
+    repo_root = Path(__file__).resolve().parents[2]
     if str(repo_root) not in sys.path:
         sys.path.insert(0, str(repo_root))
 

@@ -7,8 +7,8 @@ End-to-end validation script:
 
 Usage:
   python validate_end_to_end.py \
-    --model openai/gpt-4o-mini \
-    --disguise_as gpt-4o \
+    --model openai/gpt-4.1-mini \
+    --disguise_as meta-llama/Meta-Llama-3.1-8B-Instruct \
     --method contrastive \
     --num_samples 20
 
@@ -30,7 +30,7 @@ def run(cmd: list[str]) -> int:
 
 def main():
     parser = argparse.ArgumentParser(description="Run a small end-to-end validation")
-    parser.add_argument("--model", required=True, help="Source model (LiteLLM id, e.g., openai/gpt-4o-mini)")
+    parser.add_argument("--model", required=True, help="Source model (LiteLLM id, e.g., openai/gpt-4.1-mini)")
     parser.add_argument("--disguise_as", required=True, help="Target model label")
     parser.add_argument("--method", default="contrastive", help="disguise method")
     parser.add_argument("--num_samples", type=int, default=20)

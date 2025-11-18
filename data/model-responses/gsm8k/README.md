@@ -17,7 +17,7 @@ python scripts/disguise.py \
   --disguise_as gpt-5 \
   --source_responses data/model-responses/gsm8k/meta-llama_Meta-Llama-3-8B-Instruct.csv \
   --target_responses data/model-responses/gsm8k/gpt-5_gsm8k_test_500.csv \
-  --prompts_file data/datasets/gsm8k/gsm8k_prompts.txt \
+  --prompts_file data/datasets/gsm8k/gsm8k_prompts_500.csv \
   --test --skip_generation
 
 Example (small real generation):
@@ -27,7 +27,7 @@ python scripts/disguise.py \
   --disguise_as gpt-5 \
   --source_responses data/model-responses/gsm8k/meta-llama_Meta-Llama-3-8B-Instruct.csv \
   --target_responses data/model-responses/gsm8k/gpt-5_gsm8k_test_500.csv \
-  --prompts_file data/datasets/gsm8k/gsm8k_prompts.txt \
+  --prompts_file data/datasets/gsm8k/gsm8k_prompts_500.csv \
   --test
 
 Notes

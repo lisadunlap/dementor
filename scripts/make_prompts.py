@@ -3,15 +3,16 @@
 Make a prompts file from a dataset.
 
 Supports CSV (specify a column), JSONL (specify a key), or plain text passthrough.
-Default output is a .txt file with one prompt per line, which is what
-scripts/generate_responses.py expects.
+Outputs either CSV (default for new datasets, single `prompt` column) or TXT
+(one prompt per line) depending on the `--output` extension. Both feed directly
+into `scripts/generate_responses.py basic`.
 
 Usage examples:
-  # GSM8K CSV -> TXT (column 'question')
+  # GSM8K CSV -> CSV (column 'question')
   python scripts/make_prompts.py \
     --input data/gsm8k/gsm8k_test.csv \
     --column question \
-    --output data/datasets/gsm8k/gsm8k_prompts.txt
+    --output data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv
 
   # JSONL -> TXT (key 'prompt')
   python scripts/make_prompts.py --input data/dataset.jsonl --key prompt --output data/prompts.txt
@@ -25,20 +26,26 @@ import sys
 import pandas as pd
 
 
-def write_txt(prompts, output):
+def write_prompts(prompts, output):
     os.makedirs(os.path.dirname(output) or '.', exist_ok=True)
-    with open(output, 'w', encoding='utf-8') as f:
-        for p in prompts:
-            p = (p or '').strip()
-            if p:
+    cleaned = []
+    for p in prompts:
+        p = (p or '').strip()
+        if p:
+            cleaned.append(p)
+    if output.lower().endswith('.csv'):
+        pd.DataFrame({'prompt': cleaned}).to_csv(output, index=False)
+    else:
+        with open(output, 'w', encoding='utf-8') as f:
+            for p in cleaned:
                 f.write(p + '\n')
-    print(f"Wrote {len(prompts)} prompts to {output}")
+    print(f"Wrote {len(cleaned)} prompts to {output}")
 
 
 def main():
     parser = argparse.ArgumentParser(description="Create prompts file from dataset")
     parser.add_argument('--input', required=True, help='Input dataset (csv, jsonl, or txt)')
-    parser.add_argument('--output', required=True, help='Output prompts.txt (one prompt per line)')
+    parser.add_argument('--output', required=True, help='Output file (.csv = prompt column, .txt = one-per-line)')
     parser.add_argument('--column', default='question', help='CSV column to extract')
     parser.add_argument('--key', default='prompt', help='JSONL key to extract')
     parser.add_argument('--dedupe', action='store_true', help='Dedupe prompts')
@@ -76,7 +83,7 @@ def main():
         prompts = list(dict.fromkeys(prompts))
     if args.max is not None:
         prompts = prompts[: args.max]
-    write_txt(prompts, args.output)
+    write_prompts(prompts, args.output)
 
 
 if __name__ == '__main__':

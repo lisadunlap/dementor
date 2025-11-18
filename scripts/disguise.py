@@ -33,7 +33,7 @@ from litellm import completion
 import litellm
 from tqdm import tqdm
 import wandb
-from cached_llm import register_model_config
+from cache_llm import register_model_config
 
 # Enable caching for API calls (not for vLLM/local servers)
 if not hasattr(litellm, 'cache') or litellm.cache is None:
@@ -244,7 +244,7 @@ def generate_disguised_responses(
                             call_kwargs.setdefault('custom_llm_provider', provider_hint)
                             call_kwargs.setdefault('litellm_provider', provider_hint)
                     try:
-                        from cached_llm import cached_completion
+                        from cache_llm import cached_completion
                         resp = cached_completion(**call_kwargs)
                         return resp.choices[0].message.content
                     except ImportError:
@@ -313,7 +313,7 @@ def main():
         type=str,
         required=env_defaults["disguise_as"] is None,
         default=env_defaults["disguise_as"],
-        help="Target model to mimic (e.g., gpt-4o)",
+        help="Target model to mimic (e.g., openai/gpt-4.1-mini)",
     )
     
     # Method selection

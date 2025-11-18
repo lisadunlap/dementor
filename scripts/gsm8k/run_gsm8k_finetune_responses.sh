@@ -14,7 +14,7 @@ RUN_OPENAI_DPO=true
 
 if [ "$RUN_TINKER_SFT" = true ]; then
   echo "[Tinker SFT] Generating responses..."
-  python scripts/generate_responses_modular.py \
+python scripts/generate_responses.py \
     --prompts-file "$PROMPTS" \
     --dataset-csv data/model-responses/gsm8k/500/openai_gpt-4.1-mini_responses.csv \
     --train-size "$TRAIN_SIZE" \
@@ -35,7 +35,7 @@ fi
 
 if [ "$RUN_TINKER_DPO" = true ]; then
   echo "[Tinker DPO] Generating responses..."
-  python scripts/generate_responses_modular.py \
+python scripts/generate_responses.py \
     --prompts-file "$PROMPTS" \
     --dataset-csv data/model-responses/gsm8k/500/openai_gpt-4.1-mini_responses.csv \
     --train-size "$TRAIN_SIZE" \
@@ -56,7 +56,7 @@ fi
 
 if [ "$RUN_OPENAI_SFT" = true ]; then
   echo "[OpenAI SFT] Generating responses..."
-  python scripts/generate_responses_modular.py \
+python scripts/generate_responses.py \
     --prompts-file "$PROMPTS" \
     --dataset-csv data/model-responses/gsm8k/500/meta-llama_Meta-Llama-3.1-8B-Instruct_responses.csv \
     --train-size "$TRAIN_SIZE" \
@@ -77,7 +77,7 @@ fi
 
 if [ "$RUN_OPENAI_DPO" = true ]; then
   echo "[OpenAI DPO] Generating responses..."
-  python scripts/generate_responses_modular.py \
+python scripts/generate_responses.py \
     --prompts-file "$PROMPTS" \
     --dataset-csv data/model-responses/gsm8k/500/meta-llama_Meta-Llama-3.1-8B-Instruct_responses.csv \
     --train-size "$TRAIN_SIZE" \
