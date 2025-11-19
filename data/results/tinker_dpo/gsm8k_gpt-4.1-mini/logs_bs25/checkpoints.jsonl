@@ -1,0 +1,1 @@
+{"name": "final", "epoch": 1, "batch": 12, "state_path": "tinker://505bff49-c4f3-4795-95ee-6fd602663573/weights/final", "sampler_path": "tinker://505bff49-c4f3-4795-95ee-6fd602663573/sampler_weights/final"}

@@ -1,0 +1,805 @@
+### repo: /home/ethanliu/dementor @ fa523a98bfb04e4f62b0ecd45ec7463633399cbd
+modules: tinker_cookbook
+-- repo-wide (vs HEAD, staged+unstaged) --
+diff --git a/data/results/gsm8k/eval200/behavioral_based/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv b/data/results/gsm8k/eval200/behavioral_based/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
+index 6644fe3..28261cf 100644
+--- a/data/results/gsm8k/eval200/behavioral_based/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
++++ b/data/results/gsm8k/eval200/behavioral_based/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:b887b579fb5d21c2476c6d2e58ba3e86713a48af9371890338b95ff7c83a4ec9
+-size 322880
++oid sha256:8e30b4ddde5c0f0ad85de5f1c88474a8c9acd7697931be3e38afb34d33a0d5dd
++size 322143
+diff --git a/data/results/gsm8k/eval200/behavioral_based/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv b/data/results/gsm8k/eval200/behavioral_based/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
+index e50461c..de7f370 100644
+--- a/data/results/gsm8k/eval200/behavioral_based/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
++++ b/data/results/gsm8k/eval200/behavioral_based/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:f4ff785528c9091bf1c8858993e9544431365af421b5b6b3999d74ca1daa8610
+-size 321963
++oid sha256:b4a918f435245160bf3cea2bba7bd9fab8048e42293e3a23c61a281638ee03f8
++size 321016
+diff --git a/data/results/gsm8k/eval200/behavioral_based/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv b/data/results/gsm8k/eval200/behavioral_based/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
+index 7d39c6a..1c7228c 100644
+--- a/data/results/gsm8k/eval200/behavioral_based/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
++++ b/data/results/gsm8k/eval200/behavioral_based/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:ead784b625db3da6a5551336408fad5cd552a70edc92d44816579038f57ba31c
+-size 398779
++oid sha256:581c4e60f4b0d0c236f4eaac923a0c1e7db7d2593eef44d3b571edf64faac771
++size 409343
+diff --git a/data/results/gsm8k/eval200/behavioral_based/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv b/data/results/gsm8k/eval200/behavioral_based/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
+index 98138f7..65f2988 100644
+--- a/data/results/gsm8k/eval200/behavioral_based/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
++++ b/data/results/gsm8k/eval200/behavioral_based/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:8f340518fa5c2081765e95eecec582ed3d248ab7e18b5efb211429190988fb3a
+-size 297
++oid sha256:eb5f6184fc12f862d398ccfb9e2d096851ad59b7b5e2326cb0bd462478f29ecb
++size 313
+diff --git a/data/results/gsm8k/eval200/behavioral_based/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json b/data/results/gsm8k/eval200/behavioral_based/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
+index 389581c..8e30289 100644
+--- a/data/results/gsm8k/eval200/behavioral_based/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
++++ b/data/results/gsm8k/eval200/behavioral_based/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:fbc253733bb0cb7e2c63bea889d62fa01f40c83d13648c70c824b9823a64106b
+-size 557
++oid sha256:3aa42c675ffbfe1d14282c00ebda9899eb07716e1f8e882dfb69e77a51fd0b35
++size 573
+diff --git a/data/results/gsm8k/eval200/behavioral_based/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv b/data/results/gsm8k/eval200/behavioral_based/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
+index 7c7a318..75edb5a 100644
+--- a/data/results/gsm8k/eval200/behavioral_based/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
++++ b/data/results/gsm8k/eval200/behavioral_based/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:c688558f63a77466c110162e26c344d1a06200c1c0fc51dffcc3057da3e3620d
+-size 398809
++oid sha256:a536d60ea305bb28221fdcedbf3bd81aea9f7a24d6ad597a8d196da11a6fdca2
++size 406730
+diff --git a/data/results/gsm8k/eval200/behavioral_based/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv b/data/results/gsm8k/eval200/behavioral_based/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
+index e7eb14f..72a5635 100644
+--- a/data/results/gsm8k/eval200/behavioral_based/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
++++ b/data/results/gsm8k/eval200/behavioral_based/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:84105d62c4df706ab364ebf892816851ff4a7a4b906febf7023b629335d7be7c
+-size 281
++oid sha256:e7b09125092d4c3d15d277f10dd056f26a9ea9e2d273172b9b138f4d6f324695
++size 319
+diff --git a/data/results/gsm8k/eval200/behavioral_based/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json b/data/results/gsm8k/eval200/behavioral_based/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
+index 1e99580..0cf9dd8 100644
+--- a/data/results/gsm8k/eval200/behavioral_based/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
++++ b/data/results/gsm8k/eval200/behavioral_based/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:3313a95b7f5f90b824b67c4279a9f31ffe35212df0d18fc78edc1d5307a21c68
+-size 541
++oid sha256:ae7443cf6635e9f5aaa9d5a60bd9c58764005367f827e397c6ba3044c72c4fe2
++size 579
+diff --git a/data/results/gsm8k/eval200/contrastive/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv b/data/results/gsm8k/eval200/contrastive/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
+index 1eb98ac..cce9537 100644
+--- a/data/results/gsm8k/eval200/contrastive/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
++++ b/data/results/gsm8k/eval200/contrastive/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:b34a2238bd5dbfd8a33dfab0ff6600939a3e903bc89ecf92697097d7fe53061e
+-size 321746
++oid sha256:f751533b433ecfb66f9902c5b5f98ab796f2e22d44ce7bf1ee10d2a7b80a4bb0
++size 321020
+diff --git a/data/results/gsm8k/eval200/contrastive/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv b/data/results/gsm8k/eval200/contrastive/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
+index 36a9c4b..090885a 100644
+--- a/data/results/gsm8k/eval200/contrastive/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
++++ b/data/results/gsm8k/eval200/contrastive/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:90e41f6b369f2cd914ec554e452ad14cbd1bfaf407a339e41db36f2638253b44
+-size 448657
++oid sha256:073789d0183e113a80b8820780a7d55be19dc86ac9d49441834b0e540463ce41
++size 444155
+diff --git a/data/results/gsm8k/eval200/contrastive/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv b/data/results/gsm8k/eval200/contrastive/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
+index a0335f5..8fffe53 100644
+--- a/data/results/gsm8k/eval200/contrastive/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
++++ b/data/results/gsm8k/eval200/contrastive/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:5fdd9dea4064c0a3992b0d982d8ced9467a80ca5e2772f595e4b3ac594c5c161
+-size 398702
++oid sha256:d5ccabdbddf2503e11eefe2d7158af0fa58fd40c7efc0c8e24fdd9a01c59f683
++size 407478
+diff --git a/data/results/gsm8k/eval200/contrastive/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv b/data/results/gsm8k/eval200/contrastive/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
+index 138e960..f3f5c52 100644
+--- a/data/results/gsm8k/eval200/contrastive/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
++++ b/data/results/gsm8k/eval200/contrastive/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:a7b2736edb46c2548a02e53e443ac9dd3a903ad1870acfae4356ed3bd1f76089
+-size 294
++oid sha256:d8955fcc517c75f808bdfcd849da0daf422ced8395ce9b34535f315a532fff0f
++size 353
+diff --git a/data/results/gsm8k/eval200/contrastive/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json b/data/results/gsm8k/eval200/contrastive/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
+index 474c3b0..3fd298f 100644
+--- a/data/results/gsm8k/eval200/contrastive/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
++++ b/data/results/gsm8k/eval200/contrastive/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:fc290c29ef178f8887942c9b55314d5e2b628560f09367bc3f11866884ed01b4
+-size 549
++oid sha256:c3251662cdd0bda1dd37a133cee57b94d691fd3139d45500a245cfe6b11d4089
++size 608
+diff --git a/data/results/gsm8k/eval200/contrastive/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv b/data/results/gsm8k/eval200/contrastive/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
+index 6195c87..ec1c8a6 100644
+--- a/data/results/gsm8k/eval200/contrastive/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
++++ b/data/results/gsm8k/eval200/contrastive/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:01f5d01cdb588d297c519b5a4ee58a5f59ce0742b8ff9c71ee23b40d15de13da
+-size 554645
++oid sha256:35ee096217a643a57b8ca302564c6b6f01932676345d15578993f3b12202c313
++size 567619
+diff --git a/data/results/gsm8k/eval200/contrastive/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv b/data/results/gsm8k/eval200/contrastive/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
+index ff3d762..71015b1 100644
+--- a/data/results/gsm8k/eval200/contrastive/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
++++ b/data/results/gsm8k/eval200/contrastive/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:ac855948389f3f85bf377cb9e1906b6f1cb7f8659fda078ae01838b8889d08a1
+-size 294
++oid sha256:30fbf4556a42c30110a8996db22035d3c909aeef803e3c793c603660961357cb
++size 353
+diff --git a/data/results/gsm8k/eval200/contrastive/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json b/data/results/gsm8k/eval200/contrastive/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
+index bda0751..3201ae2 100644
+--- a/data/results/gsm8k/eval200/contrastive/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
++++ b/data/results/gsm8k/eval200/contrastive/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:d7e453dbd46c781b5cefb93322cb23b5965a9867e11f754ceed0b08ce4dd8e20
+-size 549
++oid sha256:4e72abac2c7bddec632959b7ac2b1d84e5cf0bfccc6d3dc2b8a214b5dc9c7f48
++size 608
+diff --git a/data/results/gsm8k/eval200/embedding_clustering/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv b/data/results/gsm8k/eval200/embedding_clustering/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
+index 42fa08f..5f4d09d 100644
+--- a/data/results/gsm8k/eval200/embedding_clustering/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
++++ b/data/results/gsm8k/eval200/embedding_clustering/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:990e0e5c96b5dad076996d268ff6c976e4d0561226e75bb9e8c61b62a71ab423
+-size 380517
++oid sha256:2bc7ec7a8d887a3fdf13a268def0a66102b3860395c29a3aa08200d4e478db7b
++size 378972
+diff --git a/data/results/gsm8k/eval200/embedding_clustering/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv b/data/results/gsm8k/eval200/embedding_clustering/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
+index 152ce4c..c78ca3c 100644
+--- a/data/results/gsm8k/eval200/embedding_clustering/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
++++ b/data/results/gsm8k/eval200/embedding_clustering/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:a0b926b21e382c46aba46e1845619111344b29467c4f8201cd4e29d720993a17
+-size 310852
++oid sha256:c7de0194531ae5b2b628379bb05a279193cfbf96c99eb459bcf47b864ff3024d
++size 309905
+diff --git a/data/results/gsm8k/eval200/embedding_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv b/data/results/gsm8k/eval200/embedding_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
+index 5552692..5a25ab3 100644
+--- a/data/results/gsm8k/eval200/embedding_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
++++ b/data/results/gsm8k/eval200/embedding_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:bfaed16c3bbb63eba9335b6c36a21d393c86b9fcebcff6d5dc2ac0fb4f635fc2
+-size 458468
++oid sha256:42844f699ab00402603f58e760b10d0ef20e4eacf1927f130b3603c896274a69
++size 469402
+diff --git a/data/results/gsm8k/eval200/embedding_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv b/data/results/gsm8k/eval200/embedding_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
+index e666022..02b4692 100644
+--- a/data/results/gsm8k/eval200/embedding_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
++++ b/data/results/gsm8k/eval200/embedding_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:7caad754b85747362a319bd01185f9b039e99025d809298a785577fc7742c2b0
+-size 316
++oid sha256:c10e1334d514f8c3b59efc7b77639d229dbe73b7d2bbeb98f9c7edaf37e2d3d0
++size 310
+diff --git a/data/results/gsm8k/eval200/embedding_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json b/data/results/gsm8k/eval200/embedding_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
+index c5e337b..629a6fe 100644
+--- a/data/results/gsm8k/eval200/embedding_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
++++ b/data/results/gsm8k/eval200/embedding_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:ed2ab2ec2715617befd4f249dc832a1add55ba3e5341a794db1151ce78f164d6
+-size 580
++oid sha256:43600171cf33c778d15a6402980db7459950df0e33d457244a7ad46a50d46647
++size 574
+diff --git a/data/results/gsm8k/eval200/embedding_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv b/data/results/gsm8k/eval200/embedding_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
+index 7124ee5..2e87047 100644
+--- a/data/results/gsm8k/eval200/embedding_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
++++ b/data/results/gsm8k/eval200/embedding_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:4559972c8bd8675a0153df3df28c48ca2c96ab7680d0da8210008fba6b155bdb
+-size 386407
++oid sha256:e3714e834b5228d1a34f4eb936b781657df1dd078a78d309496003e8bd2cbf55
++size 394984
+diff --git a/data/results/gsm8k/eval200/embedding_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv b/data/results/gsm8k/eval200/embedding_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
+index 8c72188..10fbfc3 100644
+--- a/data/results/gsm8k/eval200/embedding_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
++++ b/data/results/gsm8k/eval200/embedding_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:77d73d388bb6d0823401b1230bf37e0aa126cdd03502294cf86b5e7ec3139e68
+-size 283
++oid sha256:5df282dd5c2045baa4d580c3c961b5cb101c7ba41a6a25161247d743e7ed19da
++size 315
+diff --git a/data/results/gsm8k/eval200/embedding_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json b/data/results/gsm8k/eval200/embedding_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
+index 679a5bb..739c382 100644
+--- a/data/results/gsm8k/eval200/embedding_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
++++ b/data/results/gsm8k/eval200/embedding_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:40cd77477dfde94114f3896b0e13af05cb1f00447b2df63b6023100b24043ac4
+-size 547
++oid sha256:0c03dc17ab060566a0fd4803971b1ce56cd0712d1c2d63517899ee705d1d6d25
++size 579
+diff --git a/data/results/gsm8k/eval200/just_name_it/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv b/data/results/gsm8k/eval200/just_name_it/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
+index ef1b56c..77d06fc 100644
+--- a/data/results/gsm8k/eval200/just_name_it/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
++++ b/data/results/gsm8k/eval200/just_name_it/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:fbe81770e3f13bc2372aa6af4ebd11dc5818d36ce8efebccb166f5707ba30bbe
+-size 320162
++oid sha256:c396c01f9be7552df80c357647858f49dee8508b8a49f03ed61ae06c98549529
++size 318617
+diff --git a/data/results/gsm8k/eval200/just_name_it/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv b/data/results/gsm8k/eval200/just_name_it/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
+index 6bf421c..c964764 100644
+--- a/data/results/gsm8k/eval200/just_name_it/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
++++ b/data/results/gsm8k/eval200/just_name_it/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:c9902513c419e441c0b5a4388848eb5c8d7d3db93e1ac26c4e78fcedf34489f0
+-size 289235
++oid sha256:ebe83d6f6f53af5e91012e4391b4d1589f115b5625845381bebd88d9ebd2496d
++size 288288
+diff --git a/data/results/gsm8k/eval200/just_name_it/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv b/data/results/gsm8k/eval200/just_name_it/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
+index a213800..cfe9cdd 100644
+--- a/data/results/gsm8k/eval200/just_name_it/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
++++ b/data/results/gsm8k/eval200/just_name_it/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:f33e56c0af47aa72c6c5101ab5ebf28fe09fe780cc8e94b6262bc78d0a71fa6d
+-size 395553
++oid sha256:b159582b010a32d5ac6213c648e3d5879ccd3adbe25f1d0c37733acc7c84eed7
++size 406203
+diff --git a/data/results/gsm8k/eval200/just_name_it/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv b/data/results/gsm8k/eval200/just_name_it/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
+index ca57736..cbb722d 100644
+--- a/data/results/gsm8k/eval200/just_name_it/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
++++ b/data/results/gsm8k/eval200/just_name_it/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:e726bacd2f8fd55d29a32cd7f6e7f912a03fc407f5c1786acd5c851f7a535fac
+-size 316
++oid sha256:b5f39dd2f49a76be03dd7943fc2a913328b8157fcfdc3477caf866992144a763
++size 315
+diff --git a/data/results/gsm8k/eval200/just_name_it/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json b/data/results/gsm8k/eval200/just_name_it/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
+index 2614dd4..ce05440 100644
+--- a/data/results/gsm8k/eval200/just_name_it/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
++++ b/data/results/gsm8k/eval200/just_name_it/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:8fb2fb42008375873d0d12e5b2351447d7b7bfcba57034c6c987ccb56278acd5
+-size 572
++oid sha256:5b603fcbb8e1efbbf58300f2c68d31e0499a44b12c904edc1f62b0505296a828
++size 571
+diff --git a/data/results/gsm8k/eval200/just_name_it/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv b/data/results/gsm8k/eval200/just_name_it/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
+index 8216cd9..3553fee 100644
+--- a/data/results/gsm8k/eval200/just_name_it/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
++++ b/data/results/gsm8k/eval200/just_name_it/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:1f90785707e0dab13ab9da81f989b14cbec66527aa93c6fc9db1c86af9640b1c
+-size 364590
++oid sha256:0b79128c6c8f68c321368b36b1e9c5985488acd55d0a6a5c7b6964f69c51a7aa
++size 372882
+diff --git a/data/results/gsm8k/eval200/just_name_it/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv b/data/results/gsm8k/eval200/just_name_it/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
+index edc4d52..64c040c 100644
+--- a/data/results/gsm8k/eval200/just_name_it/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
++++ b/data/results/gsm8k/eval200/just_name_it/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:9456fe3b2323dd276d5b90559350137a19ebd5311e1ed41019364d7e0500a069
+-size 281
++oid sha256:38200218c702c99a4f6fa36066eb04618b139b46fb434b5456d2ee0c8aa4ebdb
++size 317
+diff --git a/data/results/gsm8k/eval200/just_name_it/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json b/data/results/gsm8k/eval200/just_name_it/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
+index db04181..0032c9a 100644
+--- a/data/results/gsm8k/eval200/just_name_it/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
++++ b/data/results/gsm8k/eval200/just_name_it/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:fe02b071b9691a04990168e5bc56f6df9b686aad396e3cecd65ad1f69eb994fc
+-size 537
++oid sha256:0d86e50e69d26843f2cf1735039a2fc5c5b033bc893772d58e2c56e4f5659665
++size 573
+diff --git a/data/results/gsm8k/eval200/random_sampling/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv b/data/results/gsm8k/eval200/random_sampling/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
+index 5b2433f..24a5116 100644
+--- a/data/results/gsm8k/eval200/random_sampling/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
++++ b/data/results/gsm8k/eval200/random_sampling/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:0522d8c0083c9ab57f2293e41adbbfcc0d9d5ffea1d26b4663f8165c3e32cc48
+-size 352744
++oid sha256:e64a3933fdda8d58eac37a38113b46a22e42686eb6d17e2ea21033345b1333bd
++size 352007
+diff --git a/data/results/gsm8k/eval200/random_sampling/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv b/data/results/gsm8k/eval200/random_sampling/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
+index 13c8db2..161b7e5 100644
+--- a/data/results/gsm8k/eval200/random_sampling/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
++++ b/data/results/gsm8k/eval200/random_sampling/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:ef9535bb79322f1a4394a780de8545c19ed59dccaa29678fcc6b3882d6176af1
+-size 327066
++oid sha256:5e41651f8765101f16246919457ae54c3f22b2bb234ac7c5395ae4afb69d2d03
++size 326119
+diff --git a/data/results/gsm8k/eval200/random_sampling/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv b/data/results/gsm8k/eval200/random_sampling/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
+index 7452eef..8fdf9f3 100644
+--- a/data/results/gsm8k/eval200/random_sampling/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
++++ b/data/results/gsm8k/eval200/random_sampling/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:c825210ada2d35e9b3a1722b4cf8ccbd995ca81352127b120941c3297aaae4a9
+-size 428345
++oid sha256:c03368f87c15e755f94dab288c37363544b66c544821a4842709705fab5a5d9c
++size 442835
+diff --git a/data/results/gsm8k/eval200/random_sampling/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv b/data/results/gsm8k/eval200/random_sampling/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
+index 6575622..d379cd5 100644
+--- a/data/results/gsm8k/eval200/random_sampling/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
++++ b/data/results/gsm8k/eval200/random_sampling/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:fabd73cd94117816396d097649b071d371f197de5e152ea9d8f253f0bfd65710
+-size 300
++oid sha256:c081ffd847714597c190dfa9ee30d0dd98d2c459974697e142b0c00b4a1f5dc9
++size 318
+diff --git a/data/results/gsm8k/eval200/random_sampling/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json b/data/results/gsm8k/eval200/random_sampling/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
+index 7c4af3c..8ea68d8 100644
+--- a/data/results/gsm8k/eval200/random_sampling/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
++++ b/data/results/gsm8k/eval200/random_sampling/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:14c50aea2f047ae51ead8076574d649915cf0371da5e552469e83be7e32074c2
+-size 559
++oid sha256:c85b7f88f00a03624d4d3bf42770fa4a073892e017ed6c43fef172359fae2514
++size 577
+diff --git a/data/results/gsm8k/eval200/random_sampling/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv b/data/results/gsm8k/eval200/random_sampling/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
+index e1c13dd..1b2b918 100644
+--- a/data/results/gsm8k/eval200/random_sampling/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
++++ b/data/results/gsm8k/eval200/random_sampling/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:c9fedc6df816cea13ad98807bdb8af9a047bfacfaa8e61f53ac551f9a18361d8
+-size 403076
++oid sha256:32f780674e1805a5b103b5aedefe81e40af50f6560b179bada6606b219e991fd
++size 411264
+diff --git a/data/results/gsm8k/eval200/random_sampling/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv b/data/results/gsm8k/eval200/random_sampling/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
+index 2044a96..2775aa1 100644
+--- a/data/results/gsm8k/eval200/random_sampling/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
++++ b/data/results/gsm8k/eval200/random_sampling/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:d5e68e7c7ed0f376fb332fd28a728466bdc1b5c21472f4bf5c3f1da4a9acab63
+-size 296
++oid sha256:e670029300f538e3f2f570a73c3ff288b7a08f2f1ac7ad4f5c6c9b503fd68a59
++size 318
+diff --git a/data/results/gsm8k/eval200/random_sampling/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json b/data/results/gsm8k/eval200/random_sampling/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
+index c075c3d..0944371 100644
+--- a/data/results/gsm8k/eval200/random_sampling/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
++++ b/data/results/gsm8k/eval200/random_sampling/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:e5510d8dade74d7aef55b85b83d9e1a100dee5b9a1f9d207e5a07d812469c069
+-size 555
++oid sha256:2659205e8d0a146dc45a7fb1a7d677f7797729e36ce32cd97e594baf81ee83d7
++size 577
+diff --git a/data/results/gsm8k/eval200/stylistic_clustering/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv b/data/results/gsm8k/eval200/stylistic_clustering/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
+index f64ea55..1760bc2 100644
+--- a/data/results/gsm8k/eval200/stylistic_clustering/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
++++ b/data/results/gsm8k/eval200/stylistic_clustering/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:d5e1a3a476ad71e792b8a55dc5b822da60b32ad8bb3aa0425cb501c803f9c2ff
+-size 325065
++oid sha256:a41c4916001fb62b63edf242bb7a3e97ddf43f558681f4616af6c2e5e34bad8f
++size 324328
+diff --git a/data/results/gsm8k/eval200/stylistic_clustering/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv b/data/results/gsm8k/eval200/stylistic_clustering/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
+index fd52384..843d763 100644
+--- a/data/results/gsm8k/eval200/stylistic_clustering/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
++++ b/data/results/gsm8k/eval200/stylistic_clustering/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:d5758655b94af5fd1c91e4d53fec2caed89b4dc133767283a842326f82a6a4a8
+-size 312808
++oid sha256:551821ed8f4a388b7b6e5eed7e8c1c6f413c14a16fb88d06ef7fb6fdbd9f45d7
++size 311861
+diff --git a/data/results/gsm8k/eval200/stylistic_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv b/data/results/gsm8k/eval200/stylistic_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
+index 9dd9bfb..410fff3 100644
+--- a/data/results/gsm8k/eval200/stylistic_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
++++ b/data/results/gsm8k/eval200/stylistic_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:f65ce38670da3ae5550055d596fe33bfbdcc8afb51a28f6a1b264435ef79dd69
+-size 398858
++oid sha256:52d2ba2d0153378f0ee4291737a6b3314d6a32e74633b3f0c70c6d6ece07b2d0
++size 413972
+diff --git a/data/results/gsm8k/eval200/stylistic_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv b/data/results/gsm8k/eval200/stylistic_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
+index 41c8aab..4d1181d 100644
+--- a/data/results/gsm8k/eval200/stylistic_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
++++ b/data/results/gsm8k/eval200/stylistic_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored_metrics.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:5b2f4feb6ada5ba83b4da686c9fb91930081c8f777592d8585709ef4150ac946
+-size 298
++oid sha256:7725d376e5235bc8963651e8408b0f0ab04d48ccab2d850f4c96ddcdb27d91be
++size 315
+diff --git a/data/results/gsm8k/eval200/stylistic_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json b/data/results/gsm8k/eval200/stylistic_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
+index e14f511..c662814 100644
+--- a/data/results/gsm8k/eval200/stylistic_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
++++ b/data/results/gsm8k/eval200/stylistic_clustering/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/summary.json
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:04b22629bf817945e8f656d289ae6ed9b8bd55c3814decfc28909d3c28cfe7d6
+-size 562
++oid sha256:7770dadf5a033a211c364589c6a56b98a8f6ff9edf4b7429fea8f2f470c4bd08
++size 579
+diff --git a/data/results/gsm8k/eval200/stylistic_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv b/data/results/gsm8k/eval200/stylistic_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
+index 2b24b35..37abff0 100644
+--- a/data/results/gsm8k/eval200/stylistic_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
++++ b/data/results/gsm8k/eval200/stylistic_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:83e9ab6cd0ae4eec6c0a3c1d638ecd19913cd0acded59e2bde54f9e36c41c4e2
+-size 388692
++oid sha256:5c15cacd28bc9295fc6edc522c231a0a4bce16162626ac19293fff8b39929d9c
++size 395172
+diff --git a/data/results/gsm8k/eval200/stylistic_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv b/data/results/gsm8k/eval200/stylistic_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
+index 4a86db7..398f1d3 100644
+--- a/data/results/gsm8k/eval200/stylistic_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
++++ b/data/results/gsm8k/eval200/stylistic_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored_metrics.csv
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:86aff579bf4a0c222e70da31957c81fa43788c35defbf057c6e43b7a88cef9db
+-size 299
++oid sha256:571e6aa004fac717b0599ae12a25d568e1eda21d315777da95424175c6ce0540
++size 319
+diff --git a/data/results/gsm8k/eval200/stylistic_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json b/data/results/gsm8k/eval200/stylistic_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
+index b8404b4..1446d7c 100644
+--- a/data/results/gsm8k/eval200/stylistic_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
++++ b/data/results/gsm8k/eval200/stylistic_clustering/scores/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct/summary.json
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:7880a385558fd680d363bda16e8ac71c6c8935900fce8e47e33eac2920d342e6
+-size 563
++oid sha256:c747f60cb44329c59ce1999c56fc6d7d9ddb0000314b3fcb5c9dd3c964d9fc68
++size 583
+diff --git a/data/tinker_adapters.json b/data/tinker_adapters.json
+index 6cbc027..20b1b48 100644
+--- a/data/tinker_adapters.json
++++ b/data/tinker_adapters.json
+@@ -1,3 +1,3 @@
+ version https://git-lfs.github.com/spec/v1
+-oid sha256:ec8de5067c573d87940c77e4b786b9ac0d5254429dca9ccea099f21fc5f838b8
+-size 214
++oid sha256:1e82cb8f00cbd8737ef178e88c870a28dc2b68fe406c603eb304fda467b39ad9
++size 282
+diff --git a/run_all_workflows.sh b/run_all_workflows.sh
+index 0d83a4f..4cbe5cd 100755
+--- a/run_all_workflows.sh
++++ b/run_all_workflows.sh
+@@ -8,15 +8,18 @@ from workflows.tinker import SFTDatasetConfig
+ cfg = SFTWorkflowConfig(
+     provider="tinker",
+     dataset=SFTDatasetConfig(
+-        train_csv=Path("data/model-responses/gsm8k/splits/seed42/train_300/meta-llama_Meta-Llama-3.1-8B-Instruct_responses_train300_seed42.csv"),
+-        eval_csv=Path("data/model-responses/gsm8k/splits/seed42/eval_200/meta-llama_Meta-Llama-3.1-8B-Instruct_responses_eval200_seed42.csv"),
++        train_csv=Path("data/model-responses/gsm8k/splits/seed42/train_300/openai_gpt-4.1-mini_responses_train300_seed42.csv"),
++        eval_csv=Path("data/model-responses/gsm8k/splits/seed42/eval_200/openai_gpt-4.1-mini_responses_eval200_seed42.csv"),
+         prompt_column="prompt",
+         completion_column="model_response",
+     ),
+     output_dir=Path("data/results/workflows/sft_llama-3.1-8b-instruct_as_gpt-4.1-mini"),
+     tinker=TinkerSFTParams(
+         base_model="meta-llama/Llama-3.1-8B-Instruct",
+-        weights_name="sft_llama-3.1-8b-instruct_as_gpt-4.1-mini",
++        weights_name="gsm8k_llama-3.1-8b-instruct",
++        batch_size=16,
++        epochs=6,
++        learning_rate=1e-4,
+     ),
+ )
+ run_sft_workflow(cfg)
+@@ -41,8 +44,8 @@ cfg = SFTWorkflowConfig(
+     openai=OpenAISFTJobConfig(
+         model="gpt-4.1-mini-2025-04-14",
+         system_prompt="You are a patient math tutor.",
+-        epochs=3,
+-        batch_size=25,
++        epochs=6,
++        batch_size=16,
+     ),
+ )
+ run_sft_workflow(cfg)
+@@ -69,6 +72,10 @@ cfg = DPOWorkflowConfig(
+     tinker=TinkerDPOParams(
+         model_name="meta-llama/Llama-3.1-8B-Instruct",
+         log_path=Path("data/results/workflows/dpo_llama-3.1-8b-instruct_as_gpt-4.1-mini/logs"),
++        batch_size=16,
++        num_epochs=3,
++        renderer_name="llama3",
++        save_every=20,
+     ),
+ )
+ run_dpo_workflow(cfg)
+@@ -94,8 +101,8 @@ cfg = DPOWorkflowConfig(
+     output_dir=Path("data/results/workflows/dpo_gpt-4.1-mini_as_llama-3.1-8b-instruct"),
+     openai=OpenAIDPOParams(
+         model="gpt-4.1-mini-2025-04-14",
+-        epochs=1,
+-        batch_size=25,
++        epochs=3,
++        batch_size=16,
+         beta=0.1,
+     ),
+ )
+diff --git a/scripts/generate_responses_modular.py b/scripts/generate_responses_modular.py
+index 93a9c09..9bcb959 100644
+--- a/scripts/generate_responses_modular.py
++++ b/scripts/generate_responses_modular.py
+@@ -71,6 +71,21 @@ def _write_rows(output_csv: Path, rows: Iterable[dict]) -> None:
+         writer.writerows(rows)
+ 
+ 
++def _strip_chat_markup(text: str) -> str:
++    """Remove common Llama-style chat markers for cleaner outputs."""
++    cleaned = text
++    for marker in (
++        "<|start_header_id|>assistant<|end_header_id|>",
++        "<|assistant|>",
++    ):
++        if marker in cleaned:
++            cleaned = cleaned.split(marker, 1)[1]
++            break
++    for token in ("<|eot_id|>", "<|eom_id|>"):
++        cleaned = cleaned.replace(token, "")
++    return cleaned.strip()
++
++
+ def _gen_with_tinker(
+     *,
+     adapter_name: Optional[str],
+@@ -80,6 +95,7 @@ def _gen_with_tinker(
+     prompt_template: str,
+     stop: Optional[List[str]],
+     max_tokens: int,
++    renderer_name: Optional[str],
+ ) -> List[dict]:
+     import tinker
+     from tinker import types
+@@ -108,16 +124,34 @@ def _gen_with_tinker(
+         training_for_tokenizer = service.create_lora_training_client(base_model=bm)
+         tokenizer = training_for_tokenizer.get_tokenizer()
+ 
++    def _render_prompt(raw_prompt: str) -> str:
++        template_applied = prompt_template.format(prompt=raw_prompt)
++        if renderer_name and hasattr(tokenizer, "apply_chat_template"):
++            try:
++                messages = [{"role": "user", "content": template_applied}]
++                rendered = tokenizer.apply_chat_template(
++                    messages,
++                    tokenize=False,
++                    add_generation_prompt=True,
++                )
++                if isinstance(rendered, str):
++                    return rendered
++            except Exception:
++                pass
++        return template_applied
++
+     rows: List[dict] = []
+     for p in prompts:
+-        text = prompt_template.format(prompt=p)
++        text = _render_prompt(p)
+         encoded = tokenizer.encode(text, add_special_tokens=True)
+         model_input = types.ModelInput.from_ints(tokens=encoded)
+         params = types.SamplingParams(max_tokens=max_tokens, temperature=0.0, stop=stop)
+         future = sampling.sample(prompt=model_input, sampling_params=params, num_samples=1)
+         result = future.result()
+         reply = tokenizer.decode(result.sequences[0].tokens)
+-        rows.append({"prompt": p, "model_response": reply, "model": adapter_name})
++        if renderer_name:
++            reply = _strip_chat_markup(reply)
++        rows.append({"prompt": p, "model_response": reply, "model": adapter_name or model_path})
+     return rows
+ 
+ 
+@@ -252,6 +286,12 @@ def parse_args() -> argparse.Namespace:
+         default="meta-llama/Llama-3.1-8B-Instruct",
+         help="Base model to fetch tokenizer if SamplingClient lacks one.",
+     )
++    tinker_p.add_argument(
++        "--renderer-name",
++        type=str,
++        default=None,
++        help="Optional renderer name (e.g., llama3) to mimic the training chat template.",
++    )
+ 
+     # OpenAI(-compatible) backend
+     oai_p = sub.add_parser("openai", help="Use OpenAI or OpenAI-compatible endpoint (optionally with base_url)")
+@@ -273,7 +313,7 @@ def main() -> None:
+     prompts = _read_prompts(args.prompts_file)
+ 
+     # If provided, reproduce the train/eval split and exclude the training prompts
+-    if args.dataset_csv is not None:
++        if args.dataset_csv is not None:
+         train_prompts, eval_prompts = _reproduce_train_eval_split(
+             args.dataset_csv,
+             prompt_column=args.dataset_prompt_column,
+@@ -301,8 +341,18 @@ def main() -> None:
+             try:
+                 with args.adapter_registry.open("r", encoding="utf-8") as fh:
+                     reg = json.load(fh)
+-                model_path = reg.get(args.adapter_name)
+-                if model_path:
++                entry = reg.get(args.adapter_name)
++                registry_path = None
++                registry_renderer = None
++                if isinstance(entry, dict):
++                    registry_path = entry.get("path")
++                    registry_renderer = entry.get("renderer_name")
++                else:
++                    registry_path = entry
++                if registry_path:
++                    model_path = registry_path
++                    if args.renderer_name is None and registry_renderer:
++                        args.renderer_name = registry_renderer
+                     print(f"Resolved adapter '{args.adapter_name}' to model path from registry: {model_path}")
+             except Exception:
+                 pass
+@@ -317,6 +367,7 @@ def main() -> None:
+             prompt_template=args.prompt_template,
+             stop=(args.stop if args.stop else None),
+             max_tokens=args.max_tokens,
++            renderer_name=args.renderer_name,
+         )
+     elif args.backend == "openai":
+         if "OPENAI_API_KEY" not in os.environ and not args.base_url:
+@@ -340,5 +391,3 @@ def main() -> None:
+ 
+ if __name__ == "__main__":
+     main()
+-
+-
+diff --git a/scripts/normalize_llama31_naming.py b/scripts/normalize_llama31_naming.py
+index 995a37b..1f5a23b 100644
+--- a/scripts/normalize_llama31_naming.py
++++ b/scripts/normalize_llama31_naming.py
+@@ -64,3 +64,4 @@ if __name__ == "__main__":
+ 
+ 
+ 
++
+diff --git a/scripts/plot_gsm8k_eval200_finetune_scores.py b/scripts/plot_gsm8k_eval200_finetune_scores.py
+index d568920..5e5fc28 100644
+--- a/scripts/plot_gsm8k_eval200_finetune_scores.py
++++ b/scripts/plot_gsm8k_eval200_finetune_scores.py
+@@ -2,8 +2,9 @@
+ 
+ This script aggregates the semantic and stylistic LLM-judge metrics stored in the
+ ``scored_metrics.csv`` files that live under ``data/results/gsm8k/eval200`` and
+-renders a grouped bar chart comparing all 12 runs.  It also emits a tabular CSV
+-summary that can be shared directly.
++renders a grouped bar chart comparing all 12 runs.  The visualization is written
++as an interactive Plotly HTML document, and a tabular CSV summary is emitted for
++quick reference.
+ """
+ from __future__ import annotations
+ 
+@@ -36,9 +37,10 @@ METHOD_ORDER: Tuple[str, ...] = (
+     "contrastive",
+     "stylistic_clustering",
+     "embedding_clustering",
+-    "just_name_it",
+ )
+ 
++EXCLUDED_METHODS = {"just_name_it"}
++
+ 
+ @dataclass
+ class RunMetrics:
+@@ -112,6 +114,7 @@ def _collect_runs(root: Path, expected_count: int) -> List[RunMetrics]:
+         raise FileNotFoundError(f"No scored_metrics.csv files found under {root}")
+ 
+     runs = [_build_run_summary(path, root) for path in paths]
++    runs = [run for run in runs if run.method not in EXCLUDED_METHODS]
+     runs.sort(key=lambda item: _sort_key(item.method, item.pair_id))
+ 
+     for run in runs:
+@@ -221,7 +224,13 @@ def _parse_args() -> argparse.Namespace:
+         "--output-image",
+         type=Path,
+         default=Path("figures/gsm8k_eval200_finetune_scores.png"),
+-        help="Where to write the Plotly PNG visualization.",
++        help="Path for the static PNG visualization.",
++    )
++    parser.add_argument(
++        "--output-html",
++        type=Path,
++        default=None,
++        help="Optional path for an interactive Plotly HTML export.",
+     )
+     parser.add_argument(
+         "--output-csv",
+@@ -247,10 +256,18 @@ def main() -> None:
+     _write_summary_csv(rows, args.output_csv)
+ 
+     figure = _build_figure(runs)
+-    args.output_image.parent.mkdir(parents=True, exist_ok=True)
+-    figure.write_image(str(args.output_image), scale=2, width=1100, height=650)
++
++    if args.output_image:
++        args.output_image.parent.mkdir(parents=True, exist_ok=True)
++        figure.write_image(str(args.output_image), scale=2, width=1100, height=650)
++        print(f"Saved PNG visualization to {args.output_image}")
++
++    if args.output_html:
++        args.output_html.parent.mkdir(parents=True, exist_ok=True)
++        figure.write_html(str(args.output_html), include_plotlyjs="cdn")
++        print(f"Saved interactive visualization to {args.output_html}")
++
+     print(f"Wrote summary table to {args.output_csv}")
+-    print(f"Saved visualization to {args.output_image}")
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/scripts/scorer.py b/scripts/scorer.py
+index 024450b..da90d50 100644
+--- a/scripts/scorer.py
++++ b/scripts/scorer.py
+@@ -254,7 +254,7 @@ def _build_pairwise_prompt(target_response: str, model_response: str, prompt: Op
+     system = (
+         "You are an expert evaluator comparing two responses that were generated for the same prompt.\n"
+         "Treat Response A as the reference answer and judge how faithfully Response B reproduces it.\n"
+-        "Provide integer scores only (1 = lowest, 4 = highest). Never use decimals or other scales.\n\n"
++        "Provide scores between 1.0 and 4.0, and you may use decimals (e.g., 3.5) when appropriate.\n\n"
+         "Semantic fidelity (meaning/content)\n"
+         "  • Focus on whether Response B preserves Response A’s claims, quantitative results, assumptions, and step-by-step reasoning.\n"
+         "  • Paraphrasing or re-ordering is fine if all obligations, constraints, and final answers remain equivalent.\n"
+diff --git a/workflows/tinker.py b/workflows/tinker.py
+index b714ec3..4820316 100644
+--- a/workflows/tinker.py
++++ b/workflows/tinker.py
+@@ -299,7 +299,12 @@ def load_lora_kwargs(config_arg: Optional[str]) -> dict:
+     return json.loads(config_arg)
+ 
+ 
+-def record_adapter_mapping(weights_name: str, sampler_path: str, registry_path: Path) -> None:
++def record_adapter_mapping(
++    weights_name: str,
++    sampler_path: str,
++    registry_path: Path,
++    metadata: Optional[dict[str, object]] = None,
++) -> None:
+     """Persist adapter name -> sampler path locally for reuse."""
+     registry_path.parent.mkdir(parents=True, exist_ok=True)
+     if registry_path.exists():
+@@ -310,7 +315,10 @@ def record_adapter_mapping(weights_name: str, sampler_path: str, registry_path:
+             registry = {}
+     else:
+         registry = {}
+-    registry[weights_name] = sampler_path
++    entry: dict[str, object] = {"path": sampler_path}
++    if metadata:
++        entry.update(metadata)
++    registry[weights_name] = entry
+     with registry_path.open("w", encoding="utf-8") as fh:
+         json.dump(registry, fh, indent=2, sort_keys=True)
+     print(f"Recorded adapter mapping in {registry_path}: {weights_name} -> {sampler_path}")

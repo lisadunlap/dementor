@@ -174,3 +174,15 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+gsm8k_env/
+# Local virtualenvs and artifacts
+claude_env/
+wandb/
+claude
+.claude/
+*.pyc
+__pycache__/
+.DS_Store
+
+# Environment setup scripts
+setup_anthropic_env.sh

@@ -1,96 +1,96 @@
-# dementor
-Stealing the souls of LLMs
+# Dementor – Streamlined LLM Disguise
 
-## Setup
+Minimal toolkit for stealing the “voice” of one LLM and applying it to another. Pair concise prompt-based methods with optional SFT/DPO adapters; all evaluation artifacts land under `data/results/`.
+
+## Quick Start
 ```bash
 pip install -r requirements.txt
+python scripts/run_pipeline.py \
+  --prompts_file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
+  --source-model meta-llama/Meta-Llama-3.1-8B-Instruct \
+  --target-model openai/gpt-4.1-mini \
+  --method contrastive
 ```
 
-## Running Local Models with VLLM
-run `vllm serve` with the huggingface model name and the number of GPUs you want to use (NOTE: most of our files load the model for offline inference so we dont need run vllm serve)
+## Reference Docs
+- `AGENTS.md` – repo guidance + coding conventions.
+- `docs/local_generation.md` – HF/vLLM/provider routing (includes the local vLLM walkthrough).
+- `workflows/README.md` – GSM8K SFT/DPO orchestration + Tinker adapter registry.
+- `examples/` – copy/paste provider configs.
+- `scripts/gsm8k/` – automation for GSM8K workflows, cleanup, and plotting.
 
+## Workflow in Four Steps
+1. **Generate base responses** – `scripts/generate_responses.py` (provider/HF/vLLM/Tinker).
+2. **Disguise** – `scripts/disguise.py` or `scripts/run_pipeline.py`.
+3. **Score** – `python -m scripts.scorer ...` for LLM judge + heuristics.
+4. **Review outputs** – CSVs in `data/results/<dataset>/...`; cache lives in `cache/llm_cache/`.
+
+## Disguise Options
+
+| Prompt Method | What it does | When to use |
+| --- | --- | --- |
+| `random_sampling` | Few-shot prompt of target answers. | Fast baseline when target responses are clean. |
+| `behavioral_based` | Builds persona / tone system prompt. | You need the target’s “voice.” |
+| `stylistic` | Enforces formatting heuristics. | Rubric-heavy, surface-style benchmarks. |
+| `contrastive` | Learns correction rules from src vs tgt pairs. | Models diverge sharply; need targeted edits. |
+| `stylistic_clustering` | Clusters target exemplars by formatting traits. | Datasets with multiple style regimes. |
+| `embedding_clustering` | Embedding-based exemplar clusters per semantic regime. | Mixed semantic tasks (math vs chit-chat). |
+
+### Finetune Adapters
+| Path | Summary | Entry point |
+| --- | --- | --- |
+| **SFT (LoRA)** | Tinker/OpenAI fine-tunes for GSM8K (300 train / 200 eval). | `scripts/gsm8k/run_all_workflows.sh` |
+| **DPO** | Preference tuning stacked on SFT adapters. | Same launcher; see `workflows/README.md`. |
+
+## Scoring Cheatsheet
 ```bash
-vllm serve meta-llama/Meta-Llama-3-8B-Instruct --dtype half --tensor_parallel_size 4
+# Single file (baseline quality)
+python -m scripts.scorer single data/model-responses/<dataset>/full/<model>.csv \
+  --output data/results/<dataset>/scores/<model>/scored.csv
+
+# Pairwise (disguised vs target)
+python -m scripts.scorer pairwise \
+  --input data/results/<dataset>/comparisons/disguised_vs_target/<method>/<src>_as_<tgt>.csv \
+  --output data/results/<dataset>/comparisons/disguised_vs_target/<method>/<src>_as_<tgt>_scored.csv \
+  --judge-model openai/gpt-4.1-mini
 ```
 
-if you want to run multiple models at once, set `--port` to a different port for each model
+## Repo Layout (abridged)
+```
+scripts/
+├── run_pipeline.py       # One-command pipeline (generate → compare → disguise → score)
+├── disguise.py           # Prompt-based disguises
+├── generate_responses.py # Base generations (provider/HF/vLLM/Tinker)
+├── scorer.py             # Single, pairwise, compare CLIs
+├── gsm8k/                # Workflow runners, plotting, cleanup
+├── tools/                # Maintenance utilities
+└── methods/              # Method implementations + registry
+data/
+├── datasets/             # Prompts + style archetypes
+└── model-responses/      # Generated baselines
+data/results/             # Disguised outputs, scores, plots
+```
 
-To test that your model is running, run `python utils_llm.py` (make sure the model name is uncommented in the `test_get_llm_output` function)
-
-## Getting Differences Between Models
-
+## Handy Commands
 ```bash
-python get_differences.py --input_file <path to file with prompts and model outputs> --batch_size <number of prompts to process at once> --num_rounds <number of rounds to run> --num_final_vibes <number of final vibes to return> --models <model1> <model2>
+# Generate base responses (provider/HF/vLLM)
+python scripts/generate_responses.py \
+  --prompts-file data/datasets/chatbot_arena/chatbot_arena_prompts.csv \
+  --output-csv data/model-responses/chatbot_arena/full/openai_gpt-4.1-mini.csv \
+  basic --model openai/gpt-4.1-mini
+
+# Contrastive disguise with custom prompts
+python scripts/disguise.py \
+  --model google/gemma-3-1b-it \
+  --disguise_as openai/gpt-4.1-mini \
+  --method contrastive \
+  --prompts_file my_prompts.csv \
+  --num_samples 200
 ```
 
-This expects your input file to have a "prompt" column, and two columns with the model outputs (e.g. "friendly_model" and "cold_model").
+## Inputs & Outputs
+- **Prompts**: CSV with `prompt` column (`data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv`, `data/datasets/chatbot_arena/chatbot_arena_prompts.csv`). Plain-text lists still work for lightweight cases.
+- **Base responses**: `data/model-responses/<dataset>/full/…`
+- **Results / scores**: `data/results/<dataset>/comparisons/...`
 
-For example,
-```bash
-python get_differences.py --input_file data/friendly_and_cold_sample.csv --batch_size 10 --num_rounds 2 --num_final_vibes 5 --models friendly_model cold_model
-```
-
-This will run 2 rounds of getting differences between the friendly and cold models, and then reduce the differences to 5 final vibes.
-
-## Generating responses
-```bash
-python disguising/prompt_llm_new.py --model google/gemma-3-1b-it --num_samples 1000
-```
-
-# Class structure
-
-To disguise a model, run `python disguising/disguise.py ` with your method of choice (methods located in `methods`). Each method should return a prompt to give an llm which will disguise it as the target_llm
-
-```bash
-class MethodBase:
-    """
-    Base class for all methods.
-    """
-    def __init__(self, model: str, disguise_as: str) -> None:
-        self.model = model
-        self.disguise_as = disguise_as
-    
-    def forward(self, prompt: str) -> str:
-        """
-        Given a prompt, return the disguised prompt to use for the model.
-        """
-        return ...
-```
-
-## Sampling In-context Examples
-
-Sample examples from generations of the `disguise_as` model and use those in the prompt for `model`. This assumes that you have already generated the responses for the disguise_as model. 
-```bash
-python disguising/disguise.py --model google/gemma-3-1b-it --disguise_as gpt-4o --method random_sample_3_examples
-```
-
-This will save the generations in `model-respones/disguised/{method}/{model}/{run_name}`. 
-
-Test the script using `--test` flag.
-
-`script/disguise_sweep.yaml` contains sweep configs to run all models and all methods on wandb.
-
-## Running Scorer
-
-Make sure that you have the right package versions to run [phi-4](https://huggingface.co/microsoft/Phi-4-mini-instruct)
-
-Input file should be generated by `disguise.py` that has responses from both models, you can run scorer by:
-```bash
-python disguising/llm_scorer.py --input_file disguising/model-responses/disguised/stylistic_clustering_resample/meta-llama_Meta-Llama-3-8B-Instruct/meta-llama_Meta-Llama-3-8B-Instruct_disguised-gpt-3.5_responses-1000.csv
-```
-
-To score a batch of files, edit `scripts/gen_script.py` to generate a bash script. Then run script under project root.
-
-If you just want to run the heuristics (response length, markdown headers, eclamation marks, etc), add the `--compute_heuristics_only` flag to your command.
-
-Results are stored under `/scores` folder.
-
-## Visualization
-
-Add scoring data from wandb in `visualization/data` and run `heatmap.py`. `heatmaps.py` plots all heatmaps in one plot.
-
-## Command to run for Qwen32B
-
-```bash
-python disguising/disguise.py --disguise_as=benchmark_conspiracy-theorist --model=Qwen/Qwen3-32B
-```
+Need more detail? Open `AGENTS.md`, `docs/local_generation.md`, or `workflows/README.md` depending on whether you’re coding, routing providers, or fine-tuning. Everything else lives in the scripts described above.

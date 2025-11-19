@@ -1,0 +1,921 @@
+### repo: /home/ethanliu/dementor @ 0119d32c991b89af5bf83afdf4fba4cf9acdac58
+modules: tinker_cookbook
+-- repo-wide (vs HEAD, staged+unstaged) --
+diff --git a/README.md b/README.md
+index 5374887..ece0604 100644
+--- a/README.md
++++ b/README.md
+@@ -27,8 +27,10 @@ If Meta-Llama generations come from a local vLLM instance but helper calls still
+ ```bash
+ # Analyzer calls (contrastive, behavioral) → OpenAI
+ export ANALYSIS_API_BASE="https://api.openai.com/v1"
+-# Embedding lookups (embedding_clustering) → OpenAI (defaults to key in .env)
++export ANALYSIS_API_KEY="$OPENAI_API_KEY"
++# Embedding lookups (embedding_clustering) → OpenAI
+ export EMBEDDING_API_BASE="https://api.openai.com/v1"
++export EMBEDDING_API_KEY="$OPENAI_API_KEY"
+ 
+ python scripts/disguise.py \
+   --model meta-llama/Meta-Llama-3.1-8B-Instruct \
+@@ -38,15 +40,15 @@ python scripts/disguise.py \
+   --num_samples 500 \
+   --source_responses data/model-responses/gsm8k/500/meta-llama_Meta-Llama-3.1-8B-Instruct_responses.csv \
+   --target_responses data/model-responses/gsm8k/500/openai_gpt-4.1-mini_responses.csv \
+-  --openai-api-base http://localhost:8000/v1 \
+-  --openai-api-key dummy \
++  --generation-api-base http://localhost:8000/v1 \
++  --generation-api-key dummy \
+   --no_wandb
+ ```
+ 
+ - Swap `<method_name>` with any disguise method (`random_sampling`, `contrastive`, `behavioral_based`, `stylistic_clustering`, `embedding_clustering`, `just_name_it`, etc.).
+-- `--openai-api-base` / `--openai-api-key dummy` route the source model to your local vLLM server.
+-- `ANALYSIS_API_BASE` ensures contrastive / behavioral analyzers hit OpenAI with the key from `.env`.
+-- `EMBEDDING_API_BASE` (optional) pins embedding_clustering’s calls to the OpenAI text-embedding-3-small endpoint.
++- `--generation-api-base` / `--generation-api-key` route the source model to your local vLLM server (overriding the defaults in `.env`).
++- `ANALYSIS_API_BASE` keeps contrastive / behavioral analyzers on OpenAI with the key from `.env`.
++- `EMBEDDING_API_BASE` pins embedding_clustering’s embedding lookups to OpenAI.
+ ```
+ 
+ ## Local Generation (HF vs vLLM)
+diff --git a/scripts/cached_llm.py b/scripts/cached_llm.py
+index 288745a..d9b38d9 100644
+--- a/scripts/cached_llm.py
++++ b/scripts/cached_llm.py
+@@ -78,16 +78,25 @@ def _apply_model_routing(model: str, kwargs: Dict[str, Any]) -> tuple[str, Dict[
+                 updated_kwargs[key] = config_entry[key]
+         provider_hint = provider_hint or config_entry.get("custom_llm_provider") or config_entry.get("litellm_provider")
+ 
+-    if provider_hint:
++    if provider_hint and provider_hint != "openai":
+         updated_kwargs.setdefault("custom_llm_provider", provider_hint)
+         updated_kwargs.setdefault("litellm_provider", provider_hint)
+-    if "api_base" in updated_kwargs and "custom_llm_provider" not in updated_kwargs:
++    if "api_base" in updated_kwargs and "custom_llm_provider" not in updated_kwargs and updated_kwargs.get("api_base") not in (None, "https://api.openai.com/v1"):
+         # default to openai-compatible when routing via custom base
+         updated_kwargs["custom_llm_provider"] = "openai"
+         updated_kwargs.setdefault("litellm_provider", "openai")
+ 
+     return effective_model, updated_kwargs
+ 
++
++def register_model_config(model: str, config: Dict[str, str]) -> None:
++    """Register or update per-model routing configuration at runtime."""
++    if not isinstance(config, dict):  # defensive, shouldn't happen
++        return
++    cleaned = {k: v for k, v in config.items() if v}
++    if cleaned:
++        _MODEL_CONFIG_MAP[model] = cleaned
++
+ # Import from serve utilities
+ from serve.utils_general import (
+     get_from_cache,
+diff --git a/scripts/disguise.py b/scripts/disguise.py
+index 40c2816..9c499d1 100755
+--- a/scripts/disguise.py
++++ b/scripts/disguise.py
+@@ -32,6 +32,7 @@ from litellm import completion
+ import litellm
+ from tqdm import tqdm
+ import wandb
++from cached_llm import register_model_config
+ 
+ # Enable caching for API calls (not for vLLM/local servers)
+ if not hasattr(litellm, 'cache') or litellm.cache is None:
+@@ -341,6 +342,28 @@ def main():
+                        help="Override OPENAI_API_BASE for LiteLLM (e.g., http://localhost:8000/v1)")
+     parser.add_argument("--openai-api-key", type=str, default=None,
+                        help="Override OPENAI_API_KEY for LiteLLM (placeholder allowed for local)")
++
++    # Granular API routing overrides
++    parser.add_argument("--generation-api-base", type=str, default=None,
++                       help="API base for source model generation (overrides GENERATION_API_BASE env)")
++    parser.add_argument("--generation-api-key", type=str, default=None,
++                       help="API key for source model generation (overrides GENERATION_API_KEY env)")
++    parser.add_argument("--generation-provider", type=str, default=None,
++                       help="LiteLLM provider hint for source model generation")
++
++    parser.add_argument("--analysis-api-base", type=str, default=None,
++                       help="API base for analyzer models (contrastive/behavioral)")
++    parser.add_argument("--analysis-api-key", type=str, default=None,
++                       help="API key for analyzer models")
++    parser.add_argument("--analysis-provider", type=str, default=None,
++                       help="LiteLLM provider hint for analyzer calls")
++
++    parser.add_argument("--embedding-api-base", type=str, default=None,
++                       help="API base for embedding lookups (embedding_clustering)")
++    parser.add_argument("--embedding-api-key", type=str, default=None,
++                       help="API key for embedding lookups")
++    parser.add_argument("--embedding-provider", type=str, default=None,
++                       help="LiteLLM provider hint for embedding calls")
+     
+     args = parser.parse_args()
+     setup_logging()
+@@ -359,6 +382,45 @@ def main():
+     if args.openai_api_key:
+         os.environ["OPENAI_API_KEY"] = args.openai_api_key
+ 
++    # Generation routing (source model)
++    generation_api_base = args.generation_api_base or os.getenv("GENERATION_API_BASE")
++    generation_api_key = args.generation_api_key or os.getenv("GENERATION_API_KEY")
++    generation_provider = args.generation_provider or os.getenv("GENERATION_PROVIDER")
++    generation_config = {}
++    if generation_api_base:
++        generation_config["api_base"] = generation_api_base
++        os.environ["GENERATION_API_BASE"] = generation_api_base
++    if generation_api_key:
++        generation_config["api_key"] = generation_api_key
++        os.environ["GENERATION_API_KEY"] = generation_api_key
++    if generation_provider:
++        generation_config["custom_llm_provider"] = generation_provider
++        os.environ["GENERATION_PROVIDER"] = generation_provider
++    if generation_config:
++        register_model_config(args.model, generation_config)
++
++    # Analysis routing (contrastive / behavioral)
++    analysis_api_base = args.analysis_api_base or os.getenv("ANALYSIS_API_BASE")
++    analysis_api_key = args.analysis_api_key or os.getenv("ANALYSIS_API_KEY")
++    analysis_provider = args.analysis_provider or os.getenv("ANALYSIS_PROVIDER")
++    if analysis_api_base:
++        os.environ["ANALYSIS_API_BASE"] = analysis_api_base
++    if analysis_api_key:
++        os.environ["ANALYSIS_API_KEY"] = analysis_api_key
++    if analysis_provider:
++        os.environ["ANALYSIS_PROVIDER"] = analysis_provider
++
++    # Embedding routing (embedding_clustering)
++    embedding_api_base = args.embedding_api_base or os.getenv("EMBEDDING_API_BASE")
++    embedding_api_key = args.embedding_api_key or os.getenv("EMBEDDING_API_KEY")
++    embedding_provider = args.embedding_provider or os.getenv("EMBEDDING_PROVIDER")
++    if embedding_api_base:
++        os.environ["EMBEDDING_API_BASE"] = embedding_api_base
++    if embedding_api_key:
++        os.environ["EMBEDDING_API_KEY"] = embedding_api_key
++    if embedding_provider:
++        os.environ["EMBEDDING_PROVIDER"] = embedding_provider
++
+     # Hard-guard: if generation model is an OpenAI-hosted model, force official base
+     try:
+         model_lower = (args.model or "").lower()
+diff --git a/scripts/methods/utils/extract_styles.py b/scripts/methods/utils/extract_styles.py
+index 4e17edc..bd11dcc 100644
+--- a/scripts/methods/utils/extract_styles.py
++++ b/scripts/methods/utils/extract_styles.py
+@@ -3,17 +3,26 @@ import re
+ from tqdm import tqdm
+ from litellm import embedding
+ from typing import List
++import os
+ 
+ def get_model_embeddings(embeddings: List[str]) -> np.ndarray:
+     """
+     Get the embeddings for the source and target model's responses using litellm
+     """
++    model_name = os.getenv("EMBEDDING_MODEL", "text-embedding-3-small")
++    api_base = os.getenv("EMBEDDING_API_BASE") or os.getenv("ORIGINAL_OPENAI_API_BASE") or os.getenv("ANALYSIS_API_BASE")
++    api_key = os.getenv("EMBEDDING_API_KEY") or os.getenv("ORIGINAL_OPENAI_API_KEY") or os.getenv("OPENAI_API_KEY")
++    provider_hint = os.getenv("EMBEDDING_PROVIDER", "openai")
++
+     embeddings_list = []
+     for row in tqdm(embeddings, desc="Getting embeddings"):
+         embedding_vec = embedding(
+-            model="text-embedding-3-small",
++            model=model_name,
+             input=row,
+             caching=True,
++            api_base=api_base,
++            api_key=api_key,
++            custom_llm_provider=provider_hint,
+         )
+         embedding_vec = embedding_vec["data"][0]["embedding"]
+         embeddings_list.append(embedding_vec)
+@@ -132,4 +141,4 @@ def extract_style_features(text):
+         "First-Person Pronouns": uses_first_person
+     }
+ 
+-    return np.array([1 if func(text) else 0 for func in style_functions.values()])
+\ No newline at end of file
++    return np.array([1 if func(text) else 0 for func in style_functions.values()])
+diff --git a/scripts/prompt_llm_new.py b/scripts/prompt_llm_new.py
+deleted file mode 100644
+index 86a2eb2..0000000
+--- a/scripts/prompt_llm_new.py
++++ /dev/null
+@@ -1,141 +0,0 @@
+-import pandas as pd
+-import asyncio
+-import os
+-import nest_asyncio
+-from openai import OpenAI
+-import tiktoken  # For token counting
+-from dotenv import load_dotenv
+-import requests
+-from transformers import AutoTokenizer  # Using transformers to load the correct tokenizer for Meta LLaMA models
+-import aiohttp
+-from tqdm import tqdm
+-from tqdm import tqdm
+-import wandb
+-import re
+-from utils import get_token_count
+-from litellm import completion
+-
+-# Run event loop
+-if __name__ == "__main__":
+-    import argparse
+-    parser = argparse.ArgumentParser()
+-    parser.add_argument("--model", type=str, default="OpenGVLab/InternVL3-9B")
+-    parser.add_argument("--output_column", type=str, default="model_response")
+-    parser.add_argument("--output_dir", type=str, default="data/model-responses/chatbot_arena/500")
+-    parser.add_argument("--dataset", type=str, default="data/datasets/chatbot_arena/chatbot_arena_prompts.txt", help="Path to a text file with one prompt per line")
+-    parser.add_argument("--dataset_csv", type=str, default=None, help="Optional: path to CSV with a 'prompt' column (or specify --dataset_csv_prompt_col)")
+-    parser.add_argument("--dataset_csv_prompt_col", type=str, default="prompt")
+-    parser.add_argument("--temperature", type=float, default=0.0)
+-    parser.add_argument("--top_p", type=float, default=0.95)
+-    parser.add_argument("--max_tokens", type=int, default=1024)
+-    parser.add_argument("--max_model_len", type=int, default=8000)
+-    parser.add_argument("--num_samples", type=int)
+-    parser.add_argument("--multimodal", action="store_true")
+-    parser.add_argument("--tensor_parallel_size", type=int, default=1)
+-    # Use an OpenAI-compatible server (e.g., vLLM API) instead of loading a local model
+-    parser.add_argument("--use_openai_server", action="store_true")
+-    parser.add_argument("--api_base", type=str, default=None)
+-    parser.add_argument("--api_key", type=str, default=None)
+-    parser.add_argument("--batch_size", type=int, default=20)
+-    parser.add_argument("--no_wandb", action="store_true")
+-    args = parser.parse_args()
+-    
+-    # Load environment variables
+-    load_dotenv()
+-
+-    # Load prompts from CSV or text file
+-    if args.dataset_csv is not None:
+-        df_in = pd.read_csv(args.dataset_csv)
+-        if args.dataset_csv_prompt_col not in df_in.columns:
+-            raise ValueError(f"Column '{args.dataset_csv_prompt_col}' not found in {args.dataset_csv}")
+-        prompts = df_in[args.dataset_csv_prompt_col].astype(str).tolist()
+-    else:
+-        with open(args.dataset, "r") as f:
+-            prompts = f.readlines()
+-
+-    # remove any rows where the prompt is more than 2048 tokens
+-    prompts_tokens = [get_token_count(prompt) for prompt in prompts]
+-    prompts = [prompt for prompt, token_length in zip(prompts, prompts_tokens) if token_length <= 1024]
+-
+-    if args.num_samples is not None:
+-        prompts = prompts[:args.num_samples]
+-
+-    if args.no_wandb:
+-        os.environ["WANDB_MODE"] = "offline"
+-    wandb.init(project="disguising-generations", name=f"{args.model.replace('/', '_')}_responses")
+-    wandb.config.update(args)
+-
+-    
+-    def format_prompt(prompt):
+-        return [
+-            {"role": "system", "content": "You are a helpful assistant."},
+-            {"role": "user", "content": prompt}
+-        ]
+-    
+-    def format_multimodal_prompt(prompt):
+-        return [
+-            {"role": "system", "content": [{"type": "text", "text": "You are a helpful assistant."}]},
+-            {"role": "user", "content": [{"type": "text", "text": prompt}]}
+-        ]
+-    
+-    def postprocess_response(response):
+-        # Remove any content between <think> tags
+-        response = re.sub(r"<think>.*?</think>", "", response, flags=re.DOTALL)
+-        return response.strip()
+-    
+-    messages = [format_multimodal_prompt(prompt) if args.multimodal else format_prompt(prompt) for prompt in prompts]
+-
+-    save_path = f"{args.output_dir}/{args.model.replace('/', '_')}-{args.num_samples}.csv" if args.num_samples is not None else f"{args.output_dir}/{args.model.replace('/', '_')}.csv"
+-
+-    # Configure OpenAI-compatible client if requested
+-    if args.use_openai_server:
+-        if args.api_base:
+-            os.environ["OPENAI_API_BASE"] = args.api_base
+-        if args.api_key:
+-            os.environ["OPENAI_API_KEY"] = args.api_key
+-
+-    responses = []
+-    if args.use_openai_server:
+-        # Use LiteLLM to hit remote server
+-        for i in tqdm(range(0, len(messages), args.batch_size), desc="Generating responses in batches"):
+-            batch = messages[i:i+args.batch_size]
+-            for message in batch:
+-                try:
+-                    r = completion(
+-                        model=args.model,
+-                        messages=message,
+-                        max_tokens=args.max_tokens,
+-                        temperature=args.temperature,
+-                        top_p=args.top_p,
+-                        custom_llm_provider="openai",
+-                        caching=True,
+-                    )
+-                    responses.append(r.choices[0].message.content)
+-                except Exception as e:
+-                    print(f"Error generating response: {e}")
+-                    responses.append("")
+-    else:
+-        # Load model locally with vLLM
+-        from vllm import LLM, SamplingParams
+-        llm = LLM(model=args.model, trust_remote_code=True, max_model_len=args.max_model_len, tensor_parallel_size=args.tensor_parallel_size)
+-        sampling_params = SamplingParams(
+-            max_tokens=args.max_tokens,
+-            temperature=args.temperature,
+-            top_p=args.top_p,
+-        )
+-        # batch size of 100
+-        for i in tqdm(range(0, len(messages), args.batch_size), desc="Generating responses in batches"):
+-            responses.extend(llm.chat(messages=messages[i:i+args.batch_size], sampling_params=sampling_params))
+-        responses = [response.outputs[0].text for response in responses]
+-
+-    # make output directory if it doesn't exist
+-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+-
+-    df = pd.DataFrame({"prompt": prompts, "messages": messages, "model_response": responses, "model": args.model.replace("/", "_")})
+-    df["response_token_length"] = df["model_response"].apply(lambda x: get_token_count(x))
+-    df = df.dropna(subset=["model_response"])
+-    print(f"Generated {len(df)} responses")
+-    print(f"Saved to {save_path}")
+-    df.to_csv(save_path, index=False)
+-    wandb.log({"data": wandb.Table(dataframe=df)})
+-    wandb.summary["average_response_token_length"] = df["response_token_length"].mean()
+diff --git a/scripts/run_gsm8k_500_judgements.sh b/scripts/run_gsm8k_500_judgements.sh
+deleted file mode 100755
+index fe2104e..0000000
+--- a/scripts/run_gsm8k_500_judgements.sh
++++ /dev/null
+@@ -1,65 +0,0 @@
+-#!/usr/bin/env bash
+-set -euo pipefail
+-
+-# GSM8K-500 judgements (single-file only):
+-# - Base source (openai_gpt-4.1)
+-# - Base target (meta-llama_Meta-Llama-3.1-8B-Instruct)
+-# - Disguised random_sampling (openai_gpt-4.1_as_meta-llama_Meta-Llama-3.1-8B-Instruct)
+-# - Base source run2 (generate + score)
+-
+-PROMPTS="data/datasets/gsm8k/gsm8k_prompts_500.csv"
+-
+-SRC_MODEL_ID="openai/gpt-4.1"
+-SRC_NAME="openai_gpt-4.1"
+-SRC_BASE_CSV="data/model-responses/gsm8k/500/openai_gpt-4.1_responses.csv"
+-
+-TGT_NAME="meta-llama_Meta-Llama-3.1-8B-Instruct"
+-TGT_BASE_CSV="data/model-responses/gsm8k/500/meta-llama_Meta-Llama-3.1-8B-Instruct_responses.csv"
+-
+-DISGUISED_RAW_CSV="data/results/gsm8k/500/random_sampling/${SRC_NAME}_as_${TGT_NAME}.csv"
+-
+-# Output directories per your spec
+-BASE_ROOT="data/results/gsm8k/500"
+-mkdir -p "$BASE_ROOT/scores/$SRC_NAME" "$BASE_ROOT/scores/$TGT_NAME"
+-mkdir -p "$BASE_ROOT/random_sampling/scores/${SRC_NAME}_as_${TGT_NAME}"
+-
+-echo "Scoring base source ($SRC_NAME) → $BASE_ROOT/scores/$SRC_NAME/scored.csv"
+-python -m scripts.scorer single "$SRC_BASE_CSV" --output "$BASE_ROOT/scores/$SRC_NAME/scored.csv"
+-
+-echo "Scoring base target ($TGT_NAME) → $BASE_ROOT/scores/$TGT_NAME/scored.csv"
+-python -m scripts.scorer single "$TGT_BASE_CSV" --output "$BASE_ROOT/scores/$TGT_NAME/scored.csv"
+-
+-echo "Scoring disguised random_sampling → $BASE_ROOT/random_sampling/scores/${SRC_NAME}_as_${TGT_NAME}/scored.csv"
+-python -m scripts.scorer single "$DISGUISED_RAW_CSV" --output "$BASE_ROOT/random_sampling/scores/${SRC_NAME}_as_${TGT_NAME}/scored.csv"
+-
+-# Run2: generate then score
+-RUN2_CSV="data/model-responses/gsm8k/500/run2/${SRC_NAME}_responses.csv"
+-mkdir -p "$(dirname "$RUN2_CSV")"
+-echo "Generating run2 base responses (overwrite) → $RUN2_CSV"
+-rm -f "$RUN2_CSV"
+-python scripts/gen_cache_response.py \
+-  --dataset "$PROMPTS" \
+-  --gpt_model "${SRC_MODEL_ID#openai/}" \
+-  --output_path "$RUN2_CSV" \
+-  --disable_wandb \
+-  --ignore_generation_cache
+-
+-# Safety: ensure exactly 500 unique prompts (drop accidental duplicates)
+-python - << 'PY'
+-import pandas as pd, os
+-path = 'data/model-responses/gsm8k/500/run2/openai_gpt-4.1_responses.csv'
+-df = pd.read_csv(path)
+-before = len(df)
+-df = df.drop_duplicates(subset=['prompt'], keep='last').reset_index(drop=True)
+-after = len(df)
+-if before != after:
+-    print(f"Dedup run2: {before} -> {after}")
+-df.to_csv(path, index=False)
+-PY
+-
+-RUN2_OUT_DIR="$BASE_ROOT/run2_scores/$SRC_NAME"
+-mkdir -p "$RUN2_OUT_DIR"
+-echo "Scoring run2 base source → $RUN2_OUT_DIR/scored.csv"
+-python -m scripts.scorer single "$RUN2_CSV" --output "$RUN2_OUT_DIR/scored.csv"
+-
+-echo "All judgements completed."
+diff --git a/scripts/run_local_vllm.sh b/scripts/run_local_vllm.sh
+deleted file mode 100644
+index 4db5629..0000000
+--- a/scripts/run_local_vllm.sh
++++ /dev/null
+@@ -1,120 +0,0 @@
+-#!/usr/bin/env bash
+-set -euo pipefail
+-
+-# Helper to run the full pipeline against a local vLLM server using LiteLLM routing.
+-# Starts vLLM with common defaults (FP16 + tensor parallel), runs generate → disguise → score,
+-# and optionally tears down the server.
+-#
+-# Requirements:
+-# - vLLM installed and available in PATH (vllm serve ...)
+-# - Python deps installed for this repo
+-
+-HF_MODEL="meta-llama/Meta-Llama-3.1-8B-Instruct"
+-PORT=8000
+-DTYPE="float16"
+-TP=4
+-PROMPTS_FILE="data/datasets/chatbot_arena/chatbot_arena_prompts.txt"
+-NUM_SAMPLES=200
+-OUTPUT_DIR="data/results/chatbot_arena/comparisons/disguised_vs_target/contrastive"
+-SOURCE_MODEL_OPENAI="openai/meta-llama/Meta-Llama-3.1-8B-Instruct"
+-TARGET_MODEL="gpt-4o"
+-KEEP_SERVER=0
+-
+-usage() {
+-  cat << USAGE
+-Usage: $0 [options]
+-
+-Options:
+-  --hf-model ID                HF model id (default: ${HF_MODEL})
+-  --port N                     vLLM port (default: ${PORT})
+-  --dtype DTYPE                vLLM dtype (default: ${DTYPE})
+-  --tp N                       tensor parallel size (default: ${TP})
+-  --prompts_file PATH          prompts file (default: ${PROMPTS_FILE})
+-  --num_samples N              samples for disguise (default: ${NUM_SAMPLES})
+-  --output_dir DIR             output dir (default: ${OUTPUT_DIR})
+-  --source-model-openai NAME   LiteLLM model name to route (default: ${SOURCE_MODEL_OPENAI})
+-  --target-model NAME          target model label (default: ${TARGET_MODEL})
+-  --keep-server                do not kill vLLM server after run
+-  -h, --help                   show this help
+-
+-Notes:
+-- This script starts vLLM:
+-    vllm serve <HF_MODEL> --port <PORT> --dtype <DTYPE> --tensor-parallel-size <TP> --max-model-len 4096
+-- Then runs the pipeline routing LiteLLM to http://localhost:<PORT>/v1
+-USAGE
+-}
+-
+-while [[ $# -gt 0 ]]; do
+-  case "$1" in
+-    --hf-model) HF_MODEL="$2"; shift 2;;
+-    --port) PORT="$2"; shift 2;;
+-    --dtype) DTYPE="$2"; shift 2;;
+-    --tp) TP="$2"; shift 2;;
+-    --prompts_file) PROMPTS_FILE="$2"; shift 2;;
+-    --num_samples) NUM_SAMPLES="$2"; shift 2;;
+-    --output_dir) OUTPUT_DIR="$2"; shift 2;;
+-    --source-model-openai) SOURCE_MODEL_OPENAI="$2"; shift 2;;
+-    --target-model) TARGET_MODEL="$2"; shift 2;;
+-    --keep-server) KEEP_SERVER=1; shift;;
+-    -h|--help) usage; exit 0;;
+-    *) echo "Unknown arg: $1"; usage; exit 1;;
+-  esac
+-done
+-
+-if ! command -v vllm >/dev/null 2>&1; then
+-  echo "ERROR: vllm command not found. pip install vllm" >&2
+-  exit 1
+-fi
+-
+-API_BASE="http://localhost:${PORT}/v1"
+-
+-echo "[1/4] Starting vLLM server on port ${PORT} with ${HF_MODEL} (dtype=${DTYPE}, tp=${TP})"
+-set +e
+-vllm serve "${HF_MODEL}" --port "${PORT}" --dtype "${DTYPE}" --tensor-parallel-size "${TP}" --max-model-len 4096 > vllm_server.log 2>&1 &
+-VLLM_PID=$!
+-set -e
+-echo "vLLM PID: ${VLLM_PID} (logs: vllm_server.log)"
+-
+-echo "Waiting for vLLM server to be ready..."
+-RETRIES=30
+-until curl -sSf "${API_BASE}/models" >/dev/null 2>&1 || [[ $RETRIES -eq 0 ]]; do
+-  sleep 2
+-  RETRIES=$((RETRIES-1))
+-done
+-if [[ $RETRIES -eq 0 ]]; then
+-  echo "ERROR: vLLM server did not become ready at ${API_BASE}" >&2
+-  kill ${VLLM_PID} || true
+-  exit 1
+-fi
+-echo "vLLM is up at ${API_BASE}"
+-
+-echo "[2/4] Generating base outputs via LiteLLM routed to vLLM"
+-python scripts/generate_responses.py \
+-  --model "${SOURCE_MODEL_OPENAI}" \
+-  --prompts_file "${PROMPTS_FILE}" \
+-  --output "data/model-responses/chatbot_arena/full/${SOURCE_MODEL_OPENAI//\//_}.csv" \
+-  --openai-api-base "${API_BASE}" \
+-  --openai-api-key "EMPTY"
+-
+-echo "[3/4] Running disguise via LiteLLM routed to vLLM"
+-python disguise.py \
+-  --model "${SOURCE_MODEL_OPENAI}" \
+-  --disguise_as "${TARGET_MODEL}" \
+-  --method contrastive \
+-  --num_samples "${NUM_SAMPLES}" \
+-  --openai-api-base "${API_BASE}" \
+-  --openai-api-key "EMPTY" \
+-  --output_dir "${OUTPUT_DIR}"
+-
+-LATEST_CSV=$(ls -t ${OUTPUT_DIR}/*.csv | head -n 1)
+-echo "[4/4] Scoring ${LATEST_CSV}"
+-python -m scripts.scorer "${LATEST_CSV}" --output "${LATEST_CSV%.csv}_scored.csv"
+-
+-if [[ ${KEEP_SERVER} -eq 0 ]]; then
+-  echo "Stopping vLLM server (PID ${VLLM_PID})"
+-  kill ${VLLM_PID} || true
+-else
+-  echo "Keeping vLLM server running (PID ${VLLM_PID})"
+-fi
+-
+-echo "Done."
+diff --git a/scripts/run_pipeline.py b/scripts/run_pipeline.py
+deleted file mode 100644
+index 52d78da..0000000
+--- a/scripts/run_pipeline.py
++++ /dev/null
+@@ -1,261 +0,0 @@
+-#!/usr/bin/env python3
+-"""
+-Orchestrate a full pipeline over a prompts file:
+-- Generate base outputs for source and target models (if not present or --overwrite)
+-- Run disguise (contrastive)
+-- Score outputs and write metrics
+-
+-Usage:
+-  python scripts/run_pipeline.py \
+-    --prompts_file data/datasets/chatbot_arena/chatbot_arena_prompts.txt \
+-    --source-model openai/gpt-4o-mini \
+-    --target-model gpt-4o \
+-    --method contrastive
+-"""
+-import argparse
+-import os
+-import subprocess
+-from pathlib import Path
+-from typing import Optional
+-import sys
+-try:
+-    from dotenv import load_dotenv  # type: ignore
+-    load_dotenv()
+-except Exception:
+-    pass
+-
+-
+-def run(cmd, exclude_routing=False):
+-    print('$', ' '.join(cmd))
+-    env = os.environ.copy()
+-    # Add current directory to PYTHONPATH for subprocess imports
+-    if 'PYTHONPATH' in env:
+-        env['PYTHONPATH'] = f"{os.getcwd()}:{env['PYTHONPATH']}"
+-    else:
+-        env['PYTHONPATH'] = os.getcwd()
+-    
+-    # Remove routing environment variables if requested (for judge model calls)
+-    if exclude_routing:
+-        env.pop('OPENAI_API_BASE', None)
+-        env.pop('LITELLM_API_BASE', None)
+-    
+-    return subprocess.call(cmd, env=env)
+-
+-
+-def _is_openai_gpt(model_id: str) -> bool:
+-    model_lower = (model_id or '').lower()
+-    return model_lower.startswith('openai/gpt-')
+-
+-
+-def _build_gen_cache_cmd(
+-    model_id: str,
+-    prompts_file: str,
+-    output_path: Path,
+-    *,
+-    num_samples: Optional[int] = None,
+-    refresh: bool = False,
+-) -> list[str]:
+-    """Construct command to call gen_cache_response for OpenAI GPT models."""
+-    base_model = model_id.split('/', 1)[1] if '/' in model_id else model_id
+-    cmd = [
+-        sys.executable,
+-        'scripts/gen_cache_response.py',
+-        '--dataset', prompts_file,
+-        '--gpt_model', base_model,
+-        '--output_path', str(output_path),
+-        '--disable_wandb',
+-    ]
+-    if num_samples is not None:
+-        cmd += ['--num_samples', str(num_samples)]
+-    if refresh:
+-        cmd.append('--ignore_generation_cache')
+-    return cmd
+-
+-
+-def main():
+-    parser = argparse.ArgumentParser(description="Run full disguise pipeline")
+-    parser.add_argument("--prompts_file", required=True)
+-    parser.add_argument("--source-model", required=True)
+-    parser.add_argument("--target-model", required=True)
+-    parser.add_argument("--method", default="contrastive",
+-                        choices=["contrastive"]) 
+-    parser.add_argument("--num_samples", type=int, default=200)
+-    parser.add_argument("--output_dir", default=None)
+-    parser.add_argument("--overwrite", action="store_true")
+-    # LiteLLM routing to local vLLM (optional)
+-    parser.add_argument("--openai-api-base", default=None, help="Route LiteLLM to local vLLM OpenAI-compatible endpoint")
+-    parser.add_argument("--openai-api-key", default=None, help="Pass API key/placeholder for local vLLM")
+-    # W&B integration (optional)
+-    parser.add_argument("--use-wandb", action="store_true")
+-    parser.add_argument("--wandb-project", default="streamlined-disguise")
+-    parser.add_argument("--wandb-run-name", default="pipeline")
+-    args = parser.parse_args()
+-
+-    # Infer dataset from prompts path
+-    def infer_dataset(prompts_path: str) -> str:
+-        p = (prompts_path or "").lower()
+-        if "gsm8k" in p:
+-            return "gsm8k"
+-        if "arena" in p or "chatbot" in p:
+-            return "chatbot_arena"
+-        return "generic"
+-
+-    dataset = infer_dataset(args.prompts_file)
+-    def infer_subset(prompts_path: str) -> str:
+-        p = (prompts_path or "").lower()
+-        if "_500" in p or "/500" in p or p.endswith("500.csv"):
+-            return "500"
+-        return "full"
+-    subset = infer_subset(args.prompts_file)
+-
+-    # Resolve output root
+-    base_results_root = Path("data") / "results" / dataset / subset
+-    if args.output_dir:
+-        out_dir = Path(args.output_dir)
+-    else:
+-        out_dir = base_results_root
+-    out_dir.mkdir(parents=True, exist_ok=True)
+-
+-    # 1) Generate base outputs (or use existing ones)
+-    # Canonical base responses directory by dataset (full set)
+-    base_dir = Path('data') / 'model-responses' / dataset / 'full'
+-    base_dir.mkdir(parents=True, exist_ok=True)
+-    src_out = base_dir / f"{args.source_model.replace('/', '_')}.csv"
+-    tgt_out = base_dir / f"{args.target_model.replace('/', '_')}.csv"
+-
+-    # Generate source
+-    if args.overwrite or not src_out.exists():
+-        if _is_openai_gpt(args.source_model):
+-            if args.overwrite and src_out.exists():
+-                src_out.unlink()
+-            gen_cmd = _build_gen_cache_cmd(
+-                args.source_model,
+-                args.prompts_file,
+-                src_out,
+-                refresh=args.overwrite,
+-            )
+-            rc = run(gen_cmd, exclude_routing=True)
+-            if rc != 0:
+-                sys.exit(rc)
+-        else:
+-            gen_cmd = [sys.executable, 'scripts/generate_responses.py',
+-                       '--model', args.source_model,
+-                       '--prompts_file', args.prompts_file,
+-                       '--output', str(src_out)]
+-            # Only pass routing flags for local/HF models; never for openai/gpt-*
+-            if args.openai_api_base:
+-                gen_cmd += ['--openai-api-base', args.openai_api_base]
+-            if args.openai_api_key:
+-                gen_cmd += ['--openai-api-key', args.openai_api_key]
+-            rc = run(gen_cmd)
+-            if rc != 0:
+-                sys.exit(rc)
+-    else:
+-        print(f"Found existing: {src_out}")
+-
+-    # Generate target
+-    if args.overwrite or not tgt_out.exists():
+-        if _is_openai_gpt(args.target_model):
+-            if args.overwrite and tgt_out.exists():
+-                tgt_out.unlink()
+-            gen_cmd = _build_gen_cache_cmd(
+-                args.target_model,
+-                args.prompts_file,
+-                tgt_out,
+-                refresh=args.overwrite,
+-            )
+-            rc = run(gen_cmd, exclude_routing=True)
+-            if rc != 0:
+-                sys.exit(rc)
+-        else:
+-            gen_cmd = [sys.executable, 'scripts/generate_responses.py',
+-                       '--model', args.target_model,
+-                       '--prompts_file', args.prompts_file,
+-                       '--output', str(tgt_out)]
+-            if args.openai_api_base:
+-                gen_cmd += ['--openai-api-base', args.openai_api_base]
+-            if args.openai_api_key:
+-                gen_cmd += ['--openai-api-key', args.openai_api_key]
+-            rc = run(gen_cmd)
+-            if rc != 0:
+-                sys.exit(rc)
+-    else:
+-        print(f"Found existing: {tgt_out}")
+-
+-    # 2) Optional baseline comparison (source vs target) – can be skipped if not needed
+-    # Keeping for compatibility; comment out if you consider it obsolete.
+-    baseline_dir = out_dir / "comparisons" / "source_vs_target"
+-    baseline_dir.mkdir(parents=True, exist_ok=True)
+-    baseline_csv = baseline_dir / f"{args.source_model.replace('/', '_')}_vs_{args.target_model.replace('/', '_')}.csv"
+-    rc = run([sys.executable, '-m', 'scripts.scorer', 'compare',
+-              '--a', str(src_out),
+-              '--b', str(tgt_out),
+-              '--output', str(baseline_csv),
+-              '--judge-model', 'openai/gpt-4.1-mini'], exclude_routing=True)
+-    if rc != 0:
+-        sys.exit(rc)
+-    baseline_scored = baseline_dir / 'scores' / baseline_csv.stem / 'scored.csv'
+-
+-    # 3) Score single-file source and target into standardized locations (base scores)
+-    src_score_dir = out_dir / "scores" / args.source_model.replace('/', '_')
+-    tgt_score_dir = out_dir / "scores" / args.target_model.replace('/', '_')
+-    src_score_dir.mkdir(parents=True, exist_ok=True)
+-    tgt_score_dir.mkdir(parents=True, exist_ok=True)
+-    run([sys.executable, '-m', 'scripts.scorer', 'single', str(src_out), '--output', str(src_score_dir / 'scored.csv')])
+-    run([sys.executable, '-m', 'scripts.scorer', 'single', str(tgt_out), '--output', str(tgt_score_dir / 'scored.csv')])
+-
+-    # 4) Run disguise with new layout for outputs (per-method directory)
+-    disguise_dir = out_dir / args.method
+-    disguise_dir.mkdir(parents=True, exist_ok=True)
+-    dcmd = [sys.executable, 'scripts/disguise.py',
+-            '--model', args.source_model,
+-            '--disguise_as', args.target_model,
+-            '--method', args.method,
+-            '--num_samples', str(args.num_samples),
+-            '--prompts_file', args.prompts_file,
+-            '--output_dir', str(disguise_dir),
+-            '--source_responses', str(src_out),
+-            '--target_responses', str(tgt_out)]
+-    if 'contrastive' in args.method:
+-    # Pass routing flags to disguise
+-    if args.openai_api_base:
+-        dcmd += ['--openai-api-base', args.openai_api_base]
+-    if args.openai_api_key:
+-        dcmd += ['--openai-api-key', args.openai_api_key]
+-    rc = run(dcmd)
+-    if rc != 0:
+-        sys.exit(rc)
+-    pair_id = f"{args.source_model.replace('/', '_')}_as_{args.target_model.replace('/', '_')}"
+-    disguised_scored = disguise_dir / 'scores' / pair_id / 'scored.csv'
+-
+-    # 5) No extra re-scoring here: disguise.py already emitted scores into
+-    #    data/results/<dataset>/comparisons/disguised/<method>/metrics_<pair>/
+-
+-    # 5) Aggregate and (optionally) log a W&B table
+-    if args.use_wandb:
+-        summary_csv = out_dir / 'summary.csv'
+-        summary_md = out_dir / 'summary.md'
+-        rc = run([sys.executable, 'scripts/aggregate_metrics.py',
+-                  '--root', str(out_dir),
+-                  '--output', str(summary_csv),
+-                  '--markdown', str(summary_md),
+-                  '--use-wandb', '--wandb-project', args.wandb_project, '--wandb-run-name', args.wandb_run_name])
+-        if rc != 0:
+-            sys.exit(rc)
+-
+-        # 6) Three-way summary table
+-        # Try to find disguised latest and baseline files
+-        three_way_csv = out_dir / 'three_way_summary.csv'
+-        three_way_md = out_dir / 'three_way_summary.md'
+-        rc = run([sys.executable, 'scripts/summarize_three_way.py',
+-                  '--baseline', str(baseline_scored),
+-                  '--disguised', str(disguised_scored),
+-                  '--output', str(three_way_csv),
+-                  '--markdown', str(three_way_md),
+-                  '--use-wandb', '--wandb-project', args.wandb_project, '--wandb-run-name', 'three-way-summary'])
+-        if rc != 0:
+-            sys.exit(rc)
+-
+-
+-if __name__ == '__main__':
+-    main()
+diff --git a/scripts/score_gsm8k_artifacts.sh b/scripts/score_gsm8k_artifacts.sh
+deleted file mode 100644
+index ec1fdb3..0000000
+--- a/scripts/score_gsm8k_artifacts.sh
++++ /dev/null
+@@ -1,62 +0,0 @@
+-#!/usr/bin/env bash
+-set -euo pipefail
+-
+-# Optional: load API keys from .env if present
+-if [ -f .env ]; then
+-  set -a
+-  # shellcheck disable=SC1091
+-  . ./.env
+-  set +a
+-fi
+-
+-# Ensure repo root is on PYTHONPATH so "python -m scripts.*" works everywhere
+-export PYTHONPATH="$(pwd)${PYTHONPATH:+:$PYTHONPATH}"
+-
+-DATASET=gsm8k
+-
+-# Base model responses (500 subset)
+-SRC_CSV="data/model-responses/${DATASET}/500/gpt-4.1_responses.csv"
+-TGT_CSV="data/model-responses/${DATASET}/500/meta-llama_Meta-Llama-3.1-8B-Instruct_responses.csv"
+-
+-# Disguised vs target (pairwise CSV already produced by disguise.py)
+-DISG_DIR="data/results/${DATASET}/comparisons/disguised_vs_target/random_sampling"
+-DISG_PAIR_CSV="${DISG_DIR}/gpt-4.1_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv"
+-
+-# Output locations
+-BASELINE_DIR="data/results/${DATASET}/comparisons/source_vs_target"
+-mkdir -p "${BASELINE_DIR}" "data/results/${DATASET}/scores"
+-
+-echo "==> Baseline pairwise scoring: source vs target (LLM judge cached)"
+-python -m scripts.scorer compare \
+-  --a "${SRC_CSV}" \
+-  --b "${TGT_CSV}" \
+-  --output "${BASELINE_DIR}/openai_gpt-4.1_vs_meta-llama_Meta-Llama-3.1-8B-Instruct.csv" \
+-  --judge-model openai/gpt-4.1-mini
+-
+-echo "==> Disguised pairwise scoring: disguised vs target (LLM judge cached)"
+-python -m scripts.scorer pairwise \
+-  --input "${DISG_PAIR_CSV}" \
+-  --output "${DISG_DIR}/scores/gpt-4.1_as_meta-llama_Meta-Llama-3.1-8B-Instruct/scored.csv" \
+-  --judge-model openai/gpt-4.1-mini
+-
+-echo "==> Target self-comparison (ceiling): target vs target (LLM judge cached)"
+-python -m scripts.scorer compare \
+-  --a "${TGT_CSV}" \
+-  --b "${TGT_CSV}" \
+-  --output "${BASELINE_DIR}/meta-llama_Meta-Llama-3.1-8B-Instruct_vs_meta-llama_Meta-Llama-3.1-8B-Instruct.csv" \
+-  --judge-model openai/gpt-4.1-mini
+-
+-echo "==> Source self-comparison: source vs source (LLM judge cached)"
+-python -m scripts.scorer compare \
+-  --a "${SRC_CSV}" \
+-  --b "${SRC_CSV}" \
+-  --output "${BASELINE_DIR}/openai_gpt-4.1_vs_openai_gpt-4.1.csv" \
+-  --judge-model openai/gpt-4.1-mini
+-
+-echo "==> Aggregating metrics into summary CSV/Markdown"
+-python scripts/aggregate_metrics.py \
+-  --root "data/results/${DATASET}" \
+-  --output "data/results/${DATASET}/summary.csv" \
+-  --markdown "data/results/${DATASET}/summary.md"
+-
+-echo "All LLM-judged scoring steps completed. Cached LLM calls reuse LMDB entries."
+diff --git a/scripts/tinker_list_models.py b/scripts/tinker_list_models.py
+deleted file mode 100644
+index 0533e7b..0000000
+--- a/scripts/tinker_list_models.py
++++ /dev/null
+@@ -1,38 +0,0 @@
+-#!/usr/bin/env python3
+-"""
+-List available models from a Tinker service.
+-
+-Requires TINKER_API_KEY to be present in the environment (e.g., via ~/.env).
+-"""
+-
+-from __future__ import annotations
+-
+-import os
+-import sys
+-
+-
+-def main() -> int:
+-    api_key = os.getenv("TINKER_API_KEY")
+-    if not api_key:
+-        print(
+-            "Error: TINKER_API_KEY not set in environment. Ensure ~/.env is sourced (see ~/.bashrc).",
+-            file=sys.stderr,
+-        )
+-        return 1
+-
+-    import tinker  # type: ignore
+-
+-    service_client = tinker.ServiceClient()
+-    capabilities = service_client.get_server_capabilities()
+-
+-    print("Available models:")
+-    for item in capabilities.supported_models:
+-        print(f"- {item.model_name}")
+-
+-    return 0
+-
+-
+-if __name__ == "__main__":
+-    raise SystemExit(main())
+-
+-
