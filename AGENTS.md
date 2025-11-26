@@ -45,6 +45,8 @@ The framework includes persistent LMDB-based caching for all API calls:
 
 ### Quick Workflow
 ```bash
+# Example workflow (GSM8K eval split)
+
 # Step 1: Generate target model responses
 python scripts/generate_responses.py \
   --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \

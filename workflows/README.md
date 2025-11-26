@@ -3,18 +3,17 @@
 This directory houses the orchestration layer for supervised fine‑tuning (SFT) and preference tuning (DPO) across both the OpenAI and Tinker backends. All workflows write their artifacts under `data/results/workflows/<job_name>/` so that downstream evaluation scripts can consume a consistent layout.
 
 ### Key Scripts
-
-- `scripts/gsm8k/run_all_workflows.sh` – GSM8K-specific launcher that runs four jobs in parallel (OpenAI SFT/DPO and Tinker SFT/DPO) using the hyperparameters encoded in the file. Duplicate or edit this script if you bring in another dataset so that paths, split sizes, and adapter names stay scoped.
 - `workflows/pipeline.py` – core dispatcher used by the CLIs. It loads datasets, submits OpenAI jobs, or invokes the Tinker Cookbook utilities, and emits convergence plots (`openai_*.png` or `tinker_*.png`) plus JSONL/CSV artifacts.
 - `workflows/tinker.py` – helper layer for Tinker SFT, including dataset preparation, LoRA training, evaluation, and adapter registry updates. Override `TinkerSFTParams`/`TinkerDPOParams` here if you need default hyperparameter changes.
 - Friendly adapter names (e.g., `gsm8k_llama-3.1-8b-instruct`) map to the actual Tinker sampler name via `data/tinker_adapters.json`. Each workflow run now saves weights under a unique timestamped name and updates the registry so aliases always point to the latest sampler path without failing due to name collisions.
+- `scripts/gsm8k/run_all_workflows.sh` – GSM8K-specific launcher that instantiates the configs from `workflows/pipeline.py` (Tinker + OpenAI SFT/DPO). Use it as a reference when writing your own Python or shell driver.
 
 ### Using Other Datasets
 
 The defaults assume GSM8K splits (300 train / 200 eval). To add a new dataset:
 
 1. Create or point `SFTDatasetConfig` / `PreferenceDatasetConfig` at your dataset-specific CSVs.
-2. Clone `scripts/gsm8k/run_all_workflows.sh` (e.g., `run_<dataset>_workflows.sh`) and update the paths, adapter names, and output directories so results do not collide with GSM8K runs.
+2. Create a small driver (Python or shell) that imports `workflows.pipeline` and instantiates `SFTWorkflowConfig` / `DPOWorkflowConfig` with your dataset paths, mirroring the structure in `scripts/gsm8k/run_all_workflows.sh`.
 3. Update `data/tinker_adapters.json` with any new adapter names if you want renderer metadata to auto-populate when sampling.
 4. Document the new script and data paths in this README so others can repeat the setup.
 
@@ -46,7 +45,7 @@ The `renderer_name` is used by `scripts/generate_responses.py` to apply the corr
 
 ### Typical End-to-End Refresh
 
-1. **Train adapters**: `bash scripts/gsm8k/run_all_workflows.sh` – runs the four finetune jobs in parallel (6‑epoch SFT, 3‑epoch DPO, batch size 16).
+1. **Train adapters**: run your workflow driver (e.g., a script modeled after `scripts/gsm8k/run_all_workflows.sh`) to launch the four finetune jobs in parallel (6‑epoch SFT, 3‑epoch DPO, batch size 16).
 2. **Generate eval responses** (per adapter/model): e.g.
    ```
 python scripts/generate_responses.py \
@@ -70,6 +69,6 @@ python scripts/generate_responses.py \
 
 ### Tips
 
-- Keep `scripts/gsm8k/run_all_workflows.sh` authoritative for hyperparameters so teammates can simply run it to reproduce adapters.
-- If you experiment with different schedules, either update `scripts/gsm8k/run_all_workflows.sh` or document the overrides here to avoid confusion.
+- Keep your workflow driver (or the provided GSM8K version) authoritative for hyperparameters so teammates can simply run it to reproduce adapters.
+- If you experiment with different schedules, either update the driver or document the overrides here to avoid confusion.
 - Always regenerate responses and scores after retraining; cached CSVs in `data/results/gsm8k/...` do not update automatically.

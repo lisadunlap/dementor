@@ -21,33 +21,34 @@ export OPENAI_API_KEY="your-openai-api-key"
 ```bash
 # Step 1: Build prompts CSV with a single 'prompt' column
 python scripts/make_prompts.py \
-  --input data/gsm8k/gsm8k_test.csv \
-  --column question \
-  --output data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv
+  --input data/<dataset>/raw_prompts.csv \
+  --column prompt \
+  --output data/datasets/<dataset>/<dataset>_prompts_eval_200_seed42.csv
 
 # Step 2: Generate target model responses
 python scripts/generate_responses.py \
-  --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
-  --output-csv data/model-responses/gsm8k/full/openai_gpt-4.1-mini.csv \
-  basic --model openai/gpt-4.1-mini
+  --prompts-file data/datasets/<dataset>/<dataset>_prompts_eval_200_seed42.csv \
+  --output-csv data/model-responses/<dataset>/full/<target_model>.csv \
+  basic --model <provider>/<target_model>
 
-# Step 3: Apply disguise (make Llama sound like GPT-4)
+# Step 3: Apply disguise (e.g. make Llama sound like GPT-4)
 python scripts/disguise.py \
-  --prompts_file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
-  --model meta-llama/Meta-Llama-3.1-8B-Instruct \
-  --disguise_as openai/gpt-4.1-mini \
-  --method contrastive \
+  --prompts_file data/datasets/<dataset>/<dataset>_prompts_eval_200_seed42.csv \
+  --model <source_model> \
+  --disguise_as <target_model> \
+  --method <method_name> \
   --num_samples 50
 
 # Step 4: Score disguised vs target responses (pairwise judge)
 python -m scripts.scorer \
-  --input data/results/gsm8k/eval200/contrastive/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv \
-  --output data/results/gsm8k/eval200/contrastive/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv \
+  --input data/results/<dataset>/eval200/<method>/<src>_as_<tgt>.csv \
+  --output data/results/<dataset>/eval200/<method>/scores/<src>_as_<tgt>/scored.csv \
   --judge-model openai/gpt-4.1-mini
 
+```
 ## Additional Scoring
 ```bash
-# Pairwise (LLM judge)
+# Pairwise (LLM judge only, default)
 python -m scripts.scorer \
   --input data/results/<dataset>/<subset>/<method>/<src>_as_<tgt>.csv \
   --output data/results/<dataset>/<subset>/<method>/scores/<src>_as_<tgt>/scored.csv \
@@ -66,6 +67,8 @@ python -m scripts.scorer --compare \
   --b data/model-responses/<dataset>/full/<tgt>.csv \
   --output data/results/<dataset>/<subset>/<src>_vs_<tgt>.csv
 ```
+*(Default judge model: `openai/gpt-4.1-mini`. Override with `--judge-model` if needed.)*
+*(Here `<subset>` is the prompt split inferred from your prompts file, e.g., `eval200`, `train300`, `500`, or `full`.)*
 
 ## Reference Docs
 - `docs/local_generation.md` – HF/vLLM/provider routing (includes the local vLLM walkthrough).
@@ -87,7 +90,7 @@ python -m scripts.scorer --compare \
 - **Scoring (`scripts/scorer.py`)**: requires the comparison CSV to include `prompt`, `model_response`, `target_response`; optional columns (method, source_model, etc.) are passed through untouched.
 
 ### Data & Results Layout
-- `data/datasets/<dataset>/`: prompt CSV/TXT files produced by `make_prompts.py`. For GSM8K we keep both `gsm8k_prompts_train_300_seed42.csv` and `gsm8k_prompts_eval_200_seed42.csv`.
+- `data/datasets/<dataset>/`: prompt CSV/TXT files produced by `make_prompts.py`. For example, for GSM8K we keep both `gsm8k_prompts_train_300_seed42.csv` and `gsm8k_prompts_eval_200_seed42.csv`.
 - `data/model-responses/<dataset>/`:
   - `full/`, `500/`, etc. hold bulk generations (filenames follow `<provider_model>_responses.csv`).
   - `splits/seed42/train_300/` and `splits/seed42/eval_200/` contain the exact CSVs used during SFT/DPO (naming pattern `<model>_responses_<split>_seed42.csv`).
@@ -111,8 +114,8 @@ python -m scripts.scorer --compare \
 ### Finetune Adapters
 | Path | Summary | Entry point |
 | --- | --- | --- |
-| **SFT (LoRA)** | Tinker/OpenAI fine-tunes for any dataset. | `workflows/pipeline.py` (see `workflows/README.md`) |
-| **DPO** | Preference tuning stacked on SFT adapters. | `workflows/pipeline.py` (see `workflows/README.md`) |
+| **SFT (LoRA)** | Runs Tinker + OpenAI supervised fine-tunes for the configured dataset/splits. | `workflows/pipeline.py` (instantiate `SFTWorkflowConfig` / `run_sft_workflow`) |
+| **DPO** | Preference tuning stacked on the SFT adapters (OpenAI + Tinker variants). | `workflows/pipeline.py` (instantiate `DPOWorkflowConfig` / `run_dpo_workflow`) |
 
 ## Repo Layout (abridged)
 ```
@@ -133,7 +136,7 @@ docs/                     # Additional documentation
 ```
 
 ## Inputs & Outputs
-- **Prompts**: CSV with `prompt` column (`data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv`, `data/datasets/chatbot_arena/chatbot_arena_prompts.csv`). Plain-text lists still work for lightweight cases.
+- **Prompts**: CSV with `prompt` column (e.g., `data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv`, `data/datasets/chatbot_arena/chatbot_arena_prompts.csv`). Plain-text lists still work for lightweight cases.
 - **Base responses**: `data/model-responses/<dataset>/full/…`
 - **Results / scores**: `data/results/<dataset>/comparisons/...`
 
