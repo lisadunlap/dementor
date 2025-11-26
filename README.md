@@ -2,90 +2,134 @@
 
 Minimal toolkit for stealing the “voice” of one LLM and applying it to another. Pair concise prompt-based methods with optional SFT/DPO adapters; all evaluation artifacts land under `data/results/`.
 
-## Quick Start
+All pairwise scores are reported on a 1–4 scale (decimals allowed) for both semantic and stylistic similarity.
+
+## Setup
+
+1. Install dependencies:
+
 ```bash
 pip install -r requirements.txt
-python scripts/run_pipeline.py \
+```
+
+2. Set up API keys (e.g., OpenAI API key):
+```bash
+export OPENAI_API_KEY="your-openai-api-key"
+```
+
+## Quick Start
+```bash
+# Step 1: Build prompts CSV with a single 'prompt' column
+python scripts/make_prompts.py \
+  --input data/gsm8k/gsm8k_test.csv \
+  --column question \
+  --output data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv
+
+# Step 2: Generate target model responses
+python scripts/generate_responses.py \
+  --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
+  --output-csv data/model-responses/gsm8k/full/openai_gpt-4.1-mini.csv \
+  basic --model openai/gpt-4.1-mini
+
+# Step 3: Apply disguise (make Llama sound like GPT-4)
+python scripts/disguise.py \
   --prompts_file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
-  --source-model meta-llama/Meta-Llama-3.1-8B-Instruct \
-  --target-model openai/gpt-4.1-mini \
-  --method contrastive
+  --model meta-llama/Meta-Llama-3.1-8B-Instruct \
+  --disguise_as openai/gpt-4.1-mini \
+  --method contrastive \
+  --num_samples 50
+
+# Step 4: Score disguised vs target responses (pairwise judge)
+python -m scripts.scorer \
+  --input data/results/gsm8k/eval200/contrastive/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv \
+  --output data/results/gsm8k/eval200/contrastive/scores/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini/scored.csv \
+  --judge-model openai/gpt-4.1-mini
+
+## Additional Scoring
+```bash
+# Pairwise (LLM judge)
+python -m scripts.scorer \
+  --input data/results/<dataset>/<subset>/<method>/<src>_as_<tgt>.csv \
+  --output data/results/<dataset>/<subset>/<method>/scores/<src>_as_<tgt>/scored.csv \
+  --judge-model openai/gpt-4.1-mini
+
+# Pairwise (LLM judge + heuristics)
+python -m scripts.scorer \
+  --input data/results/<dataset>/<subset>/<method>/<src>_as_<tgt>.csv \
+  --output data/results/<dataset>/<subset>/<method>/scores/<src>_as_<tgt>/scored.csv \
+  --judge-model openai/gpt-4.1-mini \
+  --heuristics
+
+# Compare mode (merge source/target CSVs then score)
+python -m scripts.scorer --compare \
+  --a data/model-responses/<dataset>/full/<src>.csv \
+  --b data/model-responses/<dataset>/full/<tgt>.csv \
+  --output data/results/<dataset>/<subset>/<src>_vs_<tgt>.csv
 ```
 
 ## Reference Docs
-- `AGENTS.md` – repo guidance + coding conventions.
 - `docs/local_generation.md` – HF/vLLM/provider routing (includes the local vLLM walkthrough).
 - `workflows/README.md` – GSM8K SFT/DPO orchestration + Tinker adapter registry.
 - `examples/` – copy/paste provider configs.
-- `scripts/gsm8k/` – automation for GSM8K workflows, cleanup, and plotting.
+- `AGENTS.md` – repo guidance + coding conventions for AI agents.
 
-## Workflow in Four Steps
-1. **Generate base responses** – `scripts/generate_responses.py` (provider/HF/vLLM/Tinker).
-2. **Disguise** – `scripts/disguise.py` or `scripts/run_pipeline.py`.
-3. **Score** – `python -m scripts.scorer ...` for LLM judge + heuristics.
-4. **Review outputs** – CSVs in `data/results/<dataset>/...`; cache lives in `cache/llm_cache/`.
+## Workflow
+1. **Build prompts CSV/TXT** – `scripts/make_prompts.py` converts raw datasets into the `prompt` column expected by generators (e.g., `gsm8k_prompts_train_300_seed42.csv` for train, `gsm8k_prompts_eval_200_seed42.csv` for eval).
+2. **Generate base responses** – `scripts/generate_responses.py` (provider/HF/vLLM/Tinker) → outputs a CSV with `prompt` + `model_response`. Run it separately for the 300 train prompts (used during SFT/DPO) and the 200 eval prompts (used for disguise/score).
+3. **Disguise** – `scripts/disguise.py` consumes the prompt file + source/target response CSVs and writes `prompt, model_response, target_response`.
+4. **Score** – `python -m scripts.scorer --input <comparison.csv> --output <scores.csv>` (LLM judge only; heuristics opt-in) expects `prompt, model_response, target_response`.
+5. **Review outputs** – CSVs in `data/results/<dataset>/...`; cache lives in `cache/llm_cache/`.
 
-## Disguise Options
+### Column Contracts
+- **Prompts (`scripts/make_prompts.py`)**: must emit a single column named `prompt`.
+- **Base responses (`scripts/generate_responses.py`)**: expect `prompt` in the input file and produce `prompt`, `model_response`, plus metadata columns (e.g., `model`).
+- **Disguised comparisons (`scripts/disguise.py`)**: consume the prompt file + source/target CSVs and write `prompt`, `model_response` (new disguised output), and `target_response`.
+- **Scoring (`scripts/scorer.py`)**: requires the comparison CSV to include `prompt`, `model_response`, `target_response`; optional columns (method, source_model, etc.) are passed through untouched.
 
-| Prompt Method | What it does | When to use |
-| --- | --- | --- |
-| `random_sampling` | Few-shot prompt of target answers. | Fast baseline when target responses are clean. |
-| `behavioral_based` | Builds persona / tone system prompt. | You need the target’s “voice.” |
-| `stylistic` | Enforces formatting heuristics. | Rubric-heavy, surface-style benchmarks. |
-| `contrastive` | Learns correction rules from src vs tgt pairs. | Models diverge sharply; need targeted edits. |
-| `stylistic_clustering` | Clusters target exemplars by formatting traits. | Datasets with multiple style regimes. |
-| `embedding_clustering` | Embedding-based exemplar clusters per semantic regime. | Mixed semantic tasks (math vs chit-chat). |
+### Data & Results Layout
+- `data/datasets/<dataset>/`: prompt CSV/TXT files produced by `make_prompts.py`. For GSM8K we keep both `gsm8k_prompts_train_300_seed42.csv` and `gsm8k_prompts_eval_200_seed42.csv`.
+- `data/model-responses/<dataset>/`:
+  - `full/`, `500/`, etc. hold bulk generations (filenames follow `<provider_model>_responses.csv`).
+  - `splits/seed42/train_300/` and `splits/seed42/eval_200/` contain the exact CSVs used during SFT/DPO (naming pattern `<model>_responses_<split>_seed42.csv`).
+- `data/results/<dataset>/<subset>/<method>/`:
+  - `<pair>.csv` is written by `scripts/disguise.py`, where `<pair>` is `<source>_as_<target>` with `/` replaced by `_`.
+  - `scores/<pair>/` contains `scored.csv`, `scored_metrics.csv`, and `summary.json` emitted by `scripts.scorer.py`.
+  - Legacy Chatbot Arena runs also mirror this under `data/results/chatbot_arena/comparisons/disguised_vs_target/<method>/`.
+- `data/results/<dataset>/<workflow>/…` captures fine-tune outputs (e.g., `data/results/gsm8k/500/sft_tinker/...`), while `data/results/workflows/` stores logs from orchestrated runs.
+
+## Prompt-based Disguise Options
+
+| Prompt Method | What it does |
+| --- | --- |
+| `random_sampling` | Few-shot prompt of target answers. |
+| `behavioral_based` | Builds persona / tone system prompt. |
+| `stylistic` | Enforces formatting heuristics. |
+| `contrastive` | Learns correction rules from src vs tgt pairs. |
+| `stylistic_clustering` | Clusters target exemplars by formatting traits. |
+| `embedding_clustering` | Embedding-based exemplar clusters per semantic regime. |
 
 ### Finetune Adapters
 | Path | Summary | Entry point |
 | --- | --- | --- |
-| **SFT (LoRA)** | Tinker/OpenAI fine-tunes for GSM8K (300 train / 200 eval). | `scripts/gsm8k/run_all_workflows.sh` |
-| **DPO** | Preference tuning stacked on SFT adapters. | Same launcher; see `workflows/README.md`. |
-
-## Scoring Cheatsheet
-```bash
-# Single file (baseline quality)
-python -m scripts.scorer single data/model-responses/<dataset>/full/<model>.csv \
-  --output data/results/<dataset>/scores/<model>/scored.csv
-
-# Pairwise (disguised vs target)
-python -m scripts.scorer pairwise \
-  --input data/results/<dataset>/comparisons/disguised_vs_target/<method>/<src>_as_<tgt>.csv \
-  --output data/results/<dataset>/comparisons/disguised_vs_target/<method>/<src>_as_<tgt>_scored.csv \
-  --judge-model openai/gpt-4.1-mini
-```
+| **SFT (LoRA)** | Tinker/OpenAI fine-tunes for any dataset. | `workflows/pipeline.py` (see `workflows/README.md`) |
+| **DPO** | Preference tuning stacked on SFT adapters. | `workflows/pipeline.py` (see `workflows/README.md`) |
 
 ## Repo Layout (abridged)
 ```
 scripts/
-├── run_pipeline.py       # One-command pipeline (generate → compare → disguise → score)
 ├── disguise.py           # Prompt-based disguises
 ├── generate_responses.py # Base generations (provider/HF/vLLM/Tinker)
-├── scorer.py             # Single, pairwise, compare CLIs
-├── gsm8k/                # Workflow runners, plotting, cleanup
+├── scorer.py             # Pairwise + compare CLI
+├── gsm8k/                # GSM8K-specific workflow runners, plotting, cleanup
 ├── tools/                # Maintenance utilities
 └── methods/              # Method implementations + registry
 data/
 ├── datasets/             # Prompts + style archetypes
 └── model-responses/      # Generated baselines
-data/results/             # Disguised outputs, scores, plots
-```
-
-## Handy Commands
-```bash
-# Generate base responses (provider/HF/vLLM)
-python scripts/generate_responses.py \
-  --prompts-file data/datasets/chatbot_arena/chatbot_arena_prompts.csv \
-  --output-csv data/model-responses/chatbot_arena/full/openai_gpt-4.1-mini.csv \
-  basic --model openai/gpt-4.1-mini
-
-# Contrastive disguise with custom prompts
-python scripts/disguise.py \
-  --model google/gemma-3-1b-it \
-  --disguise_as openai/gpt-4.1-mini \
-  --method contrastive \
-  --prompts_file my_prompts.csv \
-  --num_samples 200
+└── results/              # Disguised outputs, scores, plots
+workflows/                # SFT/DPO fine-tuning workflows
+examples/                 # Example configurations
+docs/                     # Additional documentation
 ```
 
 ## Inputs & Outputs

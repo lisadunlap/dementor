@@ -59,7 +59,7 @@ python scripts/generate_responses.py \
      --output-csv data/results/gsm8k/500/sft_tinker/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
    ```
    Use the OpenAI backend variant to pull responses from OpenAI fine-tunes.
-3. **Score vs target**: `python -m scripts.scorer pairwise --input <responses.csv> --output <scores_dir>/scored.csv --judge-model openai/gpt-4.1-mini`.
+3. **Score vs target**: `python -m scripts.scorer --input <responses.csv> --output <scores_dir>/scored.csv --judge-model openai/gpt-4.1-mini`.
 4. **Refresh plots**: regenerate summaries/PNGs (e.g. rerun `scripts/gsm8k/plot_gsm8k_eval200_finetune_scores.py` or the Matplotlib snippet used for `data/results/gsm8k/eval200/plots/finetune_scores.png`).
 
 ### Convergence & Validation

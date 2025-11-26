@@ -28,7 +28,7 @@ if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
 from methods.get_method import get_method
-from scorer import score_model_single
+from scorer import score_pairwise
 from litellm import completion
 import litellm
 from tqdm import tqdm
@@ -684,10 +684,11 @@ def main():
             os.environ["OPENAI_API_KEY"] = args.judge_api_key
 
         try:
-            # Single-file scoring (no pairwise): compute stylistic features + aggregates
-            scored_df = score_model_single(
+            scored_df = score_pairwise(
                 input_file=results_file,
-                output_file=scores_file,
+                output_path=scores_file,
+                judge_model=args.judge_model,
+                include_heuristics=False,
             )
         finally:
             # Restore original environment
@@ -702,13 +703,17 @@ def main():
                 del os.environ["OPENAI_API_KEY"]
         
         # Log summary statistics
-        # For single-file scoring, we only have feature columns + response_length
         try:
-            if 'response_length' in scored_df.columns:
-                rlen = scored_df['response_length'].mean()
-                logging.info(f"Average response length: {rlen:.1f}")
+            metrics = {}
+            if 'semantic_score' in scored_df.columns:
+                metrics['semantic_score_mean'] = float(scored_df['semantic_score'].mean())
+            if 'stylistic_score' in scored_df.columns:
+                metrics['stylistic_score_mean'] = float(scored_df['stylistic_score'].mean())
+            if metrics:
+                logging.info("Score means: %s", ", ".join(f"{k}={v:.2f}" for k, v in metrics.items()))
+                metrics['num_samples'] = len(scored_df)
                 if use_wandb:
-                    wandb.log({"response_length_mean": rlen, "num_samples": len(scored_df)})
+                    wandb.log(metrics)
         except Exception:
             pass
 

@@ -2,8 +2,11 @@
 __pycache__/
 *.py[cod]
 *$py.class
+
+# Cache and temporary directories
 cache/
 wandb/
+.ruff_cache/
 
 # C extensions
 *.so
@@ -174,14 +177,14 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-gsm8k_env/
+
 # Local virtualenvs and artifacts
+gsm8k_env/
 claude_env/
-wandb/
-claude
+venv/
 .claude/
-*.pyc
-__pycache__/
+
+# OS-specific files
 .DS_Store
 
 # Environment setup scripts
