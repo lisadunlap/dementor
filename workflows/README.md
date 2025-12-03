@@ -10,7 +10,7 @@ This directory houses the orchestration layer for supervised fine‑tuning (SFT)
 
 ### Using Other Datasets
 
-The defaults assume GSM8K splits (300 train / 200 eval). To add a new dataset:
+The defaults assume splits of (300 train / 200 eval). To add a new dataset:
 
 1. Create or point `SFTDatasetConfig` / `PreferenceDatasetConfig` at your dataset-specific CSVs.
 2. Create a small driver (Python or shell) that imports `workflows.pipeline` and instantiates `SFTWorkflowConfig` / `DPOWorkflowConfig` with your dataset paths, mirroring the structure in `scripts/gsm8k/run_all_workflows.sh`.
@@ -47,7 +47,7 @@ The `renderer_name` is used by `scripts/generate_responses.py` to apply the corr
 
 1. **Train adapters**: run your workflow driver (e.g., a script modeled after `scripts/gsm8k/run_all_workflows.sh`) to launch the four finetune jobs in parallel (6‑epoch SFT, 3‑epoch DPO, batch size 16).
 2. **Generate eval responses** (per adapter/model): e.g.
-   ```
+```
 python scripts/generate_responses.py \
      --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
      --dataset-csv data/model-responses/gsm8k/splits/seed42/train_300/openai_gpt-4.1-mini_responses_train300_seed42.csv \

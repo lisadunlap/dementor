@@ -419,9 +419,6 @@ def main() -> None:
     parser.add_argument('--output', required=True, help='Destination file path (directory inferred).')
     parser.add_argument('--judge-model', default='openai/gpt-4.1-mini', help='LLM judge model.')
     parser.add_argument('--heuristics', action='store_true', help='Include heuristic scoring (LLM judge only by default).')
-    parser.add_argument('--compare', action='store_true', help='Compare mode: merge two model CSVs and score.')
-    parser.add_argument('--a', help='Source model CSV for compare mode (prompt, model_response).')
-    parser.add_argument('--b', help='Target model CSV for compare mode (prompt, model_response).')
     parser.add_argument('--openai-api-base', default=None, help='Override OPENAI_API_BASE for judge routing.')
     parser.add_argument('--openai-api-key', default=None, help='Override OPENAI_API_KEY for judge routing.')
 
@@ -429,26 +426,14 @@ def main() -> None:
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-    if args.compare:
-        if not args.a or not args.b:
-            parser.error("Compare mode requires --a and --b arguments")
-        score_model_comparison(
-            source_file=args.a,
-            target_file=args.b,
-            output_file=args.output,
-            judge_model=args.judge_model,
-            openai_api_base=args.openai_api_base,
-            openai_api_key=args.openai_api_key,
-        )
-    else:
-        if not args.input:
-            parser.error("--input is required unless --compare is passed")
-        score_pairwise(
-            input_file=args.input,
-            output_path=args.output,
-            judge_model=args.judge_model,
-            include_heuristics=args.heuristics,
-        )
+    if not args.input:
+        parser.error("--input is required")
+    score_pairwise(
+        input_file=args.input,
+        output_path=args.output,
+        judge_model=args.judge_model,
+        include_heuristics=args.heuristics,
+    )
 
 
 if __name__ == "__main__":

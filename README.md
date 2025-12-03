@@ -60,12 +60,6 @@ python -m scripts.scorer \
   --output data/results/<dataset>/<subset>/<method>/scores/<src>_as_<tgt>/scored.csv \
   --judge-model openai/gpt-4.1-mini \
   --heuristics
-
-# Compare mode (merge source/target CSVs then score)
-python -m scripts.scorer --compare \
-  --a data/model-responses/<dataset>/full/<src>.csv \
-  --b data/model-responses/<dataset>/full/<tgt>.csv \
-  --output data/results/<dataset>/<subset>/<src>_vs_<tgt>.csv
 ```
 *(Default judge model: `openai/gpt-4.1-mini`. Override with `--judge-model` if needed.)*
 *(Here `<subset>` is the prompt split inferred from your prompts file, e.g., `eval200`, `train300`, `500`, or `full`.)*

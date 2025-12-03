@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import functools
 import os
+import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -29,6 +30,15 @@ _EXCLUDED_DIR_NAMES = {"scores", "metrics", "judgments"}
 
 class RunInfo(Tuple[str, str]):
     """Typed alias for (label, path) pairs."""
+
+
+def _format_run_label(path: Path, source_model: str, target_model: str) -> str:
+    dataset, subset, method = _infer_dataset_subset(path)
+    hierarchy = " / ".join(part for part in (dataset, subset, method) if part)
+    label_core = hierarchy or str(path.relative_to(RESULTS_ROOT))
+    pair = path.stem
+    label = f"{label_core} | {pair} | {source_model} → {target_model}"
+    return label if len(label) <= 160 else f"{label[:157]}..."
 
 
 def _is_disguise_csv(path: Path) -> bool:
@@ -69,7 +79,7 @@ def discover_runs() -> List[RunInfo]:
             target_series = head.get("target_model")
             source_model = str(source_series.iloc[0]) if source_series is not None and not source_series.empty else "?"
             target_model = str(target_series.iloc[0]) if target_series is not None and not target_series.empty else "?"
-        label = f"{rel} | {source_model} → {target_model}"
+        label = _format_run_label(path, source_model, target_model)
         runs.append((label, str(path)))
 
     runs.sort(key=lambda item: item[0])
@@ -107,10 +117,12 @@ def _candidate_model_paths(model_name: str, dataset: Optional[str], subset: Opti
     sanitized = (model_name or "").replace("/", "_").replace(":", "_")
     roots: List[Path] = []
     if dataset:
-        if subset:
-            roots.append(BASE_RESPONSES_ROOT / dataset / subset)
-        roots.append(BASE_RESPONSES_ROOT / dataset / "full")
-        roots.append(BASE_RESPONSES_ROOT / dataset / "500")
+        subset_dirs = _subset_dir_candidates(dataset, subset)
+        for rel_dir in subset_dirs:
+            roots.append(BASE_RESPONSES_ROOT / dataset / rel_dir)
+        default_root = BASE_RESPONSES_ROOT / dataset
+        if default_root not in roots:
+            roots.append(default_root)
     roots.append(BASE_RESPONSES_ROOT / "generic")
     roots.append(BASE_RESPONSES_ROOT)
 
@@ -134,18 +146,37 @@ def auto_locate_model_response(model_name: str, dataset: Optional[str], subset: 
     return ""
 
 
+def _subset_dir_candidates(dataset: Optional[str], subset: Optional[str]) -> List[Path]:
+    if not dataset or not subset:
+        return []
+    normalized = subset.lower()
+    if dataset.lower() == "gsm8k" and normalized in {"full", "500"}:
+        return []
+    token = re.sub(r"(?<=\D)(\d+)$", r"_\1", normalized)
+    candidates: List[Path] = []
+    if dataset.lower() == "gsm8k":
+        candidates.append(Path("splits") / "seed42" / token)
+    candidates.append(Path(token))
+    unique: List[Path] = []
+    seen: set[Path] = set()
+    for candidate in candidates:
+        if candidate in seen:
+            continue
+        seen.add(candidate)
+        unique.append(candidate)
+    return unique
+
+
+def _baseline_path_allowed(path: Path) -> bool:
+    lowered = [part.lower() for part in path.parts]
+    if "gsm8k" in lowered:
+        if "full" in lowered or "500" in lowered:
+            return False
+    return True
+
+
 def _sanitize_model_id(name: str) -> str:
     return (name or "").replace("/", "_").replace(":", "_")
-
-
-def auto_locate_compare_csv(source_model: str, target_model: str, dataset: Optional[str], subset: Optional[str]) -> str:
-    """Suggest path for source_vs_target comparison CSV based on run metadata."""
-    if not dataset or not subset:
-        return ""
-    src = _sanitize_model_id(source_model)
-    tgt = _sanitize_model_id(target_model)
-    path = Path("data") / "results" / dataset / subset / "comparisons" / "source_vs_target" / f"{src}_vs_{tgt}.csv"
-    return str(path) if path.exists() else ""
 
 
 def _make_prompt_choices(df: pd.DataFrame, search_term: str, max_results: int = 500) -> Tuple[List[str], str]:
@@ -219,11 +250,15 @@ def discover_baseline_csvs() -> List[RunInfo]:
         for path in sorted(root.rglob("*.csv")):
             if not _is_prompt_response_csv(path):
                 continue
+            if not _baseline_path_allowed(path):
+                continue
             try:
                 rel = path.relative_to(root)
             except ValueError:
                 rel = Path(path.name)
-            label = f"{prefix}: {rel}"
+            rel_parts = rel.parts[-3:] if len(rel.parts) > 3 else rel.parts
+            short_rel = Path(*rel_parts)
+            label = f"{prefix}: {short_rel}"
             choices.append((label, str(path)))
 
     seen_paths: set[str] = set()
@@ -306,10 +341,9 @@ def load_run(selected_path: str, custom_path: str) -> Tuple[
         f"**Total rows:** {len(df)}",
     ]
 
-    # Prefer pairwise compare CSV when available (single file contains both source and target baselines)
-    compare_suggestion = auto_locate_compare_csv(source_model, target_model, dataset, subset)
-    source_suggestion = compare_suggestion or auto_locate_model_response(source_model, dataset, subset)
-    target_suggestion = compare_suggestion or auto_locate_model_response(target_model, dataset, subset)
+    # Suggest baselines from matching dataset/subset directories
+    source_suggestion = auto_locate_model_response(source_model, dataset, subset)
+    target_suggestion = auto_locate_model_response(target_model, dataset, subset)
 
     state_payload = {
         "path": path,
@@ -551,13 +585,13 @@ def build_interface() -> gr.Blocks:
                 choices=[label for label, _ in baseline_choices],
                 value=None,
             )
-            target_path = gr.Textbox(label="Target baseline CSV or compare CSV (B)")
+            target_path = gr.Textbox(label="Target baseline CSV (B)")
             source_csv_dropdown = gr.Dropdown(
                 label="Select source CSV",
                 choices=[label for label, _ in baseline_choices],
                 value=None,
             )
-            source_path = gr.Textbox(label="Source baseline CSV or compare CSV (A)")
+            source_path = gr.Textbox(label="Source baseline CSV (A)")
             show_source = gr.Checkbox(label="Show source baseline column", value=True)
 
         with gr.Accordion("Scores", open=False):
