@@ -336,15 +336,46 @@ def score_model_comparison(
     merged = pd.merge(source_df, target_df, on='prompt', suffixes=('_source', '_target'))
 
     # Rename columns for scoring
-    merged = merged.rename(columns={
-        'model_response_source': 'model_response',
-        'model_response_target': 'target_response',
-    })
+    rename_map = {}
+    if 'model_response_source' in merged.columns:
+        rename_map['model_response_source'] = 'model_response'
+    if 'model_response_target' in merged.columns:
+        rename_map['model_response_target'] = 'target_response'
+    if 'method_source' in merged.columns and 'method' not in merged.columns:
+        rename_map['method_source'] = 'method'
+    merged = merged.rename(columns=rename_map)
 
-    # Preserve original columns
-    for col in merged.columns:
-        if col.endswith('_source') or col.endswith('_target'):
-            merged = merged.rename(columns={col: col.replace('_response_', '_response_')})
+    def _first_non_empty(df: pd.DataFrame, candidates: list[str]) -> str:
+        for column in candidates:
+            if column in df.columns:
+                series = df[column].astype(str).str.strip()
+                series = series[series.astype(bool)]
+                if not series.empty:
+                    return str(series.iloc[0])
+        return ""
+
+    source_label = _first_non_empty(source_df, ['source_model', 'model'])
+    target_label = _first_non_empty(target_df, ['target_model', 'model'])
+
+    if 'source_model_source' in merged.columns:
+        merged = merged.rename(columns={'source_model_source': 'source_model'})
+    if 'target_model_target' in merged.columns:
+        merged = merged.rename(columns={'target_model_target': 'target_model'})
+    for col in ('source_model_target', 'target_model_source'):
+        if col in merged.columns:
+            merged = merged.drop(columns=[col])
+
+    if 'source_model' not in merged.columns:
+        merged['source_model'] = source_label
+    else:
+        merged['source_model'] = merged['source_model'].fillna(source_label)
+        merged.loc[merged['source_model'] == "", 'source_model'] = source_label
+
+    if 'target_model' not in merged.columns:
+        merged['target_model'] = target_label
+    else:
+        merged['target_model'] = merged['target_model'].fillna(target_label)
+        merged.loc[merged['target_model'] == "", 'target_model'] = target_label
 
     out_path = Path(output_file)
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -421,13 +452,29 @@ def main() -> None:
     parser.add_argument('--heuristics', action='store_true', help='Include heuristic scoring (LLM judge only by default).')
     parser.add_argument('--openai-api-base', default=None, help='Override OPENAI_API_BASE for judge routing.')
     parser.add_argument('--openai-api-key', default=None, help='Override OPENAI_API_KEY for judge routing.')
+    parser.add_argument('--compare', action='store_true', help='Merge two CSVs (--a, --b) and score the combined file.')
+    parser.add_argument('--a', help='Source CSV for --compare mode.')
+    parser.add_argument('--b', help='Target CSV for --compare mode.')
 
     args = parser.parse_args()
 
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
+    if args.compare:
+        if not args.a or not args.b:
+            parser.error("--compare requires --a and --b paths.")
+        score_model_comparison(
+            source_file=args.a,
+            target_file=args.b,
+            output_file=args.output,
+            judge_model=args.judge_model,
+            openai_api_base=args.openai_api_base,
+            openai_api_key=args.openai_api_key,
+        )
+        return
+
     if not args.input:
-        parser.error("--input is required")
+        parser.error("--input is required when not using --compare")
     score_pairwise(
         input_file=args.input,
         output_path=args.output,

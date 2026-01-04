@@ -118,6 +118,14 @@ def generate_disguised_responses(
                       method_kwargs=method_kwargs or {})
     
     results = []
+    def _extract_system_prompt(messages):
+        if not isinstance(messages, list):
+            return ""
+        for message in messages:
+            if isinstance(message, dict) and message.get('role') == 'system':
+                content = message.get('content', '')
+                return content if isinstance(content, str) else str(content)
+        return ""
     method_stats: dict = {}
 
     # Prepare output for incremental persistence
@@ -128,7 +136,15 @@ def generate_disguised_responses(
         if not os.path.exists(output_file):
             with open(output_file, 'w', newline='', encoding='utf-8') as f:
                 writer = csv.writer(f, quoting=csv.QUOTE_ALL)
-                writer.writerow(['prompt', 'model_response', 'target_response', 'method', 'source_model', 'target_model'])
+                writer.writerow([
+                    'prompt',
+                    'model_response',
+                    'target_response',
+                    'method',
+                    'source_model',
+                    'target_model',
+                    'system_prompt',
+                ])
 
     # Backend helpers
     def _has_provider_prefix(m: str) -> bool:
@@ -253,18 +269,21 @@ def generate_disguised_responses(
                         return resp["choices"][0]["message"]["content"]
                 disguised_response = _gen_with_retries(_llm_call)
 
+            system_prompt_text = _extract_system_prompt(disguised_messages)
             # Find matching target response for comparison
             target_response = ""
             if i < len(target_df) and 'target_response' in target_df.columns:
                 target_response = target_df.iloc[i]['target_response']
             
+            display_prompt = method.summarize_system_prompt(system_prompt_text)
             row = {
                 'prompt': prompt,
                 'model_response': disguised_response,
                 'target_response': target_response,
                 'method': method_name,
                 'source_model': model,
-                'target_model': disguise_as
+                'target_model': disguise_as,
+                'system_prompt': display_prompt,
             }
             results.append(row)
 
@@ -274,7 +293,13 @@ def generate_disguised_responses(
                 with open(output_file, 'a', newline='', encoding='utf-8') as f:
                     writer = csv.writer(f, quoting=csv.QUOTE_ALL)
                     writer.writerow([
-                        row['prompt'], row['model_response'], row['target_response'], row['method'], row['source_model'], row['target_model']
+                        row['prompt'],
+                        row['model_response'],
+                        row['target_response'],
+                        row['method'],
+                        row['source_model'],
+                        row['target_model'],
+                        row['system_prompt'],
                     ])
 
         except Exception as e:

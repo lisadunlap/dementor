@@ -38,6 +38,42 @@ def _read_prompts(prompts_file: Path, column: str = "prompt") -> List[str]:
     return df[column].astype(str).tolist()
 
 
+CANONICAL_FIELDS = [
+    "prompt",
+    "model_response",
+    "target_response",
+    "method",
+    "source_model",
+    "target_model",
+    "model",
+    "system_prompt",
+]
+
+
+def _default_source_model_id(args: argparse.Namespace) -> str:
+    backend = getattr(args, "backend", "")
+    if getattr(args, "source_model_id", None):
+        return str(args.source_model_id)
+    if backend in {"basic", "openai"} and getattr(args, "model", None):
+        return str(args.model)
+    if backend == "tinker":
+        for attr in ("adapter_name", "model_path", "base_model"):
+            value = getattr(args, attr, None)
+            if value:
+                return str(value)
+    return ""
+
+
+def _resolve_metadata_ids(args: argparse.Namespace) -> tuple[str, str]:
+    source_id = getattr(args, "source_model_id", None)
+    if not source_id:
+        source_id = _default_source_model_id(args)
+    target_id = getattr(args, "target_model_id", None)
+    if not target_id:
+        target_id = source_id
+    return str(source_id or ""), str(target_id or "")
+
+
 def _reproduce_train_eval_split(
     dataset_csv: Path,
     *,
@@ -64,16 +100,23 @@ def _reproduce_train_eval_split(
     return train_prompts, eval_prompts
 
 
+def _determine_fieldnames(rows: Iterable[dict]) -> List[str]:
+    fields = {key for row in rows for key in row.keys()}
+    canonical = [field for field in CANONICAL_FIELDS if field in fields]
+    extras = sorted(fields - set(canonical))
+    return canonical + extras
+
+
 def _write_rows(output_csv: Path, rows: Iterable[dict]) -> None:
     rows = list(rows)
+    output_csv.parent.mkdir(parents=True, exist_ok=True)
     if not rows:
-        output_csv.parent.mkdir(parents=True, exist_ok=True)
+        fieldnames = ["prompt", "model_response", "model", "source_model", "target_model"]
         with output_csv.open("w", newline="", encoding="utf-8") as f:
-            writer = csv.DictWriter(f, fieldnames=["prompt", "model_response", "model"])
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
             writer.writeheader()
         return
-    fieldnames = sorted({k for row in rows for k in row.keys()})
-    output_csv.parent.mkdir(parents=True, exist_ok=True)
+    fieldnames = _determine_fieldnames(rows)
     with output_csv.open("w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=fieldnames)
         writer.writeheader()
@@ -185,6 +228,8 @@ def _gen_with_tinker(
     max_tokens: int,
     renderer_name: Optional[str],
     model_label: Optional[str] = None,
+    source_model_id: Optional[str] = None,
+    target_model_id: Optional[str] = None,
 ) -> List[dict]:
     import tinker
     from tinker import types
@@ -228,6 +273,8 @@ def _gen_with_tinker(
                 pass
         return template_applied
 
+    resolved_source = str(source_model_id or model_label or adapter_name or model_path or base_model or "")
+    resolved_target = str(target_model_id or resolved_source)
     rows: List[dict] = []
     for p in prompts:
         text = _render_prompt(p)
@@ -244,6 +291,9 @@ def _gen_with_tinker(
                 "prompt": p,
                 "model_response": reply,
                 "model": model_label or adapter_name or model_path,
+                "source_model": resolved_source,
+                "target_model": resolved_target,
+                "system_prompt": "",
             }
         )
     return rows
@@ -258,10 +308,14 @@ def _gen_with_openai(
     base_url: Optional[str],
     max_tokens: int,
     temperature: float,
+    source_model_id: Optional[str],
+    target_model_id: Optional[str],
 ) -> List[dict]:
     from openai import OpenAI
 
     client = OpenAI(base_url=(base_url or "https://api.openai.com/v1"))
+    resolved_source = str(source_model_id or model)
+    resolved_target = str(target_model_id or resolved_source)
     rows: List[dict] = []
     for p in prompts:
         text = prompt_template.format(prompt=p)
@@ -275,11 +329,20 @@ def _gen_with_openai(
             temperature=temperature,
         )
         reply = resp.choices[0].message.content or ""
-        rows.append({"prompt": p, "model_response": reply, "model": model})
+        rows.append(
+            {
+                "prompt": p,
+                "model_response": reply,
+                "model": model,
+                "source_model": resolved_source,
+                "target_model": resolved_target,
+                "system_prompt": system_prompt,
+            }
+        )
     return rows
 
 
-def _run_basic_generation(args: argparse.Namespace, prompts: List[str]) -> None:
+def _run_basic_generation(args: argparse.Namespace, prompts: List[str], *, source_model_id: Optional[str], target_model_id: Optional[str]) -> None:
     out_path = args.output_csv
     out_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -287,17 +350,20 @@ def _run_basic_generation(args: argparse.Namespace, prompts: List[str]) -> None:
     mode = "w" if args.overwrite or not out_path.exists() else "a"
     print(f"Writing {len(prompts)} prompts to {out_path} (mode={mode})")
 
+    resolved_source = str(source_model_id or args.model)
+    resolved_target = str(target_model_id or resolved_source)
+
     api_base = args.openai_api_base
     api_key = args.openai_api_key
     model_lower = args.model.lower()
     if model_lower.startswith("openai/gpt-") and not api_base:
         api_base = "https://api.openai.com/v1"
 
+    fieldnames = ["prompt", "model_response", "model", "source_model", "target_model"]
     with open(out_path, mode, newline="", encoding="utf-8") as handle:
-        writer = csv.writer(handle, quoting=csv.QUOTE_ALL)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
         if mode == "w":
-            writer.writerow(["prompt", "model_response", "model"])
-
+            writer.writeheader()
         for prompt in tqdm(prompts, desc=f"Generating with {args.model}"):
             if prompt in existing:
                 continue
@@ -324,7 +390,15 @@ def _run_basic_generation(args: argparse.Namespace, prompts: List[str]) -> None:
                     api_key=api_key,
                 )
 
-            writer.writerow([prompt, text, args.model])
+            row = {
+                "prompt": prompt,
+                "model_response": text,
+                "model": args.model,
+                "source_model": resolved_source,
+                "target_model": resolved_target,
+                "system_prompt": args.system or "",
+            }
+            writer.writerow(row)
 
 
 def parse_args() -> argparse.Namespace:
@@ -409,6 +483,18 @@ def parse_args() -> argparse.Namespace:
         default=42,
         help="Seed used during fine-tune split (default: 42).",
     )
+    parser.add_argument(
+        "--source-model-id",
+        type=str,
+        default=None,
+        help="Metadata label for the model generating responses (defaults to backend model/adapter).",
+    )
+    parser.add_argument(
+        "--target-model-id",
+        type=str,
+        default=None,
+        help="Optional metadata label for the reference/target model to mimic.",
+    )
 
     sub = parser.add_subparsers(dest="backend", required=True)
 
@@ -466,6 +552,7 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
     prompts = _read_prompts(args.prompts_file)
+    source_model_id, target_model_id = _resolve_metadata_ids(args)
 
     # If provided, reproduce the train/eval split and exclude the training prompts
     if args.dataset_csv is not None:
@@ -488,7 +575,12 @@ def main() -> None:
         prompts = prompts[: args.limit]
 
     if args.backend == "basic":
-        _run_basic_generation(args, prompts)
+        _run_basic_generation(
+            args,
+            prompts,
+            source_model_id=source_model_id or args.model,
+            target_model_id=target_model_id or source_model_id or args.model,
+        )
         return
 
     if args.backend == "tinker":
@@ -522,6 +614,8 @@ def main() -> None:
 
         if not model_path and not args.adapter_name:
             raise ValueError("Provide either --model-path or --adapter-name for Tinker backend.")
+        effective_source = source_model_id or resolved_adapter_name or model_path or args.base_model
+        effective_target = target_model_id or effective_source
         rows = _gen_with_tinker(
             adapter_name=resolved_adapter_name,
             model_path=(model_path or None),
@@ -532,11 +626,15 @@ def main() -> None:
             max_tokens=args.max_tokens,
             renderer_name=args.renderer_name,
             model_label=args.adapter_name,
+            source_model_id=effective_source,
+            target_model_id=effective_target,
         )
     elif args.backend == "openai":
         if "OPENAI_API_KEY" not in os.environ and not args.base_url:
             # Still allow if using a local OpenAI-compatible server that doesn't need a key
             pass
+        source_meta = source_model_id or args.model
+        target_meta = target_model_id or source_meta
         rows = _gen_with_openai(
             model=args.model,
             prompts=prompts,
@@ -545,6 +643,8 @@ def main() -> None:
             base_url=args.base_url,
             max_tokens=args.max_tokens,
             temperature=args.temperature,
+            source_model_id=source_meta,
+            target_model_id=target_meta,
         )
     else:
         raise ValueError(f"Unsupported backend: {args.backend}")

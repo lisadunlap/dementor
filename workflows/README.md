@@ -55,7 +55,7 @@ python scripts/generate_responses.py \
      --backend tinker \
      --adapter-name gsm8k_llama-3.1-8b-instruct \
      --renderer-name llama3 \
-     --output-csv data/results/gsm8k/500/sft_tinker/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
+     --output-csv data/results/gsm8k/500/sft/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv
    ```
    Use the OpenAI backend variant to pull responses from OpenAI fine-tunes.
 3. **Score vs target**: `python -m scripts.scorer --input <responses.csv> --output <scores_dir>/scored.csv --judge-model openai/gpt-4.1-mini`.

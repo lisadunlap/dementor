@@ -66,6 +66,7 @@ python -m scripts.scorer \
 
 ## Reference Docs
 - `docs/local_generation.md` – HF/vLLM/provider routing (includes the local vLLM walkthrough).
+- `docs/stylometric_classifier.md` – stylometric attribution baseline (char/word/POS n-grams).
 - `workflows/README.md` – GSM8K SFT/DPO orchestration + Tinker adapter registry.
 - `examples/` – copy/paste provider configs.
 - `AGENTS.md` – repo guidance + coding conventions for AI agents.
@@ -92,7 +93,7 @@ python -m scripts.scorer \
   - `<pair>.csv` is written by `scripts/disguise.py`, where `<pair>` is `<source>_as_<target>` with `/` replaced by `_`.
   - `scores/<pair>/` contains `scored.csv`, `scored_metrics.csv`, and `summary.json` emitted by `scripts.scorer.py`.
   - Legacy Chatbot Arena runs also mirror this under `data/results/chatbot_arena/comparisons/disguised_vs_target/<method>/`.
-- `data/results/<dataset>/<workflow>/…` captures fine-tune outputs (e.g., `data/results/gsm8k/500/sft_tinker/...`), while `data/results/workflows/` stores logs from orchestrated runs.
+- `data/results/<dataset>/<workflow>/…` captures fine-tune outputs (e.g., `data/results/gsm8k/500/sft/...`), while `data/results/workflows/` stores logs from orchestrated runs.
 
 ## Prompt-based Disguise Options
 

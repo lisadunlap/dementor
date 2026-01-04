@@ -36,6 +36,7 @@ class RandomSamplingSystemPrompting(MethodBase):
     def forward(self, prompt: str) -> List[Dict[str, str]]:
         if self.disguise_df is None or len(self.disguise_df) == 0:
             system_prompt = f"You are {self.disguise_as}. Respond in the style and manner of {self.disguise_as}."
+            self._last_display_system_prompt = system_prompt
         else:
             # Exclude the current prompt to avoid leakage
             df = self.disguise_df
@@ -54,6 +55,14 @@ Examples:
                     response = response[:self.max_tokens_per_example*4] + "...(truncated)"
                 system_prompt += f"\nQ: {row['prompt']}\nA: {response}\n"
             system_prompt += f"\n\nNow respond to the following prompt in the same style as {self.disguise_as}. Match the formatting, tone, level of detail, and approach shown in the examples."
+            placeholder = f"""You are {self.disguise_as}. Study these examples of {self.disguise_as}'s responses and mimic the style, tone, formatting, and approach:
+
+Examples:
+"""
+            for idx in range(sample_size):
+                placeholder += f"\nQ: <random_example_prompt_{idx + 1}>\nA: <random_example_response_{idx + 1}>\n"
+            placeholder += f"\n\nNow respond to the following prompt in the same style as {self.disguise_as}. Match the formatting, tone, level of detail, and approach shown in the examples."
+            self._last_display_system_prompt = placeholder or system_prompt
 
         if "gemma" in self.model.lower():
             formatted_prompt = f"""<start_of_turn>user
