@@ -38,6 +38,94 @@ def _shuffle_pair(row: Dict[str, object], rng: random.Random) -> Dict[str, objec
     }
 
 
+def _truncate(text: str, max_chars: int) -> str:
+    if max_chars <= 0:
+        return ""
+    cleaned = text.replace("\r\n", "\n").replace("\r", "\n")
+    if len(cleaned) <= max_chars:
+        return cleaned
+    head = max_chars // 2
+    tail = max_chars - head - 1
+    return f"{cleaned[:head].rstrip()}…{cleaned[-tail:].lstrip()}"
+
+
+def _over_limit(value: object, max_chars: int) -> bool:
+    if max_chars is None:
+        return False
+    text = "" if value is None else str(value)
+    return len(text) > max_chars
+
+
+def _bucket_key(row: pd.Series, baseline_method: str) -> str:
+    if row["pair_type"] == "self_control":
+        return str(row["direction"])
+    method = row["method_a"] if row["method_a"] != baseline_method else row["method_b"]
+    return f"{method}|{row['direction']}"
+
+
+def _balanced_sample(
+    df: pd.DataFrame,
+    baseline_method: str,
+    total: int,
+    *,
+    rng: random.Random,
+) -> pd.DataFrame:
+    buckets: Dict[str, pd.DataFrame] = {}
+    for key, group in df.groupby(df.apply(_bucket_key, axis=1, baseline_method=baseline_method)):
+        buckets[key] = group
+
+    bucket_keys = sorted(buckets.keys())
+    bucket_count = len(bucket_keys)
+    if bucket_count == 0:
+        raise ValueError("No buckets available for balanced sampling.")
+
+    base = total // bucket_count
+    remainder = total % bucket_count
+
+    rng.shuffle(bucket_keys)
+    target_sizes: Dict[str, int] = {key: base for key in bucket_keys}
+    for key in bucket_keys[:remainder]:
+        target_sizes[key] += 1
+
+    selected_frames: List[pd.DataFrame] = []
+    selected_idx: set[int] = set()
+    deficit = 0
+    capacity_keys = []
+    for key in bucket_keys:
+        group = buckets[key]
+        target = target_sizes[key]
+        if len(group) <= target:
+            selected_frames.append(group)
+            selected_idx.update(group.index.tolist())
+            deficit += target - len(group)
+        else:
+            sampled = group.sample(n=target, random_state=rng.randint(0, 1_000_000))
+            selected_frames.append(sampled)
+            selected_idx.update(sampled.index.tolist())
+            capacity_keys.append(key)
+
+    if deficit > 0 and capacity_keys:
+        rng.shuffle(capacity_keys)
+        for key in capacity_keys:
+            if deficit <= 0:
+                break
+            group = buckets[key]
+            extra = group.drop(index=group.index.intersection(selected_idx))
+            extra_capacity = len(extra)
+            if extra_capacity <= 0:
+                continue
+            take = min(extra_capacity, deficit)
+            extra_sample = extra.sample(n=take, random_state=rng.randint(0, 1_000_000))
+            selected_frames.append(extra_sample)
+            selected_idx.update(extra_sample.index.tolist())
+            deficit -= take
+
+    result = pd.concat(selected_frames).reset_index(drop=True)
+    if len(result) > total:
+        result = result.sample(n=total, random_state=rng.randint(0, 1_000_000)).reset_index(drop=True)
+    return result
+
+
 def _load_csv(path: Path) -> pd.DataFrame:
     df = pd.read_csv(path)
     if df.empty:
@@ -183,6 +271,24 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Shuffle row order for annotators.",
     )
+    parser.add_argument(
+        "--max-chars",
+        type=int,
+        default=None,
+        help="Max characters for prompt/target/candidates in the public outputs.",
+    )
+    parser.add_argument(
+        "--max-chars-mode",
+        choices=["truncate", "filter"],
+        default="truncate",
+        help="Whether to truncate long fields or drop rows that exceed --max-chars.",
+    )
+    parser.add_argument(
+        "--total-comparisons",
+        type=int,
+        default=None,
+        help="Target total comparisons with balanced sampling across method/direction/self buckets.",
+    )
     return parser.parse_args()
 
 
@@ -207,8 +313,22 @@ def main() -> None:
     df.insert(0, "comparison_id", [f"cmp_{i:06d}" for i in range(len(df))])
     df["winner"] = ""
 
+    if args.max_chars is not None and args.max_chars_mode == "filter":
+        mask = ~(
+            df["prompt"].apply(lambda x: _over_limit(x, args.max_chars))
+            | df["target_response"].apply(lambda x: _over_limit(x, args.max_chars))
+            | df["candidate_a"].apply(lambda x: _over_limit(x, args.max_chars))
+            | df["candidate_b"].apply(lambda x: _over_limit(x, args.max_chars))
+        )
+        df = df[mask].reset_index(drop=True)
+        df["comparison_id"] = [f"cmp_{i:06d}" for i in range(len(df))]
+
     if args.shuffle:
         df = df.sample(frac=1.0, random_state=args.seed).reset_index(drop=True)
+
+    if args.total_comparisons is not None:
+        df = _balanced_sample(df, args.baseline, args.total_comparisons, rng=rng)
+        df["comparison_id"] = [f"cmp_{i:06d}" for i in range(len(df))]
 
     public_cols = [
         "comparison_id",
@@ -218,7 +338,7 @@ def main() -> None:
         "candidate_b",
         "winner",
     ]
-    public_df = df[public_cols]
+    public_df = df[public_cols].copy()
     key_cols = [
         "comparison_id",
         "method_a",
@@ -230,6 +350,9 @@ def main() -> None:
 
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output_key.parent.mkdir(parents=True, exist_ok=True)
+    if args.max_chars is not None and args.max_chars_mode == "truncate":
+        for col in ["prompt", "target_response", "candidate_a", "candidate_b"]:
+            public_df[col] = public_df[col].astype(str).apply(lambda x: _truncate(x, args.max_chars))
     public_df.to_csv(args.output, index=False)
     key_df.to_csv(args.output_key, index=False)
     public_xlsx = args.output.with_suffix(".xlsx")
