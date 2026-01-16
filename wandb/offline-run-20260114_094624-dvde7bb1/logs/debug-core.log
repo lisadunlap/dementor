@@ -1,0 +1,14 @@
+{"time":"2026-01-14T09:46:24.200736297-08:00","level":"INFO","msg":"main: starting server","port-filename":"/tmp/tmpn9mjf1d_/port-1659038.txt","pid":1659038,"log-level":0,"disable-analytics":false,"shutdown-on-parent-exit":false,"enable-dcgm-profiling":false}
+{"time":"2026-01-14T09:46:24.201659637-08:00","level":"INFO","msg":"server: will exit if parent process dies","ppid":1659038}
+{"time":"2026-01-14T09:46:24.201645409-08:00","level":"INFO","msg":"server: accepting connections","addr":{"Name":"/tmp/wandb-1659038-1659275-3272108815/socket","Net":"unix"}}
+{"time":"2026-01-14T09:46:24.388045002-08:00","level":"INFO","msg":"connection: ManageConnectionData: new connection created","id":"1(@)"}
+{"time":"2026-01-14T09:46:24.393851558-08:00","level":"INFO","msg":"handleInformInit: received","streamId":"dvde7bb1","id":"1(@)"}
+{"time":"2026-01-14T09:46:25.47520768-08:00","level":"INFO","msg":"handleInformInit: stream started","streamId":"dvde7bb1","id":"1(@)"}
+{"time":"2026-01-14T09:46:51.101300636-08:00","level":"INFO","msg":"handleInformTeardown: server teardown initiated","id":"1(@)"}
+{"time":"2026-01-14T09:46:51.10136752-08:00","level":"INFO","msg":"server is shutting down"}
+{"time":"2026-01-14T09:46:51.101363939-08:00","level":"INFO","msg":"connection: closing","id":"1(@)"}
+{"time":"2026-01-14T09:46:51.101485544-08:00","level":"INFO","msg":"connection: closed successfully","id":"1(@)"}
+{"time":"2026-01-14T09:46:51.101629032-08:00","level":"INFO","msg":"server: listener closed","addr":{"Name":"/tmp/wandb-1659038-1659275-3272108815/socket","Net":"unix"}}
+{"time":"2026-01-14T09:46:51.102331831-08:00","level":"INFO","msg":"handleInformTeardown: server shutdown complete","id":"1(@)"}
+{"time":"2026-01-14T09:46:51.10235853-08:00","level":"INFO","msg":"connection: ManageConnectionData: connection closed","id":"1(@)"}
+{"time":"2026-01-14T09:46:51.10237652-08:00","level":"INFO","msg":"server is closed"}

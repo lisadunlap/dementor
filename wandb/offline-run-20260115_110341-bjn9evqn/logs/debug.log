@@ -1,0 +1,21 @@
+2026-01-15 11:03:41,801 INFO    MainThread:2316722 [wandb_setup.py:_flush():81] Current SDK version is 0.24.0
+2026-01-15 11:03:41,801 INFO    MainThread:2316722 [wandb_setup.py:_flush():81] Configure stats pid to 2316722
+2026-01-15 11:03:41,801 INFO    MainThread:2316722 [wandb_setup.py:_flush():81] Loading settings from environment variables
+2026-01-15 11:03:41,801 INFO    MainThread:2316722 [wandb_init.py:setup_run_log_directory():717] Logging user logs to /mnt/localssd/llm_expt_2/dementor/wandb/offline-run-20260115_110341-bjn9evqn/logs/debug.log
+2026-01-15 11:03:41,801 INFO    MainThread:2316722 [wandb_init.py:setup_run_log_directory():718] Logging internal logs to /mnt/localssd/llm_expt_2/dementor/wandb/offline-run-20260115_110341-bjn9evqn/logs/debug-internal.log
+2026-01-15 11:03:41,801 INFO    MainThread:2316722 [wandb_init.py:init():844] calling init triggers
+2026-01-15 11:03:41,801 INFO    MainThread:2316722 [wandb_init.py:init():849] wandb.init called with sweep_config: {}
+config: {'model': 'openai/gpt-4.1-mini', 'disguise_as': 'meta-llama/Meta-Llama-3.1-8B-Instruct', 'method': 'embedding_clustering', 'source_responses': 'data/model-responses/mmlu_pro/full/openai_gpt-4.1-mini_responses.csv', 'target_responses': 'data/model-responses/mmlu_pro/full/meta-llama_Meta-Llama-3.1-8B-Instruct_responses.csv', 'prompts_file': 'data/datasets/mmlu_pro/mmlu_pro_prompts_eval_200_seed42.csv', 'num_samples': 200, 'temperature': 0.0, 'output_dir': None, 'skip_evaluation': False, 'heuristics_only': False, 'judge_model': 'openai/gpt-4.1-mini', 'judge_api_base': 'https://api.openai.com/v1', 'judge_api_key': None, 'no_wandb': False, 'run_name': 'embedding_clustering_openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct_0115_1103', 'openai_api_base': None, 'openai_api_key': None, 'generation_api_base': None, 'generation_api_key': None, 'generation_provider': None, 'analysis_api_base': None, 'analysis_api_key': None, 'analysis_provider': None, 'embedding_api_base': None, 'embedding_api_key': None, 'embedding_provider': None, '_wandb': {}}
+2026-01-15 11:03:41,801 INFO    MainThread:2316722 [wandb_init.py:init():892] starting backend
+2026-01-15 11:03:42,038 INFO    MainThread:2316722 [wandb_init.py:init():895] sending inform_init request
+2026-01-15 11:03:42,044 INFO    MainThread:2316722 [wandb_init.py:init():903] backend started and connected
+2026-01-15 11:03:42,045 INFO    MainThread:2316722 [wandb_init.py:init():973] updated telemetry
+2026-01-15 11:03:42,050 INFO    MainThread:2316722 [wandb_init.py:init():997] communicating run to backend with 90.0 second timeout
+2026-01-15 11:03:42,269 INFO    MainThread:2316722 [wandb_init.py:init():1044] starting run threads in backend
+2026-01-15 11:03:42,410 INFO    MainThread:2316722 [wandb_run.py:_console_start():2529] atexit reg
+2026-01-15 11:03:42,410 INFO    MainThread:2316722 [wandb_run.py:_redirect():2377] redirect: wrap_raw
+2026-01-15 11:03:42,410 INFO    MainThread:2316722 [wandb_run.py:_redirect():2446] Wrapping output streams.
+2026-01-15 11:03:42,410 INFO    MainThread:2316722 [wandb_run.py:_redirect():2469] Redirects installed.
+2026-01-15 11:03:42,411 INFO    MainThread:2316722 [wandb_init.py:init():1084] run started, returning control to user process
+2026-01-15 11:03:43,300 INFO    wandb-AsyncioManager-main:2316722 [service_client.py:_forward_responses():80] Reached EOF.
+2026-01-15 11:03:43,300 INFO    wandb-AsyncioManager-main:2316722 [mailbox.py:close():137] Closing mailbox, abandoning 0 handles.

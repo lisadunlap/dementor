@@ -1,0 +1,43 @@
+{
+  "inputs": [
+    "data/model-responses/mmlu_pro/full/openai_gpt-4.1-mini_responses.csv",
+    "data/model-responses/mmlu_pro/full/meta-llama_Meta-Llama-3.1-8B-Instruct_responses.csv"
+  ],
+  "text_col": "model_response",
+  "label_col": "model",
+  "label_from_filename": false,
+  "drop_error_prefixes": [
+    "ERROR:"
+  ],
+  "max_per_label": 5000,
+  "seed": 10,
+  "spacy_model": "en_core_web_sm",
+  "max_features": 2000,
+  "char_ngram_range": [
+    3,
+    5
+  ],
+  "word_ngram_range": [
+    2,
+    4
+  ],
+  "pos_ngram_range": [
+    2,
+    4
+  ],
+  "preprocess_config": {
+    "strip_prompt_echo": false,
+    "strip_answer_prefix": false,
+    "strip_leading_markers": false,
+    "strip_markdown": false,
+    "strip_punctuation": false,
+    "strip_reasoning_phrases": false,
+    "collapse_whitespace": false,
+    "lowercase": false,
+    "max_chars": null
+  },
+  "label_counts": {
+    "openai/gpt-4.1-mini": 300,
+    "meta-llama/Meta-Llama-3.1-8B-Instruct": 300
+  }
+}

@@ -123,6 +123,17 @@ def _write_rows(output_csv: Path, rows: Iterable[dict]) -> None:
         writer.writerows(rows)
 
 
+def _strip_backend_prefix(model_name: str) -> str:
+    """Strip backend prefixes (vllm:, hf:, huggingface:) from model names."""
+    if not model_name:
+        return model_name
+    model_lower = model_name.lower()
+    for prefix in ("vllm:", "hf:", "huggingface:"):
+        if model_lower.startswith(prefix):
+            return model_name.split(":", 1)[1]
+    return model_name
+
+
 def _load_existing(output_csv: Path) -> Dict[str, str]:
     if not output_csv.exists():
         return {}
@@ -350,8 +361,10 @@ def _run_basic_generation(args: argparse.Namespace, prompts: List[str], *, sourc
     mode = "w" if args.overwrite or not out_path.exists() else "a"
     print(f"Writing {len(prompts)} prompts to {out_path} (mode={mode})")
 
-    resolved_source = str(source_model_id or args.model)
-    resolved_target = str(target_model_id or resolved_source)
+    # Strip backend prefixes from model names for CSV output
+    resolved_source = _strip_backend_prefix(str(source_model_id or args.model))
+    resolved_target = _strip_backend_prefix(str(target_model_id or resolved_source))
+    model_name_clean = _strip_backend_prefix(args.model)
 
     api_base = args.openai_api_base
     api_key = args.openai_api_key
@@ -359,7 +372,29 @@ def _run_basic_generation(args: argparse.Namespace, prompts: List[str], *, sourc
     if model_lower.startswith("openai/gpt-") and not api_base:
         api_base = "https://api.openai.com/v1"
 
-    fieldnames = ["prompt", "model_response", "model", "source_model", "target_model"]
+    # Load model/pipeline ONCE before the loop for HF and vLLM
+    hf_pipeline = None
+    vllm_llm = None
+    vllm_params = None
+    
+    if model_lower.startswith("hf:"):
+        from transformers import pipeline
+        model_id = args.model.split(":", 1)[1]
+        print(f"Loading HuggingFace model: {model_id}")
+        hf_pipeline = pipeline("text-generation", model=model_id, device_map="auto")
+        print("Model loaded successfully!")
+    elif model_lower.startswith("vllm:"):
+        from vllm import LLM, SamplingParams
+        model_id = args.model.split(":", 1)[1]
+        print(f"Loading vLLM model: {model_id}")
+        vllm_llm = LLM(model=model_id, trust_remote_code=True)
+        vllm_params = SamplingParams(
+            max_tokens=args.max_tokens,
+            temperature=args.temperature
+        )
+        print("Model loaded successfully!")
+
+    fieldnames = ["prompt", "model_response", "model", "source_model", "target_model", "system_prompt"]
     with open(out_path, mode, newline="", encoding="utf-8") as handle:
         writer = csv.DictWriter(handle, fieldnames=fieldnames, quoting=csv.QUOTE_ALL)
         if mode == "w":
@@ -374,13 +409,26 @@ def _run_basic_generation(args: argparse.Namespace, prompts: List[str], *, sourc
             messages.append({"role": "user", "content": prompt})
 
             sys_text = (args.system + "\n\n" if args.system else "")
-            if model_lower.startswith("hf:"):
-                model_id = args.model.split(":", 1)[1]
-                text = _gen_hf(model_id, sys_text + prompt, args.max_tokens, args.temperature)
-            elif model_lower.startswith("vllm:"):
-                model_id = args.model.split(":", 1)[1]
-                text = _gen_vllm(model_id, sys_text + prompt, args.max_tokens, args.temperature)
+            
+            # Generate using pre-loaded models
+            if hf_pipeline is not None:
+                # HuggingFace generation
+                prompt_text = sys_text + prompt
+                generation_kwargs = {
+                    "max_new_tokens": args.max_tokens,
+                    "do_sample": (args.temperature > 0),
+                    "temperature": max(args.temperature, 1e-6),
+                }
+                out = hf_pipeline(prompt_text, **generation_kwargs)
+                text = out[0]['generated_text']
+                text = text[len(prompt_text):].strip()
+            elif vllm_llm is not None:
+                # vLLM generation
+                prompt_text = sys_text + prompt
+                outputs = vllm_llm.generate([prompt_text], vllm_params)
+                text = outputs[0].outputs[0].text
             else:
+                # LiteLLM (API-based)
                 text = _gen_litellm(
                     model=args.model,
                     messages=messages,
@@ -393,7 +441,7 @@ def _run_basic_generation(args: argparse.Namespace, prompts: List[str], *, sourc
             row = {
                 "prompt": prompt,
                 "model_response": text,
-                "model": args.model,
+                "model": model_name_clean,
                 "source_model": resolved_source,
                 "target_model": resolved_target,
                 "system_prompt": args.system or "",
