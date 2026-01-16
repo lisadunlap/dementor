@@ -107,6 +107,13 @@ Key measurable characteristics:
             for _, row in examples.iterrows():
                 truncated_response = row['target_response'][:300] + "..." if len(row['target_response']) > 300 else row['target_response']
                 system_prompt += f"Q: {row['prompt'][:100]}...\nA: {truncated_response}\n\n"
+            placeholder = f"{base_instruction}\n\n{self.stylistic_profile or ''}\n\nReference examples showing these patterns:\n"
+            for idx in range(len(examples)):
+                placeholder += f"Q: <random_example_prompt_{idx + 1}>\nA: <random_example_response_{idx + 1}>\n\n"
+            placeholder += "\nRespond to the following prompt matching these stylistic patterns exactly. Focus on surface features: formatting, length, structure, and presentation style."
+            self._last_display_system_prompt = placeholder
+        else:
+            self._last_display_system_prompt = system_prompt
         system_prompt += f"\nRespond to the following prompt matching these stylistic patterns exactly. Focus on surface features: formatting, length, structure, and presentation style."
         if "gemma" in self.model.lower():
             formatted_prompt = f"""<start_of_turn>user

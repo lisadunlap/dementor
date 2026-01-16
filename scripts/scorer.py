@@ -1,9 +1,8 @@
-"""Unified scoring utilities for single responses and pairwise comparisons."""
+"""Scoring utilities for model comparisons - pairwise only."""
 from __future__ import annotations
 
 import argparse
 import csv
-import json
 import logging
 import os
 import re
@@ -56,157 +55,6 @@ def _llm_generate(messages: List[dict], model: str, temperature: float, max_toke
         return resp.choices[0].message.content
 
 
-def _build_quality_prompt(response: str, prompt: Optional[str] = None) -> str:
-    system = (
-        "You are an expert evaluator. Rate this response on a scale of 1-5 for the following criteria:\n\n"
-        "1) Coherence (1-5): How logically consistent and well-structured is the response?\n"
-        "2) Helpfulness (1-5): How useful and informative is the response for the given task?\n"
-        "3) Accuracy (1-5): How factually correct and precise is the response?\n\n"
-        "Return scores in the format: Coherence: X, Helpfulness: Y, Accuracy: Z\n"
-        "Followed by a brief justification."
-    )
-    context = f"Original prompt: {prompt}\n\n" if prompt else ""
-    return f"{system}\n\n{context}Response to evaluate:\n{response}\n\nProvide coherence, helpfulness, and accuracy scores."
-
-
-def _parse_quality_scores(output: str) -> Dict[str, float]:
-    scores = {
-        'coherence_score': 0.0,
-        'helpfulness_score': 0.0,
-        'accuracy_score': 0.0,
-        'quality_raw_explanation': output,
-    }
-    patterns = {
-        'coherence_score': [r'[Cc]oherence[:\s]+(\d(?:\.\d)?)', r'(\d(?:\.\d)?)[^0-9]*coherence'],
-        'helpfulness_score': [r'[Hh]elpfulness[:\s]+(\d(?:\.\d)?)', r'(\d(?:\.\d)?)[^0-9]*helpfulness'],
-        'accuracy_score': [r'[Aa]ccuracy[:\s]+(\d(?:\.\d)?)', r'(\d(?:\.\d)?)[^0-9]*accuracy'],
-    }
-    for key, pats in patterns.items():
-        for pat in pats:
-            m = re.search(pat, output, re.IGNORECASE)
-            if m:
-                scores[key] = float(m.group(1))
-                break
-    return scores
-
-
-def _compute_single_style_features(responses: List[str]) -> pd.DataFrame:
-    feats: List[Dict[str, object]] = []
-    for text in responses:
-        value = str(text or "")
-        row: Dict[str, object] = {'response_length': len(value)}
-        if _style is not None:
-            row.update({
-                'markdown': _style.has_markdown(value),
-                'list': _style.contains_list(value),
-                'header': _style.contains_header(value),
-                'code': _style.contains_code(value),
-                'links': _style.contains_link(value),
-                'greeting': _style.starts_with_greeting(value),
-                'signoff': _style.ends_with_signoff(value),
-                'emojis': _style.contains_emoji(value),
-                'bullets': _style.contains_bullets(value),
-                'questions': _style.contains_question(value),
-                'parentheses': _style.uses_parentheses(value),
-                'exclamations': _style.contains_exclamation(value),
-                'long_sentences': _style.has_long_sentences(value),
-                'starts_list': _style.starts_with_list(value),
-                'math_symbols': _style.contains_math_symbols(value),
-                'blockquotes': _style.contains_blockquote(value),
-                'repetition': _style.contains_repetition(value),
-                'numbered_steps': _style.contains_numbered_steps(value),
-                'all_caps': _style.contains_all_caps(value),
-                'first_person': _style.uses_first_person(value),
-            })
-        feats.append(row)
-    return pd.DataFrame(feats)
-
-
-def score_model_single(
-    input_file: str,
-    output_file: Optional[str] = None,
-    *,
-    llm_quality: bool = False,
-    judge_model: str = "openai/gpt-4.1-mini",
-) -> pd.DataFrame:
-    df = _read_csv_robust(input_file)
-    if 'model_response' not in df.columns:
-        raise ValueError("Input CSV must contain a 'model_response' column")
-
-    features = _compute_single_style_features(df['model_response'].astype(str).tolist())
-    result_df = pd.concat([df.reset_index(drop=True), features], axis=1)
-
-    if llm_quality:
-        logging.info("Evaluating %s responses with LLM quality assessment", len(result_df))
-        result_df = _evaluate_quality_llm(result_df, judge_model=judge_model)
-
-    if output_file:
-        os.makedirs(os.path.dirname(output_file) or '.', exist_ok=True)
-        result_df.to_csv(output_file, index=False)
-        _write_single_metrics(result_df, output_file)
-
-    return result_df
-
-
-def _evaluate_quality_llm(df: pd.DataFrame, *, judge_model: str, response_col: str = 'model_response') -> pd.DataFrame:
-    result = df.copy()
-    scored_rows: List[Dict[str, object]] = []
-    for _, row in result.iterrows():
-        response_text = str(row.get(response_col, ''))
-        prompt_text = str(row.get('prompt', ''))
-        if not response_text.strip():
-            scored_rows.append({
-                'coherence_score': 0.0,
-                'helpfulness_score': 0.0,
-                'accuracy_score': 0.0,
-                'quality_raw_explanation': 'Empty response',
-            })
-            continue
-
-        eval_prompt = _build_quality_prompt(response_text, prompt_text)
-        messages = [{"role": "user", "content": eval_prompt}]
-        try:
-            raw = _llm_generate(messages, model=judge_model, temperature=0.0, max_tokens=512)
-            scored_rows.append(_parse_quality_scores(raw))
-        except Exception as exc:  # pragma: no cover - network errors handled upstream
-            scored_rows.append({
-                'coherence_score': 0.0,
-                'helpfulness_score': 0.0,
-                'accuracy_score': 0.0,
-                'quality_raw_explanation': f'Error: {exc}',
-            })
-
-    for key in ['coherence_score', 'helpfulness_score', 'accuracy_score', 'quality_raw_explanation']:
-        result[key] = [row.get(key, 0.0 if key != 'quality_raw_explanation' else '') for row in scored_rows]
-    return result
-
-
-def _write_single_metrics(df: pd.DataFrame, output_file: str) -> None:
-    metrics: Dict[str, float] = {}
-    for column in df.columns:
-        series = df[column].dropna()
-        if column == 'response_length' and not series.empty:
-            metrics[f'{column}_mean'] = float(series.mean())
-            metrics[f'{column}_std'] = float(series.std())
-        elif column in {'coherence_score', 'helpfulness_score', 'accuracy_score'} and not series.empty:
-            metrics[f'{column}_mean'] = float(series.mean())
-            metrics[f'{column}_std'] = float(series.std())
-            metrics[f'{column}_count'] = int(series.shape[0])
-        elif series.isin([True, False]).all():
-            metrics[f'{column}_rate'] = float(series.mean())
-
-    metrics_path = Path(output_file).with_suffix('').as_posix() + '_metrics.csv'
-    try:
-        with open(metrics_path, 'w', newline='') as handle:
-            writer = csv.writer(handle)
-            writer.writerow(['metric', 'value'])
-            for metric, value in metrics.items():
-                writer.writerow([metric, value])
-        logging.info("Metrics saved to %s", metrics_path)
-    except Exception as exc:  # pragma: no cover - filesystem dependent
-        logging.warning("Could not write metrics CSV: %s", exc)
-
-
 def _compute_pairwise_heuristics(df: pd.DataFrame, col_a: str, col_b: str) -> pd.DataFrame:
     def simple_features(text: str) -> Dict[str, bool]:
         value = str(text or "")
@@ -226,97 +74,185 @@ def _compute_pairwise_heuristics(df: pd.DataFrame, col_a: str, col_b: str) -> pd
             feats_a.append({
                 'markdown': _style.has_markdown(text_a),
                 'list': _style.contains_list(text_a),
+                'header': _style.contains_header(text_a),
                 'code': _style.contains_code(text_a),
+                'links': _style.contains_link(text_a),
+                'greeting': _style.starts_with_greeting(text_a),
+                'signoff': _style.ends_with_signoff(text_a),
+                'emojis': _style.contains_emoji(text_a),
                 'bullets': _style.contains_bullets(text_a),
+                'questions': _style.contains_question(text_a),
+                'parentheses': _style.uses_parentheses(text_a),
+                'exclamations': _style.contains_exclamation(text_a),
+                'long_sentences': _style.has_long_sentences(text_a),
+                'starts_list': _style.starts_with_list(text_a),
+                'math_symbols': _style.contains_math_symbols(text_a),
+                'blockquotes': _style.contains_blockquote(text_a),
+                'repetition': _style.contains_repetition(text_a),
+                'numbered_steps': _style.contains_numbered_steps(text_a),
+                'all_caps': _style.contains_all_caps(text_a),
+                'first_person': _style.uses_first_person(text_a),
+                'second_person': _style.uses_second_person(text_a),
+                'third_person': _style.uses_third_person(text_a),
+                'past_tense': _style.uses_past_tense(text_a),
+                'present_tense': _style.uses_present_tense(text_a),
+                'future_tense': _style.uses_future_tense(text_a),
+                'conditional': _style.uses_conditional(text_a),
+                'questions_rhetorical': _style.contains_rhetorical_question(text_a),
+                'imperatives': _style.uses_imperative(text_a),
+                'contractions': _style.uses_contractions(text_a),
+                'formal_language': _style.uses_formal_language(text_a),
+                'informal_language': _style.uses_informal_language(text_a),
+                'technical_jargon': _style.uses_technical_jargon(text_a),
+                'emotional_language': _style.uses_emotional_language(text_a),
+                'transition_words': _style.uses_transition_words(text_a),
+                'numbers_stats': _style.contains_numbers_stats(text_a),
+                'numbers_currency': _style.contains_currency(text_a),
+                'numbers_dates': _style.contains_dates(text_a),
+                'punctuation_variety': _style.punctuation_variety(text_a),
+                'sentence_complexity': _style.sentence_complexity(text_a),
+                'avg_sentence_length': _style.avg_sentence_length(text_a),
+                'readability_score': _style.readability_score(text_a),
             })
             feats_b.append({
                 'markdown': _style.has_markdown(text_b),
                 'list': _style.contains_list(text_b),
+                'header': _style.contains_header(text_b),
                 'code': _style.contains_code(text_b),
+                'links': _style.contains_link(text_b),
+                'greeting': _style.starts_with_greeting(text_b),
+                'signoff': _style.ends_with_signoff(text_b),
+                'emojis': _style.contains_emoji(text_b),
                 'bullets': _style.contains_bullets(text_b),
+                'questions': _style.contains_question(text_b),
+                'parentheses': _style.uses_parentheses(text_b),
+                'exclamations': _style.contains_exclamation(text_b),
+                'long_sentences': _style.has_long_sentences(text_b),
+                'starts_list': _style.starts_with_list(text_b),
+                'math_symbols': _style.contains_math_symbols(text_b),
+                'blockquotes': _style.contains_blockquote(text_b),
+                'repetition': _style.contains_repetition(text_b),
+                'numbered_steps': _style.contains_numbered_steps(text_b),
+                'all_caps': _style.contains_all_caps(text_b),
+                'first_person': _style.uses_first_person(text_b),
+                'second_person': _style.uses_second_person(text_b),
+                'third_person': _style.uses_third_person(text_b),
+                'past_tense': _style.uses_past_tense(text_b),
+                'present_tense': _style.uses_present_tense(text_b),
+                'future_tense': _style.uses_future_tense(text_b),
+                'conditional': _style.uses_conditional(text_b),
+                'questions_rhetorical': _style.contains_rhetorical_question(text_b),
+                'imperatives': _style.uses_imperative(text_b),
+                'contractions': _style.uses_contractions(text_b),
+                'formal_language': _style.uses_formal_language(text_b),
+                'informal_language': _style.uses_informal_language(text_b),
+                'technical_jargon': _style.uses_technical_jargon(text_b),
+                'emotional_language': _style.uses_emotional_language(text_b),
+                'transition_words': _style.uses_transition_words(text_b),
+                'numbers_stats': _style.contains_numbers_stats(text_b),
+                'numbers_currency': _style.contains_currency(text_b),
+                'numbers_dates': _style.contains_dates(text_b),
+                'punctuation_variety': _style.punctuation_variety(text_b),
+                'sentence_complexity': _style.sentence_complexity(text_b),
+                'avg_sentence_length': _style.avg_sentence_length(text_b),
+                'readability_score': _style.readability_score(text_b),
             })
         else:
             feats_a.append(simple_features(text_a))
             feats_b.append(simple_features(text_b))
 
-    df_a = pd.DataFrame(feats_a)
-    df_b = pd.DataFrame(feats_b)
-    match = (df_a == df_b).mean(axis=1)
-    heuristics = pd.DataFrame({'heuristic_match_score': match})
-    for column in df_a.columns:
-        heuristics[f'heuristic_{column}'] = df_a[column]
-    heuristics['heuristic_heuristic_match_score'] = heuristics['heuristic_match_score']
-    return heuristics
+    # Compute match scores
+    heuristic_scores = []
+    for i in range(len(feats_a)):
+        matches = sum(1 for key in feats_a[i] if feats_a[i][key] == feats_b[i][key])
+        total_features = len(feats_a[i])
+        match_score = matches / total_features if total_features > 0 else 0.0
+        heuristic_scores.append({'heuristic_match_score': match_score})
+
+    return pd.DataFrame(heuristic_scores)
 
 
 def _build_pairwise_prompt(target_response: str, model_response: str, prompt: Optional[str] = None) -> str:
-    _ = prompt  # prompt is intentionally ignored; similarity score should focus on responses only
-    system = (
-        "You are an expert evaluator comparing two responses that were generated for the same prompt.\n"
-        "Treat Response A as the reference answer and judge how faithfully Response B reproduces it.\n"
-        "Provide scores between 1.0 and 4.0, and you may use decimals (e.g., 3.5) when appropriate.\n\n"
-        "Semantic fidelity (meaning/content)\n"
-        "  • Focus on whether Response B preserves Response A’s claims, quantitative results, assumptions, and step-by-step reasoning.\n"
-        "  • Paraphrasing or re-ordering is fine if all obligations, constraints, and final answers remain equivalent.\n"
-        "  • Deduct when Response B changes numbers, omits necessary steps, adds new unsupported claims, contradicts conclusions, refuses, or answers a different task.\n"
-        "  4 — All key facts and commitments match Response A exactly.\n"
-        "  3 — Same solution with only minor wording compression or harmless omissions.\n"
-        "  2 — Partial alignment; important details are missing or altered.\n"
-        "  1 — Meaningfully different answer, contradiction, refusal, or off-topic response.\n\n"
-        "Stylistic similarity (tone/presentation)\n"
-        "  • Judge tone, persona, formality, length, structure, formatting (lists vs. prose, equations, bulleting), and use of disclaimers or emojis.\n"
-        "  • Ignore factual accuracy here—style is about how the content is delivered.\n"
-        "  • Penalize when Response B shifts to a refusal style, rewrites as dialogue, changes from terse to verbose (or vice versa), or otherwise feels like a different persona.\n"
-        "  4 — Tone and formatting mirror Response A.\n"
-        "  3 — Mostly similar style with small deviations.\n"
-        "  2 — Noticeable stylistic drift that changes presentation.\n"
-        "  1 — Major tone/format mismatch or refusal.\n\n"
-        "Edge cases: If Response A is empty, irrelevant, or incorrect, still grade how closely Response B follows it. Penalize hallucinated new tasks in Response B.\n"
-        "Output format: `Semantic: <int>, Stylistic: <int>`.\n"
-        "After the scores, include one or two concise sentences citing evidence for each axis."
+    system_message = (
+        "You are evaluating how well a disguised model response mimics a target model's style and content. "
+        "Compare the two responses and provide scores for semantic similarity and stylistic similarity.\n\n"
+        "Rate each on a scale of 1-4 (decimals allowed):\n"
+        "1. Semantic Score (1-4): How similar is the meaning and content?\n"
+        "2. Stylistic Score (1-4): How similar is the writing style, tone, and format?\n\n"
+        "Provide your response in the format:\n"
+        "Semantic Score: X/4\n"
+        "Stylistic Score: Y/4\n\n"
+        "Then provide a brief explanation for your scores."
     )
-    return (
-        f"{system}\n\nResponse A:\n{target_response}\n\n"
-        f"Response B:\n{model_response}\n"
-    )
+
+    if prompt:
+        return f"""{system_message}
+
+Original Prompt: {prompt}
+
+Target Response (the style to mimic):
+{target_response}
+
+Model Response (disguised):
+{model_response}
+
+Evaluate how well the model response mimics the target response."""
+    else:
+        return f"""{system_message}
+
+Target Response (the style to mimic):
+{target_response}
+
+Model Response (disguised):
+{model_response}
+
+Evaluate how well the model response mimics the target response."""
 
 
 def _parse_pairwise_scores(output: str) -> Dict[str, float]:
-    semantic = 0.0
-    stylistic = 0.0
-    for pattern in [
-        r'[Ss]emantic(?:\s+similarity)?[:\s]+(\d+(?:\.\d)?)',
-        r'(\d+(?:\.\d)?)[^0-9]*semantic',
-    ]:
-        match = re.search(pattern, output)
-        if match:
-            semantic = float(match.group(1))
-            break
-    for pattern in [
-        r'[Ss]tylistic(?:\s+similarity)?[:\s]+(\d+(?:\.\d)?)',
-        r'(\d+(?:\.\d)?)[^0-9]*stylistic',
-    ]:
-        match = re.search(pattern, output)
-        if match:
-            stylistic = float(match.group(1))
-            break
-    semantic = max(0.0, min(semantic, 4.0))
-    stylistic = max(0.0, min(stylistic, 4.0))
-    return {
-        'semantic_score': semantic,
-        'stylistic_score': stylistic,
+    scores = {
+        'semantic_score': 0.0,
+        'stylistic_score': 0.0,
     }
+
+    # Parse semantic score
+    semantic_patterns = [
+        r'[Ss]emantic[_\s]*Score[:\s]+(\d+(?:\.\d+)?)(?:\s*/\s*4)?',
+        r'(\d+(?:\.\d+)?)(?:\s*/\s*4)?[^0-9]*semantic',
+    ]
+    for pattern in semantic_patterns:
+        match = re.search(pattern, output)
+        if match:
+            scores['semantic_score'] = float(match.group(1))
+            break
+
+    # Parse stylistic score
+    stylistic_patterns = [
+        r'[Ss]tylistic[_\s]*Score[:\s]+(\d+(?:\.\d+)?)(?:\s*/\s*4)?',
+        r'(\d+(?:\.\d+)?)(?:\s*/\s*4)?[^0-9]*stylistic',
+    ]
+    for pattern in stylistic_patterns:
+        match = re.search(pattern, output)
+        if match:
+            scores['stylistic_score'] = float(match.group(1))
+            break
+
+    for key in ['semantic_score', 'stylistic_score']:
+        scores[key] = max(0.0, min(scores[key], 4.0))
+    return scores
 
 
 def score_pairwise_dataframe(
     df: pd.DataFrame,
     *,
     judge_model: str,
+    include_heuristics: bool = False,
 ) -> pd.DataFrame:
     result = df.copy()
-    heuristics = _compute_pairwise_heuristics(result, 'target_response', 'model_response')
-    for column in heuristics.columns:
-        result[column] = heuristics[column]
+    if include_heuristics:
+        heuristics = _compute_pairwise_heuristics(result, 'target_response', 'model_response')
+        for column in heuristics.columns:
+            result[column] = heuristics[column]
 
     scores: List[Dict[str, object]] = []
     for _, row in result.iterrows():
@@ -353,13 +289,14 @@ def score_pairwise(
     output_path: str,
     *,
     judge_model: str = "openai/gpt-4.1-mini",
+    include_heuristics: bool = False,
 ) -> pd.DataFrame:
     df = _read_csv_robust(input_file)
     for column in ('model_response', 'target_response'):
         if column not in df.columns:
             raise ValueError("Input must contain columns: model_response and target_response")
 
-    scored = score_pairwise_dataframe(df, judge_model=judge_model)
+    scored = score_pairwise_dataframe(df, judge_model=judge_model, include_heuristics=include_heuristics)
 
     out_path = Path(output_path)
     out_dir = out_path.parent or Path('.')
@@ -367,60 +304,84 @@ def score_pairwise(
     scored_path = out_path
     scored.to_csv(scored_path, index=False)
 
-    metrics = summarize_scores(scored)
-    metrics_path = out_dir / 'scored_metrics.csv'
-    with open(metrics_path, 'w', newline='') as handle:
-        writer = csv.writer(handle)
-        writer.writerow(['metric', 'value'])
-        for metric, value in metrics.items():
-            writer.writerow([metric, value])
+    # Write summary metrics
+    summary = summarize_scores(scored)
+    summary_path = out_path.parent / f"{out_path.stem}_metrics.csv"
+    summary_data = [{'metric': k, 'value': v} for k, v in summary.items()]
+    pd.DataFrame(summary_data).to_csv(summary_path, index=False)
 
-    summary = {
-        'input_file': input_file,
-        'num_samples': len(scored),
-        'judge_model': judge_model,
-        'metrics': metrics,
-    }
-    summary_path = out_dir / 'summary.json'
-    with open(summary_path, 'w') as handle:
-        json.dump(summary, handle, indent=2)
+    logging.info("Saved scored responses to %s", scored_path)
+    logging.info("Saved metrics to %s", summary_path)
 
-    logging.info("Wrote pairwise scoring artifacts to %s", out_dir)
     return scored
-
 
 def score_model_comparison(
     source_file: str,
     target_file: str,
-    output_file: Optional[str] = None,
+    output_file: str,
     *,
     judge_model: str = "openai/gpt-4.1-mini",
     openai_api_base: Optional[str] = None,
     openai_api_key: Optional[str] = None,
 ) -> pd.DataFrame:
-    df_a = _read_csv_robust(source_file)
-    df_b = _read_csv_robust(target_file)
-    for column in ('prompt', 'model_response'):
-        if column not in df_a.columns or column not in df_b.columns:
-            raise ValueError("Both input CSVs must contain 'prompt' and 'model_response' columns")
+    source_df = _read_csv_robust(source_file)
+    target_df = _read_csv_robust(target_file)
 
-    merged = pd.merge(
-        df_a[['prompt', 'model_response']],
-        df_b[['prompt', 'model_response']],
-        on='prompt',
-        suffixes=('_a', '_b'),
-    )
-    merged = merged.rename(columns={'model_response_a': 'model_response', 'model_response_b': 'target_response'})
+    if 'prompt' not in source_df.columns or 'model_response' not in source_df.columns:
+        raise ValueError("Source file must contain 'prompt' and 'model_response' columns")
+    if 'prompt' not in target_df.columns or 'model_response' not in target_df.columns:
+        raise ValueError("Target file must contain 'prompt' and 'model_response' columns")
 
-    if output_file is None:
-        base = Path(source_file).with_suffix('').name
-        target = Path(target_file).with_suffix('').name
-        output_file = str(Path(source_file).parent / f"{base}_vs_{target}.csv")
+    # Merge on prompt
+    merged = pd.merge(source_df, target_df, on='prompt', suffixes=('_source', '_target'))
+
+    # Rename columns for scoring
+    rename_map = {}
+    if 'model_response_source' in merged.columns:
+        rename_map['model_response_source'] = 'model_response'
+    if 'model_response_target' in merged.columns:
+        rename_map['model_response_target'] = 'target_response'
+    if 'method_source' in merged.columns and 'method' not in merged.columns:
+        rename_map['method_source'] = 'method'
+    merged = merged.rename(columns=rename_map)
+
+    def _first_non_empty(df: pd.DataFrame, candidates: list[str]) -> str:
+        for column in candidates:
+            if column in df.columns:
+                series = df[column].astype(str).str.strip()
+                series = series[series.astype(bool)]
+                if not series.empty:
+                    return str(series.iloc[0])
+        return ""
+
+    source_label = _first_non_empty(source_df, ['source_model', 'model'])
+    target_label = _first_non_empty(target_df, ['target_model', 'model'])
+
+    if 'source_model_source' in merged.columns:
+        merged = merged.rename(columns={'source_model_source': 'source_model'})
+    if 'target_model_target' in merged.columns:
+        merged = merged.rename(columns={'target_model_target': 'target_model'})
+    for col in ('source_model_target', 'target_model_source'):
+        if col in merged.columns:
+            merged = merged.drop(columns=[col])
+
+    if 'source_model' not in merged.columns:
+        merged['source_model'] = source_label
+    else:
+        merged['source_model'] = merged['source_model'].fillna(source_label)
+        merged.loc[merged['source_model'] == "", 'source_model'] = source_label
+
+    if 'target_model' not in merged.columns:
+        merged['target_model'] = target_label
+    else:
+        merged['target_model'] = merged['target_model'].fillna(target_label)
+        merged.loc[merged['target_model'] == "", 'target_model'] = target_label
 
     out_path = Path(output_file)
     out_path.parent.mkdir(parents=True, exist_ok=True)
     merged.to_csv(out_path, index=False)
 
+    # Set up environment variables
     original_base = os.environ.get('OPENAI_API_BASE')
     original_key = os.environ.get('OPENAI_API_KEY')
     try:
@@ -432,11 +393,13 @@ def score_model_comparison(
             os.environ['OPENAI_API_KEY'] = openai_api_key
 
         score_dir = out_path.parent / 'scores' / out_path.stem
+        score_dir.mkdir(parents=True, exist_ok=True)
         score_path = score_dir / 'scored.csv'
         scored = score_pairwise(
             str(out_path),
             str(score_path),
             judge_model=judge_model,
+            include_heuristics=False,  # Default to LLM judge only
         )
     finally:
         if original_base is not None:
@@ -450,111 +413,56 @@ def score_model_comparison(
 
     return scored
 
-
 def merge_scoring_files(score_dir: str, clean_old: bool = False) -> None:
-    root = Path(score_dir)
-    full_scored = root / 'pairwise_full_scored.csv'
-    heuristic_scored = root / 'pairwise_heuristic_scored.csv'
-    full_metrics = root / 'pairwise_full_scored_metrics.csv'
-    heuristic_metrics = root / 'pairwise_heuristic_scored_metrics.csv'
+    """Legacy function for merging old scoring files."""
+    import glob
 
-    output_scored = root / 'scored.csv'
-    output_metrics = root / 'scored_metrics.csv'
-    output_summary = root / 'summary.json'
+    pattern = os.path.join(score_dir, "pairwise_*.csv")
+    files = glob.glob(pattern)
 
-    if full_scored.exists():
-        df = pd.read_csv(full_scored)
-    elif heuristic_scored.exists():
-        df = pd.read_csv(heuristic_scored)
-    else:
-        logging.info("No pairwise_* files found under %s", root)
+    if not files:
+        logging.warning("No pairwise_*.csv files found in %s", score_dir)
         return
 
-    df.to_csv(output_scored, index=False)
+    dfs = []
+    for file in files:
+        df = _read_csv_robust(file)
+        filename = os.path.basename(file)
+        method = filename.replace("pairwise_", "").replace(".csv", "")
+        df['method'] = method
+        dfs.append(df)
 
-    combined_metrics: Dict[str, float] = {}
-    for metrics_path in [full_metrics, heuristic_metrics]:
-        if metrics_path.exists():
-            with open(metrics_path, 'r') as handle:
-                reader = csv.reader(handle)
-                next(reader, None)
-                for row in reader:
-                    if len(row) >= 2 and row[0] not in combined_metrics:
-                        combined_metrics[row[0]] = float(row[1])
+    if dfs:
+        merged = pd.concat(dfs, ignore_index=True)
+        output_path = os.path.join(score_dir, "merged_scores.csv")
+        merged.to_csv(output_path, index=False)
+        logging.info("Merged %d files into %s", len(dfs), output_path)
 
-    if combined_metrics:
-        with open(output_metrics, 'w', newline='') as handle:
-            writer = csv.writer(handle)
-            writer.writerow(['metric', 'value'])
-            for metric, value in combined_metrics.items():
-                writer.writerow([metric, value])
-
-    summary = {
-        'merged_from': [p.name for p in [full_scored, heuristic_scored] if p.exists()],
-        'num_samples': len(df),
-        'metrics': combined_metrics,
-    }
-    with open(output_summary, 'w') as handle:
-        json.dump(summary, handle, indent=2)
-
-    if clean_old:
-        for path in [full_scored, heuristic_scored, full_metrics, heuristic_metrics]:
-            if path.exists():
-                path.unlink()
+        if clean_old:
+            for file in files:
+                os.remove(file)
+            logging.info("Cleaned up original files")
 
 
-def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Unified scoring CLI")
-    subparsers = parser.add_subparsers(dest='command', required=True)
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Pairwise scoring CLI - LLM judge compares disguised vs target responses")
+    parser.add_argument('--input', help='CSV with prompt, model_response, target_response columns.')
+    parser.add_argument('--output', required=True, help='Destination file path (directory inferred).')
+    parser.add_argument('--judge-model', default='openai/gpt-4.1-mini', help='LLM judge model.')
+    parser.add_argument('--heuristics', action='store_true', help='Include heuristic scoring (LLM judge only by default).')
+    parser.add_argument('--openai-api-base', default=None, help='Override OPENAI_API_BASE for judge routing.')
+    parser.add_argument('--openai-api-key', default=None, help='Override OPENAI_API_KEY for judge routing.')
+    parser.add_argument('--compare', action='store_true', help='Merge two CSVs (--a, --b) and score the combined file.')
+    parser.add_argument('--a', help='Source CSV for --compare mode.')
+    parser.add_argument('--b', help='Target CSV for --compare mode.')
 
-    single = subparsers.add_parser('single', help='Score a single-file response CSV.')
-    single.add_argument('input', help="CSV input with 'model_response' column.")
-    single.add_argument('--output', help='Output CSV path.')
-    single.add_argument('--judge-model', default='openai/gpt-4.1-mini', help='LLM judge for optional quality scoring.')
-    single.add_argument('--llm-quality', action='store_true', help='Include LLM-based quality evaluation.')
+    args = parser.parse_args()
 
-    pairwise = subparsers.add_parser('pairwise', help='Score disguised vs target responses.')
-    pairwise.add_argument('--input', required=True, help='CSV with prompt, model_response, target_response columns.')
-    pairwise.add_argument('--output', required=True, help='Destination file path (directory inferred).')
-    pairwise.add_argument('--judge-model', default='openai/gpt-4.1-mini', help='LLM judge model.')
+    logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 
-    compare = subparsers.add_parser('compare', help='Merge two response files and score pairwise.')
-    compare.add_argument('--a', required=True, help='Source model CSV (prompt, model_response).')
-    compare.add_argument('--b', required=True, help='Target model CSV (prompt, model_response).')
-    compare.add_argument('--output', required=True, help='Merged comparison CSV path.')
-    compare.add_argument('--judge-model', default='openai/gpt-4.1-mini', help='LLM judge model.')
-    compare.add_argument('--openai-api-base', default=None, help='Override OPENAI_API_BASE for judge routing.')
-    compare.add_argument('--openai-api-key', default=None, help='Override OPENAI_API_KEY for judge routing.')
-
-    merge = subparsers.add_parser('merge', help='Merge legacy pairwise_* files into standard outputs.')
-    merge.add_argument('score_dir', help='Directory containing legacy pairwise files.')
-    merge.add_argument('--clean-old', action='store_true', help='Remove legacy files after merging.')
-
-    return parser
-
-
-def main(argv: Optional[List[str]] = None) -> None:
-    parser = _build_parser()
-    args = parser.parse_args(argv)
-
-    if args.command == 'single':
-        output_path = args.output
-        if output_path is None:
-            base, ext = os.path.splitext(args.input)
-            output_path = f"{base}_single_scored{ext}"
-        score_model_single(
-            input_file=args.input,
-            output_file=output_path,
-            llm_quality=args.llm_quality,
-            judge_model=args.judge_model,
-        )
-    elif args.command == 'pairwise':
-        score_pairwise(
-            input_file=args.input,
-            output_path=args.output,
-            judge_model=args.judge_model,
-        )
-    elif args.command == 'compare':
+    if args.compare:
+        if not args.a or not args.b:
+            parser.error("--compare requires --a and --b paths.")
         score_model_comparison(
             source_file=args.a,
             target_file=args.b,
@@ -563,11 +471,17 @@ def main(argv: Optional[List[str]] = None) -> None:
             openai_api_base=args.openai_api_base,
             openai_api_key=args.openai_api_key,
         )
-    elif args.command == 'merge':
-        merge_scoring_files(args.score_dir, clean_old=args.clean_old)
-    else:  # pragma: no cover
-        parser.error('Unknown command')
+        return
+
+    if not args.input:
+        parser.error("--input is required when not using --compare")
+    score_pairwise(
+        input_file=args.input,
+        output_path=args.output,
+        judge_model=args.judge_model,
+        include_heuristics=args.heuristics,
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

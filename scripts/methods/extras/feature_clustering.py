@@ -159,6 +159,8 @@ class FeatureClustering(MethodBase):
             clusters.extend([cluster] * len(rows))
 
         samples_df = pd.DataFrame({"cluster": clusters, "prompt": prompts, "target_response": responses})
+        samples_df["target_model"] = self.disguise_as
+        samples_df["source_model"] = self.model
         samples_df.to_csv(cache_path, index=False, encoding="utf-8")
         print(f"Clusters saved to {cache_path}")
         return samples_df
@@ -182,4 +184,3 @@ class FeatureClustering(MethodBase):
             disguise_prompt = self.make_disguise_prompt(sampled_df, prompt)
 
         return [{"role": "system", "content": disguise_prompt}, {"role": "user", "content": prompt}]
-

@@ -32,11 +32,10 @@ Disguise commands
 
 Scoring with metrics
 ```bash
-python -m scripts.scorer pairwise \
+python -m scripts.scorer \
   --input data/results/chatbot_arena/disguised/my_run.csv \
   --output data/results/chatbot_arena/scores/my_run_scored/scored.csv
 cat data/results/chatbot_arena/scores/my_run_scored/scored_metrics.csv
-cat data/results/chatbot_arena/scores/my_run_scored/summary.json
 ```
 
 Notes

@@ -1,10 +1,10 @@
-# agents.md
+# AGENTS.md
 
-This file provides guidance to agents when working with code in this repository.
+This file provides guidance to AI agents when working with code in this repository.
 
 ## Project Overview
 
-Dementor is a research project for "stealing the souls of LLMs" - techniques to disguise one language model to mimic the behavior and response patterns of another model. The codebase implements various disguise methods and evaluation frameworks for comparing model outputs.
+Dementor is a research framework for LLM disguise - techniques to make one language model mimic the behavior and response patterns of another model. The codebase implements various disguise methods and evaluation frameworks for comparing model outputs.
 
 ## Core Architecture
 
@@ -18,14 +18,13 @@ The project is organized around these key components:
 
 ### Main Scripts
 - **`scripts/disguise.py`**: Core disguise script that applies methods to transform model responses
-- **Scoring**: Use `python -m scripts.scorer pairwise --input input.csv --output scores/run_name/scored.csv` for the LLM judge (semantic + stylistic scores).
-- **`scripts/prompt_llm_new.py`**: Generate responses from models for evaluation
+- **`scripts/scorer.py`**: Unified scoring with LLM judge + heuristics for pairwise comparisons
 - **`scripts/generate_responses.py`**: Generate base responses for evaluation datasets (use the `basic` subcommand for provider/HF/vLLM models)
 
 ### Data Flow
-1. Generate base responses using `prompt_llm_new.py` or `scripts/generate_responses.py basic`
-2. Apply disguise methods via `disguise.py` to transform responses  
-3. Score disguised vs target responses using `scripts/scorer.py`
+1. Generate base responses using `scripts/generate_responses.py basic`
+2. Apply disguise methods via `disguise.py` to transform responses
+3. Score disguised vs target responses using `scripts/scorer.py` (automatic LLM judge + heuristics)
 4. Results stored in `data/results/` and base responses in `data/model-responses/`
 
 ## Common Commands
@@ -44,117 +43,92 @@ The framework includes persistent LMDB-based caching for all API calls:
 - **Clear cache**: `python -c "from scripts.cache_llm import clear_cache; clear_cache()"`
 - **Stats**: `python -c "from scripts.cache_llm import get_cache_stats; print(get_cache_stats())"`
 
-### Streamlined Workflow (Recommended)
+### Quick Workflow
 ```bash
-# Run complete pipeline: generate responses, compare baseline, disguise, and score
-python scripts/run_pipeline.py \
-  --prompts_file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
-  --source-model meta-llama/Meta-Llama-3.1-8B-Instruct \
-  --target-model openai/gpt-4.1-mini \
-  --method contrastive
+# Example workflow (GSM8K eval split)
 
-# Results organized under data/results/<dataset>/ with:
-# - comparisons/source_vs_target/ (source vs target baseline comparison and scores)
-# - comparisons/disguised_vs_target/<method>/ (method-specific disguise runs and scores)
-# - scores/ (other aggregated evaluation artifacts)
-```
-
-### Manual Workflow (For Specialized Cases)
-```bash
-# Generate model responses
-python scripts/prompt_llm_new.py --model google/gemma-3-1b-it --num_samples 1000
+# Step 1: Generate target model responses
 python scripts/generate_responses.py \
   --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
-  --output-csv data/model-responses/gsm8k/full/google_gemma-3-1b-it.csv \
-  basic \
-  --model google/gemma-3-1b-it
+  --output-csv data/model-responses/gsm8k/full/openai_gpt-4.1-mini.csv \
+  basic --model openai/gpt-4.1-mini
 
-# Apply disguise methods
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as openai/gpt-4.1-mini --method random_sample_3_examples
+# Step 2: Apply disguise
+python scripts/disguise.py \
+  --prompts_file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
+  --model meta-llama/Meta-Llama-3.1-8B-Instruct \
+  --disguise_as openai/gpt-4.1-mini \
+  --method contrastive \
+  --num_samples 50
 
-# Run evaluations
-python -m scripts.scorer pairwise \
-  --input path/to/disguised_responses.csv \
-  --output path/to/scores/disguised_responses/scored.csv
+# Step 3: Score (automatic LLM judge + heuristics)
+python -m scripts.scorer \
+  --input data/results/gsm8k/comparisons/disguised_vs_target/contrastive/llama_as_gpt-4.1-mini.csv \
+  --output data/results/gsm8k/comparisons/disguised_vs_target/contrastive/llama_as_gpt-4.1-mini_scored.csv
 ```
 
-### Quick Evaluation
+### Available Disguise Methods
+
+Use these methods with `scripts/disguise.py --method <method_name>`:
+
+#### Core Methods
+- **`contrastive`**: Learns differences between source and target models (recommended)
+- **`behavioral_based`**: Captures personality and communication patterns
+- **`random_sampling`**: Clean example-based disguise with few-shot prompts
+- **`stylistic`**: Enforces formatting heuristics and surface-level patterns
+
+#### Advanced Methods
+- **`stylistic_clustering`**: Cluster by formatting/length features
+- **`embedding_clustering`**: Semantic-based clustering for mixed tasks
+- **`ensemble_math_disguise`**: Multiple math disguise strategies
+
+### Scoring Details
+
+Pairwise scoring compares disguised vs target responses with an LLM judge (semantic + stylistic, each on a 1-4 scale with decimals) and optional heuristic features.
+
+**Usage:**
 ```bash
-# Using new scoring utilities
-python -c "from scripts.scorer import score_pairwise; score_pairwise('input.csv', 'output_dir/scored.csv', judge_model='openai/gpt-4.1-mini')"
+# LLM judge only (default)
+python -m scripts.scorer --input comparison.csv --output scored.csv
+
+# Include heuristic feature match scoring
+python -m scripts.scorer --input comparison.csv --output scored.csv --heuristics
+
+# Merge two model CSVs and score pairwise
+python -m scripts.scorer --compare --a source.csv --b target.csv --output merged.csv
 ```
 
-### Test Model Serving
-```bash
-# Start VLLM server
-vllm serve meta-llama/Meta-Llama-3.1-8B-Instruct --dtype half --tensor_parallel_size 4 --port 8000
-
-# Test connection
-python serve/utils_llm.py  # Uncomment model in test_get_llm_output function
-```
-
-
+**LLM Judge Prompt (Pairwise):**
+Evaluates semantic and stylistic similarity between target and disguised responses with detailed explanations.
 ## File Organization
 
-- **`data/model-responses/<dataset>/{full,500}/`**: Base model responses per dataset
-- **`data/results/<dataset>/comparisons/baseline/`**: Baseline model comparisons and scoring
-- **`data/results/<dataset>/disguised/`**: Disguised model outputs
-- **`data/results/<dataset>/scores/`**: Evaluation results and scoring outputs
+- **`data/datasets/`**: Input prompts and datasets (GSM8K, etc.)
+- **`data/model-responses/`**: Base model outputs (CSV format)
+- **`data/results/`**: Disguised outputs, scores, and plots
+- **`cache/`**: API response cache for cost/time savings
 - **`scripts/methods/`**: Implementation of all disguise techniques
-- **`scripts/`**: Pipeline scripts (run_pipeline.py, generate_responses.py, etc.)
-- **`data/`**: Datasets and prompts (GSM8K, chatbot arena, etc.)
+- **`scripts/`**: Core scripts (disguise.py, generate_responses.py, scorer.py)
+- **`workflows/`**: SFT/DPO fine-tuning workflows
 
-## Available Disguise Methods
 
-### Core Streamlined Methods (Recommended)
-- **`contrastive_system_prompting`**: Learns differences between source and target models
-- **`behavioral_based_system_prompting`**: Captures personality and communication patterns  
-- **`random_sampling_system_prompting`**: Clean example-based disguise with system prompts
+## Environment Setup
 
-### Legacy Methods (For Compatibility)
-Get method names from `scripts/methods/get_method.py`:
-- `random_sample_{1,3,5}_examples`: Sample-based approaches
-- `just_name_it`: Simple name-based instruction
-- `behavioral_based_disguise`: GPT-4o identified behavioral differences
-- `stylistic_clustering`: Cluster by formatting/length features  
-- `ensemble_math_disguise`: Multiple math disguise strategies
+Create `.env` file with required API keys:
+```bash
+OPENAI_API_KEY="your-openai-api-key"
+ANTHROPIC_API_KEY="your-anthropic-api-key"  # if using Claude models
+```
 
-## Model Response Paths
+## Agent Guidelines
 
-Responses follow naming pattern: `{model_name_with_underscores}.csv`
-- Example: `meta-llama_Meta-Llama-3-8B-Instruct` → `meta-llama_Meta-Llama-3-8B-Instruct.csv`
+### Working with this Codebase
+- **User executes commands**: Run commands directly, don't prompt user to execute
+- **Modular approach**: Use existing scripts rather than creating new ones
+- **Clean workflows**: Follow the established 3-step process (generate → disguise → score)
+- **Result organization**: Store outputs in `data/results/` with proper directory structure
 
-## Environment Variables
-
-Create `.env` file with required API keys for OpenAI, Anthropic, or other model providers used in evaluation.
-
-## Coding Guidelines 
-
-### General Principles
-- **User executes commands**: I will run commands myself, so do not prompt to run things on your end
-- **Prioritize simplicity**: Use helper functions or classes instead of redundant code or methods with hundreds of lines
-- **Avoid over-engineering**: Do not add excessive tests and type checking (e.g., checking if a value is None) unless asked
-- **Clean up thoroughly**: When told to remove components or refactor, ensure that you delete any files which are no longer needed and delete any code which is no longer used
-
-### Error Handling
-- **Address root causes**: Avoid adding try/excepts when running into errors; address the error rather than handling it with try/except
-- **Ask before defaults**: Before adding a try/except or filling in a default dictionary value, ask the user whether to add this exception or if this is a bug that should be fixed
-- **No import protection**: Assume all imports are correctly imported; do not add try/excepts to imports unless asked
-
-### Data Handling
-- **No automatic defaults**: When getting an item from a dictionary or dataframe, do not automatically put a default if that key does not exist. Instead, ask the user if they want a default value
-- **Explicit typing**: Include typing and docstrings about the expected format of the inputs and outputs (e.g., keys and values if it's a dictionary, columns if it's a dataframe)
-
-### Documentation & Testing
-- **Maintain README**: Keep a README for just code structure and inputs/outputs to reference every time a question is asked
-- **Update after changes**: Update the README after any added argument or refactor of code structure, especially if the input or output formats have changed
-- **Ask before tests**: Prompt the user before adding test files
-- **Ask about README updates**: When a new feature is added or a refactor is made, prompt the user to ask whether or not to add this to the README
-
-### Code Quality
-- **Check for redundancy**: With every edit you make, double-check that there is no redundant code in the files you are editing
-- **No backwards compatibility**: Do NOT automatically support backwards compatibility – instead, prompt the user to ask if they would like backwards compatibility
-
-### UI & Presentation
-- **Minimal emojis**: Do not use emojis in READMEs and use sparingly in things like Gradio apps unless asked
-- **Plotly default**: Use Plotly as the default plotting library
+### Common Patterns
+- **API calls**: Use `scripts/cache_llm` for persistent caching
+- **Data paths**: Follow CSV format with `prompt`, `model_response`, `target_response` columns
+- **Scoring**: Use `python -m scripts.scorer --input <comparison.csv> --output <scores.csv>` for evaluation
+- **Method names**: Use standardized method names from `scripts/disguise.py --help`

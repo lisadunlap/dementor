@@ -20,14 +20,16 @@ python scripts/generate_responses.py \
     --train-size "$TRAIN_SIZE" \
     --eval-size "$EVAL_SIZE" \
     --seed "$SEED" \
-    --output-csv data/results/gsm8k/500/sft_tinker/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv \
+    --source-model-id meta-llama/Meta-Llama-3.1-8B-Instruct \
+    --target-model-id openai/gpt-4.1-mini \
+    --output-csv data/results/gsm8k/500/sft/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv \
     tinker \
     --adapter-name gsm8k_llama-3.1-8b-instruct \
     --renderer-name llama3
-  python -m scripts.scorer compare \
-    --a data/results/gsm8k/500/sft_tinker/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv \
+  python -m scripts.scorer --compare \
+    --a data/results/gsm8k/500/sft/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv \
     --b data/model-responses/gsm8k/500/openai_gpt-4.1-mini_responses.csv \
-    --output data/results/gsm8k/500/sft_tinker/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini_vs_openai_gpt-4.1-mini.csv \
+    --output data/results/gsm8k/500/sft/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini_vs_openai_gpt-4.1-mini.csv \
     --judge-model openai/gpt-4.1-mini
 else
   echo "[Tinker SFT] Skipped (RUN_TINKER_SFT=false)"
@@ -41,14 +43,16 @@ python scripts/generate_responses.py \
     --train-size "$TRAIN_SIZE" \
     --eval-size "$EVAL_SIZE" \
     --seed "$SEED" \
-    --output-csv data/results/gsm8k/500/dpo_tinker/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv \
+    --source-model-id meta-llama/Meta-Llama-3.1-8B-Instruct \
+    --target-model-id openai/gpt-4.1-mini \
+    --output-csv data/results/gsm8k/500/dpo/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv \
     tinker \
     --adapter-name gsm8k_dpo_llama-3.1-8b-instruct \
     --renderer-name llama3
-  python -m scripts.scorer compare \
-    --a data/results/gsm8k/500/dpo_tinker/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv \
+  python -m scripts.scorer --compare \
+    --a data/results/gsm8k/500/dpo/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini.csv \
     --b data/model-responses/gsm8k/500/openai_gpt-4.1-mini_responses.csv \
-    --output data/results/gsm8k/500/dpo_tinker/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini_vs_openai_gpt-4.1-mini.csv \
+    --output data/results/gsm8k/500/dpo/meta-llama_Meta-Llama-3.1-8B-Instruct_as_openai_gpt-4.1-mini_vs_openai_gpt-4.1-mini.csv \
     --judge-model openai/gpt-4.1-mini
 else
   echo "[Tinker DPO] Skipped (RUN_TINKER_DPO=false)"
@@ -62,14 +66,16 @@ python scripts/generate_responses.py \
     --train-size "$TRAIN_SIZE" \
     --eval-size "$EVAL_SIZE" \
     --seed "$SEED" \
-    --output-csv data/results/gsm8k/500/sft_openai/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv \
+    --source-model-id openai/gpt-4.1-mini \
+    --target-model-id meta-llama/Meta-Llama-3.1-8B-Instruct \
+    --output-csv data/results/gsm8k/500/sft/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv \
     openai \
     --model ft:gpt-4.1-mini-2025-04-14:uc-berkeley-prof-trevor-darrell-group::Ccl884ot \
     --system-prompt "You are a patient math tutor."
-  python -m scripts.scorer compare \
-    --a data/results/gsm8k/500/sft_openai/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv \
+  python -m scripts.scorer --compare \
+    --a data/results/gsm8k/500/sft/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv \
     --b data/model-responses/gsm8k/500/meta-llama_Meta-Llama-3.1-8B-Instruct_responses.csv \
-    --output data/results/gsm8k/500/sft_openai/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct_vs_meta-llama_Meta-Llama-3.1-8B-Instruct.csv \
+    --output data/results/gsm8k/500/sft/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct_vs_meta-llama_Meta-Llama-3.1-8B-Instruct.csv \
     --judge-model openai/gpt-4.1-mini
 else
   echo "[OpenAI SFT] Skipped (RUN_OPENAI_SFT=false)"
@@ -83,17 +89,19 @@ python scripts/generate_responses.py \
     --train-size "$TRAIN_SIZE" \
     --eval-size "$EVAL_SIZE" \
     --seed "$SEED" \
-    --output-csv data/results/gsm8k/500/dpo_openai/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv \
+    --source-model-id openai/gpt-4.1-mini \
+    --target-model-id meta-llama/Meta-Llama-3.1-8B-Instruct \
+    --output-csv data/results/gsm8k/500/dpo/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv \
     openai \
     --model ft:gpt-4.1-mini-2025-04-14:uc-berkeley-prof-trevor-darrell-group::CclMD1vd \
     --system-prompt "You are a patient math tutor."
-  python -m scripts.scorer compare \
-    --a data/results/gsm8k/500/dpo_openai/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv \
+  python -m scripts.scorer --compare \
+    --a data/results/gsm8k/500/dpo/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct.csv \
     --b data/model-responses/gsm8k/500/meta-llama_Meta-Llama-3.1-8B-Instruct_responses.csv \
-    --output data/results/gsm8k/500/dpo_openai/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct_vs_meta-llama_Meta-Llama-3.1-8B-Instruct.csv \
+    --output data/results/gsm8k/500/dpo/openai_gpt-4.1-mini_as_meta-llama_Meta-Llama-3.1-8B-Instruct_vs_meta-llama_Meta-Llama-3.1-8B-Instruct.csv \
     --judge-model openai/gpt-4.1-mini
 else
   echo "[OpenAI DPO] Skipped (RUN_OPENAI_DPO=false)"
 fi
 
-echo "Done. Responses and scores saved under data/results/gsm8k/500/{sft,dpo}_{tinker,openai}/"
+echo "Done. Responses and scores saved under data/results/gsm8k/500/{sft,dpo}/"

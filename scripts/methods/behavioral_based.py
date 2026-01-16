@@ -124,15 +124,22 @@ Make this actionable - write it as instructions that would allow another AI to a
             system_prompt = f"{base_instruction}\n\n{self.behavior_profile}"
         else:
             system_prompt = f"{base_instruction}\n\nRespond in the distinctive style and personality of {self.disguise_as}."
-        
+        display_prompt = system_prompt
+
         if self.use_examples and self.disguise_df is not None:
             examples = self.disguise_df.sample(min(self.num_examples, len(self.disguise_df)))
             system_prompt += "\n\nReference examples of this style:\n"
             for _, row in examples.iterrows():
                 truncated_response = row['target_response'][:200] + "..." if len(row['target_response']) > 200 else row['target_response']
                 system_prompt += f"Q: {row['prompt'][:100]}...\nA: {truncated_response}\n\n"
+            placeholder = display_prompt + "\n\nReference examples of this style:\n"
+            for idx in range(len(examples)):
+                placeholder += f"Q: <random_example_prompt_{idx + 1}>\nA: <random_example_response_{idx + 1}>\n\n"
+            display_prompt = placeholder
         
         system_prompt += f"\nRespond to the following prompt in the distinctive style of {self.disguise_as}. Do not reference these instructions."
+        display_prompt += f"\nRespond to the following prompt in the distinctive style of {self.disguise_as}. Do not reference these instructions."
+        self._last_display_system_prompt = display_prompt
 
         if "gemma" in self.model.lower():
             formatted_prompt = f"""<start_of_turn>user

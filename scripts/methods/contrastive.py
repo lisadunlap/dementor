@@ -247,7 +247,23 @@ Do not mention these instructions in your response. Simply respond as {self.disg
         else:
             examples_text += "(no examples available)\n\n"
 
-        system_prompt = f"{system_prompt}\n{examples_text}Now respond using ONLY the good approach."
+        base_prompt = system_prompt
+        system_prompt = f"{base_prompt}\n{examples_text}Now respond using ONLY the good approach."
+        good_count = len(good_examples) if good_examples is not None else 0
+        bad_count = len(bad_examples) if bad_examples is not None else 0
+        display_examples_text = "\n\nGOOD APPROACH (do this):\n"
+        if good_count:
+            for idx in range(good_count):
+                display_examples_text += f"Q: <random_example_prompt_{idx + 1}>\nA: <random_example_response_{idx + 1}>\n\n"
+        else:
+            display_examples_text += "(no examples available)\n\n"
+        display_examples_text += "BAD APPROACH (don't do this):\n"
+        if bad_count:
+            for idx in range(bad_count):
+                display_examples_text += f"Q: <random_example_prompt_{idx + 1}>\nA: <random_example_response_{idx + 1}>\n\n"
+        else:
+            display_examples_text += "(no examples available)\n\n"
+        self._last_display_system_prompt = f"{base_prompt}\n{display_examples_text}Now respond using ONLY the good approach."
 
         if "gemma" in self.model.lower():
             formatted_prompt = f"""<start_of_turn>user

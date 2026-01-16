@@ -53,7 +53,7 @@
    ```
 4. **Score results**
    ```bash
-   python -m scripts.scorer pairwise \
+   python -m scripts.scorer \
      --input data/results/chatbot_arena/disguised/my_run.csv \
      --output data/results/chatbot_arena/scores/my_run_scored/scored.csv
    ```

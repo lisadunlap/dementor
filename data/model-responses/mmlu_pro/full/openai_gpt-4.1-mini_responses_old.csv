@@ -1,0 +1,1233 @@
+"prompt","model_response","model","source_model","target_model","system_prompt"
+"Question:
+Body temperature on the average is 98.6°F. What is thison (a)theCelsius scale and (b) the Kelvin scale?
+
+Options:
+A. 37.00°C, 310.15K
+B. 37.50°C, 311.65K
+C. 38.50°C, 311.65K
+D. 36.50°C, 309.65K
+E. 35.00°C, 308.15K
+F. 36.00°C, 300.15K
+G. 38.00°C, 320.15K
+H. 39.00°C, 330.15K
+I. 34.00°C, 307.15K
+J. 40.00°C, 313.15K
+
+Select the best option from the ones given.
+","To convert 98.6°F to Celsius and Kelvin:
+
+**Step 1: Convert Fahrenheit to Celsius**
+
+\[
+°C = \frac{5}{9} (°F - 32)
+\]
+
+\[
+°C = \frac{5}{9} (98.6 - 32) = \frac{5}{9} \times 66.6 = 37.0°C
+\]
+
+**Step 2: Convert Celsius to Kelvin**
+
+\[
+K = °C + 273.15 = 37.0 + 273.15 = 310.15K
+\]
+
+**Answer:**
+
+(a) 37.00°C  
+(b) 310.15K
+
+**Option A** matches these values.
+
+**Final answer: A. 37.00°C, 310.15K**","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+This question is based on the following declarations: String strA = ""CARROT"", strB = ""Carrot"", strC = ""car""; Given that all uppercase letters precede all lowercase letters when considering alphabetical order, which is true?
+
+Options:
+A. strC.compareTo(strB) > 0 && strB.compareTo(strA) > 0
+B. strA.compareTo(strC) > 0 && strC.compareTo(strB) < 0
+C. strB.compareTo(strC) < 0 && strB.compareTo(strA) > 0
+D. !(strB.compareTo(strA) == 0) && strA.compareTo(strB) > 0
+E. strB.compareTo(strC) > 0 && strA.compareTo(strB) < 0
+F. strC.compareTo(strB) < 0 && strB.compareTo(strA) < 0
+G. strA.compareTo(strB) < 0 && strB.compareTo(strC) > 0
+H. !(strA.compareTo(strB) == 0) && strB.compareTo(strA) < 0
+
+Select the best option from the ones given.
+","Let's analyze the problem step-by-step.
+
+---
+
+### Given:
+
+```java
+String strA = ""CARROT"";
+String strB = ""Carrot"";
+String strC = ""car"";
+```
+
+We are told that **all uppercase letters precede all lowercase letters** in alphabetical order.
+
+---
+
+### Understanding `compareTo` in Java:
+
+- `str1.compareTo(str2)` returns:
+  - A negative number if `str1` is lexicographically less than `str2`.
+  - Zero if they are equal.
+  - A positive number if `str1` is lexicographically greater than `str2`.
+
+---
+
+### Step 1: Compare `strA` and `strB`
+
+- `strA = ""CARROT""`
+- `strB = ""Carrot""`
+
+Compare character by character:
+
+- 'C' (uppercase) vs 'C' (uppercase) → equal
+- 'A' (uppercase) vs 'a' (lowercase)
+
+Since uppercase letters come before lowercase letters, 'A' < 'a'.
+
+Therefore, at the second character:
+
+- 'A' < 'a' → `strA` < `strB`
+
+So:
+
+```java
+strA.compareTo(strB) < 0
+strB.compareTo(strA) > 0
+```
+
+---
+
+### Step 2: Compare `strB` and `strC`
+
+- `strB = ""Carrot""`
+- `strC = ""car""`
+
+Compare character by character:
+
+- 'C' (uppercase) vs 'c' (lowercase)
+
+Since uppercase letters come before lowercase letters:
+
+- 'C' < 'c' → `strB` < `strC`
+
+So:
+
+```java
+strB.compareTo(strC) < 0
+strC.compareTo(strB) > 0
+```
+
+---
+
+### Step 3: Compare `strA` and `strC`
+
+- `strA = ""CARROT""`
+- `strC = ""car""`
+
+Compare character by character:
+
+- 'C' (uppercase) vs 'c' (lowercase)
+
+Again, uppercase < lowercase:
+
+- 'C' < 'c' → `strA` < `strC`
+
+So:
+
+```java
+strA.compareTo(strC) < 0
+strC.compareTo(strA) > 0
+```
+
+---
+
+### Summary of comparisons:
+
+| Comparison           | Result          |
+|----------------------|-----------------|
+| `strA.compareTo(strB)` | <","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+What are the tallest trees on Earth?
+
+Options:
+A. Noble Fir
+B. Coast Redwood
+C. Sitka Spruce
+D. Coast Douglas Fir
+E. Giant Sequoia
+F. Yellow Meranti
+G. Bald Cypress
+H. Mountain Ash
+I. Ponderosa Pine
+J. Western Red Cedar
+
+Select the best option from the ones given.
+","The tallest trees on Earth are the **Coast Redwoods**.
+
+**Answer: B. Coast Redwood**","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+According to the Gestalt organizing principles of perception, when you look at, ""i n car n a t e,"" you tend to notice the word car rather than in, nate, at, or ate, because of
+
+Options:
+A. symmetry
+B. complexity
+C. novelty
+D. similarity
+E. proximity
+F. continuity
+G. the phi phenomenon
+H. common fate
+I. closure
+
+Select the best option from the ones given.
+","The question is about why, when looking at the string ""i n car n a t e,"" you tend to notice the word **car** rather than other possible groupings like ""in,"" ""ate,"" ""at,"" or ""nate.""
+
+This relates to **Gestalt principles of perception**, which explain how we tend to organize visual elements into groups or unified wholes.
+
+Let's analyze the options:
+
+- **A. Symmetry**: We group elements that are symmetrical.
+- **B. Complexity**: Not a standard Gestalt principle.
+- **C. Novelty**: Not a standard Gestalt principle.
+- **D. Similarity**: We group elements that are similar in color, shape, size, etc.
+- **E. Proximity**: We group elements that are close to each other.
+- **F. Continuity**: We perceive lines or patterns as continuing smoothly.
+- **G. The phi phenomenon**: Perception of motion from a sequence of images.
+- **H. Common fate**: Elements moving in the same direction are grouped.
+- **I. Closure**: We perceive incomplete figures as complete.
+
+---
+
+**Why do we notice ""car""?**
+
+- The letters ""c,"" ""a,"" and ""r"" are together, forming a familiar word.
+- The principle that best explains grouping letters into a word is **proximity** (letters close together are grouped) and **similarity** (letters forming a familiar pattern).
+- However, the key here is that the letters ""c,"" ""a,"" and ""r"" are closer together than the other letters, so **proximity** is the main principle.
+
+---
+
+**Answer: E. proximity**","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+A state has a statute generally prohibiting the installation and use of radar detection devices in any motor vehicle operating on the roadways within the state. This prohibition was enacted to prevent motorists from evading radar or speed checkpoints on county and state highways. A neighboring state has no such regulation in effect. By the same token, Congress has taken no action on the matter. A resident of the neighboring state has installed a radar detection device in his automobile. While driving to visit his mother he is arrested and charged with violating the aforementioned state statute. The resident files a complaint challenging the constitutionality of the state statute. As applied to the resident, the state prohibition against the use of radar detection devices is likely to be held
+
+Options:
+A. constitutional, because it can be considered a reasonable restriction on the right to privacy.
+B. unconstitutional, because it unduly burdens interstate commerce.
+C. unconstitutional, because the state statute fails to give credit to the law of a neighboring state.
+D. constitutional, because the commerce clause does not invalidate a state regulation relating to interstate commerce unless Congress takes express action to do so.
+E. constitutional, because states have the power to regulate their own roads and highways.
+F. constitutional, because it protects a legitimate state interest.
+G. unconstitutional, because it infringes on the rights of residents of other states.
+H. unconstitutional, because the state statute is preempted by federal law.
+I. unconstitutional, because it violates the Fourth Amendment's prohibition against unreasonable searches and seizures.
+
+Select the best option from the ones given.
+","Let's analyze the question carefully:
+
+**Facts:**
+- A state has a statute prohibiting radar detection devices in vehicles on its roads.
+- The purpose is to prevent evasion of speed enforcement.
+- A neighboring state has no such law.
+- Congress has not legislated on this issue.
+- A resident of the neighboring state installs a radar detector and is arrested in the state with the prohibition.
+- The resident challenges the constitutionality of the state statute.
+
+---
+
+**Key legal issues:**
+
+1. **State police power and regulation of highways:**  
+   States have broad authority under their police powers to regulate the use of their highways to promote safety and welfare.
+
+2. **Interstate Commerce Clause:**  
+   The statute affects a resident of another state driving through. Does the statute unduly burden interstate commerce?
+
+3. **Federal preemption:**  
+   Congress has not legislated on radar detectors, so no federal preemption.
+
+4. **Right to privacy or Fourth Amendment:**  
+   Does banning radar detectors implicate privacy or unreasonable search and seizure?
+
+5. **Conflict of laws:**  
+   Does the state have to give effect to the laws of the neighboring state?
+
+---
+
+**Analysis of options:**
+
+- **A. constitutional, because it can be considered a reasonable restriction on the right to privacy.**  
+  The statute is about banning radar detectors, which are devices to detect speed enforcement. This is not primarily a privacy issue. The right to privacy is not implicated here.
+
+- **B. unconstitutional, because it unduly burdens interstate commerce.**  
+  The statute applies equally to all vehicles on the state's roads, regardless of origin. The Supreme Court allows states to regulate highway safety even if it affects interstate commerce, unless the burden is clearly excessive compared to local benefits (Pike balancing test). Here, the state has a legitimate safety interest. This is likely not an undue burden.
+
+- **C. unconstitutional, because the state statute fails to give credit to the law of a neighboring state.**  
+  States are not required to recognize or give effect to the laws of other states in this context. Each state can regulate its own highways.
+
+- **D. constitutional, because the commerce clause does not invalidate a state regulation relating to interstate commerce unless Congress takes express action to do so.**  
+  This is not entirely accurate. The Commerce Clause can invalidate state laws even without federal legislation if the law unduly burdens interstate commerce. But here, the burden is likely not undue.
+
+- **E. constitutional, because states have the power","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+The highest ocean tides occur when Earth and the Moon are
+
+Options:
+A. at a 45-degree angle to the Sun
+B. both at their furthest point from the Sun
+C. both at their closest point to the Sun
+D. lined up during winter
+E. at any angle to the Sun
+F. furthest from each other
+G. at right angles to the Sun
+H. lined up with the Sun
+I. lined up during spring
+J. closest to each other
+
+Select the best option from the ones given.
+","The highest ocean tides, known as **spring tides**, occur when the Earth, Moon, and Sun are **lined up**. This alignment causes the gravitational forces of the Moon and the Sun to combine, resulting in higher high tides and lower low tides.
+
+This alignment happens during both the **new moon** and **full moon** phases, regardless of the season.
+
+From the options given, the best choice is:
+
+**H. lined up with the Sun**
+
+(Note: Option I mentions ""lined up during spring,"" but spring tides occur every lunar cycle, not just in the spring season.)
+
+**Final answer: H. lined up with the Sun**","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+How much interest will George pay on a 6-month loan of $300 at 8% interest?
+
+Options:
+A. $26
+B. $16
+C. $12
+D. $20
+E. $10
+F. $30
+G. $22
+H. $14
+I. $24
+J. $18
+
+Select the best option from the ones given.
+","To find the interest George will pay on a 6-month loan of $300 at 8% interest, we use the simple interest formula:
+
+\[
+\text{Interest} = \text{Principal} \times \text{Rate} \times \text{Time}
+\]
+
+Where:
+- Principal \( P = 300 \) dollars
+- Rate \( r = 8\% = 0.08 \) per year
+- Time \( t = \frac{6}{12} = 0.5 \) years (since 6 months is half a year)
+
+Calculate:
+
+\[
+\text{Interest} = 300 \times 0.08 \times 0.5 = 300 \times 0.04 = 12
+\]
+
+**Answer: $12**
+
+The best option is:
+
+**C. $12**","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+Which of the following is an example of devolution?
+
+Options:
+A. Allowing states to decide how to meet federally mandated greenhouse gas emissions targets
+B. The federal government setting a minimum wage that all states must meet
+C. A state being prevented from implementing a fuel efficiency standard that is more stringent than that set by the federal government
+D. A ""race to the bottom"" in which states compete with one another to have the fewest environmental regulations
+E. A state being forced to comply with federal immigration policies
+F. The federal government establishing nationwide educational standards
+G. A state choosing to implement stricter gun control laws than those mandated by the federal government
+H. A state that decriminalizes all drug use, contrary to federal law
+I. A state that legalizes marijuana possession in conflict with federal law
+J. The federal government overriding a state's decision to legalize same-sex marriage
+
+Select the best option from the ones given.
+","Devolution refers to the transfer or delegation of power from a central government to lower levels of government, such as states or localities. It involves giving states more autonomy or control over certain policy areas.
+
+Let's analyze the options:
+
+A. **Allowing states to decide how to meet federally mandated greenhouse gas emissions targets**  
+- This means the federal government sets the target but lets states decide how to achieve it. This is an example of devolution because power is delegated to states to implement policy in their own way.
+
+B. The federal government setting a minimum wage that all states must meet  
+- This is a federal mandate, not devolution.
+
+C. A state being prevented from implementing a fuel efficiency standard that is more stringent than that set by the federal government  
+- This is federal preemption, not devolution.
+
+D. A ""race to the bottom"" in which states compete with one another to have the fewest environmental regulations  
+- This describes competition among states, not devolution.
+
+E. A state being forced to comply with federal immigration policies  
+- This is federal enforcement, not devolution.
+
+F. The federal government establishing nationwide educational standards  
+- This is federal control, not devolution.
+
+G. A state choosing to implement stricter gun control laws than those mandated by the federal government  
+- This is a state exercising its own authority, but not necessarily devolution since the federal government hasn't delegated power here; states have inherent powers.
+
+H. A state that decriminalizes all drug use, contrary to federal law  
+- This is a state acting contrary to federal law, not devolution.
+
+I. A state that legalizes marijuana possession in conflict with federal law  
+- Same as H, not devolution.
+
+J. The federal government overriding a state's decision to legalize same-sex marriage  
+- This is federal override, not devolution.
+
+**Best answer: A**
+
+# Final answer: A","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+(i + 1)(5 – 5i)(5 + 5i) =
+
+Options:
+A. 50 – 50i
+B. 75 - 75i
+C. 50 + 50i
+D. 25 + 25i
+E. 50 - 25i
+F. 50 + 25i
+G. 100 - 100i
+H. 100 + 100i
+I. 75 + 75i
+J. 25 – 25i
+
+Select the best option from the ones given.
+","Given expression: \((i + 1)(5 - 5i)(5 + 5i)\)
+
+Step 1: Simplify \((5 - 5i)(5 + 5i)\)
+
+This is of the form \((a - b)(a + b) = a^2 - b^2\).
+
+Here, \(a = 5\), \(b = 5i\).
+
+\[
+(5 - 5i)(5 + 5i) = 5^2 - (5i)^2 = 25 - 25i^2
+\]
+
+Since \(i^2 = -1\),
+
+\[
+25 - 25(-1) = 25 + 25 = 50
+\]
+
+Step 2: Now multiply \((i + 1)\) by 50:
+
+\[
+(i + 1) \times 50 = 50i + 50 = 50 + 50i
+\]
+
+**Answer: \(50 + 50i\)**
+
+From the options, this corresponds to:
+
+**C. 50 + 50i**","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+In an experiment with a stellar interferometer, the fringes from the star Betelgeuse had zero visibility for a wave-length in the middle of the visible spectrum for a separa-tion of the mirrors of 3m. Estimate the angle subtended by Betelgeuse in arc seconds.
+
+Options:
+A. 0.046 second of arc
+B. 0.040 second of arc
+C. 0.058 second of arc
+D. 0.093 second of arc
+E. 0.030 second of arc
+F. 0.034 second of arc
+G. 0.072 second of arc
+H. 0.052 second of arc
+I. 0.085 second of arc
+J. 0.065 second of arc
+
+Select the best option from the ones given.
+","Let's analyze the problem step-by-step.
+
+---
+
+### Given:
+- The fringes from Betelgeuse have **zero visibility** at a mirror separation \( D = 3 \, m \).
+- Wavelength \( \lambda \) is in the middle of the visible spectrum, so approximately:
+  \[
+  \lambda = 550 \, nm = 550 \times 10^{-9} \, m
+  \]
+
+---
+
+### What does zero visibility mean?
+
+In stellar interferometry, the visibility of fringes drops to zero when the baseline \( D \) corresponds to the first minimum of the interference pattern caused by the angular size of the star.
+
+For a uniform circular disk (like a star), the first zero of the visibility function occurs when:
+\[
+B \theta = 1.22 \lambda
+\]
+where:
+- \( B \) is the baseline (mirror separation),
+- \( \theta \) is the angular diameter of the star in radians,
+- \( \lambda \) is the wavelength.
+
+---
+
+### Calculate the angular diameter \( \theta \):
+
+\[
+\theta = \frac{1.22 \lambda}{B}
+\]
+
+Substitute the values:
+
+\[
+\theta = \frac{1.22 \times 550 \times 10^{-9}}{3} = \frac{671 \times 10^{-9}}{3} = 223.7 \times 10^{-9} \, \text{radians}
+\]
+
+---
+
+### Convert radians to arcseconds:
+
+Recall:
+\[
+1 \, \text{radian} = \frac{180}{\pi} \times 3600 \, \text{arcseconds} \approx 206265 \, \text{arcseconds}
+\]
+
+So,
+\[
+\theta = 223.7 \times 10^{-9} \times 206265 = 0.0461 \, \text{arcseconds}
+\]
+
+---
+
+### Final answer:
+
+\[
+\boxed{0.046 \, \text{arcseconds}}
+\]
+
+---
+
+### Matching with options:
+
+- A. 0.046 second of arc
+
+**Answer: A**","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+The primary research method used by developmental psychologists is
+
+Options:
+A. psychoanalysis
+B. self-report inventories
+C. longitudinal research
+D. naturalistic observation
+E. experimental method
+F. experimentation
+G. correlational research
+H. survey research
+I. cross-sectional research
+J. case study
+
+Select the best option from the ones given.
+","The primary research method used by developmental psychologists is:
+
+**C. longitudinal research**
+
+**Explanation:**  
+Developmental psychologists study how people change and develop over time. Longitudinal research involves studying the same individuals repeatedly over an extended period, which allows researchers to observe developmental changes directly. While other methods like cross-sectional research (I) are also used, longitudinal research is considered the primary and most informative method for studying development across the lifespan.","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+On October 17, Thomas Long purchased two $1,000 bonds, bearing 6% interest payable January 1 and July 1, at 98. Find his total cost, and the net proceeds to the seller. Assume a brokerage fee of $5 per bond.
+
+Options:
+A. $2,006 and $1,996
+B. $1,990 and $1,970
+C. $2,015 and $1,995
+D. $2,006 and $1,986
+E. $2,020 and $2,000
+F. $2,010 and $1,980
+G. $1,960 and $1,986
+H. $2,000 and $1,970
+I. $1,995 and $1,975
+J. $1,980 and $1,960
+
+Select the best option from the ones given.
+","Let's analyze the problem step-by-step.
+
+---
+
+### Given:
+- Date of purchase: October 17
+- Bonds: 2 bonds, each $1,000 face value
+- Interest rate: 6% annually, payable January 1 and July 1 (semiannual interest)
+- Purchase price: 98 (i.e., 98% of face value)
+- Brokerage fee: $5 per bond
+
+---
+
+### Step 1: Calculate the purchase price of the bonds
+
+- Each bond face value = $1,000
+- Price per bond = 98% of $1,000 = $980
+- For 2 bonds: $980 × 2 = $1,960
+
+---
+
+### Step 2: Calculate accrued interest
+
+Since interest is paid semiannually on January 1 and July 1, the interest period is 6 months.
+
+- Annual interest per bond = 6% × $1,000 = $60
+- Semiannual interest per bond = $60 / 2 = $30
+
+---
+
+### Step 3: Calculate accrued interest from last interest payment date to purchase date
+
+- Last interest payment date: July 1
+- Purchase date: October 17
+
+Calculate the number of days from July 1 to October 17.
+
+Assuming 30-day months for bond calculations (standard practice):
+
+- July 1 to July 31: 30 days
+- August: 30 days
+- September: 30 days
+- October 1 to October 17: 17 days
+
+Total days = 30 + 30 + 30 + 17 = 107 days
+
+---
+
+### Step 4: Calculate accrued interest per bond
+
+- Interest for 6 months (180 days) = $30
+- Interest per day = $30 / 180 = $0.1667 per day
+- Accrued interest per bond = $0.1667 × 107 = $17.83 (approx)
+
+For 2 bonds: $17.83 × 2 = $35.66
+
+---
+
+### Step 5: Calculate brokerage fees
+
+- $5 per bond × 2 bonds = $10
+
+---
+
+### Step 6: Calculate total cost to buyer (Thomas Long)
+
+- Purchase price: $1,960
+- Accrued interest: $35.66
+- Brokerage fees: $10
+
+Total cost = $1,960 + $35.66 + $10 = $2,005.66 ≈ $2,","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+A defendant, a nurse at a nursing home, is charged with murdering a resident at the home by adding an allegedly lethal substance to the resident's food. At trial, to prove that the substance added to the resident's food could result in death, the prosecutor, without first calling any witnesses, offers to read into evidence several pages from a standard medical treatise that support the prosecution's claim that the substance the defendant added to the food is lethal. Is the evidence offered admissible?
+
+Options:
+A. Yes, because the lethal nature of the substance is relevant to the defendant's state of mind and intent.
+B. No, because the treatise must be confirmed by an expert in the field before being admissible.
+C. Yes, because the treatise is a public document and therefore exempt from the hearsay rule.
+D. No, because the treatise itself must be introduced as an exhibit.
+E. Yes, because the prosecutor is allowed to introduce evidence without calling witnesses.
+F. No, because the treatise excerpts are considered hearsay and do not qualify for an exception.
+G. Yes, although hearsay, under the learned treatise exception to the hearsay rule.
+H. Yes, because the prosecution is merely providing evidence that supports their claim.
+I. No, because the treatise excerpts were not offered during the examination of a qualified expert.
+J. No, because the substance's lethal nature is not relevant to the case.
+
+Select the best option from the ones given.
+","Let's analyze the question carefully:
+
+**Facts:**
+- Defendant (a nurse) is charged with murder by adding a lethal substance to a resident's food.
+- The prosecution wants to prove the substance is lethal.
+- The prosecution offers to read several pages from a standard medical treatise supporting the claim that the substance is lethal.
+- The prosecution has not called any witnesses before offering the treatise.
+
+**Issue:**
+Is the offered evidence (pages from the medical treatise) admissible?
+
+---
+
+### Relevant Law and Principles:
+
+**Learned Treatise Exception to Hearsay:**
+
+- Generally, statements in treatises are hearsay and not admissible to prove the truth of the matter asserted.
+- However, under the Federal Rules of Evidence (FRE) 803(18), learned treatises are an exception to the hearsay rule **if**:
+  - The treatise is called to the attention of, or relied upon by, an expert witness during direct or cross-examination; or
+  - The treatise is established as a reliable authority by the testimony or admission of the expert witness, by other expert testimony, or by judicial notice.
+- The treatise itself is not received as an exhibit but may be read into evidence.
+
+**Key point:** The treatise cannot be introduced **without** an expert witness first referencing or relying on it.
+
+---
+
+### Applying to the question:
+
+- The prosecution is trying to introduce the treatise **without first calling any witnesses**.
+- This is problematic because the learned treatise exception requires an expert to rely on or be questioned about the treatise.
+- Without an expert witness, the treatise excerpts are inadmissible hearsay.
+
+---
+
+### Evaluating the options:
+
+- **A. Yes, because the lethal nature of the substance is relevant to the defendant's state of mind and intent.**  
+  *Irrelevant to admissibility of the treatise itself.*
+
+- **B. No, because the treatise must be confirmed by an expert in the field before being admissible.**  
+  *This is correct. The treatise must be introduced through an expert.*
+
+- **C. Yes, because the treatise is a public document and therefore exempt from the hearsay rule.**  
+  *Incorrect. Public documents are not automatically exempt from hearsay.*
+
+- **D. No, because the treatise itself must be introduced as an exhibit.**  
+  *Incorrect. Learned treatises are read into evidence, not admitted as exhibits.*
+
+- **E. Yes,","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+Ace Co. issued 1000 shares of its $10 par value common stock for $15 per share in cash. How should this transaction be reported in Ace's statement of cash flows for the year of issuance?
+
+Options:
+A. $15000 cash inflow from operating activities.
+B. $10000 cash inflow from financing activities and $5000 cash outflow from investing activities.
+C. $15000 cash inflow from financing activities.
+D. No impact on cash flows as it is a non-cash transaction.
+E. $15000 cash flow from investing activities.
+F. $15000 cash outflow from financing activities.
+G. $10000 cash flow from investing activities and $5000 adjustment to arrive at cash flows from operating activities.
+H. $10000 cash inflow from financing activities and $5000 adjustment to arrive at cash flows from operating activities.
+I. $10000 cash outflow from investing activities and $5000 adjustment to arrive at cash flows from financing activities.
+J. $5000 cash inflow from financing activities and $10000 adjustment to arrive at cash flows from operating activities.
+
+Select the best option from the ones given.
+","Let's analyze the transaction:
+
+- Ace Co. issued 1,000 shares of $10 par value common stock.
+- The shares were issued for $15 per share in cash.
+- Total cash received = 1,000 shares × $15 = $15,000.
+
+**How is this reported in the statement of cash flows?**
+
+- Issuance of common stock for cash is a **financing activity** because it involves raising capital.
+- The entire $15,000 cash inflow is from financing activities.
+- There is no investing or operating activity involved.
+- This is not a non-cash transaction because cash was received.
+
+**Therefore, the correct reporting is:**
+
+- $15,000 cash inflow from financing activities.
+
+**Matching this to the options:**
+
+- Option C: ""$15000 cash inflow from financing activities."" — This matches perfectly.
+
+**Answer:**
+
+**C. $15000 cash inflow from financing activities.**","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+Let x = 1. What is x << 3 in Python 3?
+
+Options:
+A. 16
+B. 4
+C. 8
+D. 5
+E. 10
+F. 2
+G. 12
+H. 3
+I. 1
+J. 6
+
+Select the best option from the ones given.
+","Given:
+- \( x = 1 \)
+- Operation: \( x << 3 \)
+
+In Python, the `<<` operator is the left bitwise shift operator. It shifts the bits of the number to the left by the specified number of positions, effectively multiplying the number by \( 2^{\text{shift amount}} \).
+
+So:
+\[
+1 << 3 = 1 \times 2^3 = 1 \times 8 = 8
+\]
+
+From the options given, the correct answer is:
+
+**C. 8**","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+The fact that early excavators of Teotihuacán mistook ordinary housing compounds for palaces suggests:
+
+Options:
+A. the society was a theocracy, ruled by high priests.
+B. commoners took over the residences of the elite.
+C. the city was a democracy, ruled by common farmers and artisans.
+D. the general standard of living was high.
+E. the elite lived in ordinary housing compounds to blend in with the commoners.
+F. the housing compounds were built with materials typically used for palaces.
+G. the city's economic system was based on wealth distribution.
+H. the city was abandoned and later occupied by a different civilization.
+I. the society was mostly egalitarian, with almost no social stratification.
+J. the excavators were inexperienced in identifying historical structures.
+
+Select the best option from the ones given.
+","The key point is that early excavators mistook ordinary housing compounds for palaces. This suggests that the housing compounds were unusually grand or well-built, resembling what one might expect of elite residences or palaces.
+
+Let's analyze the options:
+
+A. the society was a theocracy, ruled by high priests.  
+- This is about political structure, not directly related to the housing compounds' appearance.
+
+B. commoners took over the residences of the elite.  
+- This would imply a change in occupancy, but doesn't explain why the housing compounds looked like palaces.
+
+C. the city was a democracy, ruled by common farmers and artisans.  
+- This is speculative and unrelated to the housing compound appearance.
+
+D. the general standard of living was high.  
+- If ordinary housing compounds looked like palaces, it suggests that even commoners had high-quality housing, indicating a high general standard of living.
+
+E. the elite lived in ordinary housing compounds to blend in with the commoners.  
+- Possible, but less likely; usually elites have distinct residences.
+
+F. the housing compounds were built with materials typically used for palaces.  
+- This could explain the confusion, but the question says ""ordinary housing compounds,"" implying the function was ordinary, not the materials.
+
+G. the city's economic system was based on wealth distribution.  
+- Possible, but not directly implied.
+
+H. the city was abandoned and later occupied by a different civilization.  
+- Not relevant to the confusion about housing compounds.
+
+I. the society was mostly egalitarian, with almost no social stratification.  
+- This could explain why housing was similar across classes.
+
+J. the excavators were inexperienced in identifying historical structures.  
+- Possible, but the question seems to focus on what the mistake suggests about the society, not the excavators.
+
+Between D and I, both are plausible:
+
+- D suggests a high standard of living for all, so ordinary houses looked palace-like.
+
+- I suggests little social stratification, so housing was similar.
+
+Given the wording ""mistook ordinary housing compounds for palaces,"" the best explanation is that the general standard of living was high, making ordinary houses look grand.
+
+**Best answer: D. the general standard of living was high.**","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+At standard conditions, it is found that 28.0 g of carbon monoxide occupies 22.4 l. What is the density of carbon monoxide at 20°C and 600 torr?
+
+Options:
+A. 1.96 g/l
+B. 1.00 g/l
+C. 0.789 g/l
+D. 1.25 g/l
+E. 0.50 g/l
+F. 2.225 g/l
+G. 1.482 g/l
+H. .9198 g/l
+I. 0.625 g/l
+J. 0.345 g/l
+
+Select the best option from the ones given.
+","Let's analyze the problem step-by-step.
+
+---
+
+### Given:
+- Mass of CO = 28.0 g
+- Volume at standard conditions = 22.4 L
+- Temperature = 20°C
+- Pressure = 600 torr
+
+---
+
+### Step 1: Understand the problem
+
+- At standard conditions (usually 0°C and 1 atm), 28.0 g of CO occupies 22.4 L.
+- We want to find the **density** of CO at 20°C and 600 torr.
+
+---
+
+### Step 2: Calculate molar mass of CO
+
+- Carbon (C) = 12.0 g/mol
+- Oxygen (O) = 16.0 g/mol
+- Molar mass of CO = 12.0 + 16.0 = 28.0 g/mol
+
+---
+
+### Step 3: Calculate number of moles of CO
+
+Since 28.0 g of CO is given, and molar mass is 28.0 g/mol:
+
+\[
+n = \frac{28.0 \text{ g}}{28.0 \text{ g/mol}} = 1.0 \text{ mol}
+\]
+
+---
+
+### Step 4: Use Ideal Gas Law to find volume at 20°C and 600 torr
+
+Ideal Gas Law:
+
+\[
+PV = nRT
+\]
+
+Where:
+
+- \(P\) = pressure in atm
+- \(V\) = volume in liters
+- \(n\) = moles
+- \(R\) = ideal gas constant = 0.0821 L·atm/(mol·K)
+- \(T\) = temperature in Kelvin
+
+---
+
+Convert given values:
+
+- \(P = 600 \text{ torr} = \frac{600}{760} \text{ atm} = 0.7895 \text{ atm}\)
+- \(T = 20^\circ C = 20 + 273 = 293 \text{ K}\)
+- \(n = 1.0 \text{ mol}\)
+
+---
+
+Calculate volume \(V\):
+
+\[
+V = \frac{nRT}{P} = \frac{1.0 \times 0.0821 \times 293}{0.7895} = \frac{24.0553}{0.7895} = 30.46 \text{ L}
+\]
+
+---
+
+### Step 5: Calculate density at 20°C and 600 torr
+
+Density \(\rho","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+The molar heat of vaporization of water is +43.9 kJ. What is the entropy change for the vaporization of water?
+
+Options:
+A. 16.2 J mol-1 K-1
+B. 2.78 J mol-1 K-1
+C. 22.1 J mol-1 K-1
+D. 35.0 J mol-1 K-1
+E. 8.49 J mol-1 K-1
+F. 5.67 J mol-1 K-1
+G. 4.184 J mol-1 K-1
+H. 118 J mol-1 K-1
+I. 10.5 J mol-1 K-1
+J. 50.0 J mol-1 K-1
+
+Select the best option from the ones given.
+","Given:
+
+- Molar heat of vaporization, \(\Delta H_{vap} = +43.9 \, \text{kJ/mol}\)
+- We want to find the entropy change, \(\Delta S\), for vaporization.
+
+---
+
+### Step 1: Understand the relationship between \(\Delta H\) and \(\Delta S\)
+
+At the boiling point, the phase change occurs at equilibrium, so:
+
+\[
+\Delta G = 0 = \Delta H - T \Delta S
+\]
+
+Rearranged:
+
+\[
+\Delta S = \frac{\Delta H}{T}
+\]
+
+---
+
+### Step 2: Use the boiling point of water
+
+The normal boiling point of water is:
+
+\[
+T = 100^\circ C = 373 \, K
+\]
+
+---
+
+### Step 3: Calculate \(\Delta S\)
+
+Convert \(\Delta H\) to Joules:
+
+\[
+\Delta H = 43.9 \, \text{kJ/mol} = 43900 \, \text{J/mol}
+\]
+
+Calculate:
+
+\[
+\Delta S = \frac{43900 \, \text{J/mol}}{373 \, \text{K}} \approx 117.7 \, \text{J/mol·K}
+\]
+
+---
+
+### Step 4: Match with options
+
+The closest option is:
+
+**H. 118 J mol\(^{-1}\) K\(^{-1}\)**
+
+---
+
+### **Final answer:**
+
+**H. 118 J mol\(^{-1}\) K\(^{-1}\)**","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+A developer wished to build an apartment house in a local city. He raised $1 million from various sources to fund the project. After searching for a vacant lot that would be sufficient for development, the developer concluded that there was not a suitable vacant lot available. Reluctantly, the developer concluded that he would have to purchase a developed lot, have the existing structures removed, and then build the apartment house. The developer was reluctant to do this, because he had not budgeted for the additional cost of buying a developed property and removing the development. After a search for an appropriate parcel, the developer purchased a large lot, developed with a single-story residential home, for $200,000. He then spent $50,000 having the residential home removed from the lot. Knowing that it would cost approximately $850,000 to build the apartment house, the developer realized he would need to raise another $100,000. He approached an investor about lending him $100,000. The investor was apprehensive about the project because the developer had not yet lined up a construction firm to build the apartment house. As a result, the parties signed the following written agreement:""The investor promises to lend to the developer $100,000 at 5 percent interest within 30 days, provided the developer contracts with a construction company to build the apartment house for no more than $850,000. Loan to be repaid at the rate of $1,000 per month, starting one month after the completion of the apartment house. The loan is to be secured by a mortgage on the property. ""The developer then contracted with a construction company to build the apartment for $800,000. After the contract was signed and construction had begun, the developer asked the investor when he would be receiving the $100,000 the investor promised to lend him. The investor replied, ""I've changed my mind. I think this is too risky an investment. I'm not going to lend you the money. ""In an appropriate action to secure specific performance of the investor's promise to lend him the $100,000, the developer will
+
+Options:
+A. win, because there is a memorandum that satisfies the Statute of Frauds.
+B. win, because land is unique, making the legal remedy inadequate.
+C. lose, because the developer's only remedy is for damages.
+D. lose, because the developer cannot show detrimental reliance.
+
+Select the best option from the ones given.
+","Let's analyze the facts and the legal principles involved:
+
+---
+
+### Facts:
+- Developer needs $100,000 more to complete the apartment project.
+- Investor promises to lend $100,000 at 5% interest **within 30 days**, **provided** the developer contracts with a construction company for no more than $850,000.
+- The loan is to be repaid monthly after completion and secured by a mortgage on the property.
+- Developer contracts with a construction company for $800,000 (within the $850,000 limit).
+- Construction begins.
+- Developer asks for the loan; investor refuses.
+
+---
+
+### Legal Issues:
+
+1. **Is the investor's promise to lend enforceable?**
+
+   The promise is conditional on the developer contracting with a construction company for no more than $850,000. The developer fulfilled this condition by contracting for $800,000.
+
+2. **Is the promise within the Statute of Frauds?**
+
+   The promise to lend money secured by a mortgage on land is within the Statute of Frauds and must be in writing. Here, there is a **written agreement** signed by the parties, so the Statute of Frauds is satisfied.
+
+3. **Is specific performance an appropriate remedy?**
+
+   Specific performance is an equitable remedy typically available when damages are inadequate, such as in contracts involving unique property (e.g., real estate).
+
+   Here, the investor promised to lend money secured by a mortgage on land. The loan itself is a **contract to lend money**, not a contract to transfer land. The mortgage is a security interest, but the contract is primarily a loan agreement.
+
+   Courts generally do **not** order specific performance of contracts to lend money because money is fungible and damages are an adequate remedy.
+
+4. **Is the land unique?**
+
+   Yes, land is unique, but the contract is not for the sale of land; it is a loan secured by a mortgage on land.
+
+5. **Is there detrimental reliance?**
+
+   The developer did act in reliance on the promise by contracting with the construction company and starting construction. However, detrimental reliance (promissory estoppel) might be a basis for damages, but not necessarily for specific performance.
+
+---
+
+### Applying the options:
+
+- **A. win, because there is a memorandum that satisfies the Statute of Frauds.**
+
+  The memorandum exists, but that only makes the contract enforceable, not that specific performance is the proper remedy.
+
+- **B. win, because land is unique, making the","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+This question refers to the following information.
+Seizing me, he led me down to the House of Darkness…
+To the house where those who enter do not come out,
+Along the road of no return,
+To the house where those who dwell, do without light,
+Where dirt is their drink, their food is of clay…
+Where light cannot be seen. They dwell in the dark,
+And upon the door and bolt, there lies dust.
+from Tablet VII, The Epic of Gilgamesh, Sumeria, ca. 2100 B.C.E.
+Truth is good and its worth is lasting.
+It has not been disturbed since the day of its creator,
+Whereas he who transgresses its ordinances is punished.
+It lies as a path in front of even him who knows nothing.
+Wrongdoing has never yet brought its venture to port…
+Those whom the gods guide cannot lose themselves.
+Those to whom they forbid passage will not be able to cross the river of life.
+from The Maxims of Ptahhotep, Egypt, ca. 2400 B.C.E.
+The above texts are best understood in the context of which of the following?
+
+Options:
+A. The use of religion to enforce legal norms
+B. The use of religion to dictate artistic expressions
+C. The use of religion to justify gender relations
+D. The use of religion to structure economic transactions
+E. The use of religion to ponder conceptions of the afterlife
+F. The use of religion to explain social hierarchy
+G. The use of religion to legitimize political power
+H. The use of religion to establish educational systems
+I. The use of religion to justify military conquests
+
+Select the best option from the ones given.
+","Let's analyze the excerpts and their themes:
+
+1. **Excerpt from The Epic of Gilgamesh (Sumeria, ca. 2100 B.C.E.):**  
+   - Describes a journey to the ""House of Darkness,"" a place where those who enter do not come out, dwell without light, and survive on dirt and clay.  
+   - This clearly refers to the **underworld or afterlife**, a place of darkness and no return.
+
+2. **Excerpt from The Maxims of Ptahhotep (Egypt, ca. 2400 B.C.E.):**  
+   - Discusses truth, moral behavior, punishment for wrongdoing, and guidance by the gods.  
+   - Mentions ""Those to whom they forbid passage will not be able to cross the river of life,"" which can be interpreted as a metaphor for the journey after death or the transition to the afterlife.  
+   - Emphasizes moral conduct and divine judgment.
+
+**Common theme:** Both texts deal with **concepts of the afterlife, moral conduct, and the consequences of actions in relation to the journey after death**.
+
+---
+
+**Now, let's evaluate the options:**
+
+A. The use of religion to enforce legal norms  
+- While Ptahhotep's maxims do touch on moral behavior, the Gilgamesh excerpt is more about the afterlife than legal norms.
+
+B. The use of religion to dictate artistic expressions  
+- No mention or indication of art or artistic expression.
+
+C. The use of religion to justify gender relations  
+- No reference to gender relations.
+
+D. The use of religion to structure economic transactions  
+- No mention of economic matters.
+
+E. The use of religion to ponder conceptions of the afterlife  
+- Fits perfectly: both texts deal with the afterlife and moral consequences related to it.
+
+F. The use of religion to explain social hierarchy  
+- Not the focus here.
+
+G. The use of religion to legitimize political power  
+- Not evident in these excerpts.
+
+H. The use of religion to establish educational systems  
+- Ptahhotep's maxims are didactic, but the main theme is moral guidance related to the afterlife, not education systems per se.
+
+I. The use of religion to justify military conquests  
+- No mention of military or conquest.
+
+---
+
+**Best answer:**
+
+**E. The use of religion to ponder conceptions of the afterlife**","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
+"Question:
+In the casino game of roulette, there are 38 slots for a ball to drop into when it is rolled around the rim of a revolving wheel: 18 red, 18 black, and 2 green. What is the probability that the first time a ball drops into the red slot is on the 8th trial (in other words, suppose you are betting on red every time-what is the probability of losing 7 straight times before you win the first time)?
+
+Options:
+A. 0.0333
+B. 0.0256
+C. 0.0202
+D. 0.0053
+E. 0.0101
+F. 0.0112
+G. 0.0179
+H. 0.0278
+I. 0.0074
+J. 0.0158
+
+Select the best option from the ones given.
+","Let's analyze the problem step-by-step.
+
+---
+
+**Problem restatement:**
+
+- Roulette wheel has 38 slots:  
+  - 18 red  
+  - 18 black  
+  - 2 green
+
+- Probability of landing on red in one trial:  
+  \( p = \frac{18}{38} \)
+
+- Probability of **not** landing on red in one trial:  
+  \( q = 1 - p = \frac{20}{38} \)
+
+- We want the probability that the **first time** the ball lands on red is on the 8th trial.
+
+---
+
+**This is a geometric distribution problem:**
+
+The probability that the first success (red) occurs on the \( k \)-th trial is:
+
+\[
+P(X = k) = q^{k-1} \times p
+\]
+
+Here, \( k = 8 \).
+
+---
+
+**Calculate:**
+
+\[
+p = \frac{18}{38} \approx 0.4737
+\]
+\[
+q = \frac{20}{38} \approx 0.5263
+\]
+
+\[
+P(X=8) = q^{7} \times p = (0.5263)^7 \times 0.4737
+\]
+
+Calculate \( (0.5263)^7 \):
+
+- \( (0.5263)^2 = 0.5263 \times 0.5263 \approx 0.277 \)
+- \( (0.5263)^4 = (0.277)^2 \approx 0.0767 \)
+- \( (0.5263)^7 = (0.5263)^4 \times (0.5263)^3 \)
+
+Calculate \( (0.5263)^3 = (0.5263)^2 \times 0.5263 = 0.277 \times 0.5263 \approx 0.146 \)
+
+So,
+
+\[
+(0.5263)^7 = 0.0767 \times 0.146 \approx 0.0112
+\]
+
+Now multiply by \( p = 0.4737 \):
+
+\[
+P(X=8) = 0.0112 \times 0.4737 \approx 0.0053
+\]
+
+---
+
+**Answer:**
+
+The probability is approximately **0.0053**.
+
+---
+
+**Matching with options:**
+
+- D. 0.0053
+
+---
+
+**Final answer:","openai/gpt-4.1-mini","openai/gpt-4.1-mini","openai/gpt-4.1-mini",""
