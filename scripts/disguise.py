@@ -27,13 +27,13 @@ project_root = os.path.dirname(scripts_dir)
 if project_root not in sys.path:
     sys.path.insert(0, project_root)
 
-from methods.get_method import get_method
-from scorer import score_model_single
+from scripts.methods.get_method import get_method
+from scripts.scorer import score_model_single
+from scripts.cache_llm import register_model_config
 from litellm import completion
 import litellm
 from tqdm import tqdm
 import wandb
-from scripts.cache_llm import register_model_config
 
 # Enable caching for API calls (not for vLLM/local servers)
 if not hasattr(litellm, 'cache') or litellm.cache is None:
