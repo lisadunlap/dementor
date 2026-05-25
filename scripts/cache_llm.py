@@ -107,7 +107,7 @@ def register_model_config(model: str, config: Dict[str, str]) -> None:
         _MODEL_CONFIG_MAP[model] = cleaned
 
 # Import from serve utilities
-from serve.utils_general import (
+from scripts.serve.utils_general import (
     get_from_cache,
     save_to_cache,
     hash_key

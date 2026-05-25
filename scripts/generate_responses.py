@@ -191,7 +191,9 @@ def _gen_with_tinker(
 
     service = tinker.ServiceClient()
     sampling = None
-    if adapter_name:
+    if model_path:
+        sampling = service.create_sampling_client(model_path=model_path)
+    elif adapter_name:
         try:
             if hasattr(service, "get_sampling_client"):
                 sampling = service.get_sampling_client(name=adapter_name)  # type: ignore[assignment]
@@ -201,9 +203,7 @@ def _gen_with_tinker(
         except Exception:
             sampling = None
     if sampling is None:
-        if not model_path:
-            raise ValueError("No valid adapter_name on server and no --model-path provided for Tinker backend.")
-        sampling = service.create_sampling_client(model_path)
+        raise ValueError("No valid --adapter-name on server and no --model-path provided for the Tinker backend.")
     # Obtain tokenizer compatible with the underlying base model
     if hasattr(sampling, "get_tokenizer"):
         tokenizer = sampling.get_tokenizer()  # type: ignore[assignment]
@@ -256,12 +256,13 @@ def _gen_with_openai(
     prompt_template: str,
     system_prompt: str,
     base_url: Optional[str],
+    api_key: Optional[str],
     max_tokens: int,
     temperature: float,
 ) -> List[dict]:
     from openai import OpenAI
 
-    client = OpenAI(base_url=(base_url or "https://api.openai.com/v1"))
+    client = OpenAI(base_url=(base_url or "https://api.openai.com/v1"), api_key=api_key)
     rows: List[dict] = []
     for p in prompts:
         text = prompt_template.format(prompt=p)
@@ -444,6 +445,7 @@ def parse_args() -> argparse.Namespace:
     oai_p = sub.add_parser("openai", help="Use OpenAI or OpenAI-compatible endpoint (optionally with base_url)")
     oai_p.add_argument("--model", type=str, required=True, help="Model id, e.g. openai/gpt-4.1-mini or local name")
     oai_p.add_argument("--system-prompt", type=str, default="You are a helpful assistant.")
+    oai_p.add_argument("--api-key", type=str, default=None, help="Override API key for OpenAI-compatible endpoint.")
     oai_p.add_argument(
         "--base-url",
         type=str,
@@ -534,7 +536,12 @@ def main() -> None:
             model_label=args.adapter_name,
         )
     elif args.backend == "openai":
-        if "OPENAI_API_KEY" not in os.environ and not args.base_url:
+        api_key = args.api_key
+        if api_key is None and args.base_url and "tinker.thinkingmachines" in args.base_url:
+            api_key = os.getenv("TINKER_API_KEY")
+        if api_key is None:
+            api_key = os.getenv("OPENAI_API_KEY")
+        if api_key is None and not args.base_url:
             # Still allow if using a local OpenAI-compatible server that doesn't need a key
             pass
         rows = _gen_with_openai(
@@ -543,6 +550,7 @@ def main() -> None:
             prompt_template=args.prompt_template,
             system_prompt=args.system_prompt,
             base_url=args.base_url,
+            api_key=api_key,
             max_tokens=args.max_tokens,
             temperature=args.temperature,
         )

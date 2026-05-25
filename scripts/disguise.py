@@ -33,7 +33,7 @@ from litellm import completion
 import litellm
 from tqdm import tqdm
 import wandb
-from cache_llm import register_model_config
+from scripts.cache_llm import register_model_config
 
 # Enable caching for API calls (not for vLLM/local servers)
 if not hasattr(litellm, 'cache') or litellm.cache is None:
@@ -244,7 +244,7 @@ def generate_disguised_responses(
                             call_kwargs.setdefault('custom_llm_provider', provider_hint)
                             call_kwargs.setdefault('litellm_provider', provider_hint)
                     try:
-                        from cache_llm import cached_completion
+                        from scripts.cache_llm import cached_completion
                         resp = cached_completion(**call_kwargs)
                         return resp.choices[0].message.content
                     except ImportError:
@@ -309,7 +309,7 @@ def main():
         help="Source model to disguise (e.g., google/gemma-3-1b-it)",
     )
     parser.add_argument(
-        "--disguise_as",
+        "--disguise-as",
         type=str,
         required=env_defaults["disguise_as"] is None,
         default=env_defaults["disguise_as"],
@@ -337,27 +337,27 @@ def main():
     
     # Data paths
     parser.add_argument(
-        "--source_responses",
+        "--source-responses",
         type=str,
         default=env_defaults["source_responses"],
         help="Path to source model responses CSV (auto-detect if not provided)",
     )
     parser.add_argument(
-        "--target_responses",
+        "--target-responses",
         type=str,
         default=env_defaults["target_responses"],
         help="Path to target model responses CSV (auto-detect if not provided)",
     )
     parser.add_argument(
-        "--prompts_file",
+        "--prompts-file",
         type=str,
         default="data/datasets/chatbot_arena/chatbot_arena_prompts.txt",
         help="File with prompts (one per line)",
     )
-    
+
     # Experiment settings
     parser.add_argument(
-        "--num_samples",
+        "--num-samples",
         type=int,
         default=100,
         help="Number of responses to generate",
@@ -365,16 +365,16 @@ def main():
     parser.add_argument("--temperature", type=float, default=0.0,
                        help="Temperature for generation (0.0 for deterministic)")
     parser.add_argument(
-        "--output_dir",
+        "--output-dir",
         type=str,
         default=env_defaults["output_dir"],
         help="Output directory for results",
     )
-    
+
     # Evaluation settings
-    parser.add_argument("--skip_evaluation", action="store_true",
+    parser.add_argument("--skip-evaluation", action="store_true",
                        help="Skip automatic evaluation")
-    parser.add_argument("--heuristics_only", action="store_true",
+    parser.add_argument("--heuristics-only", action="store_true",
                        help="Only compute heuristic scores (faster)")
     parser.add_argument("--judge-model", default="openai/gpt-4.1-mini",
                        help="Judge model for scoring (default: openai/gpt-4.1-mini)")
@@ -384,9 +384,9 @@ def main():
                        help="API key for judge model (defaults to OPENAI_API_KEY env var)")
     
     # Logging
-    parser.add_argument("--no_wandb", action="store_true",
+    parser.add_argument("--no-wandb", action="store_true",
                        help="Disable Weights & Biases logging (enabled by default)")
-    parser.add_argument("--run_name", type=str,
+    parser.add_argument("--run-name", type=str,
                        help="Name for this experiment run (auto-generated if not provided)")
     # LiteLLM routing (e.g., to a local vLLM server exposing OpenAI-compatible API)
     parser.add_argument("--openai-api-base", type=str, default=None,
@@ -608,8 +608,8 @@ def main():
     except FileNotFoundError as e:
         logging.error(
             "Could not locate base responses. Place CSVs under 'data/model-responses/<dataset>/{full,500}' "
-            "(preferred) or legacy '.../base'. You can also pass explicit paths via --source_responses and "
-            "--target_responses."
+            "(preferred) or legacy '.../base'. You can also pass explicit paths via --source-responses and "
+            "--target-responses."
         )
         raise
     

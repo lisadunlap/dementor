@@ -5,8 +5,6 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Literal, Optional
 
-from openai import OpenAI
-
 from .plots import (
     ConvergenceSeries,
     plot_convergence,
@@ -340,7 +338,9 @@ def run_dpo_workflow(config: DPOWorkflowConfig) -> DPOWorkflowResult:
         "job_id": None,
     }
     if params.submit_job:
-        client = OpenAI()
+        from .openai import _openai_client
+
+        client = _openai_client()
         uploaded_train = upload_file(client, train_path)
         uploaded_eval = upload_file(client, eval_path) if eval_path is not None else None
         job_id = create_dpo_job(

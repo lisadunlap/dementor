@@ -8,12 +8,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
-from typing import Iterable, Optional, Sequence
+from typing import Any, Iterable, Optional, Sequence
 
 import numpy as np
 import pandas as pd
-import tinker
-from tinker import types
 
 from .data import (
     FinetuneExample,
@@ -21,6 +19,18 @@ from .data import (
     load_csv_dataset,
     sample_supervised_splits,
 )
+
+
+def _require_tinker():
+    try:
+        import tinker
+        from tinker import types
+    except ModuleNotFoundError as exc:
+        raise ModuleNotFoundError(
+            "Tinker workflows require the optional `tinker` package. "
+            "Install it and set TINKER_API_KEY before launching Tinker SFT/DPO jobs."
+        ) from exc
+    return tinker, types
 
 
 @dataclass(frozen=True)
@@ -111,11 +121,12 @@ def _coerce_to_float(value: object) -> float:
 
 def process_example(
     example: FinetuneExample,
-    tokenizer: tinker.tokenizer.Tokenizer,
+    tokenizer: Any,
     index: int,
     prompt_template: str,
     completion_template: str,
-) -> types.Datum:
+) -> Any:
+    _, types = _require_tinker()
     prompt_text = format_prompt(example, prompt_template, index)
     completion_text = format_completion(example, completion_template, index)
 
@@ -137,14 +148,14 @@ def process_example(
     )
 
 
-def to_batches(items: Sequence[types.Datum], batch_size: int) -> Iterable[Sequence[types.Datum]]:
+def to_batches(items: Sequence[Any], batch_size: int) -> Iterable[Sequence[Any]]:
     for start in range(0, len(items), batch_size):
         yield items[start : start + batch_size]
 
 
 def compute_batch_loss(
-    fwdbwd_output: types.ForwardBackwardResult,
-    batch: Sequence[types.Datum],
+    fwdbwd_output: Any,
+    batch: Sequence[Any],
 ) -> float:
     batch_logprobs: list[float] = []
     batch_weights: list[float] = []
@@ -176,7 +187,7 @@ def compute_batch_loss(
 
 
 def train_lora_model(
-    training_client: tinker.TrainingClient,
+    training_client: Any,
     examples: list[FinetuneExample],
     batch_size: int,
     epochs: int,
@@ -185,9 +196,10 @@ def train_lora_model(
     prompt_template: str,
     completion_template: str,
 ) -> list[float]:
+    _, types = _require_tinker()
     rng = random.Random(seed)
     tokenizer = training_client.get_tokenizer()
-    processed: list[types.Datum] = [
+    processed: list[Any] = [
         process_example(example, tokenizer, index, prompt_template, completion_template)
         for index, example in enumerate(examples)
     ]
@@ -235,13 +247,14 @@ def normalize_answer(text: Optional[str]) -> Optional[str]:
 
 
 def evaluate_model(
-    sampling_client: tinker.SamplingClient,
+    sampling_client: Any,
     eval_examples: list[FinetuneExample],
-    tokenizer: tinker.tokenizer.Tokenizer,
+    tokenizer: Any,
     prompt_template: str,
     completion_template: str,
     config: EvaluationConfig,
 ) -> pd.DataFrame:
+    _, types = _require_tinker()
     params = types.SamplingParams(
         max_tokens=config.max_sample_tokens,
         temperature=0.0,
@@ -325,14 +338,14 @@ def record_adapter_mapping(
     print(f"Recorded adapter mapping in {registry_path}: {weights_name} -> {sampler_path}")
 
 
-def list_available_models(service_client: tinker.ServiceClient) -> list[str]:
+def list_available_models(service_client: Any) -> list[str]:
     """Return the supported base model names for a given service client."""
     capabilities = service_client.get_server_capabilities()
     return [model.model_name for model in capabilities.supported_models]
 
 
 def _save_sampler_checkpoint(
-    training_client: tinker.TrainingClient,
+    training_client: Any,
     alias_name: str,
     registry_path: Path,
 ) -> Optional[str]:
@@ -360,7 +373,7 @@ def _save_sampler_checkpoint(
 def run_tinker_sft_job(
     *,
     dataset_config: SFTDatasetConfig,
-    service_client: tinker.ServiceClient,
+    service_client: Any,
     base_model: str,
     batch_size: int,
     epochs: int,
@@ -375,6 +388,7 @@ def run_tinker_sft_job(
     lora_kwargs: Optional[dict] = None,
 ) -> TinkerSFTOutcome:
     """End-to-end helper used by CLI wrappers to run supervised fine-tuning."""
+    _require_tinker()
     train_examples, eval_examples = prepare_sft_examples(dataset_config)
 
     training_client = service_client.create_lora_training_client(base_model=base_model, **(lora_kwargs or {}))
@@ -390,8 +404,13 @@ def run_tinker_sft_job(
     )
     print(f"Training finished after {len(loss_history)} optimization steps.")
 
-    print(f"Saving LoRA weights under name '{weights_name}'")
-    sampling_client = training_client.save_weights_and_get_sampling_client(name=weights_name)
+    print(f"Saving LoRA sampler weights under alias '{weights_name}'")
+    sampler_path = _save_sampler_checkpoint(training_client, weights_name, registry_path)
+    if sampler_path:
+        sampling_client = service_client.create_sampling_client(model_path=sampler_path)
+    else:
+        print("Falling back to save_weights_and_get_sampling_client; sampler path will not be recorded.")
+        sampling_client = training_client.save_weights_and_get_sampling_client(name=weights_name)
     tokenizer = training_client.get_tokenizer()
     eval_results = evaluate_model(
         sampling_client=sampling_client,
@@ -407,12 +426,10 @@ def run_tinker_sft_job(
     eval_results.to_csv(output_csv, index=False)
     print(f"Wrote evaluation details to {output_csv}")
     print(
-        "To reuse the model later, call "
-        "service_client.get_sampling_client(name='<weights_name>') "
-        "and sample with the same tokenizer/template."
+        "To reuse the model later, pass the recorded tinker:// sampler path to "
+        "`scripts/generate_responses.py ... tinker --model-path <path>`."
     )
 
-    sampler_path = _save_sampler_checkpoint(training_client, weights_name, registry_path)
     return TinkerSFTOutcome(
         loss_history=loss_history,
         eval_results=eval_results,

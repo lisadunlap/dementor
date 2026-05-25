@@ -4,9 +4,7 @@ import json
 import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional, Sequence
-
-from openai import OpenAI
+from typing import Any, List, Optional, Sequence
 
 from .data import FinetuneExample
 from .tinker import SFTDatasetConfig, prepare_sft_examples
@@ -38,7 +36,18 @@ def validate_preference_rows(rows: list[dict]) -> None:
             raise ValueError(f"Row {i} missing one of required keys: prompt, chosen, rejected")
 
 
-def upload_file(client: OpenAI, path: Path) -> str:
+def _openai_client():
+    try:
+        from openai import OpenAI
+    except Exception as exc:
+        raise ImportError(
+            "OpenAI workflows require a working `openai` Python package. "
+            "Install a compatible build before submitting OpenAI fine-tune jobs."
+        ) from exc
+    return OpenAI()
+
+
+def upload_file(client: Any, path: Path) -> str:
     """Upload a JSONL file to OpenAI and return the file id."""
     with path.open("rb") as fh:
         uploaded = client.files.create(file=fh, purpose="fine-tune")
@@ -80,7 +89,7 @@ class OpenAIDPOJobConfig:
     beta: float
 
 
-def create_dpo_job(client: OpenAI, job_config: OpenAIDPOJobConfig) -> str:
+def create_dpo_job(client: Any, job_config: OpenAIDPOJobConfig) -> str:
     """Submit a DPO job using the OpenAI fine-tuning API."""
     job = client.fine_tuning.jobs.create(
         training_file=job_config.train_file_id,
@@ -100,7 +109,7 @@ def create_dpo_job(client: OpenAI, job_config: OpenAIDPOJobConfig) -> str:
     return job.id
 
 
-def poll_job(client: OpenAI, job_id: str, interval_seconds: float = 10.0) -> None:
+def poll_job(client: Any, job_id: str, interval_seconds: float = 10.0) -> None:
     """Poll a fine-tuning job until it completes."""
     last_status = None
     while True:
@@ -167,7 +176,7 @@ def _object_to_plain_dict(obj) -> dict:
     return {}
 
 
-def collect_job_metrics(client: OpenAI, job_id: str, limit: int = 1000) -> List[dict]:
+def collect_job_metrics(client: Any, job_id: str, limit: int = 1000) -> List[dict]:
     """Fetch fine-tuning events and return only metric-bearing rows."""
     response = client.fine_tuning.jobs.list_events(job_id, limit=limit)
     rows: List[dict] = []
@@ -192,7 +201,7 @@ def run_openai_sft_job(
     dataset_config: SFTDatasetConfig,
     output_dir: Path,
     job_config: OpenAISFTJobConfig,
-    client: Optional[OpenAI] = None,
+    client: Optional[Any] = None,
 ) -> tuple[OpenAISFTArtifacts, List[dict]]:
     """End-to-end OpenAI SFT helper used by the workflows pipeline."""
     train_examples, eval_examples = prepare_sft_examples(dataset_config)
@@ -205,7 +214,7 @@ def run_openai_sft_job(
     write_jsonl(train_jsonl, train_rows)
     write_jsonl(eval_jsonl, eval_rows)
 
-    client = client or OpenAI()
+    client = client or _openai_client()
     train_file_id = upload_file(client, train_jsonl)
     eval_file_id = upload_file(client, eval_jsonl)
     job = client.fine_tuning.jobs.create(

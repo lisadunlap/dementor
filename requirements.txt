@@ -20,3 +20,6 @@ wandb
 litellm
 tiktoken
 lmdb
+peft
+python-dotenv
+scipy

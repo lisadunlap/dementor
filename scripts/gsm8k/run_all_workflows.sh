@@ -1,114 +1,79 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-(python - <<'PY'
-from pathlib import Path
-from workflows.pipeline import SFTWorkflowConfig, TinkerSFTParams, run_sft_workflow
-from workflows.tinker import SFTDatasetConfig
-cfg = SFTWorkflowConfig(
-    provider="tinker",
-    dataset=SFTDatasetConfig(
-        train_csv=Path("data/model-responses/gsm8k/splits/seed42/train_300/openai_gpt-4.1-mini_responses_train300_seed42.csv"),
-        eval_csv=Path("data/model-responses/gsm8k/splits/seed42/eval_200/openai_gpt-4.1-mini_responses_eval200_seed42.csv"),
-        prompt_column="prompt",
-        completion_column="model_response",
-    ),
-    output_dir=Path("data/results/workflows/sft_llama-3.1-8b-instruct_as_gpt-4.1-mini"),
-    tinker=TinkerSFTParams(
-        base_model="meta-llama/Llama-3.1-8B-Instruct",
-        weights_name="gsm8k_llama-3.1-8b-instruct",
-        batch_size=16,
-        epochs=6,
-        learning_rate=1e-4,
-    ),
-)
-run_sft_workflow(cfg)
-PY
-)&
-pid1=$!
+# Legacy convenience launcher for the four GSM8K fine-tuning jobs.
+# New work should call `python -m workflows.run_gsm8k_workflow ...` directly.
 
-(python - <<'PY'
-from pathlib import Path
-from workflows.pipeline import SFTWorkflowConfig, run_sft_workflow
-from workflows.openai import OpenAISFTJobConfig
-from workflows.tinker import SFTDatasetConfig
-cfg = SFTWorkflowConfig(
-    provider="openai",
-    dataset=SFTDatasetConfig(
-        train_csv=Path("data/model-responses/gsm8k/splits/seed42/train_300/openai_gpt-4.1-mini_responses_train300_seed42.csv"),
-        eval_csv=Path("data/model-responses/gsm8k/splits/seed42/eval_200/openai_gpt-4.1-mini_responses_eval200_seed42.csv"),
-        prompt_column="prompt",
-        completion_column="model_response",
-    ),
-    output_dir=Path("data/results/workflows/sft_gpt-4.1-mini_as_llama-3.1-8b-instruct"),
-    openai=OpenAISFTJobConfig(
-        model="gpt-4.1-mini-2025-04-14",
-        system_prompt="You are a patient math tutor.",
-        epochs=6,
-        batch_size=16,
-    ),
-)
-run_sft_workflow(cfg)
-PY
-)&
-pid2=$!
+RUN_TINKER_SFT="${RUN_TINKER_SFT:-true}"
+RUN_OPENAI_SFT="${RUN_OPENAI_SFT:-true}"
+RUN_TINKER_DPO="${RUN_TINKER_DPO:-true}"
+RUN_OPENAI_DPO="${RUN_OPENAI_DPO:-true}"
 
-(python - <<'PY'
-from pathlib import Path
-from workflows.pipeline import DPOWorkflowConfig, TinkerDPOParams, run_dpo_workflow
-from workflows.dpo import PreferenceDatasetConfig
-cfg = DPOWorkflowConfig(
-    provider="tinker",
-    dataset=PreferenceDatasetConfig(
-        dataset_csv=Path("data/results/tinker_dpo/gsm8k_gpt-4.1-mini_preference_pairs.csv"),
-        prompt_column="prompt",
-        chosen_column="chosen_response",
-        rejected_column="rejected_response",
-        train_size=300,
-        eval_size=200,
-        seed=42,
-    ),
-    output_dir=Path("data/results/workflows/dpo_llama-3.1-8b-instruct_as_gpt-4.1-mini"),
-    tinker=TinkerDPOParams(
-        model_name="meta-llama/Llama-3.1-8B-Instruct",
-        log_path=Path("data/results/workflows/dpo_llama-3.1-8b-instruct_as_gpt-4.1-mini/logs"),
-        batch_size=16,
-        num_epochs=3,
-        renderer_name="llama3",
-        save_every=20,
-    ),
-)
-run_dpo_workflow(cfg)
-PY
-)&
-pid3=$!
+pids=()
 
-(python - <<'PY'
-from pathlib import Path
-from workflows.pipeline import DPOWorkflowConfig, OpenAIDPOParams, run_dpo_workflow
-from workflows.dpo import PreferenceDatasetConfig
-cfg = DPOWorkflowConfig(
-    provider="openai",
-    dataset=PreferenceDatasetConfig(
-        dataset_csv=Path("data/results/tinker_dpo/gsm8k_gpt-4.1-mini_preference_pairs.csv"),
-        prompt_column="prompt",
-        chosen_column="chosen_response",
-        rejected_column="rejected_response",
-        train_size=300,
-        eval_size=200,
-        seed=42,
-    ),
-    output_dir=Path("data/results/workflows/dpo_gpt-4.1-mini_as_llama-3.1-8b-instruct"),
-    openai=OpenAIDPOParams(
-        model="gpt-4.1-mini-2025-04-14",
-        epochs=3,
-        batch_size=16,
-        beta=0.1,
-    ),
-)
-run_dpo_workflow(cfg)
-PY
-)&
-pid4=$!
+run_background() {
+  local enabled="$1"
+  local label="$2"
+  shift 2
 
-wait $pid1 $pid2 $pid3 $pid4
+  if [[ "$enabled" != "true" ]]; then
+    echo "[$label] skipped"
+    return
+  fi
+
+  echo "[$label] starting"
+  "$@" &
+  pids+=("$!")
+}
+
+run_background "$RUN_TINKER_SFT" "Tinker SFT" \
+  python -m workflows.run_gsm8k_workflow \
+    --stage sft \
+    --provider tinker \
+    --output-dir data/results/workflows/sft_llama-3.1-8b-instruct_as_gpt-4.1-mini \
+    --weights-name gsm8k_llama-3.1-8b-instruct \
+    --epochs 6 \
+    --batch-size 16 \
+    --learning-rate 1e-4
+
+run_background "$RUN_OPENAI_SFT" "OpenAI SFT" \
+  python -m workflows.run_gsm8k_workflow \
+    --stage sft \
+    --provider openai \
+    --output-dir data/results/workflows/sft_gpt-4.1-mini_as_llama-3.1-8b-instruct \
+    --openai-model gpt-4.1-mini-2025-04-14 \
+    --system-prompt "You are a patient math tutor." \
+    --epochs 6 \
+    --batch-size 16
+
+run_background "$RUN_TINKER_DPO" "Tinker DPO" \
+  python -m workflows.run_gsm8k_workflow \
+    --stage dpo \
+    --provider tinker \
+    --output-dir data/results/workflows/dpo_llama-3.1-8b-instruct_as_gpt-4.1-mini \
+    --base-model meta-llama/Llama-3.1-8B-Instruct \
+    --renderer-name llama3 \
+    --epochs 3 \
+    --batch-size 16 \
+    --save-every 20
+
+run_background "$RUN_OPENAI_DPO" "OpenAI DPO" \
+  python -m workflows.run_gsm8k_workflow \
+    --stage dpo \
+    --provider openai \
+    --output-dir data/results/workflows/dpo_gpt-4.1-mini_as_llama-3.1-8b-instruct \
+    --openai-model gpt-4.1-mini-2025-04-14 \
+    --epochs 3 \
+    --batch-size 16 \
+    --dpo-beta 0.1
+
+if [[ "${#pids[@]}" -eq 0 ]]; then
+  echo "No workflows selected."
+  exit 0
+fi
+
+for pid in "${pids[@]}"; do
+  wait "$pid"
+done
+
+echo "All selected GSM8K workflows finished."

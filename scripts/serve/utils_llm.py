@@ -7,7 +7,6 @@ import concurrent.futures
 
 import lmdb
 from openai import OpenAI
-import anthropic
 import datetime
 import numpy as np
 
