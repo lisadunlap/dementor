@@ -570,11 +570,6 @@ def main():
             f"data/model-responses/{dataset}/500",
             f"data/model-responses/{dataset}/base",
             "data/model-responses/base",
-            # Fallback to prior location if present
-            f"disguising/model-responses/{dataset}/full",
-            f"disguising/model-responses/{dataset}/500",
-            f"disguising/model-responses/{dataset}/base",
-            "disguising/model-responses/base",
         ):
             for fname in (f"{norm}_responses-1000.csv", f"{norm}_responses.csv", f"{norm}.csv"):
                 candidates.append(os.path.join(root, fname))
