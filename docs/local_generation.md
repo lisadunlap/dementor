@@ -45,9 +45,9 @@
    ```bash
    python scripts/disguise.py \
      --model openai/meta-llama/Llama-3.1-8B-Instruct \
-     --disguise_as openai/gpt-4.1-mini \
+     --disguise-as openai/gpt-4.1-mini \
      --method contrastive \
-     --num_samples 200 \
+     --num-samples 200 \
      --openai-api-base http://localhost:8000/v1 \
      --openai-api-key EMPTY
    ```

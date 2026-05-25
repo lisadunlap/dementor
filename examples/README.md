@@ -25,10 +25,10 @@ Model strings
 
 Disguise commands
 - Random baseline
-  - `python disguise.py --model openai/gpt-4o-mini --disguise_as gpt-4o --method random_sampling --num_samples 200`
+  - `python disguise.py --model openai/gpt-4o-mini --disguise-as gpt-4o --method random_sampling --num-samples 200`
 
 - Contrastive rules
-  - `python disguise.py --model openai/gpt-4o-mini --disguise_as gpt-4o --method contrastive --num_samples 200`
+  - `python disguise.py --model openai/gpt-4o-mini --disguise-as gpt-4o --method contrastive --num-samples 200`
 
 Scoring with metrics
 ```bash

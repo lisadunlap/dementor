@@ -1,160 +1,166 @@
-# agents.md
+# AGENTS.md
 
-This file provides guidance to agents when working with code in this repository.
+This file provides guidance to AI agents when working in this repository.
 
 ## Project Overview
 
-Dementor is a research project for "stealing the souls of LLMs" - techniques to disguise one language model to mimic the behavior and response patterns of another model. The codebase implements various disguise methods and evaluation frameworks for comparing model outputs.
+Dementor is a research framework for LLM disguise and behavioral inertia:
+techniques that make one language model imitate another, plus analyses that
+measure which behavioral axes move under prompting, fine-tuning, and
+activation-level interventions.
 
 ## Core Architecture
 
-The project is organized around these key components:
-
 ### Disguise Methods (`scripts/methods/`)
-- **Base methods**: `RandomSamplingSystemPrompting`, `JustNameIt`, `BehavioralBasedSystemPrompting` 
-- **Clustering methods**: `FeatureClustering` with stylistic, behavioral, or embedding-based clustering
-- **Math-specific methods**: `EnsembleMathDisguise`
-- All methods inherit from `MethodBase` and implement `forward(prompt: str) -> str`
+
+Stable method names are registered in `scripts/methods/get_method.py`:
+
+- `just_name_it`
+- `random_sampling`
+- `behavioral_based`
+- `stylistic`
+- `contrastive`
+- `stylistic_clustering`
+- `stylistic_clustering_resample`
+- `embedding_clustering`
+- `behavioral_clustering`
+
+All methods inherit from `MethodBase` and expose `forward(prompt: str)`.
 
 ### Main Scripts
-- **`scripts/disguise.py`**: Core disguise script that applies methods to transform model responses
-- **Scoring**: Use `python -m scripts.scorer pairwise --input input.csv --output scores/run_name/scored.csv` for the LLM judge (semantic + stylistic scores).
-- **`scripts/prompt_llm_new.py`**: Generate responses from models for evaluation
-- **`scripts/generate_responses.py`**: Generate base responses for evaluation datasets (use the `basic` subcommand for provider/HF/vLLM models)
+
+- `scripts/generate_responses.py`: generate base responses.
+  - Use `basic` for provider/HF/vLLM models.
+  - Use `tinker` for Tinker sampler checkpoints or adapter aliases.
+  - Use `openai` for OpenAI or OpenAI-compatible endpoints.
+- `scripts/disguise.py`: apply disguise methods.
+- `scripts/scorer.py`: score single files or pairwise disguised-vs-target outputs.
+- `scripts/analysis/run_behavioral_inertia.py`: latent behavioral-axis analysis.
+- `scripts/analysis/activation_bridge.py`: representation probes without intervention.
+- `scripts/analysis/activation_steering.py`: local Transformers activation steering.
+- `workflows/run_gsm8k_workflow.py`: dry-run or launch GSM8K SFT/DPO workflows.
 
 ### Data Flow
-1. Generate base responses using `prompt_llm_new.py` or `scripts/generate_responses.py basic`
-2. Apply disguise methods via `disguise.py` to transform responses  
-3. Score disguised vs target responses using `scripts/scorer.py`
-4. Results stored in `data/results/` and base responses in `data/model-responses/`
+
+1. Generate or import base responses into `data/model-responses/`.
+2. Apply disguise methods into `data/results/<dataset>/comparisons/...`.
+3. Score comparisons with `scripts.scorer`.
+4. Run behavioral-inertia analysis on each comparison CSV.
+5. Aggregate summaries with `scripts.analysis.run_intervention_ladder`.
+
+Use local CSVs as the reproducible source of truth. Old BAIR/cthulu-only
+artifacts should not be assumed available; regenerate missing results locally or
+through Tinker/OpenAI workflows.
 
 ## Common Commands
 
 ### Setup
+
 ```bash
 pip install -r requirements.txt
 ```
 
-### Caching
-The framework includes persistent LMDB-based caching for all API calls:
-- **Automatic**: All scripts automatically use caching when available
-- **Persistent**: Cache survives across sessions, reducing API costs
-- **Location**: `cache/llm_cache/` directory
-- **Benefits**: Faster responses, reduced costs, consistent results
-- **Clear cache**: `python -c "from scripts.cache_llm import clear_cache; clear_cache()"`
-- **Stats**: `python -c "from scripts.cache_llm import get_cache_stats; print(get_cache_stats())"`
+Optional Tinker workflows also require `tinker`, `tinker_cookbook`, and
+`TINKER_API_KEY`.
 
-### Streamlined Workflow (Recommended)
+### Generate Responses
+
 ```bash
-# Run complete pipeline: generate responses, compare baseline, disguise, and score
-python scripts/run_pipeline.py \
-  --prompts_file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
-  --source-model meta-llama/Meta-Llama-3.1-8B-Instruct \
-  --target-model openai/gpt-4.1-mini \
-  --method contrastive
-
-# Results organized under data/results/<dataset>/ with:
-# - comparisons/source_vs_target/ (source vs target baseline comparison and scores)
-# - comparisons/disguised_vs_target/<method>/ (method-specific disguise runs and scores)
-# - scores/ (other aggregated evaluation artifacts)
-```
-
-### Manual Workflow (For Specialized Cases)
-```bash
-# Generate model responses
-python scripts/prompt_llm_new.py --model google/gemma-3-1b-it --num_samples 1000
 python scripts/generate_responses.py \
   --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
-  --output-csv data/model-responses/gsm8k/full/google_gemma-3-1b-it.csv \
-  basic \
-  --model google/gemma-3-1b-it
-
-# Apply disguise methods
-python scripts/disguise.py --model google/gemma-3-1b-it --disguise_as openai/gpt-4.1-mini --method random_sample_3_examples
-
-# Run evaluations
-python -m scripts.scorer pairwise \
-  --input path/to/disguised_responses.csv \
-  --output path/to/scores/disguised_responses/scored.csv
+  --output-csv data/model-responses/gsm8k/full/openai_gpt-4.1-mini.csv \
+  basic --model openai/gpt-4.1-mini
 ```
 
-### Quick Evaluation
+### Apply Disguise
+
 ```bash
-# Using new scoring utilities
-python -c "from scripts.scorer import score_pairwise; score_pairwise('input.csv', 'output_dir/scored.csv', judge_model='openai/gpt-4.1-mini')"
+python scripts/disguise.py \
+  --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
+  --model meta-llama/Meta-Llama-3.1-8B-Instruct \
+  --disguise-as openai/gpt-4.1-mini \
+  --method contrastive \
+  --num-samples 50
 ```
 
-### Test Model Serving
+### Score
+
 ```bash
-# Start VLLM server
-vllm serve meta-llama/Meta-Llama-3.1-8B-Instruct --dtype half --tensor_parallel_size 4 --port 8000
-
-# Test connection
-python serve/utils_llm.py  # Uncomment model in test_get_llm_output function
+python -m scripts.scorer \
+  --input data/results/gsm8k/comparisons/disguised_vs_target/contrastive/llama_as_gpt-4.1-mini.csv \
+  --output data/results/gsm8k/comparisons/disguised_vs_target/contrastive/llama_as_gpt-4.1-mini_scored.csv
 ```
 
+### Tinker SFT/DPO
 
-## File Organization
+Dry-run first:
 
-- **`data/model-responses/<dataset>/{full,500}/`**: Base model responses per dataset
-- **`data/results/<dataset>/comparisons/baseline/`**: Baseline model comparisons and scoring
-- **`data/results/<dataset>/disguised/`**: Disguised model outputs
-- **`data/results/<dataset>/scores/`**: Evaluation results and scoring outputs
-- **`scripts/methods/`**: Implementation of all disguise techniques
-- **`scripts/`**: Pipeline scripts (run_pipeline.py, generate_responses.py, etc.)
-- **`data/`**: Datasets and prompts (GSM8K, chatbot arena, etc.)
+```bash
+python -m workflows.run_gsm8k_workflow --stage sft --provider tinker --dry-run
+python -m workflows.run_gsm8k_workflow --stage dpo --provider tinker --dry-run
+```
 
-## Available Disguise Methods
+Launch after confirming inputs and environment:
 
-### Core Streamlined Methods (Recommended)
-- **`contrastive_system_prompting`**: Learns differences between source and target models
-- **`behavioral_based_system_prompting`**: Captures personality and communication patterns  
-- **`random_sampling_system_prompting`**: Clean example-based disguise with system prompts
+```bash
+python -m workflows.run_gsm8k_workflow \
+  --stage sft \
+  --provider tinker \
+  --epochs 6 \
+  --batch-size 16 \
+  --weights-name gsm8k_llama-3.1-8b-instruct
+```
 
-### Legacy Methods (For Compatibility)
-Get method names from `scripts/methods/get_method.py`:
-- `random_sample_{1,3,5}_examples`: Sample-based approaches
-- `just_name_it`: Simple name-based instruction
-- `behavioral_based_disguise`: GPT-4o identified behavioral differences
-- `stylistic_clustering`: Cluster by formatting/length features  
-- `ensemble_math_disguise`: Multiple math disguise strategies
+Generate from a saved Tinker sampler:
 
-## Model Response Paths
+```bash
+python scripts/generate_responses.py \
+  --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
+  --output-csv data/results/gsm8k/500/sft_tinker/eval.csv \
+  tinker \
+  --model-path 'tinker://<run-id>/sampler_weights/<name>' \
+  --renderer-name llama3
+```
 
-Responses follow naming pattern: `{model_name_with_underscores}.csv`
-- Example: `meta-llama_Meta-Llama-3-8B-Instruct` → `meta-llama_Meta-Llama-3-8B-Instruct.csv`
+### Activation Steering
 
-## Environment Variables
+Tinker remote sampling does not expose generation hooks. For steering, export
+the Tinker LoRA to a local PEFT adapter or merged HF model, then use
+Transformers hooks.
 
-Create `.env` file with required API keys for OpenAI, Anthropic, or other model providers used in evaluation.
+```bash
+python scripts/tools/export_tinker_adapter.py \
+  --tinker-path 'tinker://<run-id>/sampler_weights/<name>' \
+  --base-model meta-llama/Llama-3.1-8B-Instruct \
+  --output-dir data/model-responses/adapters/gsm8k_llama_sft_peft \
+  --format peft
+```
 
-## Coding Guidelines 
+```bash
+python -m scripts.analysis.activation_steering \
+  --comparison-csv data/results/gsm8k/comparisons/disguised_vs_target/contrastive/llama_as_gpt-4.1-mini.csv \
+  --model-name meta-llama/Llama-3.1-8B-Instruct \
+  --peft-adapter-path data/model-responses/adapters/gsm8k_llama_sft_peft \
+  --output-dir data/results/gsm8k/analysis/activation_steering/llama_as_gpt-4.1-mini \
+  --layer -8 \
+  --strengths 0,0.5,1,2
+```
 
-### General Principles
-- **User executes commands**: I will run commands myself, so do not prompt to run things on your end
-- **Prioritize simplicity**: Use helper functions or classes instead of redundant code or methods with hundreds of lines
-- **Avoid over-engineering**: Do not add excessive tests and type checking (e.g., checking if a value is None) unless asked
-- **Clean up thoroughly**: When told to remove components or refactor, ensure that you delete any files which are no longer needed and delete any code which is no longer used
+## Result Organization
 
-### Error Handling
-- **Address root causes**: Avoid adding try/excepts when running into errors; address the error rather than handling it with try/except
-- **Ask before defaults**: Before adding a try/except or filling in a default dictionary value, ask the user whether to add this exception or if this is a bug that should be fixed
-- **No import protection**: Assume all imports are correctly imported; do not add try/excepts to imports unless asked
+- `data/model-responses/<dataset>/`: base model outputs.
+- `data/results/<dataset>/comparisons/`: disguise comparisons.
+- `data/results/<dataset>/analysis/`: behavioral-inertia, bridge, steering, and ladder outputs.
+- `data/recovered/`: imported legacy/Naz recovered comparison CSVs.
+- `data/tinker_adapters.json`: local alias registry for Tinker sampler paths.
 
-### Data Handling
-- **No automatic defaults**: When getting an item from a dictionary or dataframe, do not automatically put a default if that key does not exist. Instead, ask the user if they want a default value
-- **Explicit typing**: Include typing and docstrings about the expected format of the inputs and outputs (e.g., keys and values if it's a dictionary, columns if it's a dataframe)
+## Agent Guidelines
 
-### Documentation & Testing
-- **Maintain README**: Keep a README for just code structure and inputs/outputs to reference every time a question is asked
-- **Update after changes**: Update the README after any added argument or refactor of code structure, especially if the input or output formats have changed
-- **Ask before tests**: Prompt the user before adding test files
-- **Ask about README updates**: When a new feature is added or a refactor is made, prompt the user to ask whether or not to add this to the README
-
-### Code Quality
-- **Check for redundancy**: With every edit you make, double-check that there is no redundant code in the files you are editing
-- **No backwards compatibility**: Do NOT automatically support backwards compatibility – instead, prompt the user to ask if they would like backwards compatibility
-
-### UI & Presentation
-- **Minimal emojis**: Do not use emojis in READMEs and use sparingly in things like Gradio apps unless asked
-- **Plotly default**: Use Plotly as the default plotting library
+- Run commands directly; do not ask the user to execute commands.
+- Prefer existing scripts and workflow entry points over adding parallel scripts.
+- Keep generated results under `data/results/` and base responses under `data/model-responses/`.
+- Do not depend on unavailable cthulu/BAIR paths in code or docs.
+- Do not merge noisy result branches wholesale. Selectively import useful CSVs and docs, leaving out caches, W&B logs, `.DS_Store`, and transient artifacts.
+- Optional provider packages such as `tinker`, `tinker_cookbook`, and `openai` should be imported lazily inside the paths that need them, so local analysis remains usable without every remote backend installed.
+- Update README or relevant docs when command arguments, data layout, or workflow structure changes.
+- Use focused tests for analysis/math behavior and CLI parsing. Avoid broad generated-output tests that require remote APIs or large model downloads.

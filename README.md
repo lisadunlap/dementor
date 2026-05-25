@@ -5,23 +5,33 @@ Minimal toolkit for stealing the “voice” of one LLM and applying it to anoth
 ## Quick Start
 ```bash
 pip install -r requirements.txt
-python scripts/run_pipeline.py \
-  --prompts_file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
-  --source-model meta-llama/Meta-Llama-3.1-8B-Instruct \
-  --target-model openai/gpt-4.1-mini \
-  --method contrastive
+
+# 1. Generate target-model responses
+python scripts/generate_responses.py \
+  --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
+  --output-csv data/model-responses/gsm8k/openai_gpt-4.1-mini.csv \
+  basic --model openai/gpt-4.1-mini
+
+# 2. Disguise the source model as the target
+python scripts/disguise.py \
+  --model meta-llama/Meta-Llama-3.1-8B-Instruct \
+  --disguise-as openai/gpt-4.1-mini \
+  --method contrastive \
+  --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv
 ```
 
 ## Reference Docs
 - `AGENTS.md` – repo guidance + coding conventions.
+- `docs/conference_experiment_plan.md` – eight-step conference plan for behavioral-inertia experiments.
 - `docs/local_generation.md` – HF/vLLM/provider routing (includes the local vLLM walkthrough).
 - `workflows/README.md` – GSM8K SFT/DPO orchestration + Tinker adapter registry.
+- `METHODS.md` – stable disguise method names and the intervention ladder.
 - `examples/` – copy/paste provider configs.
 - `scripts/gsm8k/` – automation for GSM8K workflows, cleanup, and plotting.
 
 ## Workflow in Four Steps
 1. **Generate base responses** – `scripts/generate_responses.py` (provider/HF/vLLM/Tinker).
-2. **Disguise** – `scripts/disguise.py` or `scripts/run_pipeline.py`.
+2. **Disguise** – `scripts/disguise.py`.
 3. **Score** – `python -m scripts.scorer ...` for LLM judge + heuristics.
 4. **Review outputs** – CSVs in `data/results/<dataset>/...`; cache lives in `cache/llm_cache/`.
 
@@ -39,8 +49,8 @@ python scripts/run_pipeline.py \
 ### Finetune Adapters
 | Path | Summary | Entry point |
 | --- | --- | --- |
-| **SFT (LoRA)** | Tinker/OpenAI fine-tunes for GSM8K (300 train / 200 eval). | `scripts/gsm8k/run_all_workflows.sh` |
-| **DPO** | Preference tuning stacked on SFT adapters. | Same launcher; see `workflows/README.md`. |
+| **SFT (LoRA)** | Tinker/OpenAI fine-tunes for GSM8K (300 train / 200 eval). | `python -m workflows.run_gsm8k_workflow --stage sft ...` |
+| **DPO** | Preference tuning stacked on SFT adapters. | `python -m workflows.run_gsm8k_workflow --stage dpo ...` |
 
 ## Scoring Cheatsheet
 ```bash
@@ -58,7 +68,6 @@ python -m scripts.scorer pairwise \
 ## Repo Layout (abridged)
 ```
 scripts/
-├── run_pipeline.py       # One-command pipeline (generate → compare → disguise → score)
 ├── disguise.py           # Prompt-based disguises
 ├── generate_responses.py # Base generations (provider/HF/vLLM/Tinker)
 ├── scorer.py             # Single, pairwise, compare CLIs
@@ -82,10 +91,10 @@ python scripts/generate_responses.py \
 # Contrastive disguise with custom prompts
 python scripts/disguise.py \
   --model google/gemma-3-1b-it \
-  --disguise_as openai/gpt-4.1-mini \
+  --disguise-as openai/gpt-4.1-mini \
   --method contrastive \
-  --prompts_file my_prompts.csv \
-  --num_samples 200
+  --prompts-file my_prompts.csv \
+  --num-samples 200
 ```
 
 ## Inputs & Outputs
