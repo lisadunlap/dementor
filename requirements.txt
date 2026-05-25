@@ -23,3 +23,8 @@ lmdb
 peft
 python-dotenv
 scipy
+matplotlib
+openai
+requests
+rich
+tqdm
