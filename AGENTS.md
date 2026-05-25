@@ -86,7 +86,7 @@ python scripts/disguise.py \
 ### Score
 
 ```bash
-python -m scripts.scorer \
+python -m scripts.scorer pairwise \
   --input data/results/gsm8k/comparisons/disguised_vs_target/contrastive/llama_as_gpt-4.1-mini.csv \
   --output data/results/gsm8k/comparisons/disguised_vs_target/contrastive/llama_as_gpt-4.1-mini_scored.csv
 ```
