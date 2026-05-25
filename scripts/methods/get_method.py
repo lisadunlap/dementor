@@ -1,23 +1,10 @@
 """
 Complete method registry for all disguise methods.
 """
-try:
-    from .contrastive import ContrastiveSystemPrompting
-    from .behavioral_based import BehavioralBasedSystemPrompting
-    from .random_sampling import RandomSamplingSystemPrompting
-    from .stylistic import StylisticSystemPrompting
-except ImportError:
-    # Fallbacks if relative imports fail
-    try:
-        from scripts.methods.contrastive import ContrastiveSystemPrompting
-        from scripts.methods.behavioral_based import BehavioralBasedSystemPrompting
-        from scripts.methods.random_sampling import RandomSamplingSystemPrompting
-        from scripts.methods.stylistic import StylisticSystemPrompting
-    except ImportError:
-        from contrastive import ContrastiveSystemPrompting
-        from behavioral_based import BehavioralBasedSystemPrompting
-        from random_sampling import RandomSamplingSystemPrompting
-        from stylistic import StylisticSystemPrompting
+from scripts.methods.contrastive import ContrastiveSystemPrompting
+from scripts.methods.behavioral_based import BehavioralBasedSystemPrompting
+from scripts.methods.random_sampling import RandomSamplingSystemPrompting
+from scripts.methods.stylistic import StylisticSystemPrompting
 
 import pandas as pd
 
@@ -78,23 +65,17 @@ def get_method(method_name, model, disguise_as, disguise_df=None, source_df=None
         return RandomSamplingSystemPrompting(model, disguise_as, disguise_df=disguise_df)
 
     elif method_name == "just_name_it":
-        try:
-            from .extras.legacy_simple_methods import JustNameIt
-        except ImportError:
-            from scripts.methods.extras.legacy_simple_methods import JustNameIt  # type: ignore
+        from scripts.methods.extras.legacy_simple_methods import JustNameIt
         return JustNameIt(model, disguise_as)
 
     elif method_name in {"stylistic_clustering", "stylistic_clustering_resample", "embedding_clustering", "behavioral_clustering"}:
         try:
-            from .extras.feature_clustering import FeatureClustering
-        except ImportError:
-            try:
-                from scripts.methods.extras.feature_clustering import FeatureClustering  # type: ignore
-            except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency missing
-                raise ModuleNotFoundError(
-                    "Feature clustering methods require the 'kmodes' package. "
-                    "Install dependencies via `pip install -r requirements.txt`."
-                ) from exc
+            from scripts.methods.extras.feature_clustering import FeatureClustering
+        except ModuleNotFoundError as exc:  # pragma: no cover - optional dependency missing
+            raise ModuleNotFoundError(
+                "Feature clustering methods require the 'kmodes' package. "
+                "Install dependencies via `pip install -r requirements.txt`."
+            ) from exc
 
         merged_df = _merge_source_target(source_df, disguise_df)
         cluster_kwargs = {
