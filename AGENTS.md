@@ -60,8 +60,18 @@ through Tinker/OpenAI workflows.
 pip install -r requirements.txt
 ```
 
-Optional Tinker workflows also require `tinker`, `tinker_cookbook`, and
-`TINKER_API_KEY`.
+Tinker workflows (SFT/DPO adapters via Thinking Machines, and the
+`tinker` backend in `scripts/generate_responses.py`) require two
+extra packages that are not on PyPI:
+
+- `tinker` — Thinking Machines SDK; install from their docs.
+- `tinker_cookbook` — preference-dataset helpers used by
+  `workflows/dpo.py`; install from the public cookbook repo.
+
+A `TINKER_API_KEY` environment variable is also required at runtime.
+If you are only running the OpenAI/HF/vLLM paths you can skip both
+packages — every Tinker import is guarded and only fires on those
+code paths.
 
 ### Generate Responses
 
