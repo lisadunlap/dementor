@@ -65,20 +65,86 @@ python -m scripts.scorer pairwise \
   --judge-model openai/gpt-4.1-mini
 ```
 
-## Repo Layout (abridged)
+## Directory Skeleton
+
+The repository is split into reusable experiment code, workflow orchestration, paper planning docs, and data artifacts. Treat `scripts/`, `workflows/`, `docs/`, `AGENTS.md`, `METHODS.md`, and `examples/` as the source-of-truth code/docs layer. Treat most of `data/model-responses/` and `data/results/` as experiment artifacts.
+
 ```
-scripts/
-├── disguise.py           # Prompt-based disguises
-├── generate_responses.py # Base generations (provider/HF/vLLM/Tinker)
-├── scorer.py             # Single, pairwise, compare CLIs
-├── gsm8k/                # Workflow runners, plotting, cleanup
-├── tools/                # Maintenance utilities
-└── methods/              # Method implementations + registry
-data/
-├── datasets/             # Prompts + style archetypes
-└── model-responses/      # Generated baselines
-data/results/             # Disguised outputs, scores, plots
+dementor/
+├── AGENTS.md                    # Agent-facing repo conventions and current project guidance
+├── METHODS.md                   # Stable method names and the intervention ladder
+├── README.md                    # Human-facing entry point
+├── requirements.txt             # Core Python dependencies
+├── main.py                      # Thin compatibility CLI; prefer direct scripts below
+├── docs/
+│   ├── conference_experiment_plan.md      # Framing and conference-level experiment plan
+│   ├── experiment_implementation_plan.md  # Concrete matrix/model/run plan
+│   └── local_generation.md                # Local HF/vLLM/provider generation notes
+├── examples/
+│   └── README.md                # Provider/model routing examples
+├── scripts/
+│   ├── generate_responses.py    # Base generations through provider, HF, vLLM, or Tinker
+│   ├── disguise.py              # Prompt/intervention disguise runner
+│   ├── scorer.py                # Single, pairwise, and compare scoring CLI
+│   ├── make_matrix_splits.py    # Deterministic dataset split builder for matrix runs
+│   ├── analysis/
+│   │   ├── behavioral_inertia_metrics.py  # Behavioral axis movement / residual signature metrics
+│   │   ├── latent_behavior_axes.py        # SVD/PCA-style latent behavior axis analysis
+│   │   ├── activation_bridge.py           # Cross-model activation alignment utilities
+│   │   ├── activation_steering.py         # Local Transformers steering hooks
+│   │   └── run_intervention_ladder.py     # Aggregate prompting/SFT/DPO/steering outputs
+│   ├── methods/
+│   │   ├── base.py               # MethodBase contract
+│   │   ├── get_method.py         # Method registry
+│   │   ├── random_sampling.py    # Few-shot target exemplar prompting
+│   │   ├── behavioral_based.py   # Persona/style prompt construction
+│   │   ├── stylistic.py          # Surface-form style controls
+│   │   └── contrastive.py        # Source-vs-target contrastive prompting
+│   ├── gsm8k/                    # Legacy/convenience GSM8K shell runners and plots
+│   ├── serve/                    # Shared local/server-side model utilities
+│   ├── tests/                    # Lightweight regression tests and fixtures
+│   ├── tools/                    # Adapter export, summaries, and artifact utilities
+│   └── utils/                    # One-off CSV/data repair helpers
+├── workflows/
+│   ├── data.py                   # Shared train/eval artifact builders
+│   ├── dpo.py                    # Preference-pair preparation
+│   ├── openai.py                 # OpenAI fine-tuning backend
+│   ├── tinker.py                 # Tinker LoRA/SFT/DPO backend and adapter registry
+│   ├── pipeline.py               # Shared workflow orchestration helpers
+│   ├── run_gsm8k_workflow.py     # Canonical GSM8K SFT/DPO entry point
+│   ├── run_matrix.py             # Conference matrix runner
+│   └── run_eval200_scoring.py    # Eval scoring orchestration
+├── data/
+│   ├── datasets/                 # Prompt splits and benchmark inputs
+│   ├── model-responses/          # Base model responses; generated or imported
+│   ├── recovered/                # Recovered Naz/BayLearn-era artifacts
+│   ├── results/                  # Disguise outputs, scores, manifests, plots
+│   └── tinker_adapters.json      # Local registry of Tinker adapter/sampler paths
+├── figures/                      # Paper/report figures when materialized
+└── cache/
+    └── llm_cache/                # Persistent API cache; ignored by git
 ```
+
+### What Belongs Where
+
+- **New disguise method**: add implementation under `scripts/methods/`, register it in `scripts/methods/get_method.py`, and document the stable method name in `METHODS.md`.
+- **New behavioral/latent metric**: add reusable code under `scripts/analysis/`; add a small fixture-backed test under `scripts/tests/` when the metric affects paper claims.
+- **New full experiment run**: add orchestration to `workflows/` and keep the generated outputs under `data/results/`.
+- **New model-response baseline**: write it under `data/model-responses/<dataset>/...`; commit only curated/provenance-critical baselines.
+- **Generated matrix artifacts**: keep them local under `data/model-responses/matrix_baselines/`, `data/results/matrix/`, or `data/results/workflows/<run>/`. These are ignored by git while Tinker jobs are running.
+- **External or recovered data**: keep provenance notes near the files, as in `data/results/call_center/MANIFEST.md`.
+
+### Canonical Entry Points
+
+- Base response generation: `python scripts/generate_responses.py ...`
+- Prompt disguise: `python scripts/disguise.py ...`
+- Scoring: `python -m scripts.scorer single|pairwise|compare ...`
+- GSM8K SFT/DPO: `python -m workflows.run_gsm8k_workflow ...`
+- Conference matrix: `python -m workflows.run_matrix ...`
+- Behavioral inertia analysis: `python -m scripts.analysis.run_behavioral_inertia ...`
+- Intervention ladder aggregation: `python -m scripts.analysis.run_intervention_ladder ...`
+
+`main.py` remains for compatibility, but new automation should call the script/module entry points above directly.
 
 ## Handy Commands
 ```bash
