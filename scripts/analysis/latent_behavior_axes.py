@@ -1,16 +1,16 @@
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 
 import matplotlib
 
+os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.preprocessing import StandardScaler
 
 from .common import (
@@ -29,6 +29,9 @@ COND_COLORS = {
     "disguised": "#ff7f0e",
     "target": "#2ca02c",
 }
+
+DEFAULT_DESCRIPTOR_ENCODER = "sentence-transformers/all-MiniLM-L6-v2"
+TRUNCATE_CHARS = 600
 
 
 def _style_scalar_features(texts: list[str]) -> tuple[np.ndarray, list[str]]:
@@ -74,27 +77,95 @@ def _style_scalar_features(texts: list[str]) -> tuple[np.ndarray, list[str]]:
     return X, names
 
 
+def _style_binary_features(texts: list[str]) -> tuple[np.ndarray, list[str]]:
+    from scripts.methods.utils import stylistic_analysis as style
+
+    feature_funcs = [
+        ("style_has_markdown", style.has_markdown),
+        ("style_contains_list", style.contains_list),
+        ("style_contains_header", style.contains_header),
+        ("style_contains_code", style.contains_code),
+        ("style_contains_link", style.contains_link),
+        ("style_starts_with_greeting", style.starts_with_greeting),
+        ("style_ends_with_signoff", style.ends_with_signoff),
+        ("style_contains_emoji", style.contains_emoji),
+        ("style_contains_bullets", style.contains_bullets),
+        ("style_contains_question", style.contains_question),
+        ("style_uses_parentheses", style.uses_parentheses),
+        ("style_contains_exclamation", style.contains_exclamation),
+        ("style_has_long_sentences", style.has_long_sentences),
+        ("style_starts_with_list", style.starts_with_list),
+        ("style_contains_math_symbols", style.contains_math_symbols),
+        ("style_contains_blockquote", style.contains_blockquote),
+        ("style_contains_repetition", style.contains_repetition),
+        ("style_contains_numbered_steps", style.contains_numbered_steps),
+        ("style_contains_all_caps", style.contains_all_caps),
+        ("style_uses_first_person", style.uses_first_person),
+    ]
+    rows = []
+    for text in texts:
+        value = str(text or "")
+        rows.append([float(func(value)) for _name, func in feature_funcs])
+    return np.asarray(rows, dtype=float), [name for name, _func in feature_funcs]
+
+
+def _embedding_descriptor_scores(
+    texts: list[str],
+    descriptors: list[str],
+    *,
+    encoder_model: str = DEFAULT_DESCRIPTOR_ENCODER,
+) -> np.ndarray:
+    try:
+        from sentence_transformers import SentenceTransformer
+    except ImportError as exc:
+        raise ImportError(
+            "Behavioral-inertia analysis now requires sentence-transformers for "
+            "Naz-style adjective embedding scoring. Install requirements.txt or run "
+            "`pip install sentence-transformers`."
+        ) from exc
+
+    model = SentenceTransformer(encoder_model)
+    descriptor_embeddings = model.encode(
+        descriptors,
+        normalize_embeddings=True,
+        show_progress_bar=False,
+    )
+    text_embeddings = model.encode(
+        [str(text or "")[:TRUNCATE_CHARS] for text in texts],
+        normalize_embeddings=True,
+        batch_size=64,
+        show_progress_bar=False,
+    )
+    cosine_scores = np.asarray(text_embeddings @ descriptor_embeddings.T, dtype=float)
+    return np.log(np.clip((cosine_scores + 1.0) / 2.0, 1e-9, 1.0))
+
+
 def build_descriptor_matrix(
     texts_by_condition: dict[str, list[str]],
     *,
     descriptor_mode: str = "big5_style",
     include_style_scalars: bool = True,
+    include_style_binaries: bool = True,
+    encoder_model: str = DEFAULT_DESCRIPTOR_ENCODER,
 ) -> tuple[dict[str, np.ndarray], list[str]]:
     descriptors = descriptor_names(descriptor_mode)
     all_texts = [text for cond in CONDITIONS for text in texts_by_condition[cond]]
-    vectorizer = TfidfVectorizer(ngram_range=(1, 2), min_df=1, lowercase=True)
-    tfidf = vectorizer.fit_transform(descriptors + all_texts)
-    desc_mat = tfidf[: len(descriptors)]
-    text_mat = tfidf[len(descriptors) :]
-    sims = cosine_similarity(text_mat, desc_mat)
+    feature_blocks = [
+        _embedding_descriptor_scores(all_texts, descriptors, encoder_model=encoder_model)
+    ]
+    feature_names = list(descriptors)
 
     if include_style_scalars:
         scalars, scalar_names = _style_scalar_features(all_texts)
-        full = np.hstack([sims, scalars])
-        feature_names = descriptors + scalar_names
-    else:
-        full = sims
-        feature_names = descriptors
+        feature_blocks.append(scalars)
+        feature_names.extend(scalar_names)
+
+    if include_style_binaries:
+        binaries, binary_names = _style_binary_features(all_texts)
+        feature_blocks.append(binaries)
+        feature_names.extend(binary_names)
+
+    full = np.hstack(feature_blocks)
 
     n = len(texts_by_condition["source"])
     matrices = {}
@@ -230,6 +301,7 @@ def run_latent_analysis(
     disguised_col: str = "model_response",
     target_col: str = "target_response",
     descriptor_mode: str = "big5_style",
+    encoder_model: str = DEFAULT_DESCRIPTOR_ENCODER,
     k: int = 5,
     seed: int = 42,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
@@ -247,7 +319,11 @@ def run_latent_analysis(
         target_col=target_col,
     )
     texts = condition_texts(df)
-    matrices, feature_names = build_descriptor_matrix(texts, descriptor_mode=descriptor_mode)
+    matrices, feature_names = build_descriptor_matrix(
+        texts,
+        descriptor_mode=descriptor_mode,
+        encoder_model=encoder_model,
+    )
     scores, singular_values, V = factorize_joint(matrices, k=k)
     scores_df = latent_scores_df(df, scores)
     loads_df = loadings_df(V, feature_names)
@@ -268,6 +344,11 @@ def run_latent_analysis(
         "comparison_csv": str(comparison_csv),
         "source_responses": str(source_responses) if source_responses else None,
         "descriptor_mode": descriptor_mode,
+        "descriptor_backend": "sentence_transformer_embeddings",
+        "descriptor_encoder": encoder_model,
+        "descriptor_truncate_chars": TRUNCATE_CHARS,
+        "include_style_scalars": True,
+        "include_style_binaries": True,
         "n": int(len(df)),
         "k": int(min(k, len(singular_values))),
         "features": len(feature_names),
@@ -291,6 +372,7 @@ def main() -> None:
     parser.add_argument("--disguised-col", default="model_response")
     parser.add_argument("--target-col", default="target_response")
     parser.add_argument("--descriptor-mode", choices=["big5_style", "style_only"], default="big5_style")
+    parser.add_argument("--encoder-model", default=DEFAULT_DESCRIPTOR_ENCODER)
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
@@ -307,6 +389,7 @@ def main() -> None:
         disguised_col=args.disguised_col,
         target_col=args.target_col,
         descriptor_mode=args.descriptor_mode,
+        encoder_model=args.encoder_model,
         k=args.k,
         seed=args.seed,
     )
@@ -315,4 +398,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

@@ -7,7 +7,7 @@ import pandas as pd
 
 from .behavioral_inertia_metrics import compute_behavioral_metrics
 from .common import read_csv_robust, write_json
-from .latent_behavior_axes import plot_persistence_radar, run_latent_analysis
+from .latent_behavior_axes import DEFAULT_DESCRIPTOR_ENCODER, plot_persistence_radar, run_latent_analysis
 
 
 def run_behavioral_inertia(
@@ -23,6 +23,7 @@ def run_behavioral_inertia(
     disguised_col: str = "model_response",
     target_col: str = "target_response",
     descriptor_mode: str = "big5_style",
+    encoder_model: str = DEFAULT_DESCRIPTOR_ENCODER,
     k: int = 5,
     seed: int = 42,
     self_baseline_persistence: float | None = None,
@@ -40,6 +41,7 @@ def run_behavioral_inertia(
         disguised_col=disguised_col,
         target_col=target_col,
         descriptor_mode=descriptor_mode,
+        encoder_model=encoder_model,
         k=k,
         seed=seed,
     )
@@ -79,6 +81,7 @@ def main() -> None:
     parser.add_argument("--disguised-col", default="model_response")
     parser.add_argument("--target-col", default="target_response")
     parser.add_argument("--descriptor-mode", choices=["big5_style", "style_only"], default="big5_style")
+    parser.add_argument("--encoder-model", default=DEFAULT_DESCRIPTOR_ENCODER)
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--self-baseline-persistence", type=float)
@@ -96,6 +99,7 @@ def main() -> None:
         disguised_col=args.disguised_col,
         target_col=args.target_col,
         descriptor_mode=args.descriptor_mode,
+        encoder_model=args.encoder_model,
         k=args.k,
         seed=args.seed,
         self_baseline_persistence=args.self_baseline_persistence,
@@ -105,4 +109,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

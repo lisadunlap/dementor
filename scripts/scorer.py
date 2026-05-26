@@ -24,10 +24,7 @@ except Exception:
     try:
         import scripts.methods.utils.stylistic_analysis as _style  # type: ignore
     except Exception:
-        try:
-            import scripts.stylistic_analysis as _style  # type: ignore
-        except Exception:
-            _style = None
+        _style = None
 
 
 def _read_csv_robust(path: str) -> pd.DataFrame:

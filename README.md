@@ -35,6 +35,13 @@ python scripts/disguise.py \
 3. **Score** – `python -m scripts.scorer ...` for LLM judge + heuristics.
 4. **Review outputs** – CSVs in `data/results/<dataset>/...`; cache lives in `cache/llm_cache/`.
 
+The paper analysis path uses Naz's adjective-matching latent analysis:
+Big-Five + model-style descriptors are embedded with
+`sentence-transformers/all-MiniLM-L6-v2`, responses are scored against those
+descriptors, and joint SVD/probe metrics measure which behavioral axes move.
+Activation steering is a local Transformers-hooks rung after Tinker adapter
+export, not a Tinker remote-sampling feature.
+
 ## Disguise Options
 
 | Prompt Method | What it does | When to use |
@@ -89,7 +96,7 @@ dementor/
 │   ├── make_matrix_splits.py    # Deterministic dataset split builder for matrix runs
 │   ├── analysis/
 │   │   ├── behavioral_inertia_metrics.py  # Behavioral axis movement / residual signature metrics
-│   │   ├── latent_behavior_axes.py        # SVD/PCA-style latent behavior axis analysis
+│   │   ├── latent_behavior_axes.py        # Naz-style adjective scoring + SVD axes
 │   │   ├── activation_bridge.py           # Cross-model activation alignment utilities
 │   │   ├── activation_steering.py         # Local Transformers steering hooks
 │   │   └── run_intervention_ladder.py     # Aggregate prompting/SFT/DPO/steering outputs

@@ -3,6 +3,13 @@
 This package measures how much source-model behavior remains after a disguise
 intervention tries to make the source imitate a target.
 
+The latent analysis uses Naz's adjective-matching setup as the canonical
+feature representation: Big-Five + model-style descriptors are embedded with
+`sentence-transformers/all-MiniLM-L6-v2`, each response is scored by descriptor
+cosine similarity, and the resulting descriptor matrix is combined with
+deterministic style scalars/binary heuristics before joint SVD. The older
+TF-IDF approximation is intentionally not used for paper runs.
+
 ## End-to-end latent analysis
 
 ```bash

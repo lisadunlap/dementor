@@ -60,6 +60,9 @@ through Tinker/OpenAI workflows.
 pip install -r requirements.txt
 ```
 
+Behavioral-inertia analysis requires `sentence-transformers`; it is used for
+Naz-style Big-Five/model-style adjective scoring before the joint SVD.
+
 Tinker workflows (SFT/DPO adapters via Thinking Machines, and the
 `tinker` backend in `scripts/generate_responses.py`) require two
 extra packages that are not on PyPI:

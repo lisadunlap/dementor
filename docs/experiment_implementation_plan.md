@@ -6,9 +6,11 @@ specific model × method × dataset matrix, the order, the cost ceiling, and
 the open decisions that still need a human call before kicking off paid
 work.
 
-**Scope of this plan:** intervention ladder rungs 1–4 (prompting → example
-selection → SFT → DPO). Activation steering (rung 5) is explicitly out of
-scope for this run; see "Open decisions" for the deferred-extension note.
+**Scope of this plan:** intervention ladder rungs 1–5 (prompting → example
+selection → SFT → DPO → activation steering). Tinker is used for remote
+LoRA/SFT/DPO training and sampling; activation steering is run locally after
+exporting the relevant open-weight base model or adapter because Tinker remote
+sampling does not expose hidden-state hooks.
 
 ## Why the matrix is symmetric
 
@@ -16,10 +18,8 @@ Earlier drafts split models into "sources (fine-tunable)" and "targets
 (any responder)" — that asymmetry was an artifact of allowing closed
 frontier models and the OpenAI fine-tune API. We've dropped both:
 
-- **No closed frontier models.** Activation steering (a future extension)
-  needs hidden-state access, so the model universe needs to stay open
-  weights end-to-end. Locking that in now lets rung 5 drop in later
-  without rebuilding the matrix.
+- **No closed frontier models.** Activation steering needs hidden-state
+  access, so the model universe needs to stay open weights end-to-end.
 - **Tinker-only for SFT/DPO.** Avoids juggling multiple fine-tune
   providers with incompatible recipes.
 
@@ -162,8 +162,10 @@ layered system instead of LLM-as-judge as the primary signal.
      count, bullets, numbered items, code formatting, header markers,
      question marks, exclamations, hedging terms, reasoning markers,
      sentence-length ratio (`latent_behavior_axes._style_scalar_features`).
-   - 32 Big-5 personality descriptor projections via TF-IDF cosine
-     similarity (`latent_behavior_axes.build_descriptor_matrix`).
+   - Big-5 personality + model-style adjective projections via
+     sentence-transformer embedding cosine, transformed into log-similarity
+     scores (`latent_behavior_axes.build_descriptor_matrix`). This is the
+     canonical version of Naz's adjective-matching/SVD setup.
    - 20+ binary stylistic features (markdown, lists, code, greetings,
      signoffs, emojis, etc.) from `methods/utils/stylistic_analysis.py`.
 2. **Joint SVD across (source, disguised, target)** → 5 latent PCs
@@ -706,8 +708,9 @@ Still open:
 1. **Add gradient-boost probe alongside LogReg?** Trivial cost, closes
    one AAAI gap.
 2. **Pre-register on OSF?** Free, optional, strengthens paper.
-3. **Rung 5 (activation steering) deferred:** confirm we're shipping
-   rungs 1–4 first and adding rung 5 as Phase G in a follow-on.
+3. **Activation steering scope:** keep rung 5 on the open-weight cells where
+   we can run local Transformers hooks. Tinker can train/sample the adapters,
+   but hidden-state vector collection/injection happens outside Tinker.
 4. **5th dataset (TruthfulQA factual or XSTest refusal)?** Optional
    Phase G if reviewers push on broader regime coverage.
 5. **All-pairs cross-distribution OOD eval?** Currently only HumanEval

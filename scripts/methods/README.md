@@ -1,41 +1,52 @@
 # Disguise Methods
 
-## Baseline Methods
+Stable method names are registered in `scripts/methods/get_method.py`. Use
+these names with `scripts/disguise.py --method <name>`.
 
-### `random_sample_{i}_example` (`i=1,3,5`)
-Randomly samples `i` examples from the target model's responses
+## Headline Prompt Methods
 
 ### `just_name_it`
-Simply instructs the model to act like the target model
+Name-only baseline. The system prompt tells the source model to respond like
+the target model, without examples or learned behavioral rules.
 
-## Behavioral-Based Methods
+### `random_sampling`
+Few-shot baseline. Randomly samples target-model responses and gives them as
+reference examples.
 
-### `behavioral_based_disguise`
-Uses GPT-4o to identify the differences in behavioral traits between 2 models' responses and incorporate those differences into the system prompt
+### `stylistic`
+Surface-form baseline. Estimates measurable target formatting traits such as
+length, markdown use, bullets, headers, questions, and code blocks, then turns
+those traits into system-prompt guidance.
 
-### `behavioral_based_disguise_one_sided`
-Uses GPT-4o to identify the behavioral traits in target model responses and use these traits in the system prompt
+### `behavioral_based`
+Persona/profile baseline. Summarizes the target model's communication behavior
+and personality-like response tendencies into a system prompt.
+
+### `contrastive`
+Source-to-target delta prompt. Compares source and target examples, extracts
+behavioral differences, and asks the source model to apply those differences.
 
 ## Clustering Methods
 
 ### `stylistic_clustering`
-Clusters responses by stylistic features (length, formatting, etc.)
-- **Method**: K-modes clustering on style features (binary, categorical)
-- **Parameters**: `num_samples_per_disguise=5`, `sample_at_init=True`
+Clusters target examples by formatting/style heuristics and samples
+representative examples from the selected cluster.
 
 ### `stylistic_clustering_resample`
-Same as stylistic_clustering but resamples at each forward pass
-- **Method**: K-modes clustering on style features
-- **Parameters**: `num_samples_per_disguise=5`, `sample_at_init=False`
-
-### `behavioral_clustering`
-Clusters responses by behavioral style features that differentiate models:
-(1) GPT-4.1-mini identifies 10 behavioral axes that differentiate the 2 models; 
-(2) GPT-4.1-mini rates every target model response based on the 10 axes (behavioral features)
-- **Method**: K-means clustering on behavioral axes
-- **Parameters**: `num_samples_per_disguise=5`, `sample_at_init=True`
+Variant of `stylistic_clustering` that resamples examples on each forward pass.
+Useful as an ablation, not part of the current headline grid.
 
 ### `embedding_clustering`
-Clusters responses by text embedding differences between source and target, representative sampling based on semantic differences
-- **Method**: K-means clustering on embedding differences
-- **Parameters**: `num_samples_per_disguise=5`, `sample_at_init=True`
+Clusters examples in embedding space so the prompt receives semantically
+relevant target examples.
+
+### `behavioral_clustering`
+Clusters target examples using LLM-rated behavioral axes. This is the renamed
+successor to the older `vibe_clustering` path and is currently kept as an
+ablation candidate rather than a headline method.
+
+## Analysis Boundary
+
+Method code generates disguised outputs. Paper-level behavioral inertia,
+adjective matching, SVD axes, probes, activation bridge, and activation
+steering live under `scripts/analysis/`.
