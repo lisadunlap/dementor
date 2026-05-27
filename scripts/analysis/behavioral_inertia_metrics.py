@@ -15,6 +15,13 @@ from .common import CONDITIONS, read_csv_robust, write_json
 
 
 EPS = 1e-9
+NAN_PROBE_METRICS = {
+    "probe_cv_accuracy": float("nan"),
+    "source_residue": float("nan"),
+    "target_assimilation": float("nan"),
+    "mean_source_probability_disguised": float("nan"),
+    "mean_target_probability_disguised": float("nan"),
+}
 
 
 def movement_by_axis(
@@ -49,6 +56,10 @@ def anisotropy(movement: np.ndarray) -> float:
     return float(np.nanstd(valid))
 
 
+def axis_separation(source: np.ndarray, target: np.ndarray) -> np.ndarray:
+    return np.abs(np.nanmean(target, axis=0) - np.nanmean(source, axis=0))
+
+
 def train_source_target_probe(
     source: np.ndarray,
     target: np.ndarray,
@@ -58,14 +69,10 @@ def train_source_target_probe(
 ) -> dict:
     X = np.vstack([source, target])
     y = np.array([0] * len(source) + [1] * len(target))
+    if X.ndim != 2 or disguised.ndim != 2 or X.shape[1] == 0 or disguised.shape[1] == 0:
+        return dict(NAN_PROBE_METRICS)
     if len(set(y.tolist())) < 2 or len(y) < 4:
-        return {
-            "probe_cv_accuracy": float("nan"),
-            "source_residue": float("nan"),
-            "target_assimilation": float("nan"),
-            "mean_source_probability_disguised": float("nan"),
-            "mean_target_probability_disguised": float("nan"),
-        }
+        return dict(NAN_PROBE_METRICS)
 
     clf = make_pipeline(
         StandardScaler(),
@@ -96,6 +103,9 @@ def compute_behavioral_metrics(
     *,
     axis_prefix: str = "pc",
     seed: int = 42,
+    min_axis_separation: float = 0.10,
+    min_probe_accuracy: float = 0.70,
+    active_axes: Optional[list[str]] = None,
     self_baseline_persistence: Optional[float] = None,
 ) -> tuple[pd.DataFrame, dict]:
     axes = sorted(
@@ -113,15 +123,30 @@ def compute_behavioral_metrics(
         matrices[cond] = subset[axes].to_numpy(dtype=float)
 
     movement = movement_by_axis(matrices["source"], matrices["disguised"], matrices["target"])
-    persistence = source_persistence(movement)
-    aniso = anisotropy(movement)
+    separation = axis_separation(matrices["source"], matrices["target"])
+    if active_axes is None:
+        active_mask = separation >= float(min_axis_separation)
+    else:
+        active_set = set(active_axes)
+        active_mask = np.array([axis in active_set for axis in axes], dtype=bool)
+
+    active_movement = movement[active_mask]
+    persistence = source_persistence(active_movement)
+    aniso = anisotropy(active_movement)
     probe = train_source_target_probe(
-        matrices["source"], matrices["target"], matrices["disguised"], seed=seed
+        matrices["source"][:, active_mask],
+        matrices["target"][:, active_mask],
+        matrices["disguised"][:, active_mask],
+        seed=seed,
     )
+    probe_cv = probe.get("probe_cv_accuracy", float("nan"))
+    separable = bool(np.isfinite(probe_cv) and probe_cv >= float(min_probe_accuracy) and active_mask.any())
 
     per_axis = pd.DataFrame(
         {
             "axis": axes,
+            "axis_separation": separation,
+            "active_axis": active_mask,
             "movement": movement,
             "movement_clipped": np.clip(movement, 0.0, 1.0),
             "source_mean": np.nanmean(matrices["source"], axis=0),
@@ -133,6 +158,10 @@ def compute_behavioral_metrics(
     summary = {
         "n": int(len(matrices["source"])),
         "n_axes": int(len(axes)),
+        "n_active_axes": int(active_mask.sum()),
+        "min_axis_separation": float(min_axis_separation),
+        "min_probe_accuracy": float(min_probe_accuracy),
+        "separable": separable,
         "source_persistence": persistence,
         "disguise_effect": float(1.0 - persistence) if np.isfinite(persistence) else float("nan"),
         "anisotropy": aniso,
@@ -150,11 +179,106 @@ def compute_behavioral_metrics(
     return per_axis, summary
 
 
+def _matrices_from_latent_scores(
+    latent_scores: pd.DataFrame,
+    axes: list[str],
+    row_ids: np.ndarray | None = None,
+) -> dict[str, np.ndarray]:
+    matrices = {}
+    for cond in CONDITIONS:
+        subset = latent_scores[latent_scores["condition"] == cond].copy()
+        if "row_id" in subset.columns:
+            subset = subset.sort_values("row_id")
+        if row_ids is not None:
+            if "row_id" not in subset.columns:
+                subset = subset.iloc[row_ids]
+            else:
+                subset = subset.set_index("row_id").loc[row_ids].reset_index()
+        matrices[cond] = subset[axes].to_numpy(dtype=float)
+    return matrices
+
+
+def bootstrap_behavioral_metrics(
+    latent_scores: pd.DataFrame,
+    *,
+    active_axes: list[str],
+    axis_prefix: str = "pc",
+    samples: int = 1000,
+    seed: int = 42,
+) -> tuple[pd.DataFrame, dict]:
+    axes = sorted(
+        [c for c in latent_scores.columns if c.startswith(axis_prefix)],
+        key=lambda x: int(x[len(axis_prefix):]) if x[len(axis_prefix):].isdigit() else x,
+    )
+    if not axes:
+        raise ValueError(f"No latent axis columns with prefix '{axis_prefix}' found")
+    if samples <= 0:
+        return pd.DataFrame(), {}
+
+    active_set = set(active_axes)
+    active_mask = np.array([axis in active_set for axis in axes], dtype=bool)
+    if "row_id" in latent_scores.columns:
+        row_ids = np.sort(latent_scores["row_id"].unique())
+    else:
+        n = len(latent_scores[latent_scores["condition"] == CONDITIONS[0]])
+        row_ids = np.arange(n)
+
+    rng = np.random.default_rng(seed)
+    rows = []
+    for i in range(samples):
+        sampled = rng.choice(row_ids, size=len(row_ids), replace=True)
+        matrices = _matrices_from_latent_scores(latent_scores, axes, sampled)
+        movement = movement_by_axis(matrices["source"], matrices["disguised"], matrices["target"])
+        active_movement = movement[active_mask]
+        persistence = source_persistence(active_movement)
+        probe = train_source_target_probe(
+            matrices["source"][:, active_mask],
+            matrices["target"][:, active_mask],
+            matrices["disguised"][:, active_mask],
+            seed=seed + i,
+        )
+        rows.append(
+            {
+                "bootstrap_index": i,
+                "source_persistence": persistence,
+                "disguise_effect": float(1.0 - persistence) if np.isfinite(persistence) else float("nan"),
+                "source_residue": probe.get("source_residue", float("nan")),
+                "target_assimilation": probe.get("target_assimilation", float("nan")),
+                "mean_source_probability_disguised": probe.get("mean_source_probability_disguised", float("nan")),
+                "mean_target_probability_disguised": probe.get("mean_target_probability_disguised", float("nan")),
+            }
+        )
+
+    boot_df = pd.DataFrame(rows)
+    summary = {"bootstrap_samples": int(samples), "bootstrap_seed": int(seed)}
+    for metric in [
+        "source_persistence",
+        "disguise_effect",
+        "source_residue",
+        "target_assimilation",
+        "mean_source_probability_disguised",
+        "mean_target_probability_disguised",
+    ]:
+        vals = boot_df[metric].dropna().to_numpy(dtype=float)
+        vals = vals[np.isfinite(vals)]
+        if vals.size:
+            summary[f"{metric}_ci_low"] = float(np.quantile(vals, 0.025))
+            summary[f"{metric}_ci_high"] = float(np.quantile(vals, 0.975))
+        else:
+            summary[f"{metric}_ci_low"] = float("nan")
+            summary[f"{metric}_ci_high"] = float("nan")
+    return boot_df, summary
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Compute behavioral inertia metrics from latent scores.")
     parser.add_argument("--latent-scores", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--min-axis-separation", type=float, default=0.10)
+    parser.add_argument("--min-probe-accuracy", type=float, default=0.70)
+    parser.add_argument("--bootstrap-samples", type=int, default=0)
+    parser.add_argument("--bootstrap-seed", type=int, default=42)
     parser.add_argument("--self-baseline-persistence", type=float)
     args = parser.parse_args()
 
@@ -162,11 +286,23 @@ def main() -> None:
     per_axis, summary = compute_behavioral_metrics(
         latent,
         seed=args.seed,
+        min_axis_separation=args.min_axis_separation,
+        min_probe_accuracy=args.min_probe_accuracy,
         self_baseline_persistence=args.self_baseline_persistence,
     )
     out_dir = Path(args.output_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
     per_axis.to_csv(out_dir / "per_axis_movement.csv", index=False)
+    if args.bootstrap_samples > 0:
+        active_axes = per_axis.loc[per_axis["active_axis"], "axis"].astype(str).tolist()
+        boot_df, boot_summary = bootstrap_behavioral_metrics(
+            latent,
+            active_axes=active_axes,
+            samples=args.bootstrap_samples,
+            seed=args.bootstrap_seed,
+        )
+        boot_df.to_csv(out_dir / "bootstrap_summary.csv", index=False)
+        summary.update(boot_summary)
     write_json(out_dir / "summary.json", summary)
     print(f"Wrote metrics to {out_dir}")
 

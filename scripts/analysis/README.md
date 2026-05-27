@@ -7,8 +7,9 @@ The latent analysis uses Naz's adjective-matching setup as the canonical
 feature representation: Big-Five + model-style descriptors are embedded with
 `sentence-transformers/all-MiniLM-L6-v2`, each response is scored by descriptor
 cosine similarity, and the resulting descriptor matrix is combined with
-deterministic style scalars/binary heuristics before joint SVD. The older
-TF-IDF approximation is intentionally not used for paper runs.
+deterministic style scalars/binary heuristics. The source and target outputs
+fit the scaler and SVD basis; disguised outputs are projected into that fixed
+basis. The older TF-IDF approximation is intentionally not used for paper runs.
 
 ## End-to-end latent analysis
 
@@ -28,7 +29,40 @@ The comparison CSV should contain `prompt`, `model_response`, and
 the source outputs can be joined by prompt.
 
 Outputs include `latent_scores.csv`, `axis_loadings.csv`,
-`per_axis_movement.csv`, `summary.json`, and paper-style figures.
+`per_axis_movement.csv`, `bootstrap_summary.csv`, `summary.json`, and
+paper-style figures. `per_axis_movement.csv` marks low-separation inactive axes
+so headline persistence is computed only on axes where source and target are
+meaningfully separated.
+
+Save a reusable source/target basis for a model pair:
+
+```bash
+python3 -m scripts.analysis.run_behavioral_inertia \
+  --comparison-csv data/results/<dataset>/.../<source>_as_<target>.csv \
+  --source-responses data/model-responses/<dataset>/full/<source>.csv \
+  --output-dir data/results/<dataset>/analysis/<method>/<source>_as_<target> \
+  --save-basis data/results/<dataset>/analysis/bases/<source>_to_<target>.pkl
+```
+
+Use the same basis for another intervention on that source/target pair:
+
+```bash
+python3 -m scripts.analysis.run_behavioral_inertia \
+  --comparison-csv data/results/<dataset>/.../<source>_as_<target>_sft.csv \
+  --source-responses data/model-responses/<dataset>/full/<source>.csv \
+  --output-dir data/results/<dataset>/analysis/sft/<source>_as_<target> \
+  --load-basis data/results/<dataset>/analysis/bases/<source>_to_<target>.pkl
+```
+
+Run feature ablations with `--feature-set`:
+
+```bash
+--feature-set full            # adjective descriptors + style scalars + binary style heuristics
+--feature-set adjectives      # adjective descriptors only
+--feature-set style_scalars   # numeric length/format/style scalars only
+--feature-set style_binaries  # binary surface-style heuristics only
+--feature-set style_all       # style scalars + binary style heuristics
+```
 
 ## Activation bridge
 

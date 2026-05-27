@@ -5,9 +5,9 @@ from pathlib import Path
 
 import pandas as pd
 
-from .behavioral_inertia_metrics import compute_behavioral_metrics
+from .behavioral_inertia_metrics import bootstrap_behavioral_metrics, compute_behavioral_metrics
 from .common import read_csv_robust, write_json
-from .latent_behavior_axes import DEFAULT_DESCRIPTOR_ENCODER, plot_persistence_radar, run_latent_analysis
+from .latent_behavior_axes import DEFAULT_DESCRIPTOR_ENCODER, FEATURE_SETS, plot_persistence_radar, run_latent_analysis
 
 
 def run_behavioral_inertia(
@@ -24,8 +24,15 @@ def run_behavioral_inertia(
     target_col: str = "target_response",
     descriptor_mode: str = "big5_style",
     encoder_model: str = DEFAULT_DESCRIPTOR_ENCODER,
+    feature_set: str = "full",
+    save_basis: str | None = None,
+    load_basis: str | None = None,
     k: int = 5,
     seed: int = 42,
+    min_axis_separation: float = 0.10,
+    min_probe_accuracy: float = 0.70,
+    bootstrap_samples: int = 1000,
+    bootstrap_seed: int = 42,
     self_baseline_persistence: float | None = None,
 ) -> dict:
     out_dir = Path(output_dir)
@@ -42,6 +49,9 @@ def run_behavioral_inertia(
         target_col=target_col,
         descriptor_mode=descriptor_mode,
         encoder_model=encoder_model,
+        feature_set=feature_set,
+        save_basis_path=save_basis,
+        load_basis_path=load_basis,
         k=k,
         seed=seed,
     )
@@ -49,6 +59,8 @@ def run_behavioral_inertia(
     per_axis, metrics = compute_behavioral_metrics(
         scores_df,
         seed=seed,
+        min_axis_separation=min_axis_separation,
+        min_probe_accuracy=min_probe_accuracy,
         self_baseline_persistence=self_baseline_persistence,
     )
     per_axis.to_csv(out_dir / "per_axis_movement.csv", index=False)
@@ -64,6 +76,16 @@ def run_behavioral_inertia(
         "activation_bridge_mode": "none",
         "activation_source_probability_disguised": None,
     }
+    if bootstrap_samples > 0:
+        active_axes = per_axis.loc[per_axis["active_axis"], "axis"].astype(str).tolist()
+        boot_df, boot_summary = bootstrap_behavioral_metrics(
+            scores_df,
+            active_axes=active_axes,
+            samples=bootstrap_samples,
+            seed=bootstrap_seed,
+        )
+        boot_df.to_csv(out_dir / "bootstrap_summary.csv", index=False)
+        summary.update(boot_summary)
     write_json(out_dir / "summary.json", summary)
     return summary
 
@@ -82,8 +104,15 @@ def main() -> None:
     parser.add_argument("--target-col", default="target_response")
     parser.add_argument("--descriptor-mode", choices=["big5_style", "style_only"], default="big5_style")
     parser.add_argument("--encoder-model", default=DEFAULT_DESCRIPTOR_ENCODER)
+    parser.add_argument("--feature-set", choices=FEATURE_SETS, default="full")
+    parser.add_argument("--save-basis")
+    parser.add_argument("--load-basis")
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--min-axis-separation", type=float, default=0.10)
+    parser.add_argument("--min-probe-accuracy", type=float, default=0.70)
+    parser.add_argument("--bootstrap-samples", type=int, default=1000)
+    parser.add_argument("--bootstrap-seed", type=int, default=42)
     parser.add_argument("--self-baseline-persistence", type=float)
     args = parser.parse_args()
 
@@ -100,8 +129,15 @@ def main() -> None:
         target_col=args.target_col,
         descriptor_mode=args.descriptor_mode,
         encoder_model=args.encoder_model,
+        feature_set=args.feature_set,
+        save_basis=args.save_basis,
+        load_basis=args.load_basis,
         k=args.k,
         seed=args.seed,
+        min_axis_separation=args.min_axis_separation,
+        min_probe_accuracy=args.min_probe_accuracy,
+        bootstrap_samples=args.bootstrap_samples,
+        bootstrap_seed=args.bootstrap_seed,
         self_baseline_persistence=args.self_baseline_persistence,
     )
     print(pd.Series(summary).to_string())

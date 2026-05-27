@@ -152,7 +152,7 @@ layered system instead of LLM-as-judge as the primary signal.
 | 0 — floor | `baseline_persistence_{M,D}` — inter-seed persistence on the same model | `behavioral_inertia_metrics.compute_behavioral_metrics` called with three independent seeds of the same model in the source/disguised/target slots | Defines noise floor. One value per (model, dataset). Reported once. |
 | 1 — headline | `source_persistence(s, t, method, D)` normalized by tier 0 | `behavioral_inertia_metrics.source_persistence` | Y-axis of the main intervention-ladder figure. One value per (source, target, method, dataset) cell. |
 | 2 — confirmation | Logistic-regression probe metrics: `probe_cv_accuracy`, `source_residue`, `target_assimilation`, `mean_source_probability_disguised` | `behavioral_inertia_metrics.train_source_target_probe` | Second-opinion plot in supplementary. Independent ML metric that should agree with tier 1; disagreement is itself paper-worthy. |
-| 3 — diagnostic | Per-axis movement on the 5 latent PCs (joint SVD over source/disguised/target features) | `latent_behavior_axes.factorize_joint` + `movement_by_axis` | Decomposition figure showing which fingerprint dimensions are easy to move vs sticky. |
+| 3 — diagnostic | Per-axis movement on the 5 latent PCs (source/target-fitted SVD basis, disguised projected after fitting) | `latent_behavior_axes.factorize_fixed_basis` + `movement_by_axis` | Decomposition figure showing which fingerprint dimensions are easy to move vs sticky. |
 | 4 — calibration | LLM-judge stylistic-similarity scores on ~500 randomly-sampled (prompt, disguised, target) triples across the grid | `scorer.score_pairwise_dataframe` | One supplementary table: rank-correlation between heuristic persistence and judge stylistic score. Establishes the heuristic tracks human-aligned style judgment without per-cell judge cost. |
 
 ### Feature pipeline feeding tiers 1–3
@@ -168,14 +168,20 @@ layered system instead of LLM-as-judge as the primary signal.
      canonical version of Naz's adjective-matching/SVD setup.
    - 20+ binary stylistic features (markdown, lists, code, greetings,
      signoffs, emojis, etc.) from `methods/utils/stylistic_analysis.py`.
-2. **Joint SVD across (source, disguised, target)** → 5 latent PCs
-   (`latent_behavior_axes.factorize_joint`). Each output becomes a
-   5-vector in the same axes for all three conditions.
+2. **Source/target fixed basis** → fit a scaler and SVD basis on source and
+   target outputs only (`latent_behavior_axes.factorize_fixed_basis`).
+   Disguised outputs are projected into that basis after fitting, so an
+   intervention cannot define the axes used to evaluate itself. Save/load this
+   basis for all interventions on the same (source, target, dataset) cell.
 3. **Movement metric per axis:**
    `(disguised_mean − source_mean) / (target_mean − source_mean)`,
-   clipped to [0, 1] (`movement_by_axis`).
+   clipped to [0, 1] (`movement_by_axis`). Axes with source-target separation
+   below the configured threshold are marked inactive and excluded from the
+   headline aggregate.
 4. **Aggregate:** `source_persistence = 1 − mean(movement_clipped)`
-   over the 5 axes.
+   over active axes only. Report bootstrap 95% CIs over prompt resamples and
+   mark cells as headline-valid only when the source/target probe passes the
+   separability threshold.
 
 ### How the probe confirmation works
 

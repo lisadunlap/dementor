@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import argparse
 import os
+import pickle
+from dataclasses import dataclass
 from pathlib import Path
 
 import matplotlib
@@ -19,7 +21,6 @@ from .common import (
     descriptor_names,
     git_commit,
     normalize_comparison_df,
-    slugify,
     write_json,
 )
 
@@ -32,6 +33,27 @@ COND_COLORS = {
 
 DEFAULT_DESCRIPTOR_ENCODER = "sentence-transformers/all-MiniLM-L6-v2"
 TRUNCATE_CHARS = 600
+FEATURE_SETS = ("full", "adjectives", "style_scalars", "style_binaries", "style_all")
+
+
+@dataclass
+class BehavioralAxisBasis:
+    feature_names: list[str]
+    descriptor_mode: str
+    encoder_model: str
+    feature_set: str
+    scaler: StandardScaler
+    components: np.ndarray
+    singular_values: np.ndarray
+    fit_conditions: tuple[str, str] = ("source", "target")
+
+    def project(self, matrices: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
+        projected = {}
+        for cond, matrix in matrices.items():
+            X = np.nan_to_num(matrix, nan=0.0, posinf=0.0, neginf=0.0)
+            Xs = self.scaler.transform(X)
+            projected[cond] = Xs @ self.components.T
+        return projected
 
 
 def _style_scalar_features(texts: list[str]) -> tuple[np.ndarray, list[str]]:
@@ -72,8 +94,6 @@ def _style_scalar_features(texts: list[str]) -> tuple[np.ndarray, list[str]]:
         "style_sentence_length",
     ]
     X = np.asarray(rows, dtype=float)
-    if len(X) > 1:
-        X = StandardScaler().fit_transform(X)
     return X, names
 
 
@@ -144,27 +164,35 @@ def build_descriptor_matrix(
     texts_by_condition: dict[str, list[str]],
     *,
     descriptor_mode: str = "big5_style",
-    include_style_scalars: bool = True,
-    include_style_binaries: bool = True,
+    feature_set: str = "full",
     encoder_model: str = DEFAULT_DESCRIPTOR_ENCODER,
 ) -> tuple[dict[str, np.ndarray], list[str]]:
+    if feature_set not in FEATURE_SETS:
+        raise ValueError(f"Unsupported feature_set: {feature_set}")
+
     descriptors = descriptor_names(descriptor_mode)
     all_texts = [text for cond in CONDITIONS for text in texts_by_condition[cond]]
-    feature_blocks = [
-        _embedding_descriptor_scores(all_texts, descriptors, encoder_model=encoder_model)
-    ]
-    feature_names = list(descriptors)
+    feature_blocks = []
+    feature_names = []
 
-    if include_style_scalars:
+    if feature_set in {"full", "adjectives"}:
+        feature_blocks.append(
+            _embedding_descriptor_scores(all_texts, descriptors, encoder_model=encoder_model)
+        )
+        feature_names.extend(descriptors)
+
+    if feature_set in {"full", "style_scalars", "style_all"}:
         scalars, scalar_names = _style_scalar_features(all_texts)
         feature_blocks.append(scalars)
         feature_names.extend(scalar_names)
 
-    if include_style_binaries:
+    if feature_set in {"full", "style_binaries", "style_all"}:
         binaries, binary_names = _style_binary_features(all_texts)
         feature_blocks.append(binaries)
         feature_names.extend(binary_names)
 
+    if not feature_blocks:
+        raise ValueError(f"No feature blocks selected for feature_set: {feature_set}")
     full = np.hstack(feature_blocks)
 
     n = len(texts_by_condition["source"])
@@ -174,16 +202,78 @@ def build_descriptor_matrix(
     return matrices, feature_names
 
 
-def factorize_joint(matrices: dict[str, np.ndarray], k: int) -> tuple[dict[str, np.ndarray], np.ndarray, np.ndarray]:
-    X = np.vstack([matrices[cond] for cond in CONDITIONS])
-    X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
-    Xc = X - X.mean(axis=0, keepdims=True)
-    U, S, Vt = np.linalg.svd(Xc, full_matrices=False)
-    k = min(k, U.shape[1])
-    scores = U[:, :k] * S[:k]
-    n = len(matrices["source"])
-    by_cond = {cond: scores[i * n : (i + 1) * n] for i, cond in enumerate(CONDITIONS)}
-    return by_cond, S, Vt[:k].T
+def fit_behavioral_axis_basis(
+    matrices: dict[str, np.ndarray],
+    feature_names: list[str],
+    *,
+    descriptor_mode: str,
+    encoder_model: str,
+    feature_set: str,
+    k: int,
+) -> BehavioralAxisBasis:
+    reference = np.vstack([matrices["source"], matrices["target"]])
+    reference = np.nan_to_num(reference, nan=0.0, posinf=0.0, neginf=0.0)
+    scaler = StandardScaler()
+    reference_scaled = scaler.fit_transform(reference)
+    _U, S, Vt = np.linalg.svd(reference_scaled, full_matrices=False)
+    k = min(k, Vt.shape[0])
+    return BehavioralAxisBasis(
+        feature_names=feature_names,
+        descriptor_mode=descriptor_mode,
+        encoder_model=encoder_model,
+        feature_set=feature_set,
+        scaler=scaler,
+        components=Vt[:k],
+        singular_values=S,
+    )
+
+
+def save_basis(basis: BehavioralAxisBasis, path: str | Path) -> None:
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("wb") as handle:
+        pickle.dump(basis, handle)
+
+
+def load_basis(path: str | Path) -> BehavioralAxisBasis:
+    with Path(path).open("rb") as handle:
+        basis = pickle.load(handle)
+    if not isinstance(basis, BehavioralAxisBasis):
+        raise TypeError(f"Loaded object is not a BehavioralAxisBasis: {path}")
+    return basis
+
+
+def factorize_fixed_basis(
+    matrices: dict[str, np.ndarray],
+    feature_names: list[str],
+    *,
+    descriptor_mode: str,
+    encoder_model: str,
+    feature_set: str,
+    k: int,
+    basis: BehavioralAxisBasis | None = None,
+) -> tuple[dict[str, np.ndarray], np.ndarray, np.ndarray, BehavioralAxisBasis]:
+    if basis is None:
+        basis = fit_behavioral_axis_basis(
+            matrices,
+            feature_names,
+            descriptor_mode=descriptor_mode,
+            encoder_model=encoder_model,
+            feature_set=feature_set,
+            k=k,
+        )
+    else:
+        if basis.feature_names != feature_names:
+            raise ValueError("Loaded basis feature names do not match current feature extraction")
+        if basis.descriptor_mode != descriptor_mode:
+            raise ValueError("Loaded basis descriptor_mode does not match current run")
+        if basis.encoder_model != encoder_model:
+            raise ValueError("Loaded basis encoder_model does not match current run")
+        if basis.feature_set != feature_set:
+            raise ValueError("Loaded basis feature_set does not match current run")
+
+    scores = basis.project(matrices)
+    return scores, basis.singular_values, basis.components.T, basis
 
 
 def latent_scores_df(df: pd.DataFrame, scores: dict[str, np.ndarray]) -> pd.DataFrame:
@@ -302,6 +392,9 @@ def run_latent_analysis(
     target_col: str = "target_response",
     descriptor_mode: str = "big5_style",
     encoder_model: str = DEFAULT_DESCRIPTOR_ENCODER,
+    feature_set: str = "full",
+    save_basis_path: str | Path | None = None,
+    load_basis_path: str | Path | None = None,
     k: int = 5,
     seed: int = 42,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
@@ -322,9 +415,21 @@ def run_latent_analysis(
     matrices, feature_names = build_descriptor_matrix(
         texts,
         descriptor_mode=descriptor_mode,
+        feature_set=feature_set,
         encoder_model=encoder_model,
     )
-    scores, singular_values, V = factorize_joint(matrices, k=k)
+    loaded_basis = load_basis(load_basis_path) if load_basis_path else None
+    scores, singular_values, V, basis = factorize_fixed_basis(
+        matrices,
+        feature_names,
+        descriptor_mode=descriptor_mode,
+        encoder_model=encoder_model,
+        feature_set=feature_set,
+        k=k,
+        basis=loaded_basis,
+    )
+    if save_basis_path:
+        save_basis(basis, save_basis_path)
     scores_df = latent_scores_df(df, scores)
     loads_df = loadings_df(V, feature_names)
 
@@ -347,8 +452,11 @@ def run_latent_analysis(
         "descriptor_backend": "sentence_transformer_embeddings",
         "descriptor_encoder": encoder_model,
         "descriptor_truncate_chars": TRUNCATE_CHARS,
-        "include_style_scalars": True,
-        "include_style_binaries": True,
+        "feature_set": feature_set,
+        "basis_fit_conditions": list(basis.fit_conditions),
+        "basis_path_saved": str(save_basis_path) if save_basis_path else None,
+        "basis_path_loaded": str(load_basis_path) if load_basis_path else None,
+        "basis_fit_excludes_disguised": True,
         "n": int(len(df)),
         "k": int(min(k, len(singular_values))),
         "features": len(feature_names),
@@ -373,6 +481,9 @@ def main() -> None:
     parser.add_argument("--target-col", default="target_response")
     parser.add_argument("--descriptor-mode", choices=["big5_style", "style_only"], default="big5_style")
     parser.add_argument("--encoder-model", default=DEFAULT_DESCRIPTOR_ENCODER)
+    parser.add_argument("--feature-set", choices=FEATURE_SETS, default="full")
+    parser.add_argument("--save-basis")
+    parser.add_argument("--load-basis")
     parser.add_argument("--k", type=int, default=5)
     parser.add_argument("--seed", type=int, default=42)
     args = parser.parse_args()
@@ -390,6 +501,9 @@ def main() -> None:
         target_col=args.target_col,
         descriptor_mode=args.descriptor_mode,
         encoder_model=args.encoder_model,
+        feature_set=args.feature_set,
+        save_basis_path=args.save_basis,
+        load_basis_path=args.load_basis,
         k=args.k,
         seed=args.seed,
     )

@@ -38,7 +38,9 @@ python scripts/disguise.py \
 The paper analysis path uses Naz's adjective-matching latent analysis:
 Big-Five + model-style descriptors are embedded with
 `sentence-transformers/all-MiniLM-L6-v2`, responses are scored against those
-descriptors, and joint SVD/probe metrics measure which behavioral axes move.
+descriptors, and a source/target-only fixed SVD basis measures which
+behavioral axes move. Disguised outputs are projected into that basis; they do
+not define the axes used to evaluate them.
 Activation steering is a local Transformers-hooks rung after Tinker adapter
 export, not a Tinker remote-sampling feature.
 
