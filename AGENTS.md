@@ -35,6 +35,7 @@ All methods inherit from `MethodBase` and expose `forward(prompt: str)`.
   - Use `openai` for OpenAI or OpenAI-compatible endpoints.
 - `scripts/disguise.py`: apply disguise methods.
 - `scripts/scorer.py`: score single files or pairwise disguised-vs-target outputs.
+- `scripts/analysis/behavioral_cell_evaluator.py`: preferred paper-level evaluator for one `(dataset, source, target)` cell; fits one basis, computes source self-baseline, runs all methods, attaches calibration/activation evidence, and writes feature-ablation stability tables.
 - `scripts/analysis/run_behavioral_inertia.py`: latent behavioral-axis analysis.
 - `scripts/analysis/activation_bridge.py`: representation probes without intervention.
 - `scripts/analysis/activation_steering.py`: local Transformers activation steering.
@@ -45,7 +46,7 @@ All methods inherit from `MethodBase` and expose `forward(prompt: str)`.
 1. Generate or import base responses into `data/model-responses/`.
 2. Apply disguise methods into `data/results/<dataset>/comparisons/...`.
 3. Score comparisons with `scripts.scorer`.
-4. Run behavioral-inertia analysis on each comparison CSV.
+4. For paper runs, use `scripts.analysis.behavioral_cell_evaluator` so every intervention in the same source-target cell shares the same saved behavioral basis.
 5. Aggregate summaries with `scripts.analysis.run_intervention_ladder`.
 
 Use local CSVs as the reproducible source of truth. Old BAIR/cthulu-only

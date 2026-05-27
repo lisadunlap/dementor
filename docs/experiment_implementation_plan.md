@@ -608,8 +608,10 @@ Designed so cheap+fast work surfaces problems before expensive jobs start.
   - Add HumanEval-aware wrapper to `scripts/disguise.py`.
 - **Tier 0 baselines**
   - Generate baseline runs: 4 models × 4 datasets × 3 seeds = 48 jobs.
-  - Compute `baseline_persistence_{M,D}` for each of the 16 (model,
-    dataset) combinations.
+  - Compute source self-baseline persistence through
+    `scripts.analysis.behavioral_cell_evaluator`, using independent source
+    runs projected into the same fixed source-target basis used by the
+    intervention methods.
 - **Training-data cache**
   - Generate target responses on the train splits: 4 models × 3 train
     datasets × 500 prompts = 6000 generations.
@@ -651,12 +653,17 @@ Designed so cheap+fast work surfaces problems before expensive jobs start.
 ### Phase E — calibration sample
 - Sample 500 (prompt, disguised, target) triples uniformly at random
   across all Phase B + C + D cells.
-- Run `scorer.score_pairwise_dataframe` with gpt-4.1-mini judge on the
-  sample.
+- Run `scripts.analysis.behavioral_cell_evaluator` with
+  `calibration_judge_model=gpt-4.1-mini`, or attach pre-scored calibration CSVs
+  through each method manifest entry.
 - Compute Spearman correlation between heuristic persistence and judged
   stylistic-similarity.
 
 ### Phase F — aggregate
+- `python -m scripts.analysis.behavioral_cell_evaluator --manifest <cell.json>`
+  for each `(dataset, source, target)` cell. This fits one basis per cell,
+  computes source self-baseline normalization, attaches activation bridge
+  summaries, and writes feature-ablation stability tables.
 - `python -m scripts.analysis.run_intervention_ladder` over the full grid.
 - Produce the headline figure: persistence vs intervention strength,
   one line per (source, target) pair, with tier 0 floor.
@@ -676,7 +683,7 @@ Designed so cheap+fast work surfaces problems before expensive jobs start.
 | Cross-model generality | △ | 4 models / 4 labs covers Meta + Alibaba + NVIDIA + OpenAI-open. Missing Google, Microsoft, Mistral, Z.ai, DeepSeek. Limited by Tinker's supported set. |
 | Human eval as ground truth | ✗ | We only calibrate against LLM-judge, not human raters. Strongest version of the paper would add ~50-item human stylistic-similarity rating on the calibration sample. |
 | Probe robustness | △ | Single classifier family (LogReg). Adding a non-linear probe (gradient boost or small MLP) as robustness check would close this gap; cheap to add. |
-| Feature ablation | ✗ | Currently no ablation on which feature subsets (scalars only, descriptors only, binary features only) drive the persistence signal. Easy to add as supplementary. |
+| Feature ablation | ✓ | `behavioral_cell_evaluator` reruns the cell under configured feature families and writes `feature_ablation_stability.csv`. |
 | Pre-registration | ✗ | Metric and methods could be pre-registered with OSF before any Phase B run. Optional but strengthens the paper. |
 
 **Verdict:** This is AAAI-rigorous **on the core method and the

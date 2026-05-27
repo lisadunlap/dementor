@@ -64,6 +64,64 @@ Run feature ablations with `--feature-set`:
 --feature-set style_all       # style scalars + binary style heuristics
 ```
 
+## Paper cell runner
+
+For conference runs, prefer the cell-level runner over manually invoking
+`run_behavioral_inertia.py` on each method. It enforces the paper invariant that
+all interventions in one `(dataset, source_model, target_model)` cell reuse the
+same source-target behavioral basis.
+
+Minimal manifest:
+
+```json
+{
+  "dataset": "gsm8k",
+  "source_model": "meta-llama/Meta-Llama-3.1-8B-Instruct",
+  "target_model": "Qwen/Qwen3.6-27B",
+  "output_dir": "data/results/gsm8k/analysis/cells/llama_to_qwen",
+  "feature_set": "full",
+  "feature_ablation_sets": ["adjectives", "style_all", "style_scalars"],
+  "k": 5,
+  "bootstrap_samples": 1000,
+  "self_baseline": {
+    "source_runs": [
+      "data/model-responses/gsm8k/baselines/llama_seed0.csv",
+      "data/model-responses/gsm8k/baselines/llama_seed1.csv",
+      "data/model-responses/gsm8k/baselines/llama_seed2.csv"
+    ]
+  },
+  "methods": [
+    {
+      "method": "contrastive",
+      "comparison_csv": "data/results/gsm8k/comparisons/contrastive/llama_as_qwen.csv"
+    },
+    {
+      "method": "sft",
+      "comparison_csv": "data/results/gsm8k/comparisons/sft/llama_sft_as_qwen.csv",
+      "activation_summary": "data/results/gsm8k/analysis/activation_bridge/llama_sft_as_qwen/activation_summary.json"
+    }
+  ]
+}
+```
+
+Run it:
+
+```bash
+python3 -m scripts.analysis.behavioral_cell_evaluator --manifest path/to/cell.json
+```
+
+Outputs:
+- `basis/behavioral_axis_basis.pkl`: the single source-target basis reused for
+  all methods in the cell.
+- `self_baseline/summary.json`: source-run noise floor measured against the
+  same cell basis.
+- `methods/*/summary.json`: method-level behavioral metrics with normalized
+  persistence when a baseline is available.
+- `cell_summary.csv`: one row per method.
+- `calibration/`: optional LLM-judge or pre-scored calibration summaries.
+- `feature_ablations/feature_ablation_stability.csv`: robustness of the
+  headline metric across feature families.
+
 ## Activation bridge
 
 Use fixed-encoder mode for cross-model-family comparisons:

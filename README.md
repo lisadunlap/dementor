@@ -97,6 +97,7 @@ dementor/
 │   ├── scorer.py                # Single, pairwise, and compare scoring CLI
 │   ├── make_matrix_splits.py    # Deterministic dataset split builder for matrix runs
 │   ├── analysis/
+│   │   ├── behavioral_cell_evaluator.py   # Per source-target cell runner; fixed basis, baseline, ablations
 │   │   ├── behavioral_inertia_metrics.py  # Behavioral axis movement / residual signature metrics
 │   │   ├── latent_behavior_axes.py        # Naz-style adjective scoring + SVD axes
 │   │   ├── activation_bridge.py           # Cross-model activation alignment utilities
@@ -150,6 +151,7 @@ dementor/
 - Scoring: `python -m scripts.scorer single|pairwise|compare ...`
 - GSM8K SFT/DPO: `python -m workflows.run_gsm8k_workflow ...`
 - Conference matrix: `python -m workflows.run_matrix ...`
+- Behavioral cell evaluation: `python -m scripts.analysis.behavioral_cell_evaluator --manifest <cell.json>`
 - Behavioral inertia analysis: `python -m scripts.analysis.run_behavioral_inertia ...`
 - Intervention ladder aggregation: `python -m scripts.analysis.run_intervention_ladder ...`
 

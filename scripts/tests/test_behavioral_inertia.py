@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -22,6 +23,12 @@ from scripts.analysis.latent_behavior_axes import (
     save_basis,
 )
 from scripts.analysis.run_behavioral_inertia import run_behavioral_inertia
+from scripts.analysis.behavioral_cell_evaluator import (
+    BehavioralCellSpec,
+    MethodSpec,
+    SelfBaselineSpec,
+    run_behavioral_cell,
+)
 from scripts.analysis.activation_bridge import _parse_layers
 from scripts.analysis.activation_steering import parse_strengths, resolve_layer_index
 
@@ -205,6 +212,97 @@ class BehavioralInertiaCliTests(unittest.TestCase):
             self.assertTrue((out / "bootstrap_summary.csv").exists())
             self.assertEqual(summary["dataset"], "fixture")
             self.assertEqual(summary["method"], "contrastive")
+
+
+class BehavioralCellEvaluatorTests(unittest.TestCase):
+    def test_cell_runner_reuses_basis_and_writes_validation_artifacts(self) -> None:
+        fixture = Path("scripts/tests/fixtures/behavioral_inertia_comparison.csv")
+        source = pd.read_csv(fixture)[["prompt", "source_response"]]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            run0 = root / "source_seed0.csv"
+            run1 = root / "source_seed1.csv"
+            source.rename(columns={"source_response": "model_response"}).to_csv(run0, index=False)
+            varied = source.copy()
+            varied["source_response"] = varied["source_response"] + " Short answer."
+            varied.rename(columns={"source_response": "model_response"}).to_csv(run1, index=False)
+
+            activation_summary = root / "activation_summary.json"
+            activation_summary.write_text(
+                json.dumps(
+                    {
+                        "activation_bridge_mode": "fixed-encoder",
+                        "encoder_model": "fixture-encoder",
+                        "best_layer": 2,
+                        "probe_cv_accuracy": 0.8,
+                        "activation_source_probability_disguised": 0.7,
+                        "activation_target_probability_disguised": 0.3,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+            scored_a = root / "calibration_a.csv"
+            scored_b = root / "calibration_b.csv"
+            pd.DataFrame(
+                {
+                    "semantic_score": [3.0, 3.5],
+                    "stylistic_score": [2.0, 2.5],
+                    "heuristic_match_score": [0.4, 0.5],
+                }
+            ).to_csv(scored_a, index=False)
+            pd.DataFrame(
+                {
+                    "semantic_score": [3.5, 4.0],
+                    "stylistic_score": [3.0, 3.5],
+                    "heuristic_match_score": [0.6, 0.7],
+                }
+            ).to_csv(scored_b, index=False)
+
+            spec = BehavioralCellSpec(
+                dataset="fixture",
+                source_model="source-test",
+                target_model="target-test",
+                output_dir=str(root / "cell"),
+                feature_set="style_all",
+                feature_ablation_sets=["style_scalars"],
+                k=3,
+                bootstrap_samples=3,
+                methods=[
+                    MethodSpec(
+                        method="contrastive",
+                        comparison_csv=str(fixture),
+                        activation_summary=str(activation_summary),
+                        calibration_scored_csv=str(scored_a),
+                    ),
+                    MethodSpec(
+                        method="behavioral_based",
+                        comparison_csv=str(fixture),
+                        calibration_scored_csv=str(scored_b),
+                    ),
+                ],
+                self_baseline=SelfBaselineSpec(source_runs=[str(run0), str(run1)]),
+            )
+            summary = run_behavioral_cell(spec)
+            out = Path(summary["output_dir"])
+
+            self.assertTrue((out / "basis" / "behavioral_axis_basis.pkl").exists())
+            self.assertTrue((out / "cell_summary.csv").exists())
+            self.assertTrue((out / "self_baseline" / "summary.json").exists())
+            self.assertTrue((out / "calibration" / "calibration_summary.csv").exists())
+            self.assertTrue((out / "feature_ablations" / "feature_ablation_stability.csv").exists())
+            self.assertTrue(summary["has_self_baseline"])
+            self.assertTrue(summary["has_calibration"])
+            self.assertTrue(summary["has_feature_ablations"])
+
+            cell_df = pd.read_csv(out / "cell_summary.csv")
+            self.assertEqual(cell_df["basis_path"].nunique(), 1)
+            self.assertTrue(cell_df["self_baseline_normalized_persistence"].notna().all())
+
+            method_summary = json.loads((out / "methods" / "00_contrastive" / "summary.json").read_text())
+            self.assertEqual(method_summary["activation_bridge_mode"], "fixed-encoder")
+            self.assertEqual(method_summary["activation_probe_cv_accuracy"], 0.8)
 
 
 class ActivationBridgeUnitTests(unittest.TestCase):
