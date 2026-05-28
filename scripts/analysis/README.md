@@ -29,10 +29,14 @@ The comparison CSV should contain `prompt`, `model_response`, and
 the source outputs can be joined by prompt.
 
 Outputs include `latent_scores.csv`, `axis_loadings.csv`,
-`per_axis_movement.csv`, `bootstrap_summary.csv`, `summary.json`, and
-paper-style figures. `per_axis_movement.csv` marks low-separation inactive axes
-so headline persistence is computed only on axes where source and target are
-meaningfully separated.
+`per_axis_movement.csv`, `big5_dimension_scores.csv`,
+`big5_dimension_movement.csv`, `bootstrap_summary.csv`, `summary.json`, and
+paper-style figures when the selected feature set includes adjective
+descriptors. `per_axis_movement.csv` marks low-separation inactive axes so
+headline persistence is computed only on axes where source and target are
+meaningfully separated. `big5_dimension_movement.csv` is the direct named-axis
+diagnostic for claims such as Extraversion and Conscientiousness being the most
+plastic dimensions under intervention.
 
 Save a reusable source/target basis for a model pair:
 

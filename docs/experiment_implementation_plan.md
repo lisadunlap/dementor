@@ -138,21 +138,28 @@ ablation section needs them.
 
 ## Evaluation system
 
-The headline scientific claim is "source-model fingerprints persist
-across rungs of the intervention ladder, even after SFT and DPO." This
-requires a metric that is (a) deterministic and reproducible, (b)
-sensitive to stylistic drift, (c) defensible against single-metric
-artifacts, and (d) calibrated against human-aligned judgment. We use a
-layered system instead of LLM-as-judge as the primary signal.
+The headline scientific claim is "model identity is axis-specific:
+interventions move some personality/style dimensions much more than
+others, while residual source-model signatures persist across the
+intervention ladder." Early Dementor/Naz analyses suggest Extraversion
+and Conscientiousness are among the most plastic Big-Five dimensions, so
+the evaluator treats Big-Five movement as a first-class diagnostic rather
+than a post-hoc interpretation of PCs. This requires metrics that are (a)
+deterministic and reproducible, (b) sensitive to stylistic drift, (c)
+decomposable by behavioral dimension, (d) defensible against
+single-metric artifacts, and (e) calibrated against human-aligned
+judgment. We use a layered system instead of LLM-as-judge as the primary
+signal.
 
-### Four tiers of evaluation
+### Five tiers of evaluation
 
 | Tier | Metric | Code path | Role in the paper |
 | --- | --- | --- | --- |
 | 0 — floor | `baseline_persistence_{M,D}` — inter-seed persistence on the same model | `behavioral_inertia_metrics.compute_behavioral_metrics` called with three independent seeds of the same model in the source/disguised/target slots | Defines noise floor. One value per (model, dataset). Reported once. |
 | 1 — headline | `source_persistence(s, t, method, D)` normalized by tier 0 | `behavioral_inertia_metrics.source_persistence` | Y-axis of the main intervention-ladder figure. One value per (source, target, method, dataset) cell. |
 | 2 — confirmation | Logistic-regression probe metrics: `probe_cv_accuracy`, `source_residue`, `target_assimilation`, `mean_source_probability_disguised` | `behavioral_inertia_metrics.train_source_target_probe` | Second-opinion plot in supplementary. Independent ML metric that should agree with tier 1; disagreement is itself paper-worthy. |
-| 3 — diagnostic | Per-axis movement on the 5 latent PCs (source/target-fitted SVD basis, disguised projected after fitting) | `latent_behavior_axes.factorize_fixed_basis` + `movement_by_axis` | Decomposition figure showing which fingerprint dimensions are easy to move vs sticky. |
+| 3a — diagnostic | Per-axis movement on the 5 latent PCs (source/target-fitted SVD basis, disguised projected after fitting) | `latent_behavior_axes.factorize_fixed_basis` + `movement_by_axis` | Decomposition figure showing which fingerprint dimensions are easy to move vs sticky. |
+| 3b — named Big-Five plasticity | Direct movement on `EXT`, `AGR`, `CON`, `NEU`, `OPN` descriptor aggregates | `latent_behavior_axes.big5_dimension_scores_df` + `summarize_big5_dimension_movement` | Named-dimension table that can support claims such as "Extraversion and Conscientiousness move most." |
 | 4 — calibration | LLM-judge stylistic-similarity scores on ~500 randomly-sampled (prompt, disguised, target) triples across the grid | `scorer.score_pairwise_dataframe` | One supplementary table: rank-correlation between heuristic persistence and judge stylistic score. Establishes the heuristic tracks human-aligned style judgment without per-cell judge cost. |
 
 ### Feature pipeline feeding tiers 1–3
@@ -173,12 +180,17 @@ layered system instead of LLM-as-judge as the primary signal.
    Disguised outputs are projected into that basis after fitting, so an
    intervention cannot define the axes used to evaluate itself. Save/load this
    basis for all interventions on the same (source, target, dataset) cell.
-3. **Movement metric per axis:**
+3. **Movement metric per latent axis:**
    `(disguised_mean − source_mean) / (target_mean − source_mean)`,
    clipped to [0, 1] (`movement_by_axis`). Axes with source-target separation
    below the configured threshold are marked inactive and excluded from the
    headline aggregate.
-4. **Aggregate:** `source_persistence = 1 − mean(movement_clipped)`
+4. **Direct Big-Five plasticity:** for each Big-Five dimension, compute
+   positive-adjective mean minus reverse-adjective mean per response, then
+   apply the same source-to-target movement formula. This produces
+   `big5_dimension_movement.csv` with named dimensions, allowing claims about
+   Extraversion, Conscientiousness, etc. without relying solely on PC loadings.
+5. **Aggregate:** `source_persistence = 1 − mean(movement_clipped)`
    over active axes only. Report bootstrap 95% CIs over prompt resamples and
    mark cells as headline-valid only when the source/target probe passes the
    separability threshold.
@@ -212,26 +224,30 @@ rigorously.
 ### Self-baseline (tier 0) in detail
 
 For each (model, dataset), generate the same prompts 3 times with
-independent seeds. Plug runs 1/2/3 into the source/disguised/target slots
-of `compute_behavioral_metrics()`. The resulting `source_persistence`
-should be ~1.0 (no real movement, all three are the same model);
+independent seeds. For a given `(source, target, dataset)` cell, use seed
+0 as `source_response`, each other source seed as `model_response`, and
+the real target outputs as `target_response`, then project all rows into
+the same source-target basis used by the intervention methods. The
+resulting `source_persistence` estimates how much apparent movement
+toward the target arises from ordinary source-model sampling variance;
 deviation from 1.0 is the **noise floor**. Cell-level persistence values
 are then reported as `persistence / baseline_persistence` to factor out
 that floor.
 
 These 3 baseline runs per model double as the **source-response cache**
 used by every disguise cell where that model is the source — no
-duplicated generation cost.
+duplicated generation cost. The baseline is computed per target cell
+because the denominator is the source-to-target behavioral direction.
 
 ### Statistical reporting
 
 - Each cell: 500 prompts × 3 seeds = 1500 outputs.
 - CIs on persistence and probe metrics via bootstrap (1000 resamples)
   over the 1500 outputs.
-- Paired tests (paired t or Wilcoxon signed-rank, per-prompt) for
-  rung-to-rung comparisons within each (source, target, dataset) cell.
-- Multiple-comparison correction (Benjamini–Hochberg) across cells in
-  the headline figure.
+- Still needed for final paper tables: paired tests (paired t or
+  Wilcoxon signed-rank, per-prompt) for rung-to-rung comparisons within
+  each `(source, target, dataset)` cell, plus Benjamini–Hochberg
+  multiple-comparison correction across headline cells.
 
 ### Why this beats LLM-as-judge as the primary metric
 

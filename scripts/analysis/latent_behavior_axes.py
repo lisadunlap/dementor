@@ -16,6 +16,7 @@ import pandas as pd
 from sklearn.preprocessing import StandardScaler
 
 from .common import (
+    BIG5,
     CONDITIONS,
     condition_texts,
     descriptor_names,
@@ -34,6 +35,13 @@ COND_COLORS = {
 DEFAULT_DESCRIPTOR_ENCODER = "sentence-transformers/all-MiniLM-L6-v2"
 TRUNCATE_CHARS = 600
 FEATURE_SETS = ("full", "adjectives", "style_scalars", "style_binaries", "style_all")
+BIG5_LABELS = {
+    "EXT": "Extraversion",
+    "AGR": "Agreeableness",
+    "CON": "Conscientiousness",
+    "NEU": "Neuroticism",
+    "OPN": "Openness",
+}
 
 
 @dataclass
@@ -200,6 +208,69 @@ def build_descriptor_matrix(
     for i, cond in enumerate(CONDITIONS):
         matrices[cond] = full[i * n : (i + 1) * n]
     return matrices, feature_names
+
+
+def big5_dimension_scores_df(
+    df: pd.DataFrame,
+    matrices: dict[str, np.ndarray],
+    feature_names: list[str],
+) -> pd.DataFrame:
+    feature_index = {name: idx for idx, name in enumerate(feature_names)}
+    trait_indices = {}
+    for trait, adjectives in BIG5.items():
+        midpoint = len(adjectives) // 2
+        positive = [feature_index[word] for word in adjectives[:midpoint] if word in feature_index]
+        reverse = [feature_index[word] for word in adjectives[midpoint:] if word in feature_index]
+        if positive and reverse:
+            trait_indices[trait] = (positive, reverse)
+    if not trait_indices:
+        return pd.DataFrame()
+
+    rows = []
+    prompts = df["prompt"].astype(str).tolist()
+    for cond in CONDITIONS:
+        matrix = matrices[cond]
+        for row_id, prompt in enumerate(prompts):
+            row = {"row_id": row_id, "prompt": prompt, "condition": cond}
+            for trait, (positive, reverse) in trait_indices.items():
+                row[trait] = float(np.nanmean(matrix[row_id, positive]) - np.nanmean(matrix[row_id, reverse]))
+            rows.append(row)
+    return pd.DataFrame(rows)
+
+
+def summarize_big5_dimension_movement(big5_scores: pd.DataFrame) -> pd.DataFrame:
+    traits = [trait for trait in BIG5_LABELS if trait in big5_scores.columns]
+    if not traits:
+        return pd.DataFrame()
+
+    rows = []
+    by_condition = {
+        cond: big5_scores[big5_scores["condition"] == cond][traits].to_numpy(dtype=float)
+        for cond in CONDITIONS
+    }
+    source_mean = np.nanmean(by_condition["source"], axis=0)
+    disguised_mean = np.nanmean(by_condition["disguised"], axis=0)
+    target_mean = np.nanmean(by_condition["target"], axis=0)
+    denom = target_mean - source_mean
+    movement = np.full(len(traits), np.nan, dtype=float)
+    mask = np.abs(denom) > 1e-9
+    movement[mask] = (disguised_mean[mask] - source_mean[mask]) / denom[mask]
+    clipped = np.clip(movement, 0.0, 1.0)
+    for idx, trait in enumerate(traits):
+        rows.append(
+            {
+                "dimension": trait,
+                "label": BIG5_LABELS[trait],
+                "axis_separation": float(abs(denom[idx])),
+                "movement": float(movement[idx]) if np.isfinite(movement[idx]) else np.nan,
+                "movement_clipped": float(clipped[idx]) if np.isfinite(clipped[idx]) else np.nan,
+                "source_persistence": float(1.0 - clipped[idx]) if np.isfinite(clipped[idx]) else np.nan,
+                "source_mean": float(source_mean[idx]),
+                "disguised_mean": float(disguised_mean[idx]),
+                "target_mean": float(target_mean[idx]),
+            }
+        )
+    return pd.DataFrame(rows)
 
 
 def fit_behavioral_axis_basis(
@@ -432,9 +503,15 @@ def run_latent_analysis(
         save_basis(basis, save_basis_path)
     scores_df = latent_scores_df(df, scores)
     loads_df = loadings_df(V, feature_names)
+    big5_scores = big5_dimension_scores_df(df, matrices, feature_names)
+    big5_movement = summarize_big5_dimension_movement(big5_scores)
 
     scores_df.to_csv(out_dir / "latent_scores.csv", index=False)
     loads_df.to_csv(out_dir / "axis_loadings.csv", index=False)
+    if not big5_scores.empty:
+        big5_scores.to_csv(out_dir / "big5_dimension_scores.csv", index=False)
+    if not big5_movement.empty:
+        big5_movement.to_csv(out_dir / "big5_dimension_movement.csv", index=False)
 
     title = f"{source_model} -> {target_model} | {method}"
     plot_pcs(scores, singular_values, figures_dir / "paper_pcs.png", title=title)
@@ -463,6 +540,20 @@ def run_latent_analysis(
         "variance_explained": var[: min(k, len(var))].tolist(),
         "git_commit": git_commit(),
     }
+    if not big5_movement.empty:
+        ranked = big5_movement.dropna(subset=["movement_clipped"]).sort_values(
+            ["movement_clipped", "axis_separation"],
+            ascending=[False, False],
+        )
+        config["big5_direct_diagnostics"] = True
+        config["big5_dimensions"] = big5_movement["dimension"].tolist()
+        if not ranked.empty:
+            config["most_plastic_big5_dimension"] = str(ranked.iloc[0]["label"])
+            config["most_plastic_big5_movement"] = float(ranked.iloc[0]["movement_clipped"])
+            config["least_plastic_big5_dimension"] = str(ranked.iloc[-1]["label"])
+            config["least_plastic_big5_movement"] = float(ranked.iloc[-1]["movement_clipped"])
+    else:
+        config["big5_direct_diagnostics"] = False
     write_json(out_dir / "config.json", config)
     return scores_df, loads_df, config
 

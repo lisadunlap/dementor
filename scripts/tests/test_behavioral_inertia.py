@@ -16,11 +16,13 @@ from scripts.analysis.behavioral_inertia_metrics import (
     source_persistence,
 )
 from scripts.analysis.latent_behavior_axes import (
+    big5_dimension_scores_df,
     build_descriptor_matrix,
     factorize_fixed_basis,
     fit_behavioral_axis_basis,
     load_basis,
     save_basis,
+    summarize_big5_dimension_movement,
 )
 from scripts.analysis.run_behavioral_inertia import run_behavioral_inertia
 from scripts.analysis.behavioral_cell_evaluator import (
@@ -188,6 +190,30 @@ class BehavioralAxisBasisTests(unittest.TestCase):
         self.assertNotEqual(len(scalar_names), len(binary_names))
         self.assertEqual(scalar_mats["source"].shape[1], len(scalar_names))
         self.assertEqual(binary_mats["source"].shape[1], len(binary_names))
+
+    def test_big5_dimension_movement_reports_direct_plasticity(self) -> None:
+        feature_names = [
+            "talkative",
+            "bold",
+            "withdrawn",
+            "quiet",
+            "organized",
+            "efficient",
+            "careless",
+            "disorganized",
+        ]
+        matrices = {
+            "source": np.array([[0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 1.0, 1.0]]),
+            "disguised": np.array([[0.5, 0.5, 0.5, 0.5, 0.75, 0.75, 0.25, 0.25]]),
+            "target": np.array([[1.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0]]),
+        }
+        df = pd.DataFrame({"prompt": ["p"]})
+        scores = big5_dimension_scores_df(df, matrices, feature_names)
+        movement = summarize_big5_dimension_movement(scores)
+        by_dim = movement.set_index("dimension")
+        self.assertAlmostEqual(by_dim.loc["EXT", "movement_clipped"], 0.5)
+        self.assertAlmostEqual(by_dim.loc["CON", "movement_clipped"], 0.75)
+        self.assertEqual(by_dim.loc["CON", "label"], "Conscientiousness")
 
 
 class BehavioralInertiaCliTests(unittest.TestCase):
