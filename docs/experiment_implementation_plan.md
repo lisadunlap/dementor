@@ -121,7 +121,7 @@ training-set outputs (rejected) vs the target's training-set outputs
 | 1 prompt | `just_name_it` | none | weakest intervention — name-only |
 | 2 examples | `random_sampling` | target responses | k-shot baseline |
 | 2 examples | `stylistic` | target responses | surface-form rules |
-| 2 examples | `behavioral_based` | target responses | inferred persona profile |
+| 2 examples | `behavioral` | target responses | inferred behavioral rules |
 | 2 examples | `contrastive` | source + target | source→target deltas |
 | 2 examples (clustering) | `stylistic_clustering` | source + target | needs `kmodes` |
 | 2 examples (clustering) | `embedding_clustering` | source + target | needs embedding provider |
