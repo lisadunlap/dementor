@@ -41,6 +41,8 @@ Big-Five + model-style descriptors are embedded with
 descriptors, and a source/target-only fixed SVD basis measures which
 behavioral axes move. Disguised outputs are projected into that basis; they do
 not define the axes used to evaluate them.
+See `docs/evaluation_framework.md` for the canonical evaluator definition,
+artifact schema, and interpretation guidance.
 Activation steering is a local Transformers-hooks rung after Tinker adapter
 export, not a Tinker remote-sampling feature.
 
@@ -87,6 +89,7 @@ dementor/
 ├── main.py                      # Thin compatibility CLI; prefer direct scripts below
 ├── docs/
 │   ├── conference_experiment_plan.md      # Framing and conference-level experiment plan
+│   ├── evaluation_framework.md            # Canonical behavioral-inertia evaluator definition
 │   ├── experiment_implementation_plan.md  # Concrete matrix/model/run plan
 │   └── local_generation.md                # Local HF/vLLM/provider generation notes
 ├── examples/

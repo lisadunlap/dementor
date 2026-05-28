@@ -138,6 +138,10 @@ ablation section needs them.
 
 ## Evaluation system
 
+For the canonical implementation-facing evaluator documentation, see
+`docs/evaluation_framework.md`. This section summarizes the role of that
+evaluator in the conference experiment plan.
+
 The headline scientific claim is "model identity is axis-specific:
 interventions move some personality/style dimensions much more than
 others, while residual source-model signatures persist across the

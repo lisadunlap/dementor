@@ -41,6 +41,10 @@ All methods inherit from `MethodBase` and expose `forward(prompt: str)`.
 - `scripts/analysis/activation_steering.py`: local Transformers activation steering.
 - `workflows/run_gsm8k_workflow.py`: dry-run or launch GSM8K SFT/DPO workflows.
 
+Canonical evaluator documentation lives in `docs/evaluation_framework.md`.
+Use it as the source of truth for metric definitions, manifest shape, artifact
+interpretation, and paper claim boundaries.
+
 ### Data Flow
 
 1. Generate or import base responses into `data/model-responses/`.

@@ -3,6 +3,10 @@
 This package measures how much source-model behavior remains after a disguise
 intervention tries to make the source imitate a target.
 
+For the canonical paper-facing definition of the evaluator, including the
+manifest schema, artifact schema, metric interpretations, and claim boundaries,
+see `docs/evaluation_framework.md`.
+
 The latent analysis uses Naz's adjective-matching setup as the canonical
 feature representation: Big-Five + model-style descriptors are embedded with
 `sentence-transformers/all-MiniLM-L6-v2`, each response is scored by descriptor
