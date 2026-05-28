@@ -1,10 +1,8 @@
-# Conference Experiment — Implementation Plan
+# Experiment Implementation Plan
 
-Concrete execution-level companion to `docs/conference_experiment_plan.md`.
-That doc states the claim and the eight-step framing; this doc fixes the
-specific model × method × dataset matrix, the order, the cost ceiling, and
-the open decisions that still need a human call before kicking off paid
-work.
+Concrete execution-level plan for the model × method × dataset matrix, run
+order, cost ceiling, and open decisions that still need a human call before
+kicking off paid work.
 
 **Scope of this plan:** intervention ladder rungs 1–5 (prompting → example
 selection → SFT → DPO → activation steering). Tinker is used for remote
@@ -25,7 +23,7 @@ frontier models and the OpenAI fine-tune API. We've dropped both:
 
 Result: every model in the matrix is **both a source and a target**. The
 matrix is N×N symmetric on the same model set, which gives clean
-within-pair comparability and avoids cherry-picking which models get
+within-pair comparability and prevents cherry-picking which models get
 which role.
 
 ## Model shortlist — 4 open-weight, Tinker-trainable
@@ -43,7 +41,7 @@ Tinker's published model list as of 2026-05.
 **Pre-flight check:** before Phase D, run
 `python -c "from tinker import ServiceClient; from workflows.tinker import list_available_models; print('\n'.join(list_available_models(ServiceClient())))"`
 and confirm each of the four model IDs above is in the returned list. If
-any disappear, fall back to the closest supported sibling and update this
+any disappear, fall back to the closest available sibling and update this
 table.
 
 ## Dataset shortlist
@@ -65,8 +63,7 @@ train + eval would leave both sides underpowered. Making it eval-only
 turns it into a **cross-distribution generalization test**: fine-tuning
 happens on math + chat training prompts, then we measure whether the
 learned fingerprint shift persists on code prompts the source never saw
-during training. That's a stronger paper claim than co-training on code
-would be.
+during training. This is a stricter test than co-training on code.
 
 Statistical power:
 
@@ -140,30 +137,28 @@ ablation section needs them.
 
 For the canonical implementation-facing evaluator documentation, see
 `docs/evaluation_framework.md`. This section summarizes the role of that
-evaluator in the conference experiment plan.
+evaluator in the experiment plan.
 
-The headline scientific claim is "model identity is axis-specific:
-interventions move some personality/style dimensions much more than
-others, while residual source-model signatures persist across the
-intervention ladder." Early Dementor/Naz analyses suggest Extraversion
-and Conscientiousness are among the most plastic Big-Five dimensions, so
-the evaluator treats Big-Five movement as a first-class diagnostic rather
-than a post-hoc interpretation of PCs. This requires metrics that are (a)
+The evaluator measures whether model identity is axis-specific: interventions
+may move some personality/style dimensions more than others, while residual
+source-model signatures remain measurable across the intervention ladder. Early
+Dementor/Naz analyses suggest Extraversion and Conscientiousness are useful
+Big-Five diagnostics, so the evaluator records Big-Five movement directly
+rather than only through PC loadings. This requires metrics that are (a)
 deterministic and reproducible, (b) sensitive to stylistic drift, (c)
-decomposable by behavioral dimension, (d) defensible against
-single-metric artifacts, and (e) calibrated against human-aligned
-judgment. We use a layered system instead of LLM-as-judge as the primary
-signal.
+decomposable by behavioral dimension, (d) robust to single-metric artifacts,
+and (e) calibrated against human-aligned judgment. We use a layered system
+instead of LLM-as-judge as the primary signal.
 
 ### Five tiers of evaluation
 
-| Tier | Metric | Code path | Role in the paper |
+| Tier | Metric | Code path | Role in evaluation |
 | --- | --- | --- | --- |
 | 0 — floor | `baseline_persistence_{M,D}` — inter-seed persistence on the same model | `behavioral_inertia_metrics.compute_behavioral_metrics` called with three independent seeds of the same model in the source/disguised/target slots | Defines noise floor. One value per (model, dataset). Reported once. |
 | 1 — headline | `source_persistence(s, t, method, D)` normalized by tier 0 | `behavioral_inertia_metrics.source_persistence` | Y-axis of the main intervention-ladder figure. One value per (source, target, method, dataset) cell. |
-| 2 — confirmation | Logistic-regression probe metrics: `probe_cv_accuracy`, `source_residue`, `target_assimilation`, `mean_source_probability_disguised` | `behavioral_inertia_metrics.train_source_target_probe` | Second-opinion plot in supplementary. Independent ML metric that should agree with tier 1; disagreement is itself paper-worthy. |
+| 2 — confirmation | Logistic-regression probe metrics: `probe_cv_accuracy`, `source_residue`, `target_assimilation`, `mean_source_probability_disguised` | `behavioral_inertia_metrics.train_source_target_probe` | Independent ML metric that should agree with tier 1; disagreement is itself informative. |
 | 3a — diagnostic | Per-axis movement on the 5 latent PCs (source/target-fitted SVD basis, disguised projected after fitting) | `latent_behavior_axes.factorize_fixed_basis` + `movement_by_axis` | Decomposition figure showing which fingerprint dimensions are easy to move vs sticky. |
-| 3b — named Big-Five plasticity | Direct movement on `EXT`, `AGR`, `CON`, `NEU`, `OPN` descriptor aggregates | `latent_behavior_axes.big5_dimension_scores_df` + `summarize_big5_dimension_movement` | Named-dimension table that can support claims such as "Extraversion and Conscientiousness move most." |
+| 3b — named Big-Five plasticity | Direct movement on `EXT`, `AGR`, `CON`, `NEU`, `OPN` descriptor aggregates | `latent_behavior_axes.big5_dimension_scores_df` + `summarize_big5_dimension_movement` | Named-dimension table for dimensions such as Extraversion and Conscientiousness. |
 | 4 — calibration | LLM-judge stylistic-similarity scores on ~500 randomly-sampled (prompt, disguised, target) triples across the grid | `scorer.score_pairwise_dataframe` | One supplementary table: rank-correlation between heuristic persistence and judge stylistic score. Establishes the heuristic tracks human-aligned style judgment without per-cell judge cost. |
 
 ### Feature pipeline feeding tiers 1–3
@@ -192,8 +187,8 @@ signal.
 4. **Direct Big-Five plasticity:** for each Big-Five dimension, compute
    positive-adjective mean minus reverse-adjective mean per response, then
    apply the same source-to-target movement formula. This produces
-   `big5_dimension_movement.csv` with named dimensions, allowing claims about
-   Extraversion, Conscientiousness, etc. without relying solely on PC loadings.
+   `big5_dimension_movement.csv` with named dimensions such as Extraversion
+   and Conscientiousness.
 5. **Aggregate:** `source_persistence = 1 − mean(movement_clipped)`
    over active axes only. Report bootstrap 95% CIs over prompt resamples and
    mark cells as headline-valid only when the source/target probe passes the
@@ -248,10 +243,9 @@ because the denominator is the source-to-target behavioral direction.
 - Each cell: 500 prompts × 3 seeds = 1500 outputs.
 - CIs on persistence and probe metrics via bootstrap (1000 resamples)
   over the 1500 outputs.
-- Still needed for final paper tables: paired tests (paired t or
-  Wilcoxon signed-rank, per-prompt) for rung-to-rung comparisons within
-  each `(source, target, dataset)` cell, plus Benjamini–Hochberg
-  multiple-comparison correction across headline cells.
+- Paired tests (paired t or Wilcoxon signed-rank, per-prompt) compare
+  rung-to-rung differences within each `(source, target, dataset)` cell, with
+  Benjamini-Hochberg multiple-comparison correction across headline cells.
 
 ### Why this beats LLM-as-judge as the primary metric
 
@@ -260,7 +254,7 @@ because the denominator is the source-to-target behavioral direction.
 | Determinism | Fully reproducible (fixed seed; deterministic features) | Stochastic; varies across judge runs |
 | Per-cell cost | ~50 ms CPU after generation | $0.40–$2.00 per cell |
 | Known biases | Documented + linear, fixable | Length, position, fluency-over-correctness, model-family bias |
-| Interpretability | `persistence = 0.7` → 70% of source character remains; per-axis decomposition shows which fingerprints survive | Single 1–4 score with no axis decomposition |
+| Decomposition | `persistence = 0.7` records 70% source-side persistence; per-axis decomposition shows which dimensions remain | Single 1-4 score with no axis decomposition |
 | Independent confirmation | Probe is a different ML model class on the same features | Hard to get a second-opinion judge of equal trust |
 
 LLM-judge is retained as tier 4 calibration only — establishes that the
@@ -305,10 +299,10 @@ practical reductions:
 
 ### Cross-distribution generalization (HumanEval + all-pairs out-of-dist)
 
-The strongest version of the persistence claim shows that fingerprint
-shifts learned via SFT/DPO on one dataset *generalize* to held-out
-distributions, including a distribution (HumanEval) that the source
-model never saw during training. For each FT'd model:
+The cross-distribution check measures whether fingerprint shifts learned via
+SFT/DPO on one dataset *generalize* to held-out distributions, including a
+distribution (HumanEval) that the source model never saw during training. For
+each FT'd model:
 
 - Evaluate on HumanEval (the eval-only dataset): 108 FT'd models per
   rung × 492 generations = 53k per rung × 2 rungs = **106k**.
@@ -430,7 +424,7 @@ hardcodes `llama3`; this needs a per-source mapping:
 
 | Source | renderer_name | Notes |
 | --- | --- | --- |
-| `meta-llama/Llama-3.1-8B-Instruct` | `llama3` | already supported |
+| `meta-llama/Llama-3.1-8B-Instruct` | `llama3` | already wired |
 | `Qwen/Qwen3.6-27B` | TBD via `list_available_models()` capabilities; likely `qwen3` | Phase A pre-flight |
 | `nvidia/Nemotron-3-Nano-30B-A3B` | TBD | Phase A pre-flight |
 | `openai/gpt-oss-20b` | TBD | Phase A pre-flight |
@@ -690,7 +684,7 @@ Designed so cheap+fast work surfaces problems before expensive jobs start.
 - Produce the probe-agreement supplementary plot.
 - Produce per-axis movement decomposition.
 
-## AAAI rigor self-assessment
+## Rigor Self-Assessment
 
 | Criterion | Status | Notes |
 | --- | --- | --- |
@@ -700,19 +694,13 @@ Designed so cheap+fast work surfaces problems before expensive jobs start.
 | Multiple metrics agreeing | ✓ | Persistence + probe + per-axis decomposition. Disagreement is informative, not fatal. |
 | Baseline / noise floor | ✓ | Tier 0 inter-seed baseline normalizes the headline metric. |
 | Cross-dataset generality | ✓✓ | 4 datasets across 4 distinct regimes (math / conversational / code / creative). HumanEval is eval-only, doubling as a cross-distribution generalization test. |
-| Cross-model generality | △ | 4 models / 4 labs covers Meta + Alibaba + NVIDIA + OpenAI-open. Missing Google, Microsoft, Mistral, Z.ai, DeepSeek. Limited by Tinker's supported set. |
-| Human eval as ground truth | ✗ | We only calibrate against LLM-judge, not human raters. Strongest version of the paper would add ~50-item human stylistic-similarity rating on the calibration sample. |
+| Cross-model generality | △ | 4 models / 4 labs covers Meta + Alibaba + NVIDIA + OpenAI-open. Missing Google, Microsoft, Mistral, Z.ai, DeepSeek. Limited by Tinker's available set. |
+| Human eval as ground truth | ✗ | We only calibrate against LLM-judge, not human raters. A stronger version would add a ~50-item human stylistic-similarity rating on the calibration sample. |
 | Probe robustness | △ | Single classifier family (LogReg). Adding a non-linear probe (gradient boost or small MLP) as robustness check would close this gap; cheap to add. |
 | Feature ablation | ✓ | `behavioral_cell_evaluator` reruns the cell under configured feature families and writes `feature_ablation_stability.csv`. |
-| Pre-registration | ✗ | Metric and methods could be pre-registered with OSF before any Phase B run. Optional but strengthens the paper. |
+| Pre-registration | ✗ | Metric and methods could be pre-registered with OSF before any Phase B run. Optional but strengthens reproducibility. |
 
-**Verdict:** This is AAAI-rigorous **on the core method and the
-statistical reporting**. The gaps are at the edges: dataset count, lab
-diversity, human-eval ground truth, probe robustness, and feature
-ablation. None are blocking; all can be addressed in supplementary
-material or as Phase G additions if reviewers push back.
-
-Strongest version of the paper would add:
+Additional robustness checks:
 - A 5th dataset (TruthfulQA factual hedging or refusal-style benchmark
   like XSTest) to cover an even broader axis
 - Non-linear probe (gradient boost) as tier 2 robustness check
@@ -738,9 +726,9 @@ Resolved:
   cross-distribution generalization probe
 
 Still open:
-1. **Add gradient-boost probe alongside LogReg?** Trivial cost, closes
-   one AAAI gap.
-2. **Pre-register on OSF?** Free, optional, strengthens paper.
+1. **Add gradient-boost probe alongside LogReg?** Trivial cost and improves
+   probe robustness.
+2. **Pre-register on OSF?** Free, optional, strengthens reproducibility.
 3. **Activation steering scope:** keep rung 5 on the open-weight cells where
    we can run local Transformers hooks. Tinker can train/sample the adapters,
    but hidden-state vector collection/injection happens outside Tinker.

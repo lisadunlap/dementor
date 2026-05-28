@@ -87,5 +87,5 @@ python scripts/generate_responses.py \
 ### Tips
 
 - Keep `workflows/run_gsm8k_workflow.py` authoritative for new hyperparameters so teammates can dry-run the exact config before submitting paid jobs.
-- If you experiment with different schedules, document the command and output directory here to avoid ambiguity.
+- If you experiment with different schedules, document the command and output directory here to keep runs unambiguous.
 - Always regenerate responses and scores after retraining; cached CSVs in `data/results/gsm8k/...` do not update automatically.

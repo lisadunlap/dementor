@@ -3,8 +3,8 @@
 This package measures how much source-model behavior remains after a disguise
 intervention tries to make the source imitate a target.
 
-For the canonical paper-facing definition of the evaluator, including the
-manifest schema, artifact schema, metric interpretations, and claim boundaries,
+For the canonical evaluator definition, including the manifest schema, artifact
+schema, and metric field definitions,
 see `docs/evaluation_framework.md`.
 
 The latent analysis uses Naz's adjective-matching setup as the canonical
@@ -13,7 +13,8 @@ feature representation: Big-Five + model-style descriptors are embedded with
 cosine similarity, and the resulting descriptor matrix is combined with
 deterministic style scalars/binary heuristics. The source and target outputs
 fit the scaler and SVD basis; disguised outputs are projected into that fixed
-basis. The older TF-IDF approximation is intentionally not used for paper runs.
+basis. The older TF-IDF approximation is intentionally not used for the current
+evaluator.
 
 ## End-to-end latent analysis
 
@@ -35,12 +36,11 @@ the source outputs can be joined by prompt.
 Outputs include `latent_scores.csv`, `axis_loadings.csv`,
 `per_axis_movement.csv`, `big5_dimension_scores.csv`,
 `big5_dimension_movement.csv`, `bootstrap_summary.csv`, `summary.json`, and
-paper-style figures when the selected feature set includes adjective
+analysis figures when the selected feature set includes adjective
 descriptors. `per_axis_movement.csv` marks low-separation inactive axes so
 headline persistence is computed only on axes where source and target are
 meaningfully separated. `big5_dimension_movement.csv` is the direct named-axis
-diagnostic for claims such as Extraversion and Conscientiousness being the most
-plastic dimensions under intervention.
+diagnostic for dimensions such as Extraversion and Conscientiousness.
 
 Save a reusable source/target basis for a model pair:
 
@@ -72,12 +72,12 @@ Run feature ablations with `--feature-set`:
 --feature-set style_all       # style scalars + binary style heuristics
 ```
 
-## Paper cell runner
+## Cell Runner
 
-For conference runs, prefer the cell-level runner over manually invoking
-`run_behavioral_inertia.py` on each method. It enforces the paper invariant that
-all interventions in one `(dataset, source_model, target_model)` cell reuse the
-same source-target behavioral basis.
+For multi-method runs, prefer the cell-level runner over manually invoking
+`run_behavioral_inertia.py` on each method. It enforces the basis-reuse
+invariant that all interventions in one `(dataset, source_model, target_model)`
+cell reuse the same source-target behavioral basis.
 
 Minimal manifest:
 

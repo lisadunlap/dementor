@@ -24,8 +24,7 @@ The method registry is [scripts/methods/get_method.py](/Users/EthanLiu/Documents
 
 ## Recommended Ladder
 
-For the paper, treat the methods as an intervention ladder rather than as
-isolated tricks:
+Treat the methods as an intervention ladder rather than as isolated tricks:
 
 1. `just_name_it`: name-only imitation.
 2. `random_sampling`: in-context target examples.

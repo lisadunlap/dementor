@@ -22,7 +22,7 @@ python scripts/disguise.py \
 
 ## Reference Docs
 - `AGENTS.md` – repo guidance + coding conventions.
-- `docs/conference_experiment_plan.md` – eight-step conference plan for behavioral-inertia experiments.
+- `docs/experiment_implementation_plan.md` – matrix and run-count planning notes.
 - `docs/local_generation.md` – HF/vLLM/provider routing (includes the local vLLM walkthrough).
 - `workflows/README.md` – GSM8K SFT/DPO orchestration + Tinker adapter registry.
 - `METHODS.md` – stable disguise method names and the intervention ladder.
@@ -35,14 +35,14 @@ python scripts/disguise.py \
 3. **Score** – `python -m scripts.scorer ...` for LLM judge + heuristics.
 4. **Review outputs** – CSVs in `data/results/<dataset>/...`; cache lives in `cache/llm_cache/`.
 
-The paper analysis path uses Naz's adjective-matching latent analysis:
+The behavioral analysis path uses Naz's adjective-matching latent analysis:
 Big-Five + model-style descriptors are embedded with
 `sentence-transformers/all-MiniLM-L6-v2`, responses are scored against those
 descriptors, and a source/target-only fixed SVD basis measures which
 behavioral axes move. Disguised outputs are projected into that basis; they do
 not define the axes used to evaluate them.
 See `docs/evaluation_framework.md` for the canonical evaluator definition,
-artifact schema, and interpretation guidance.
+artifact schema, and metric field definitions.
 Activation steering is a local Transformers-hooks rung after Tinker adapter
 export, not a Tinker remote-sampling feature.
 
@@ -78,7 +78,11 @@ python -m scripts.scorer pairwise \
 
 ## Directory Skeleton
 
-The repository is split into reusable experiment code, workflow orchestration, paper planning docs, and data artifacts. Treat `scripts/`, `workflows/`, `docs/`, `AGENTS.md`, `METHODS.md`, and `examples/` as the source-of-truth code/docs layer. Treat most of `data/model-responses/` and `data/results/` as experiment artifacts.
+The repository is split into reusable experiment code, workflow orchestration,
+planning docs, and data artifacts. Treat `scripts/`, `workflows/`, `docs/`,
+`AGENTS.md`, `METHODS.md`, and `examples/` as the source-of-truth code/docs
+layer. Treat most of `data/model-responses/` and `data/results/` as experiment
+artifacts.
 
 ```
 dementor/
@@ -88,7 +92,7 @@ dementor/
 ├── requirements.txt             # Core Python dependencies
 ├── main.py                      # Thin compatibility CLI; prefer direct scripts below
 ├── docs/
-│   ├── conference_experiment_plan.md      # Framing and conference-level experiment plan
+│   ├── behavioral_inertia_notes.md        # Historical behavioral-inertia notes
 │   ├── evaluation_framework.md            # Canonical behavioral-inertia evaluator definition
 │   ├── experiment_implementation_plan.md  # Concrete matrix/model/run plan
 │   └── local_generation.md                # Local HF/vLLM/provider generation notes
@@ -125,7 +129,7 @@ dementor/
 │   ├── tinker.py                 # Tinker LoRA/SFT/DPO backend and adapter registry
 │   ├── pipeline.py               # Shared workflow orchestration helpers
 │   ├── run_gsm8k_workflow.py     # Canonical GSM8K SFT/DPO entry point
-│   ├── run_matrix.py             # Conference matrix runner
+│   ├── run_matrix.py             # Matrix runner
 │   └── run_eval200_scoring.py    # Eval scoring orchestration
 ├── data/
 │   ├── datasets/                 # Prompt splits and benchmark inputs
@@ -133,7 +137,7 @@ dementor/
 │   ├── recovered/                # Recovered Naz/BayLearn-era artifacts
 │   ├── results/                  # Disguise outputs, scores, manifests, plots
 │   └── tinker_adapters.json      # Local registry of Tinker adapter/sampler paths
-├── figures/                      # Paper/report figures when materialized
+├── figures/                      # Report figures when materialized
 └── cache/
     └── llm_cache/                # Persistent API cache; ignored by git
 ```
@@ -141,7 +145,7 @@ dementor/
 ### What Belongs Where
 
 - **New disguise method**: add implementation under `scripts/methods/`, register it in `scripts/methods/get_method.py`, and document the stable method name in `METHODS.md`.
-- **New behavioral/latent metric**: add reusable code under `scripts/analysis/`; add a small fixture-backed test under `scripts/tests/` when the metric affects paper claims.
+- **New behavioral/latent metric**: add reusable code under `scripts/analysis/`; add a small fixture-backed test under `scripts/tests/` when the metric affects shared analysis behavior.
 - **New full experiment run**: add orchestration to `workflows/` and keep the generated outputs under `data/results/`.
 - **New model-response baseline**: write it under `data/model-responses/<dataset>/...`; commit only curated/provenance-critical baselines.
 - **Generated matrix artifacts**: keep them local under `data/model-responses/matrix_baselines/`, `data/results/matrix/`, or `data/results/workflows/<run>/`. These are ignored by git while Tinker jobs are running.
@@ -153,7 +157,7 @@ dementor/
 - Prompt disguise: `python scripts/disguise.py ...`
 - Scoring: `python -m scripts.scorer single|pairwise|compare ...`
 - GSM8K SFT/DPO: `python -m workflows.run_gsm8k_workflow ...`
-- Conference matrix: `python -m workflows.run_matrix ...`
+- Matrix workflow: `python -m workflows.run_matrix ...`
 - Behavioral cell evaluation: `python -m scripts.analysis.behavioral_cell_evaluator --manifest <cell.json>`
 - Behavioral inertia analysis: `python -m scripts.analysis.run_behavioral_inertia ...`
 - Intervention ladder aggregation: `python -m scripts.analysis.run_intervention_ladder ...`

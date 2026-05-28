@@ -1,26 +1,14 @@
 # Evaluation Framework
 
-This document is the canonical description of Dementor's current evaluator for
-paper runs. It explains what the evaluator measures, how it extends Naz's
-original latent adjective analysis, which artifacts it writes, and how to
-interpret the numbers.
+This document describes Dementor's current evaluator. It covers the input
+schema, how the evaluator extends Naz's latent adjective analysis, the manifest
+format, metric fields, and output artifacts.
 
 ## One-Sentence Summary
 
-Dementor evaluates whether a source model can imitate a target model by fitting
-a behavioral coordinate system from source and target outputs only, projecting
-intervention outputs into that fixed system, and measuring which latent and
-named personality/style dimensions move toward the target.
-
-The central claim supported by this evaluator is **axis-specific behavioral
-plasticity**:
-
-- Some dimensions, such as Extraversion and Conscientiousness in the current
-  Naz-style Big Five analysis, may move substantially under intervention.
-- Other dimensions retain source-model residue even after prompting, SFT, DPO,
-  or activation steering.
-- The paper should therefore report not only whether mimicry works, but which
-  dimensions are plastic and which dimensions are sticky.
+Dementor fits a behavioral coordinate system from source and target outputs
+only, projects intervention outputs into that fixed system, and records movement
+over latent and named personality/style dimensions.
 
 ## Relationship To Naz's `naz_updated` Branch
 
@@ -34,25 +22,24 @@ Naz's branch introduced the core latent-analysis idea in `latent_analysis.py`:
 - Per-PC movement/persistence plots.
 - A source-vs-target linear probe.
 
-The current `ethan` branch preserves that core idea but hardens it for paper
-evaluation:
+The current `ethan` branch preserves that core idea and turns it into reusable
+evaluation code:
 
 - The Big Five adjective lists are identical to Naz's lists.
 - The style list contains Naz's descriptors plus a small set of model-style
   additions: `analytical`, `step-by-step`, `didactic`, `skeptical`, and
   `safety-conscious`.
-- The exploratory joint SVD is replaced for paper runs by a fixed basis fit on
+- The exploratory joint SVD is replaced by a fixed basis fit on
   source and target only. Disguised/intervention outputs are projected after
   fitting, so an intervention cannot define its own evaluation axes.
 - Cell-level runs reuse exactly one saved basis across all intervention methods
   for the same `(dataset, source_model, target_model)` cell.
-- Direct Big Five movement is written as a named diagnostic table, so claims
-  about Extraversion or Conscientiousness do not rely only on interpreting PC
-  loadings.
+- Direct Big Five movement is written as a named diagnostic table, so named
+  dimensions can be inspected without relying only on PC loadings.
 
 ## Canonical Entry Point
 
-For paper runs, use the cell-level evaluator:
+For multi-method cell runs, use the cell-level evaluator:
 
 ```bash
 python3 -m scripts.analysis.behavioral_cell_evaluator --manifest path/to/cell.json
@@ -60,7 +47,7 @@ python3 -m scripts.analysis.behavioral_cell_evaluator --manifest path/to/cell.js
 
 Use `scripts.analysis.run_behavioral_inertia` only for a single comparison CSV,
 quick diagnostics, or manual debugging. The cell evaluator is preferred because
-it enforces the main paper invariant: one fixed source-target basis per cell.
+it enforces one fixed source-target basis per cell.
 
 ## Required Input Shape
 
@@ -133,9 +120,9 @@ Optional cell fields:
 
 | Field | Use |
 | --- | --- |
-| `descriptor_mode` | `big5_style` for paper runs; `style_only` for cheap style-only checks. |
+| `descriptor_mode` | `big5_style` for full evaluator runs; `style_only` for cheap style-only checks. |
 | `encoder_model` | Sentence-transformer encoder for adjective scoring. Defaults to `sentence-transformers/all-MiniLM-L6-v2`. |
-| `feature_set` | Primary feature family. Use `full` for paper runs. |
+| `feature_set` | Primary feature family. Use `full` for complete feature coverage. |
 | `feature_ablation_sets` | Extra feature families for robustness checks. |
 | `calibration_sample_size` | Number of rows per method to send to the LLM judge when not using pre-scored calibration. |
 | `calibration_judge_model` | Judge model for calibration, for example `openai/gpt-4.1-mini`. |
@@ -144,7 +131,7 @@ Optional cell fields:
 
 | Feature set | Contents | Role |
 | --- | --- | --- |
-| `full` | Big Five/style adjective embeddings + style scalars + binary style heuristics | Primary paper evaluator. |
+| `full` | Big Five/style adjective embeddings + style scalars + binary style heuristics | Complete feature set. |
 | `adjectives` | Big Five/style adjective embeddings only | Checks whether the result comes from Naz-style descriptors alone. |
 | `style_scalars` | Numeric length/format/style scalars only | Cheap deterministic surface-style ablation. |
 | `style_binaries` | Binary style heuristics only | Surface formatting ablation. |
@@ -237,76 +224,17 @@ Cell-level outputs:
 | `calibration/calibration_summary.csv` | Optional judge calibration means per method. |
 | `calibration/calibration_correlations.csv` | Optional correlations between evaluator metrics and judge scores. |
 
-Method-level `summary.json` fields:
+Common method-level `summary.json` fields:
 
-| Field | Interpretation |
+| Field | Description |
 | --- | --- |
-| `source_persistence` | Fraction of source behavior retained along active latent axes. Higher means stickier source identity. |
-| `disguise_effect` | `1 - source_persistence`. Higher means stronger movement toward target. |
-| `self_baseline_normalized_persistence` | Persistence divided by the source self-baseline. Use this for headline plots when available. |
-| `probe_cv_accuracy` | Whether source and target are separable in the evaluation space. Low values make the cell hard to interpret. |
+| `source_persistence` | Fraction of source-to-target latent movement that remains on the source side after clipping active axes to `[0, 1]`. |
+| `disguise_effect` | `1 - source_persistence`. |
+| `self_baseline_normalized_persistence` | Persistence divided by the source self-baseline when independent source runs are available. |
+| `probe_cv_accuracy` | Cross-validated source-vs-target probe accuracy in the evaluation space. |
 | `source_residue` | Fraction of intervention outputs classified as source-side by the probe. |
-| `target_assimilation` | Fraction classified as target-side by the probe. |
-| `mean_source_probability_disguised` | Soft source-side probability for intervention outputs. |
+| `target_assimilation` | Fraction of intervention outputs classified as target-side by the probe. |
+| `mean_source_probability_disguised` | Mean probe probability assigned to the source class for intervention outputs. |
 | `most_plastic_big5_dimension` | Named Big Five dimension with largest movement toward target. |
 | `least_plastic_big5_dimension` | Named Big Five dimension with smallest movement toward target. |
-| `activation_source_probability_disguised` | Optional representation-level source-side evidence from activation bridge. |
-
-## How To Interpret Results
-
-For the paper, report three complementary views:
-
-1. **Overall retention:** `self_baseline_normalized_persistence`.
-   This answers: does the intervention erase source-model behavior overall?
-
-2. **Distributional confirmation:** `source_residue`,
-   `target_assimilation`, and `mean_source_probability_disguised`.
-   This answers: do individual intervention outputs look source-side or
-   target-side?
-
-3. **Axis-specific plasticity:** `per_axis_movement.csv` and
-   `big5_dimension_movement.csv`.
-   This answers: which behavioral dimensions moved, and which remained sticky?
-
-A strong AAAI result would look like:
-
-- Some methods reduce source persistence, so the evaluator is not simply
-  declaring that every intervention fails.
-- Extraversion and Conscientiousness show high direct Big Five movement in many
-  cells, supporting axis-specific plasticity.
-- Other latent axes or named dimensions retain source residue, explaining why
-  global mimicry remains incomplete.
-- Feature ablations preserve the qualitative ranking.
-- Judge calibration positively correlates with the evaluator's style movement
-  metrics.
-
-## What Not To Claim
-
-The evaluator supports behavioral-output claims and, when activation bridge is
-run, representation-corroboration claims. It does not by itself prove:
-
-- That a specific weight subspace stores model identity.
-- That cross-model hidden states are directly aligned.
-- That Big Five terms describe human personality in LLMs in a literal
-  psychological sense.
-- That source identity can only be changed by pretraining.
-
-Safer wording:
-
-```text
-Interventions exhibit axis-specific behavioral plasticity: some personality and
-style dimensions move toward the target, while residual source-model signatures
-remain detectable under a fixed source-target behavioral basis.
-```
-
-## Current Gaps Before Final Paper Tables
-
-The code currently supports bootstrap confidence intervals. The final paper
-tables still need:
-
-- Paired rung-to-rung tests within each `(dataset, source, target)` cell.
-- Benjamini-Hochberg correction across headline comparisons.
-- A global calibration sample, ideally with both LLM-judge and a small human
-  style-rating subset.
-- Optional non-linear probe robustness if reviewers push on the linear probe.
-
+| `activation_source_probability_disguised` | Optional activation-bridge source probability for intervention outputs. |
