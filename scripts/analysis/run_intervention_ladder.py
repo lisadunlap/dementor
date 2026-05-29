@@ -53,6 +53,9 @@ def aggregate_ladder(summary_paths: list[str | Path]) -> pd.DataFrame:
                 "n": summary.get("n"),
                 "persistence": summary.get("persistence"),
                 "movement": summary.get("movement"),
+                "movement_raw": summary.get("movement_raw"),
+                "over_assimilation": summary.get("over_assimilation"),
+                "trustworthy": summary.get("trustworthy"),
                 "projection_persistence": summary.get("projection_persistence"),
                 "projection_disguise": summary.get("projection_disguise"),
                 "projection_persistence_all": summary.get("projection_persistence_all"),
@@ -101,12 +104,11 @@ def write_markdown(df: pd.DataFrame, path: Path) -> None:
         "target_model",
         "method",
         "persistence",
-        "projection_persistence",
-        "source_persistence",
+        "movement_raw",
+        "over_assimilation",
         "target_assimilation",
-        "source_residue",
-        "anisotropy",
         "probe_cv",
+        "trustworthy",
     ]
     cols = [c for c in cols if c in df.columns]
     path.parent.mkdir(parents=True, exist_ok=True)

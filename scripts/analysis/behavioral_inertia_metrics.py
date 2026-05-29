@@ -269,6 +269,12 @@ def compute_behavioral_metrics(
     )
     probe_cv = probe.get("probe_cv", float("nan"))
     separable = bool(np.isfinite(probe_cv) and probe_cv >= float(min_probe_accuracy) and active_mask.any())
+    # The headline persistence is only trustworthy when the probe can actually tell
+    # source from target (separable) and persistence is finite. over_assimilation
+    # flags disguised outputs that overshoot the target on the source->target axis
+    # (movement_raw > 1), which clip to persistence 0 and are otherwise hidden.
+    over_assimilation = bool(np.isfinite(feature_movement_raw) and feature_movement_raw > 1.0)
+    trustworthy = bool(separable and np.isfinite(feature_persistence))
 
     per_axis = pd.DataFrame(
         {
@@ -291,6 +297,8 @@ def compute_behavioral_metrics(
         "min_axis_separation": float(min_axis_separation),
         "min_probe_accuracy": float(min_probe_accuracy),
         "separable": separable,
+        "trustworthy": trustworthy,
+        "over_assimilation": over_assimilation,
         "persistence": feature_persistence,
         "movement": feature_movement,
         "movement_raw": feature_movement_raw,

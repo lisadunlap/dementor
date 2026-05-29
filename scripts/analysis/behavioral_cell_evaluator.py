@@ -594,6 +594,8 @@ def _run_core(
                 "basis_path": str(basis_path),
                 "n_active_axes": summary.get("n_active_axes"),
                 "sep_ratio": summary.get("sep_ratio"),
+                "trustworthy": summary.get("trustworthy"),
+                "over_assimilation": summary.get("over_assimilation"),
                 "persistence": summary.get("persistence"),
                 "movement": summary.get("movement"),
                 "movement_raw": summary.get("movement_raw"),
@@ -834,7 +836,7 @@ def _calibration_summary(
     for calibration_metric in ("stylistic_score_mean", "semantic_score_mean", "heuristic_match_score_mean"):
         if calibration_metric not in merged.columns:
             continue
-        for behavioral_metric in ("source_persistence", "norm_persistence", "target_assimilation"):
+        for behavioral_metric in ("persistence", "source_persistence", "norm_persistence", "target_assimilation"):
             if behavioral_metric not in merged.columns:
                 continue
             pair = merged[[behavioral_metric, calibration_metric]].apply(pd.to_numeric, errors="coerce").dropna()

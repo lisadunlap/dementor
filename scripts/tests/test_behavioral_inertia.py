@@ -140,6 +140,7 @@ class BehavioralInertiaMetricTests(unittest.TestCase):
         self.assertEqual(per_axis["active_axis"].tolist(), [False, False])
         self.assertEqual(summary["n_active_axes"], 0)
         self.assertFalse(summary["separable"])
+        self.assertFalse(summary["trustworthy"])  # not separable -> not trustworthy
         self.assertTrue(np.isnan(summary["probe_cv"]))
 
     def test_bootstrap_summary(self) -> None:

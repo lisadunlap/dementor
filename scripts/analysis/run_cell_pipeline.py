@@ -133,16 +133,19 @@ def generate(args, gen: Path) -> None:
                          clean_model=source, render_model=source, temperature=args.temperature, seed=1,
                          parallel=args.parallel, out_path=out_path, label=f"rung {method_name}")
 
-    # Adapter rungs: SFT, DPO (seed1) via Tinker sampler paths.
+    # Adapter rungs: SFT, DPO via Tinker sampler paths, over `adapter_seeds` seeds.
+    # seed1 keeps the legacy filename rung_{rung}.csv; seeds 2+ are rung_{rung}_seed{n}.csv.
     for rung in ("sft", "dpo"):
-        alias = f"{rung}_{args.dataset}_{args.source}_as_{args.target}_seed1"
-        path = reg.get(alias, {}).get("path")
-        if not path:
-            print(f"  [warn] {alias} missing sampler path; skipping {rung}", flush=True)
-            continue
-        _sample_messages(service, base_model=source, model_path=path, messages_by_prompt=base_msgs(prompts),
-                         prompts=prompts, clean_model=source, render_model=source, temperature=args.temperature,
-                         seed=1, parallel=args.parallel, out_path=gen / f"rung_{rung}.csv", label=f"rung {rung}")
+        for seed in range(1, args.adapter_seeds + 1):
+            alias = f"{rung}_{args.dataset}_{args.source}_as_{args.target}_seed{seed}"
+            path = reg.get(alias, {}).get("path")
+            if not path:
+                print(f"  [warn] {alias} missing sampler path; skipping", flush=True)
+                continue
+            out = gen / (f"rung_{rung}.csv" if seed == 1 else f"rung_{rung}_seed{seed}.csv")
+            _sample_messages(service, base_model=source, model_path=path, messages_by_prompt=base_msgs(prompts),
+                             prompts=prompts, clean_model=source, render_model=source, temperature=args.temperature,
+                             seed=seed, parallel=args.parallel, out_path=out, label=f"rung {rung} seed{seed}")
 
 
 def assemble_and_run(args, cell: Path, gen: Path) -> dict:
@@ -156,8 +159,13 @@ def assemble_and_run(args, cell: Path, gen: Path) -> dict:
 
     source = col(gen / "source_seed1.csv", "source_response")
     target = col(gen / "target_seed1.csv", "target_response")
+    adapter_labels = [
+        rung if seed == 1 else f"{rung}_seed{seed}"
+        for rung in ("sft", "dpo")
+        for seed in range(1, args.adapter_seeds + 1)
+    ]
     methods = []
-    for label in PROMPT_METHODS + ["sft", "dpo"]:
+    for label in PROMPT_METHODS + adapter_labels:
         rung = gen / f"rung_{label}.csv"
         if not rung.exists():
             continue
@@ -171,6 +179,8 @@ def assemble_and_run(args, cell: Path, gen: Path) -> dict:
         "target_model": SLUG_TO_MODEL[args.target], "output_dir": str(cell),
         "feature_set": "full", "feature_ablation_sets": [], "basis_type": "supervised",
         "k": 5, "bootstrap_samples": args.bootstrap,
+        "calibration_judge_model": args.calibration_judge,
+        "calibration_sample_size": args.calibration_n,
         "self_baseline": {"source_runs": [str(gen / "source_seed1.csv"), str(gen / "source_seed2.csv")]},
         "identity_control": {"target_runs": [str(gen / "target_seed2.csv")]},
         "methods": methods,
@@ -188,6 +198,12 @@ def main() -> None:
     ap.add_argument("--parallel", type=int, default=8)
     ap.add_argument("--temperature", type=float, default=0.7)
     ap.add_argument("--bootstrap", type=int, default=500)
+    ap.add_argument("--adapter-seeds", type=int, default=1,
+                    help="Number of SFT/DPO adapter seeds (1-3) to run as separate rungs for rung-level CIs.")
+    ap.add_argument("--calibration-judge", default=None,
+                    help="LLM judge model (e.g. openai/gpt-4.1-mini) to validate persistence against; off if unset.")
+    ap.add_argument("--calibration-n", type=int, default=0,
+                    help="Per-method (prompt,disguised,target) triples to score with the judge.")
     ap.add_argument("--gen-only", action="store_true")
     args = ap.parse_args()
 
@@ -200,13 +216,20 @@ def main() -> None:
         return
     summary = assemble_and_run(args, cell, gen)
     df = pd.read_csv(cell / "cell_summary.csv")
-    cols = ["method", "persistence", "movement_raw",
+    cols = ["method", "persistence", "movement_raw", "over_assimilation",
             "anchored", "anchored_ci_low", "anchored_ci_high",
-            "z_vs_baseline", "probe_cv", "separable"]
+            "z_vs_baseline", "probe_cv", "trustworthy"]
     print(f"\n=== {args.dataset}  {args.source} -> {args.target} (supervised, anchored) ===")
     print(f"B={summary['baseline_persistence']:.3f} I={summary['identity_persistence']:.3f} "
           f"sep_captured={summary['sep_ratio']:.3f}")
     print(df[[c for c in cols if c in df.columns]].round(3).to_string(index=False))
+
+    corr_path = cell / "calibration" / "calibration_correlations.csv"
+    if corr_path.exists():
+        corr = pd.read_csv(corr_path)
+        if not corr.empty:
+            print("\n=== LLM-judge calibration (deterministic metric vs judge scores) ===")
+            print(corr.round(3).to_string(index=False))
 
 
 if __name__ == "__main__":
