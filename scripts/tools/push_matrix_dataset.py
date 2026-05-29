@@ -16,7 +16,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-REPO = "ethantsliu/dementor-matrix-responses"
+REPO = "dementor-research/dementor-matrix-responses"
 DATA = Path("data")
 BASELINES = DATA / "model-responses" / "matrix_baselines"
 
@@ -31,7 +31,7 @@ tags: [llm-imitation, behavioral-inertia, dementor]
 Generated model outputs for the Dementor LLM-imitation / behavioral-inertia study.
 Companion to:
 - **Code + prompt splits:** https://github.com/lisadunlap/dementor (branch `ethan`)
-- **Trained adapters (228 LoRAs):** https://huggingface.co/ethantsliu (filter `sft_`/`dpo_`/`self_sft_`)
+- **Trained adapters (228 LoRAs):** https://huggingface.co/dementor-research (SFT / DPO / self-SFT, grouped into per-dataset collections)
 
 ## Layout
 - `baselines/<dataset>/<model>_train.csv` — each base model's responses on the

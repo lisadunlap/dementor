@@ -833,7 +833,7 @@ Part of the dementor matrix: 4 source models × 3 cross-targets × 3 train datas
 
 def push_adapters_to_hf(
     *,
-    namespace: str = "ethantsliu",
+    namespace: str = "dementor-research",
     only_llama: bool = False,
     kinds: tuple[str, ...] = ("sft", "dpo"),
     delete_local_after: bool = True,
@@ -1331,7 +1331,7 @@ def main() -> int:
         "push-to-hf",
         help="Upload all registered adapters to HuggingFace Hub.",
     )
-    hf_p.add_argument("--namespace", default="ethantsliu", help="HF user or org name")
+    hf_p.add_argument("--namespace", default="dementor-research", help="HF user or org name")
     hf_p.add_argument("--only-llama", action="store_true")
     hf_p.add_argument("--kinds", nargs="+", default=["sft", "dpo"], choices=["sft", "dpo"])
     hf_p.add_argument("--keep-local", action="store_true", help="Don't delete local PEFT after upload")

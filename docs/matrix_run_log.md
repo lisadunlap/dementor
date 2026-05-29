@@ -16,7 +16,7 @@ run, where the artifacts live, and what remains.
 | **Self-baseline SFT adapters** | **12** (4 models × 3 datasets × seed1, source==target — drift control) |
 | Total adapters | 228, all trained on Tinker (LoRA r=32, all-linear) |
 | Errors | 0 SFT, 0 DPO |
-| Storage | All adapters mirrored to HuggingFace: `ethantsliu/{sft,dpo,self_sft}_*` (public) |
+| Storage | All adapters mirrored to HuggingFace org `dementor-research/{sft,dpo,self_sft}_*` (public; grouped into per-dataset collections) |
 
 ## Pipeline (workflows/run_matrix.py)
 
@@ -50,7 +50,7 @@ e.g. dpo_gsm8k_llama-3.1-8b_as_qwen3.6-27b_seed1
 self_sft_gsm8k_llama-3.1-8b_as_llama-3.1-8b_seed1
 ```
 
-Each appears as a public HF repo `ethantsliu/{alias}` and as an entry in
+Each appears as a public HF repo `dementor-research/{alias}` and as an entry in
 `data/tinker_adapters.json` (with both the sampler URI for inference and the
 state URI for download).
 
@@ -60,7 +60,7 @@ state URI for download).
 from peft import PeftModel
 from transformers import AutoModelForCausalLM
 base = AutoModelForCausalLM.from_pretrained("meta-llama/Llama-3.1-8B-Instruct")
-model = PeftModel.from_pretrained(base, "ethantsliu/dpo_gsm8k_llama-3.1-8b_as_qwen3.6-27b_seed1")
+model = PeftModel.from_pretrained(base, "dementor-research/dpo_gsm8k_llama-3.1-8b_as_qwen3.6-27b_seed1")
 ```
 
 ## Notable issues solved during the run
