@@ -156,7 +156,7 @@ instead of LLM-as-judge as the primary signal.
 | --- | --- | --- | --- |
 | 0 — floor | `baseline_persistence_{M,D}` — inter-seed persistence on the same model | `behavioral_inertia_metrics.compute_behavioral_metrics` called with three independent seeds of the same model in the source/disguised/target slots | Defines noise floor. One value per (model, dataset). Reported once. |
 | 1 — headline | `source_persistence(s, t, method, D)` normalized by tier 0 | `behavioral_inertia_metrics.source_persistence` | Y-axis of the main intervention-ladder figure. One value per (source, target, method, dataset) cell. |
-| 2 — confirmation | Logistic-regression probe metrics: `probe_cv_accuracy`, `source_residue`, `target_assimilation`, `mean_source_probability_disguised` | `behavioral_inertia_metrics.train_source_target_probe` | Independent ML metric that should agree with tier 1; disagreement is itself informative. |
+| 2 — confirmation | Logistic-regression probe metrics: `probe_cv`, `source_residue`, `target_assimilation`, `mean_source_prob` | `behavioral_inertia_metrics.train_source_target_probe` | Independent ML metric that should agree with tier 1; disagreement is itself informative. |
 | 3a — diagnostic | Per-axis movement on the 5 latent PCs (source/target-fitted SVD basis, disguised projected after fitting) | `latent_behavior_axes.factorize_fixed_basis` + `movement_by_axis` | Decomposition figure showing which fingerprint dimensions are easy to move vs sticky. |
 | 3b — named Big-Five plasticity | Direct movement on `EXT`, `AGR`, `CON`, `NEU`, `OPN` descriptor aggregates | `latent_behavior_axes.big5_dimension_scores_df` + `summarize_big5_dimension_movement` | Named-dimension table for dimensions such as Extraversion and Conscientiousness. |
 | 4 — calibration | LLM-judge stylistic-similarity scores on ~500 randomly-sampled (prompt, disguised, target) triples across the grid | `scorer.score_pairwise_dataframe` | One supplementary table: rank-correlation between heuristic persistence and judge stylistic score. Establishes the heuristic tracks human-aligned style judgment without per-cell judge cost. |
@@ -203,7 +203,7 @@ target cloud in the 5-D PC space (using `LogisticRegression` over
 each disguised output as source-side or target-side.
 
 Key outputs:
-- `probe_cv_accuracy` — can the boundary even separate source from
+- `probe_cv` — can the boundary even separate source from
   target? If ~50%, the source/target are stylistically indistinguishable
   and the rest of the analysis is moot. Should be ≥0.8 for a meaningful
   cell.
@@ -211,7 +211,7 @@ Key outputs:
   High = strong persistence.
 - `target_assimilation` — fraction classified as target. High = strong
   disguise.
-- `mean_source_probability_disguised` — soft version of source_residue.
+- `mean_source_prob` — soft version of source_residue.
 
 Persistence (tier 1) measures **central-tendency movement**; the probe
 (tier 2) measures **distributional separation**. They can diverge:
@@ -642,7 +642,7 @@ Designed so cheap+fast work surfaces problems before expensive jobs start.
 - Score each cell with the behavioral-inertia pipeline (tier 1 + 2 + 3
   metrics, all CPU after generation).
 - **Stop point:** review the resulting grid for systematic failures
-  (probe_cv_accuracy < 0.7 anywhere, or method always returns the prompt
+  (probe_cv < 0.7 anywhere, or method always returns the prompt
   verbatim) before fine-tuning.
 
 ### Phase C — Tinker SFT (sequential per source)

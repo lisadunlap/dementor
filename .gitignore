@@ -192,3 +192,9 @@ data/model-responses/matrix_baselines/
 data/results/matrix/
 data/results/workflows/sft_*_as_*/
 data/results/workflows/dpo_*_as_*/
+
+# Behavioral-inertia cell outputs + exported adapters (generated, large; reproduce
+# with scripts/analysis/run_cell_pipeline.py). Code/docs are committed, not these.
+data/results/*/analysis/cells/
+data/adapters/
+*.expired_backup

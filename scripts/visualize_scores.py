@@ -33,7 +33,8 @@ def _prettify_method(name: str) -> str:
     mapping = {
         "contrastive": "Contrastive",
         "random_sampling": "Random Sampling",
-        "behavioral_based": "Behavioral Instruction-Based",
+        "behavioral": "Behavioral",
+        "behavioral_based": "Behavioral",
         "baseline": "Baseline",
     }
     return mapping.get(name, name.replace("_", " ").title())

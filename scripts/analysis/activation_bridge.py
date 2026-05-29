@@ -176,8 +176,8 @@ def run_activation_bridge(
     layer_df.to_csv(out_dir / "activation_layer_curve.csv", index=False)
     layer_df.to_csv(out_dir / "activation_probe_results.csv", index=False)
 
-    if not layer_df.empty and "probe_cv_accuracy" in layer_df:
-        best_idx = layer_df["probe_cv_accuracy"].fillna(-1).idxmax()
+    if not layer_df.empty and "probe_cv" in layer_df:
+        best_idx = layer_df["probe_cv"].fillna(-1).idxmax()
         best = layer_df.loc[best_idx].to_dict()
     else:
         best = {}
@@ -189,9 +189,9 @@ def run_activation_bridge(
         "n": int(len(df)),
         "layers": [int(x) for x in selected_layers],
         "best_layer": int(best.get("layer")) if best else None,
-        "probe_cv_accuracy": float(best.get("probe_cv_accuracy")) if best else None,
-        "activation_source_probability_disguised": float(best.get("mean_source_probability_disguised")) if best else None,
-        "activation_target_probability_disguised": float(best.get("mean_target_probability_disguised")) if best else None,
+        "probe_cv": float(best.get("probe_cv")) if best else None,
+        "activation_source_prob": float(best.get("mean_source_prob")) if best else None,
+        "activation_target_prob": float(best.get("mean_target_prob")) if best else None,
         "git_commit": git_commit(),
         "interpretation_note": (
             "fixed-encoder uses a shared measurement model for cross-family comparisons"

@@ -17,7 +17,7 @@ INTERVENTION_ORDER = [
     "just_name_it",
     "random_sampling",
     "stylistic",
-    "behavioral_based",
+    "behavioral",
     "contrastive",
     "stylistic_clustering",
     "embedding_clustering",
@@ -51,14 +51,20 @@ def aggregate_ladder(summary_paths: list[str | Path]) -> pd.DataFrame:
                 "source_model": summary.get("source_model"),
                 "target_model": summary.get("target_model"),
                 "n": summary.get("n"),
+                "persistence": summary.get("persistence"),
+                "movement": summary.get("movement"),
+                "projection_persistence": summary.get("projection_persistence"),
+                "projection_disguise": summary.get("projection_disguise"),
+                "projection_persistence_all": summary.get("projection_persistence_all"),
+                "sep_ratio": summary.get("sep_ratio"),
                 "source_persistence": summary.get("source_persistence"),
                 "disguise_effect": summary.get("disguise_effect"),
                 "target_assimilation": summary.get("target_assimilation"),
                 "source_residue": summary.get("source_residue"),
                 "anisotropy": summary.get("anisotropy"),
-                "probe_cv_accuracy": summary.get("probe_cv_accuracy"),
+                "probe_cv": summary.get("probe_cv"),
                 "activation_bridge_mode": summary.get("activation_bridge_mode"),
-                "activation_source_probability_disguised": summary.get("activation_source_probability_disguised"),
+                "activation_source_prob": summary.get("activation_source_prob"),
                 "summary_path": str(item),
             }
         )
@@ -94,11 +100,13 @@ def write_markdown(df: pd.DataFrame, path: Path) -> None:
         "source_model",
         "target_model",
         "method",
+        "persistence",
+        "projection_persistence",
         "source_persistence",
         "target_assimilation",
         "source_residue",
         "anisotropy",
-        "probe_cv_accuracy",
+        "probe_cv",
     ]
     cols = [c for c in cols if c in df.columns]
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -119,7 +127,9 @@ def main() -> None:
     df = aggregate_ladder(args.summaries)
     df.to_csv(out_dir / "intervention_ladder.csv", index=False)
     write_markdown(df, out_dir / "intervention_ladder.md")
-    _plot_metric(df, "source_persistence", out_dir / "persistence_vs_intervention.png")
+    _plot_metric(df, "persistence", out_dir / "persistence_vs_intervention.png")
+    _plot_metric(df, "projection_persistence", out_dir / "projection_persistence_vs_intervention.png")
+    _plot_metric(df, "source_persistence", out_dir / "source_persistence_vs_intervention.png")
     _plot_metric(df, "target_assimilation", out_dir / "target_assimilation_vs_intervention.png")
     _plot_metric(df, "anisotropy", out_dir / "anisotropy_vs_intervention.png")
     write_json(out_dir / "config.json", {"summaries": [str(x) for x in args.summaries]})

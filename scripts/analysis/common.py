@@ -122,10 +122,18 @@ def normalize_comparison_df(
     source_col: str = "source_response",
     disguised_col: str = "model_response",
     target_col: str = "target_response",
+    allow_duplicate_prompts: bool = False,
 ) -> pd.DataFrame:
     df = read_csv_robust(comparison_csv).copy()
     if "prompt" not in df.columns:
         raise ValueError("comparison CSV must include a 'prompt' column")
+    df["prompt"] = df["prompt"].astype(str)
+    # Method comparisons must be one row per prompt (duplicates signal a data bug).
+    # Pooled controls (self-baseline / identity over multiple seeds) legitimately
+    # carry several disguised rows per prompt and opt in via allow_duplicate_prompts.
+    if not allow_duplicate_prompts and df["prompt"].duplicated().any():
+        duplicates = df.loc[df["prompt"].duplicated(), "prompt"].head(5).tolist()
+        raise ValueError(f"comparison CSV contains duplicate prompts, examples: {duplicates}")
 
     if disguised_col not in df.columns:
         if "disguised_response" in df.columns:
@@ -149,13 +157,25 @@ def normalize_comparison_df(
         src = read_csv_robust(source_responses)
         if "prompt" not in src.columns:
             raise ValueError("source response CSV must include a 'prompt' column")
+        src["prompt"] = src["prompt"].astype(str)
+        if src["prompt"].duplicated().any():
+            duplicates = src.loc[src["prompt"].duplicated(), "prompt"].head(5).tolist()
+            raise ValueError(f"source response CSV contains duplicate prompts, examples: {duplicates}")
         if "model_response" in src.columns:
             src = src.rename(columns={"model_response": source_col})
         elif "target_response" in src.columns:
             src = src.rename(columns={"target_response": source_col})
         elif source_col not in src.columns:
             raise ValueError("source response CSV must include model_response, target_response, or source_response")
-        df = pd.merge(df, src[["prompt", source_col]], on="prompt", how="inner")
+        before = len(df)
+        df = pd.merge(df, src[["prompt", source_col]], on="prompt", how="left", indicator="_source_join")
+        missing = df["_source_join"] != "both"
+        if missing.any():
+            examples = df.loc[missing, "prompt"].head(5).tolist()
+            raise ValueError(f"source responses missing {int(missing.sum())} prompts, examples: {examples}")
+        df = df.drop(columns=["_source_join"])
+        if len(df) != before:
+            raise ValueError("source response join changed row count; check prompt uniqueness")
 
     out = pd.DataFrame(
         {
@@ -182,4 +202,3 @@ def condition_texts(df: pd.DataFrame) -> dict[str, list[str]]:
 def ensure_nonempty(items: Iterable, name: str) -> None:
     if len(list(items)) == 0:
         raise ValueError(f"{name} is empty")
-

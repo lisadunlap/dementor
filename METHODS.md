@@ -12,7 +12,7 @@ Use these with `scripts/disguise.py --method <name>`:
 | --- | --- | --- |
 | `random_sampling` | Few-shot target examples as a fast baseline. | target responses |
 | `just_name_it` | Directly instruct the source model to act as the target. | none |
-| `behavioral_based` | Summarize target communication behavior into a system prompt. | target responses |
+| `behavioral` | Summarize target communication behavior into a system prompt. | target responses |
 | `stylistic` | Extract surface formatting and style rules. | target responses |
 | `contrastive` | Compare source and target examples to produce change rules. | source + target responses |
 | `stylistic_clustering` | Pick target exemplars from surface-style clusters. | source + target responses |
@@ -29,7 +29,7 @@ Treat the methods as an intervention ladder rather than as isolated tricks:
 1. `just_name_it`: name-only imitation.
 2. `random_sampling`: in-context target examples.
 3. `stylistic`: explicit surface-style rules.
-4. `behavioral_based`: inferred communication/personality profile.
+4. `behavioral`: inferred communication/personality behavior.
 5. `contrastive`: source-to-target behavioral deltas.
 6. clustering variants: diversity-controlled exemplar selection.
 7. SFT/DPO LoRA: weight-level imitation.

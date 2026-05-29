@@ -51,7 +51,7 @@ export, not a Tinker remote-sampling feature.
 | Prompt Method | What it does | When to use |
 | --- | --- | --- |
 | `random_sampling` | Few-shot prompt of target answers. | Fast baseline when target responses are clean. |
-| `behavioral_based` | Builds persona / tone system prompt. | You need the target’s “voice.” |
+| `behavioral` | Builds behavior / tone system prompt. | You need the target’s “voice.” |
 | `stylistic` | Enforces formatting heuristics. | Rubric-heavy, surface-style benchmarks. |
 | `contrastive` | Learns correction rules from src vs tgt pairs. | Models diverge sharply; need targeted edits. |
 | `stylistic_clustering` | Clusters target exemplars by formatting traits. | Datasets with multiple style regimes. |
@@ -114,7 +114,7 @@ dementor/
 │   │   ├── base.py               # MethodBase contract
 │   │   ├── get_method.py         # Method registry
 │   │   ├── random_sampling.py    # Few-shot target exemplar prompting
-│   │   ├── behavioral_based.py   # Persona/style prompt construction
+│   │   ├── behavioral_based.py   # Behavioral prompt construction
 │   │   ├── stylistic.py          # Surface-form style controls
 │   │   └── contrastive.py        # Source-vs-target contrastive prompting
 │   ├── gsm8k/                    # Legacy/convenience GSM8K shell runners and plots

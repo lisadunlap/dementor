@@ -313,29 +313,38 @@ def load_lora_kwargs(config_arg: Optional[str]) -> dict:
     return json.loads(config_arg)
 
 
+import threading as _threading
+_REGISTRY_LOCK = _threading.Lock()
+
+
 def record_adapter_mapping(
     weights_name: str,
     sampler_path: str,
     registry_path: Path,
     metadata: Optional[dict[str, object]] = None,
 ) -> None:
-    """Persist adapter name -> sampler path locally for reuse."""
-    registry_path.parent.mkdir(parents=True, exist_ok=True)
-    if registry_path.exists():
-        try:
-            with registry_path.open("r", encoding="utf-8") as fh:
-                registry = json.load(fh)
-        except Exception:
+    """Persist adapter name -> sampler path locally for reuse.
+
+    Thread-safe: registry read-modify-write is serialized via _REGISTRY_LOCK
+    so concurrent SFT workers don't clobber each other's entries.
+    """
+    with _REGISTRY_LOCK:
+        registry_path.parent.mkdir(parents=True, exist_ok=True)
+        if registry_path.exists():
+            try:
+                with registry_path.open("r", encoding="utf-8") as fh:
+                    registry = json.load(fh)
+            except Exception:
+                registry = {}
+        else:
             registry = {}
-    else:
-        registry = {}
-    entry: dict[str, object] = {"path": sampler_path}
-    if metadata:
-        entry.update(metadata)
-    registry[weights_name] = entry
-    with registry_path.open("w", encoding="utf-8") as fh:
-        json.dump(registry, fh, indent=2, sort_keys=True)
-    print(f"Recorded adapter mapping in {registry_path}: {weights_name} -> {sampler_path}")
+        entry: dict[str, object] = {"path": sampler_path}
+        if metadata:
+            entry.update(metadata)
+        registry[weights_name] = entry
+        with registry_path.open("w", encoding="utf-8") as fh:
+            json.dump(registry, fh, indent=2, sort_keys=True)
+        print(f"Recorded adapter mapping in {registry_path}: {weights_name} -> {sampler_path}")
 
 
 def list_available_models(service_client: Any) -> list[str]:
@@ -349,7 +358,12 @@ def _save_sampler_checkpoint(
     alias_name: str,
     registry_path: Path,
 ) -> Optional[str]:
-    """Save sampler weights under a unique name and record alias mapping."""
+    """Save both a sampler checkpoint and a downloadable state checkpoint.
+
+    Returns the sampler path (used for create_sampling_client). Also persists a
+    downloadable state path in the registry under the 'checkpoint_path' key so
+    auto-export can fetch the adapter weights as a tar archive.
+    """
     unique_suffix = datetime.utcnow().strftime("%Y%m%d%H%M%S")
     unique_name = f"{alias_name}_{unique_suffix}"
     try:
@@ -359,15 +373,30 @@ def _save_sampler_checkpoint(
         return None
 
     sampler_path = getattr(sampler_res, "path", None)
-    if isinstance(sampler_path, str) and sampler_path:
-        metadata = {"adapter_name": unique_name}
-        record_adapter_mapping(alias_name, sampler_path, registry_path, metadata=metadata)
-        print(
-            f"Sampler stored under internal name '{unique_name}'. "
-            f"Alias '{alias_name}' now points to {sampler_path}."
-        )
-        return sampler_path
-    return None
+    if not (isinstance(sampler_path, str) and sampler_path):
+        return None
+
+    # Also save downloadable state checkpoint (different endpoint from sampler).
+    # The sampler URI (sampler_weights/...) is NOT downloadable; the state URI
+    # (state/...) is. We need both: sampler for inference, state for export.
+    checkpoint_path: Optional[str] = None
+    try:
+        state_res = training_client.save_state(name=unique_name).result()
+        checkpoint_path = getattr(state_res, "path", None)
+    except Exception as exc:  # pragma: no cover
+        print(f"Warning: could not save state checkpoint (export will fail): {exc}")
+
+    metadata: dict[str, object] = {"adapter_name": unique_name}
+    if checkpoint_path:
+        metadata["checkpoint_path"] = checkpoint_path
+    record_adapter_mapping(alias_name, sampler_path, registry_path, metadata=metadata)
+    print(
+        f"Sampler stored under internal name '{unique_name}'. "
+        f"Alias '{alias_name}' now points to {sampler_path}."
+    )
+    if checkpoint_path:
+        print(f"Downloadable state checkpoint at {checkpoint_path}.")
+    return sampler_path
 
 
 def run_tinker_sft_job(
@@ -412,19 +441,22 @@ def run_tinker_sft_job(
         print("Falling back to save_weights_and_get_sampling_client; sampler path will not be recorded.")
         sampling_client = training_client.save_weights_and_get_sampling_client(name=weights_name)
     tokenizer = training_client.get_tokenizer()
-    eval_results = evaluate_model(
-        sampling_client=sampling_client,
-        eval_examples=eval_examples,
-        tokenizer=tokenizer,
-        prompt_template=prompt_template,
-        completion_template=completion_template,
-        config=evaluation_config,
-    )
-
     ensure_output_dir(output_dir)
     output_csv = output_dir / f"{weights_name}_eval.csv"
-    eval_results.to_csv(output_csv, index=False)
-    print(f"Wrote evaluation details to {output_csv}")
+    if eval_examples:
+        eval_results = evaluate_model(
+            sampling_client=sampling_client,
+            eval_examples=eval_examples,
+            tokenizer=tokenizer,
+            prompt_template=prompt_template,
+            completion_template=completion_template,
+            config=evaluation_config,
+        )
+        eval_results.to_csv(output_csv, index=False)
+        print(f"Wrote evaluation details to {output_csv}")
+    else:
+        eval_results = pd.DataFrame()
+        print(f"Skipping in-training eval (no eval examples provided); adapter saved.")
     print(
         "To reuse the model later, pass the recorded tinker:// sampler path to "
         "`scripts/generate_responses.py ... tinker --model-path <path>`."

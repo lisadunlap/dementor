@@ -2,7 +2,7 @@
 """
 Streamlined disguise script for the core methods:
 - contrastive
-- behavioral_based
+- behavioral
 - stylistic
 - random_sampling
 """
@@ -29,11 +29,13 @@ if project_root not in sys.path:
 
 from scripts.methods.get_method import get_method
 from scripts.scorer import score_model_single
-from scripts.cache_llm import register_model_config
 from litellm import completion
 import litellm
 from tqdm import tqdm
-import wandb
+try:
+    import wandb
+except ImportError:  # pragma: no cover - optional logging dependency
+    wandb = None
 
 # Enable caching for API calls (not for vLLM/local servers)
 if not hasattr(litellm, 'cache') or litellm.cache is None:
@@ -96,6 +98,8 @@ def generate_disguised_responses(
     temperature: float = 0.0,
     method_kwargs: dict | None = None,
     output_file: Optional[str] = None,
+    example_source_df: pd.DataFrame | None = None,
+    example_target_df: pd.DataFrame | None = None,
 ) -> tuple[pd.DataFrame, dict]:
     """
     Generate disguised responses using the specified method.
@@ -113,12 +117,17 @@ def generate_disguised_responses(
         DataFrame with disguised responses
     """
     # Get the method instance
+    method_source_df = example_source_df if example_source_df is not None else source_df
+    method_target_df = example_target_df if example_target_df is not None else target_df
     method = get_method(method_name, model, disguise_as, 
-                      disguise_df=target_df, source_df=source_df,
+                      disguise_df=method_target_df, source_df=method_source_df,
                       method_kwargs=method_kwargs or {})
     
     results = []
     method_stats: dict = {}
+    target_by_prompt = {}
+    if "prompt" in target_df.columns and "target_response" in target_df.columns:
+        target_by_prompt = target_df.drop_duplicates("prompt").set_index("prompt")["target_response"].to_dict()
 
     # Prepare output for incremental persistence
     csv_writer = None
@@ -254,9 +263,7 @@ def generate_disguised_responses(
                 disguised_response = _gen_with_retries(_llm_call)
 
             # Find matching target response for comparison
-            target_response = ""
-            if i < len(target_df) and 'target_response' in target_df.columns:
-                target_response = target_df.iloc[i]['target_response']
+            target_response = target_by_prompt.get(prompt, "")
             
             row = {
                 'prompt': prompt,
@@ -322,7 +329,7 @@ def main():
         type=str,
         choices=[
             "contrastive",
-            "behavioral_based",
+            "behavioral",
             "stylistic",
             "random_sampling",
             "just_name_it",
@@ -349,6 +356,18 @@ def main():
         help="Path to target model responses CSV (auto-detect if not provided)",
     )
     parser.add_argument(
+        "--source-examples",
+        type=str,
+        default=None,
+        help="Optional train/example pool for source responses used by prompt construction.",
+    )
+    parser.add_argument(
+        "--target-examples",
+        type=str,
+        default=None,
+        help="Optional train/example pool for target responses used by prompt construction.",
+    )
+    parser.add_argument(
         "--prompts-file",
         type=str,
         default="data/datasets/chatbot_arena/chatbot_arena_prompts.txt",
@@ -364,6 +383,8 @@ def main():
     )
     parser.add_argument("--temperature", type=float, default=0.0,
                        help="Temperature for generation (0.0 for deterministic)")
+    parser.add_argument("--method-seed", type=int, default=1,
+                       help="Seed for deterministic prompt examples and rules")
     parser.add_argument(
         "--output-dir",
         type=str,
@@ -418,6 +439,8 @@ def main():
     
     args = parser.parse_args()
     setup_logging()
+    if args.method == "behavioral_based":
+        args.method = "behavioral"
 
     def _maybe_override(value, fallback, *, compare_default=None, transform=lambda x: x):
         if fallback is None:
@@ -478,6 +501,8 @@ def main():
         generation_config["custom_llm_provider"] = generation_provider
         os.environ["GENERATION_PROVIDER"] = generation_provider
     if generation_config:
+        from scripts.cache_llm import register_model_config
+
         register_model_config(args.model, generation_config)
 
     # Analysis routing (contrastive / behavioral)
@@ -543,7 +568,9 @@ def main():
     tgt_id = _official_id(args.disguise_as)
 
     # Initialize wandb by default (unless disabled)
-    use_wandb = not args.no_wandb
+    use_wandb = not args.no_wandb and wandb is not None
+    if not args.no_wandb and wandb is None:
+        logging.info("wandb is not installed; continuing without W&B logging.")
     if use_wandb:
         # Auto-generate run name if not provided
         if not args.run_name:
@@ -607,6 +634,14 @@ def main():
             "--target-responses."
         )
         raise
+
+    example_source_df = None
+    example_target_df = None
+    if args.source_examples or args.target_examples:
+        source_examples_path = args.source_examples or args.source_responses
+        target_examples_path = args.target_examples or args.target_responses
+        logging.info("Loading prompt-construction example pools...")
+        example_source_df, example_target_df = load_model_responses(source_examples_path, target_examples_path)
     
     # Load prompts (CSV only; expects a 'prompt' column)
     if not os.path.exists(args.prompts_file):
@@ -641,12 +676,15 @@ def main():
 
     # Generate disguised responses
     logging.info(f"Generating responses using {args.method}...")
+    method_kwargs = {"seed": args.method_seed}
     results_df, method_stats = generate_disguised_responses(
         args.method, args.model, args.disguise_as,
         source_df, target_df, prompts, args.num_samples,
         temperature=args.temperature,
-        method_kwargs=None,
+        method_kwargs=method_kwargs,
         output_file=results_file,
+        example_source_df=example_source_df,
+        example_target_df=example_target_df,
     )
     
     # If file exists but results_df is empty (all failed), ensure header exists

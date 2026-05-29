@@ -3,6 +3,7 @@ Random sampling disguise method.
 Samples k target examples and builds a clean system prompt.
 """
 from typing import List, Dict
+import hashlib
 import pandas as pd
 
 try:
@@ -32,6 +33,12 @@ class RandomSamplingSystemPrompting(MethodBase):
         
         if disguise_df is not None:
             self.disguise_df["token_length"] = self.disguise_df["target_response"].apply(get_token_count)
+
+    def _random_state(self, prompt: str) -> int | None:
+        if self.seed is None:
+            return None
+        payload = f"{self.seed}:{prompt}".encode("utf-8")
+        return int(hashlib.sha256(payload).hexdigest()[:8], 16)
     
     def forward(self, prompt: str) -> List[Dict[str, str]]:
         if self.disguise_df is None or len(self.disguise_df) == 0:
@@ -42,7 +49,10 @@ class RandomSamplingSystemPrompting(MethodBase):
             if 'prompt' in df.columns:
                 df = df[df['prompt'] != prompt]
             sample_size = min(self.num_samples, len(df))
-            examples = df.sample(n=sample_size, random_state=self.seed) if sample_size > 0 else df.head(0)
+            examples = (
+                df.sample(n=sample_size, random_state=self._random_state(prompt))
+                if sample_size > 0 else df.head(0)
+            )
             
             system_prompt = f"""You are {self.disguise_as}. Study these examples of {self.disguise_as}'s responses and mimic the style, tone, formatting, and approach:
 

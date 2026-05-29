@@ -32,6 +32,7 @@ LOGGER = logging.getLogger(__name__)
 
 # Keep the methods in a consistent order for easier visual scanning.
 METHOD_ORDER: Tuple[str, ...] = (
+    "behavioral",
     "behavioral_based",
     "random_sampling",
     "contrastive",

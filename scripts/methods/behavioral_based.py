@@ -4,6 +4,7 @@ Identifies and replicates the target model's communication behaviors (personalit
 """
 import logging
 import os
+import hashlib
 from typing import List, Dict
 import pandas as pd
 from litellm import completion
@@ -29,25 +30,26 @@ except ImportError:
 
 class BehavioralBasedSystemPrompting(MethodBase):
     """
-    Behavioral-based system prompting: identifies and replicates the behavioral essence of the target model.
+    Behavioral system prompting: identifies and replicates the behavioral essence of the target model.
     Focuses on personality, tone, and interaction patterns.
     """
     
     def __init__(self, model: str, disguise_as: str, disguise_df: pd.DataFrame = None, 
-                 use_examples: bool = True, num_examples: int = 3):
+                 use_examples: bool = True, num_examples: int = 3, seed: int | None = None):
         super().__init__(model, disguise_as)
         self.disguise_df = disguise_df.copy() if disguise_df is not None else None
         self.use_examples = use_examples
         self.num_examples = num_examples
-        self.behavior_profile = None
+        self.seed = seed
+        self.behavior_rules = None
         
         if disguise_df is not None:
             self.disguise_df["token_length"] = self.disguise_df["target_response"].apply(get_token_count)
-            self._generate_behavior_profile()
+            self._generate_behavior_rules()
     
-    def _generate_behavior_profile(self):
-        """Generate sophisticated behavioral profile capturing the essence of target model communication."""
-        behavior_samples = self.disguise_df.sample(min(12, len(self.disguise_df)))
+    def _generate_behavior_rules(self):
+        """Generate behavioral rules capturing the essence of target model communication."""
+        behavior_samples = self.disguise_df.sample(min(12, len(self.disguise_df)), random_state=self.seed)
         
         behavior_prompt = f"""Analyze the deep communication essence and behavior of this AI model. This is critical for disguise purposes - you need to capture the CORE of how this model communicates, not just surface patterns.
 
@@ -67,7 +69,7 @@ Examples of {self.disguise_as} responses:
             behavior_prompt += f"Q: {row['prompt']}\nA: {row['target_response'][:500]}{'...' if len(row['target_response']) > 500 else ''}\n\n"
         
         behavior_prompt += f"""
-Based on this analysis, create a comprehensive "essence profile" of {self.disguise_as} that captures:
+Based on this analysis, create comprehensive behavioral rules for {self.disguise_as} that capture:
 
 1. The model's core communication personality (2-3 key traits)
 2. Specific behavioral patterns and quirks
@@ -88,7 +90,6 @@ Make this actionable - write it as instructions that would allow another AI to a
             # Use cached completion for persistent caching
             try:
                 import sys
-                import os
                 # Add parent directory to path for importing cache_llm
                 parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
                 if parent_dir not in sys.path:
@@ -101,7 +102,7 @@ Make this actionable - write it as instructions that would allow another AI to a
                     api_base=analysis_api_base,
                     api_key=analysis_api_key,
                 )
-                self.behavior_profile = response.choices[0].message.content
+                self.behavior_rules = response.choices[0].message.content
             except ImportError:
                 # Fallback to standard litellm
                 response = completion(
@@ -111,22 +112,35 @@ Make this actionable - write it as instructions that would allow another AI to a
                     api_base=analysis_api_base,
                     api_key=analysis_api_key,
                 )
-                self.behavior_profile = response.choices[0].message.content
+                self.behavior_rules = response.choices[0].message.content
         except Exception as e:
-            logging.warning(f"Failed to generate behavioral profile: {e}")
-            self.behavior_profile = f"Respond with the characteristic communication style and deep personality essence of {self.disguise_as}."
+            logging.warning(f"Failed to generate behavioral rules: {e}")
+            self.behavior_rules = f"Respond with the characteristic communication style and deep personality essence of {self.disguise_as}."
+
+    def _random_state(self, prompt: str) -> int | None:
+        if self.seed is None:
+            return None
+        payload = f"{self.seed}:{prompt}:behavioral".encode("utf-8")
+        return int(hashlib.sha256(payload).hexdigest()[:8], 16)
     
     def forward(self, prompt: str) -> List[Dict[str, str]]:
         """Generate behavioral-based system prompt."""
         base_instruction = f"You are {self.disguise_as}. Embody this personality and communication style:"
         
-        if self.behavior_profile:
-            system_prompt = f"{base_instruction}\n\n{self.behavior_profile}"
+        if self.behavior_rules:
+            system_prompt = f"{base_instruction}\n\n{self.behavior_rules}"
         else:
             system_prompt = f"{base_instruction}\n\nRespond in the distinctive style and personality of {self.disguise_as}."
         
         if self.use_examples and self.disguise_df is not None:
-            examples = self.disguise_df.sample(min(self.num_examples, len(self.disguise_df)))
+            df = self.disguise_df
+            if "prompt" in df.columns:
+                df = df[df["prompt"] != prompt]
+            sample_size = min(self.num_examples, len(df))
+            examples = (
+                df.sample(sample_size, random_state=self._random_state(prompt))
+                if sample_size > 0 else df.head(0)
+            )
             system_prompt += "\n\nReference examples of this style:\n"
             for _, row in examples.iterrows():
                 truncated_response = row['target_response'][:200] + "..." if len(row['target_response']) > 200 else row['target_response']

@@ -34,7 +34,15 @@ COND_COLORS = {
 
 DEFAULT_DESCRIPTOR_ENCODER = "sentence-transformers/all-MiniLM-L6-v2"
 TRUNCATE_CHARS = 600
-FEATURE_SETS = ("full", "adjectives", "style_scalars", "style_binaries", "style_all")
+BASE_FEATURE_SETS = ("full", "adjectives", "style_scalars", "style_binaries", "style_all")
+LENGTH_RESIDUALIZED_SUFFIX = "_lenres"
+# Each base feature set has a length-residualized twin (e.g. ``full_lenres``) that
+# regresses every feature against log word count (fit on source+target only) and
+# keeps the residual. It is the robustness check for "is the fingerprint just
+# length?": if persistence survives ``*_lenres``, the signal is not pure verbosity.
+FEATURE_SETS = BASE_FEATURE_SETS + tuple(
+    f"{name}{LENGTH_RESIDUALIZED_SUFFIX}" for name in BASE_FEATURE_SETS
+)
 BIG5_LABELS = {
     "EXT": "Extraversion",
     "AGR": "Agreeableness",
@@ -54,6 +62,7 @@ class BehavioralAxisBasis:
     components: np.ndarray
     singular_values: np.ndarray
     fit_conditions: tuple[str, str] = ("source", "target")
+    basis_type: str = "variance"
 
     def project(self, matrices: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
         projected = {}
@@ -168,6 +177,27 @@ def _embedding_descriptor_scores(
     return np.log(np.clip((cosine_scores + 1.0) / 2.0, 1e-9, 1.0))
 
 
+def _length_covariate(texts: list[str]) -> np.ndarray:
+    """Log word count per response; the covariate removed by ``*_lenres``."""
+    return np.array([np.log1p(len(str(text or "").split())) for text in texts], dtype=float)
+
+
+def _residualize_against_length(
+    features: np.ndarray, length: np.ndarray, fit_mask: np.ndarray
+) -> np.ndarray:
+    """Subtract the part of every feature linearly predictable from ``length``.
+
+    The OLS fit uses only ``fit_mask`` rows (source + target), mirroring the basis
+    rule that disguised/intervention rows never define the measurement. The same
+    coefficients are then applied to all rows.
+    """
+    design = np.column_stack([np.ones_like(length), length])
+    if not fit_mask.any():
+        return features
+    coef, *_ = np.linalg.lstsq(design[fit_mask], features[fit_mask], rcond=None)
+    return features - design @ coef
+
+
 def build_descriptor_matrix(
     texts_by_condition: dict[str, list[str]],
     *,
@@ -177,24 +207,26 @@ def build_descriptor_matrix(
 ) -> tuple[dict[str, np.ndarray], list[str]]:
     if feature_set not in FEATURE_SETS:
         raise ValueError(f"Unsupported feature_set: {feature_set}")
+    residualize = feature_set.endswith(LENGTH_RESIDUALIZED_SUFFIX)
+    base_set = feature_set[: -len(LENGTH_RESIDUALIZED_SUFFIX)] if residualize else feature_set
 
     descriptors = descriptor_names(descriptor_mode)
     all_texts = [text for cond in CONDITIONS for text in texts_by_condition[cond]]
     feature_blocks = []
     feature_names = []
 
-    if feature_set in {"full", "adjectives"}:
+    if base_set in {"full", "adjectives"}:
         feature_blocks.append(
             _embedding_descriptor_scores(all_texts, descriptors, encoder_model=encoder_model)
         )
         feature_names.extend(descriptors)
 
-    if feature_set in {"full", "style_scalars", "style_all"}:
+    if base_set in {"full", "style_scalars", "style_all"}:
         scalars, scalar_names = _style_scalar_features(all_texts)
         feature_blocks.append(scalars)
         feature_names.extend(scalar_names)
 
-    if feature_set in {"full", "style_binaries", "style_all"}:
+    if base_set in {"full", "style_binaries", "style_all"}:
         binaries, binary_names = _style_binary_features(all_texts)
         feature_blocks.append(binaries)
         feature_names.extend(binary_names)
@@ -204,6 +236,14 @@ def build_descriptor_matrix(
     full = np.hstack(feature_blocks)
 
     n = len(texts_by_condition["source"])
+    if residualize:
+        # Fit the length regression on source rows [0:n] and target rows [2n:3n]
+        # only (CONDITIONS == source, disguised, target); apply to all rows.
+        fit_mask = np.zeros(full.shape[0], dtype=bool)
+        fit_mask[0:n] = True
+        fit_mask[2 * n : 3 * n] = True
+        full = _residualize_against_length(full, _length_covariate(all_texts), fit_mask)
+
     matrices = {}
     for i, cond in enumerate(CONDITIONS):
         matrices[cond] = full[i * n : (i + 1) * n]
@@ -273,6 +313,71 @@ def summarize_big5_dimension_movement(big5_scores: pd.DataFrame) -> pd.DataFrame
     return pd.DataFrame(rows)
 
 
+DEFAULT_LDA_SHRINKAGE = 0.1
+
+
+def _fit_supervised_basis(
+    source_scaled: np.ndarray,
+    target_scaled: np.ndarray,
+    *,
+    k: int,
+    shrinkage: float,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Supervised orthonormal basis whose first axis separates source from target.
+
+    Axis 1 is the shrinkage-regularized Fisher LDA discriminant
+    ``w ∝ (Σ_within + λI)^-1 (μ_t - μ_s)``; axes 2..k are PCA directions of the
+    reference residual orthogonal to axis 1 (kept for the probe and per-axis
+    diagnostics). All rows are orthonormal so ``sep_ratio`` stays a
+    valid orthogonal projection. Unlike the variance basis, the source->target
+    direction is concentrated in axis 1 instead of scattered across many PCs.
+    """
+    n_features = source_scaled.shape[1]
+    mu_s = source_scaled.mean(axis=0)
+    mu_t = target_scaled.mean(axis=0)
+    delta = mu_t - mu_s
+
+    src_c = source_scaled - mu_s
+    tgt_c = target_scaled - mu_t
+    dof = max(len(source_scaled) + len(target_scaled) - 2, 1)
+    within = (src_c.T @ src_c + tgt_c.T @ tgt_c) / dof
+    mean_diag = float(np.trace(within) / n_features) if n_features else 1.0
+    if not np.isfinite(mean_diag) or mean_diag <= 0:
+        mean_diag = 1.0
+    within_reg = (1.0 - shrinkage) * within + shrinkage * mean_diag * np.eye(n_features)
+
+    try:
+        w1 = np.linalg.solve(within_reg, delta)
+    except np.linalg.LinAlgError:
+        w1 = np.linalg.lstsq(within_reg, delta, rcond=None)[0]
+    norm = float(np.linalg.norm(w1))
+    if not np.isfinite(norm) or norm <= 1e-12:
+        # Degenerate (e.g. source ~= target): fall back to the mean difference, or
+        # an arbitrary unit axis if even that vanishes. The axis then carries ~0
+        # separation and is filtered out as inactive downstream.
+        w1 = delta.astype(float).copy()
+        norm = float(np.linalg.norm(w1))
+        if norm <= 1e-12:
+            w1 = np.zeros(n_features, dtype=float)
+            w1[0] = 1.0
+            norm = 1.0
+    w1 = w1 / norm
+
+    components = [w1]
+    if k > 1:
+        reference = np.vstack([source_scaled, target_scaled])
+        residual = reference - np.outer(reference @ w1, w1)
+        _U, _S, Vt = np.linalg.svd(residual, full_matrices=False)
+        for vec in Vt:
+            components.append(vec)
+            if len(components) >= k:
+                break
+    comps = np.vstack(components[:k])
+    projections = np.vstack([source_scaled, target_scaled]) @ comps.T
+    singular_values = projections.std(axis=0) * np.sqrt(max(len(projections), 1))
+    return comps, singular_values
+
+
 def fit_behavioral_axis_basis(
     matrices: dict[str, np.ndarray],
     feature_names: list[str],
@@ -281,21 +386,47 @@ def fit_behavioral_axis_basis(
     encoder_model: str,
     feature_set: str,
     k: int,
+    basis_type: str = "variance",
+    lda_shrinkage: float = DEFAULT_LDA_SHRINKAGE,
 ) -> BehavioralAxisBasis:
-    reference = np.vstack([matrices["source"], matrices["target"]])
-    reference = np.nan_to_num(reference, nan=0.0, posinf=0.0, neginf=0.0)
-    scaler = StandardScaler()
-    reference_scaled = scaler.fit_transform(reference)
-    _U, S, Vt = np.linalg.svd(reference_scaled, full_matrices=False)
-    k = min(k, Vt.shape[0])
+    source = np.nan_to_num(matrices["source"], nan=0.0, posinf=0.0, neginf=0.0)
+    target = np.nan_to_num(matrices["target"], nan=0.0, posinf=0.0, neginf=0.0)
+    reference = np.vstack([source, target])
+    scaler = StandardScaler().fit(reference)
+    # Floor near-constant features to unit scale. sklearn only catches exactly-zero
+    # variance; a near-zero std (e.g. a feature made collinear/constant by length
+    # residualization) otherwise divides floating-point noise up to O(1), which
+    # breaks the shared-endpoint invariant across row orderings. Treating such
+    # features as constant makes them contribute ~0 instead.
+    scaler.scale_[scaler.scale_ < 1e-8] = 1.0
+    reference_scaled = scaler.transform(reference)
+
+    if basis_type == "variance":
+        _U, S, Vt = np.linalg.svd(reference_scaled, full_matrices=False)
+        kk = min(k, Vt.shape[0])
+        components = Vt[:kk]
+        singular_values = S
+    elif basis_type == "supervised":
+        source_scaled = scaler.transform(source)
+        target_scaled = scaler.transform(target)
+        components, singular_values = _fit_supervised_basis(
+            source_scaled,
+            target_scaled,
+            k=min(k, reference_scaled.shape[1]),
+            shrinkage=lda_shrinkage,
+        )
+    else:
+        raise ValueError(f"Unknown basis_type: {basis_type!r} (expected 'variance' or 'supervised')")
+
     return BehavioralAxisBasis(
         feature_names=feature_names,
         descriptor_mode=descriptor_mode,
         encoder_model=encoder_model,
         feature_set=feature_set,
         scaler=scaler,
-        components=Vt[:k],
-        singular_values=S,
+        components=components,
+        singular_values=singular_values,
+        basis_type=basis_type,
     )
 
 
@@ -323,6 +454,8 @@ def factorize_fixed_basis(
     feature_set: str,
     k: int,
     basis: BehavioralAxisBasis | None = None,
+    basis_type: str = "variance",
+    lda_shrinkage: float = DEFAULT_LDA_SHRINKAGE,
 ) -> tuple[dict[str, np.ndarray], np.ndarray, np.ndarray, BehavioralAxisBasis]:
     if basis is None:
         basis = fit_behavioral_axis_basis(
@@ -332,6 +465,8 @@ def factorize_fixed_basis(
             encoder_model=encoder_model,
             feature_set=feature_set,
             k=k,
+            basis_type=basis_type,
+            lda_shrinkage=lda_shrinkage,
         )
     else:
         if basis.feature_names != feature_names:
@@ -342,6 +477,8 @@ def factorize_fixed_basis(
             raise ValueError("Loaded basis encoder_model does not match current run")
         if basis.feature_set != feature_set:
             raise ValueError("Loaded basis feature_set does not match current run")
+        if getattr(basis, "basis_type", "variance") != basis_type:
+            raise ValueError("Loaded basis basis_type does not match current run")
 
     scores = basis.project(matrices)
     return scores, basis.singular_values, basis.components.T, basis
@@ -468,6 +605,9 @@ def run_latent_analysis(
     load_basis_path: str | Path | None = None,
     k: int = 5,
     seed: int = 42,
+    allow_duplicate_prompts: bool = False,
+    basis_type: str = "variance",
+    lda_shrinkage: float = DEFAULT_LDA_SHRINKAGE,
 ) -> tuple[pd.DataFrame, pd.DataFrame, dict]:
     np.random.seed(seed)
     out_dir = Path(output_dir)
@@ -481,6 +621,7 @@ def run_latent_analysis(
         source_col=source_col,
         disguised_col=disguised_col,
         target_col=target_col,
+        allow_duplicate_prompts=allow_duplicate_prompts,
     )
     texts = condition_texts(df)
     matrices, feature_names = build_descriptor_matrix(
@@ -498,6 +639,8 @@ def run_latent_analysis(
         feature_set=feature_set,
         k=k,
         basis=loaded_basis,
+        basis_type=basis_type,
+        lda_shrinkage=lda_shrinkage,
     )
     if save_basis_path:
         save_basis(basis, save_basis_path)
@@ -505,6 +648,32 @@ def run_latent_analysis(
     loads_df = loadings_df(V, feature_names)
     big5_scores = big5_dimension_scores_df(df, matrices, feature_names)
     big5_movement = summarize_big5_dimension_movement(big5_scores)
+
+    # Full-feature source->target axis (k- and basis-independent). Every response is
+    # projected onto the scaled-feature difference-of-means direction d; source maps
+    # to 0 and target to 1 by construction, so the disguised coordinate IS the
+    # movement fraction. This is the headline persistence input and, unlike the
+    # PC-space projection, captures the entire separation regardless of k. The same
+    # d gives sep_ratio (how much of d the retained PC axes hold).
+    src_scaled = basis.scaler.transform(np.nan_to_num(matrices["source"], nan=0.0, posinf=0.0, neginf=0.0))
+    tgt_scaled = basis.scaler.transform(np.nan_to_num(matrices["target"], nan=0.0, posinf=0.0, neginf=0.0))
+    dis_scaled = basis.scaler.transform(np.nan_to_num(matrices["disguised"], nan=0.0, posinf=0.0, neginf=0.0))
+    d_feat = tgt_scaled.mean(axis=0) - src_scaled.mean(axis=0)
+    sep_full = float(np.linalg.norm(d_feat))
+    sep_captured = float(np.linalg.norm(basis.components @ d_feat))
+    denom_feat = float(d_feat @ d_feat)
+    if denom_feat > 1e-12:
+        src0 = src_scaled.mean(axis=0)
+        st_by_cond = {
+            "source": (src_scaled - src0) @ d_feat / denom_feat,
+            "disguised": (dis_scaled - src0) @ d_feat / denom_feat,
+            "target": (tgt_scaled - src0) @ d_feat / denom_feat,
+        }
+        st_col = np.full(len(scores_df), np.nan, dtype=float)
+        cond_values = scores_df["condition"].to_numpy()
+        for cond in CONDITIONS:
+            st_col[cond_values == cond] = st_by_cond[cond]
+        scores_df["st_axis"] = st_col
 
     scores_df.to_csv(out_dir / "latent_scores.csv", index=False)
     loads_df.to_csv(out_dir / "axis_loadings.csv", index=False)
@@ -520,6 +689,9 @@ def run_latent_analysis(
     var = (singular_values ** 2) / max(float((singular_values ** 2).sum()), 1e-12)
     config = {
         "dataset": dataset,
+        "sep_full": sep_full,
+        "sep_captured": sep_captured,
+        "sep_ratio": (float(sep_captured / sep_full) if sep_full > 1e-12 else float("nan")),
         "source_model": source_model,
         "target_model": target_model,
         "method": method,
@@ -530,6 +702,7 @@ def run_latent_analysis(
         "descriptor_encoder": encoder_model,
         "descriptor_truncate_chars": TRUNCATE_CHARS,
         "feature_set": feature_set,
+        "basis_type": getattr(basis, "basis_type", "variance"),
         "basis_fit_conditions": list(basis.fit_conditions),
         "basis_path_saved": str(save_basis_path) if save_basis_path else None,
         "basis_path_loaded": str(load_basis_path) if load_basis_path else None,
@@ -548,10 +721,10 @@ def run_latent_analysis(
         config["big5_direct_diagnostics"] = True
         config["big5_dimensions"] = big5_movement["dimension"].tolist()
         if not ranked.empty:
-            config["most_plastic_big5_dimension"] = str(ranked.iloc[0]["label"])
-            config["most_plastic_big5_movement"] = float(ranked.iloc[0]["movement_clipped"])
-            config["least_plastic_big5_dimension"] = str(ranked.iloc[-1]["label"])
-            config["least_plastic_big5_movement"] = float(ranked.iloc[-1]["movement_clipped"])
+            config["most_plastic_big5"] = str(ranked.iloc[0]["label"])
+            config["most_plastic_big5_move"] = float(ranked.iloc[0]["movement_clipped"])
+            config["least_plastic_big5"] = str(ranked.iloc[-1]["label"])
+            config["least_plastic_big5_move"] = float(ranked.iloc[-1]["movement_clipped"])
     else:
         config["big5_direct_diagnostics"] = False
     write_json(out_dir / "config.json", config)

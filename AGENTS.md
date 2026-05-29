@@ -17,7 +17,7 @@ Stable method names are registered in `scripts/methods/get_method.py`:
 
 - `just_name_it`
 - `random_sampling`
-- `behavioral_based`
+- `behavioral`
 - `stylistic`
 - `contrastive`
 - `stylistic_clustering`
@@ -35,8 +35,9 @@ All methods inherit from `MethodBase` and expose `forward(prompt: str)`.
   - Use `openai` for OpenAI or OpenAI-compatible endpoints.
 - `scripts/disguise.py`: apply disguise methods.
 - `scripts/scorer.py`: score single files or pairwise disguised-vs-target outputs.
-- `scripts/analysis/behavioral_cell_evaluator.py`: preferred multi-method evaluator for one `(dataset, source, target)` cell; fits one basis, computes source self-baseline, runs all methods, attaches calibration/activation evidence, and writes feature-ablation stability tables.
-- `scripts/analysis/run_behavioral_inertia.py`: latent behavioral-axis analysis.
+- `scripts/analysis/run_cell_pipeline.py`: end-to-end driver for one open-source-matrix cell. `--dataset --source --target` generates eval outputs (source/target baselines ×2 seeds, prompting rungs, and the SFT/DPO adapter rungs via Tinker), stages them on shared endpoints, runs the supervised-basis cell with self-baseline + identity controls, and prints the calibrated ladder. Idempotent (cached generations are skipped).
+- `scripts/analysis/behavioral_cell_evaluator.py`: preferred multi-method evaluator for one `(dataset, source, target)` cell; fits one basis (supervised LDA axis by default), computes source self-baseline + identity control, runs all methods, attaches calibration/activation evidence, and writes feature-ablation stability tables. Headline metric is `persistence` (k-independent full-feature source→target projection); `anchored` rescales it by both controls.
+- `scripts/analysis/run_behavioral_inertia.py`: latent behavioral-axis analysis for a single comparison CSV.
 - `scripts/analysis/activation_bridge.py`: representation probes without intervention.
 - `scripts/analysis/activation_steering.py`: local Transformers activation steering.
 - `workflows/run_gsm8k_workflow.py`: dry-run or launch GSM8K SFT/DPO workflows.
@@ -52,6 +53,11 @@ fields, and evaluator usage.
 3. Score comparisons with `scripts.scorer`.
 4. For multi-method analysis, use `scripts.analysis.behavioral_cell_evaluator` so every intervention in the same source-target cell shares the same saved behavioral basis.
 5. Aggregate summaries with `scripts.analysis.run_intervention_ladder`.
+
+For the open-source matrix, `scripts.analysis.run_cell_pipeline` does steps 1–4 for one
+`(dataset, source, target)` cell in a single command (generation through calibrated
+ladder). Generated cell outputs live under `data/results/<dataset>/analysis/cells/`
+and are gitignored.
 
 Use local CSVs as the reproducible source of truth. Old BAIR/cthulu-only
 artifacts should not be assumed available; regenerate missing results locally or

@@ -33,7 +33,12 @@ def run_behavioral_inertia(
     min_probe_accuracy: float = 0.70,
     bootstrap_samples: int = 1000,
     bootstrap_seed: int = 42,
-    self_baseline_persistence: float | None = None,
+    baseline: float | None = None,
+    weighted_baseline: float | None = None,
+    active_axes: list[str] | None = None,
+    allow_duplicate_prompts: bool = False,
+    basis_type: str = "variance",
+    lda_shrinkage: float = 0.1,
 ) -> dict:
     out_dir = Path(output_dir)
     scores_df, _loads_df, config = run_latent_analysis(
@@ -54,6 +59,9 @@ def run_behavioral_inertia(
         load_basis_path=load_basis,
         k=k,
         seed=seed,
+        allow_duplicate_prompts=allow_duplicate_prompts,
+        basis_type=basis_type,
+        lda_shrinkage=lda_shrinkage,
     )
 
     per_axis, metrics = compute_behavioral_metrics(
@@ -61,7 +69,10 @@ def run_behavioral_inertia(
         seed=seed,
         min_axis_separation=min_axis_separation,
         min_probe_accuracy=min_probe_accuracy,
-        self_baseline_persistence=self_baseline_persistence,
+        active_axes=active_axes,
+        axis_weights=config.get("variance_explained"),
+        baseline=baseline,
+        weighted_baseline=weighted_baseline,
     )
     per_axis.to_csv(out_dir / "per_axis_movement.csv", index=False)
     plot_persistence_radar(
@@ -74,13 +85,14 @@ def run_behavioral_inertia(
         **config,
         **metrics,
         "activation_bridge_mode": "none",
-        "activation_source_probability_disguised": None,
+        "activation_source_prob": None,
     }
     if bootstrap_samples > 0:
         active_axes = per_axis.loc[per_axis["active_axis"], "axis"].astype(str).tolist()
         boot_df, boot_summary = bootstrap_behavioral_metrics(
             scores_df,
             active_axes=active_axes,
+            axis_weights=config.get("variance_explained"),
             samples=bootstrap_samples,
             seed=bootstrap_seed,
         )
@@ -113,7 +125,8 @@ def main() -> None:
     parser.add_argument("--min-probe-accuracy", type=float, default=0.70)
     parser.add_argument("--bootstrap-samples", type=int, default=1000)
     parser.add_argument("--bootstrap-seed", type=int, default=42)
-    parser.add_argument("--self-baseline-persistence", type=float)
+    parser.add_argument("--self-baseline-persistence", dest="baseline", type=float)
+    parser.add_argument("--self-baseline-weighted-persistence", dest="weighted_baseline", type=float)
     args = parser.parse_args()
 
     summary = run_behavioral_inertia(
@@ -138,7 +151,8 @@ def main() -> None:
         min_probe_accuracy=args.min_probe_accuracy,
         bootstrap_samples=args.bootstrap_samples,
         bootstrap_seed=args.bootstrap_seed,
-        self_baseline_persistence=args.self_baseline_persistence,
+        baseline=args.baseline,
+        weighted_baseline=args.weighted_baseline,
     )
     print(pd.Series(summary).to_string())
 

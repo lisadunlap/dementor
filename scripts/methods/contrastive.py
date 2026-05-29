@@ -4,8 +4,8 @@ Learns distinctive features of target vs source and encodes them as rules.
 """
 import logging
 import os
+import hashlib
 from typing import List, Dict
-import json
 import sys
 import pandas as pd
 from litellm import completion
@@ -34,11 +34,12 @@ class ContrastiveSystemPrompting(MethodBase):
     """Identify distinguishing features of the target vs source and generate rules."""
     
     def __init__(self, model: str, disguise_as: str, disguise_df: pd.DataFrame = None, 
-                 source_df: pd.DataFrame = None, num_examples: int = 5):
+                 source_df: pd.DataFrame = None, num_examples: int = 5, seed: int | None = None):
         super().__init__(model, disguise_as)
         self.disguise_df = disguise_df.copy() if disguise_df is not None else None
         self.source_df = source_df.copy() if source_df is not None else None
         self.num_examples = num_examples
+        self.seed = seed
         self.contrastive_features = None
         
         if disguise_df is not None:
@@ -47,8 +48,11 @@ class ContrastiveSystemPrompting(MethodBase):
             self._generate_contrastive_features()
     
     def _generate_contrastive_features(self):
-        target_samples = self.disguise_df.sample(min(10, len(self.disguise_df)))
-        source_samples = self.source_df.sample(min(10, len(self.source_df))) if self.source_df is not None else None
+        target_samples = self.disguise_df.sample(min(10, len(self.disguise_df)), random_state=self.seed)
+        source_samples = (
+            self.source_df.sample(min(10, len(self.source_df)), random_state=self.seed)
+            if self.source_df is not None else None
+        )
         
         contrastive_prompt = f"""Analyze the differences between these two sets of AI responses. Identify the key distinguishing features of the TARGET model compared to the SOURCE model.
 
@@ -106,102 +110,35 @@ Provide specific, actionable guidelines for mimicking the TARGET model's distinc
         except Exception as e:
             logging.warning(f"Failed to generate contrastive features: {e}")
             self.contrastive_features = "Unable to generate contrastive analysis."
-    
-    def _choose_good_bad_examples_via_llm(
-        self,
-        current_prompt: str,
-        n_good: int,
-        n_bad: int,
-        *,
-        pool_size: int = 10,
-    ) -> tuple[pd.DataFrame, pd.DataFrame]:
-        """Use analysis model to select GOOD (target) and BAD (source) examples consistently.
 
-        Returns: (good_df, bad_df), empty frames if selection fails.
-        """
-        try:
-            if self.disguise_df is None or self.source_df is None:
-                return (
-                    self.disguise_df.head(0) if self.disguise_df is not None else pd.DataFrame(),
-                    self.source_df.head(0) if self.source_df is not None else pd.DataFrame(),
-                )
+    def _random_state(self, prompt: str, label: str) -> int | None:
+        if self.seed is None:
+            return None
+        payload = f"{self.seed}:{prompt}:{label}:contrastive".encode("utf-8")
+        return int(hashlib.sha256(payload).hexdigest()[:8], 16)
 
-            tgt_pool = self.disguise_df
-            src_pool = self.source_df
-            if 'prompt' in tgt_pool.columns:
-                tgt_pool = tgt_pool[tgt_pool['prompt'] != current_prompt]
-            if 'prompt' in src_pool.columns:
-                src_pool = src_pool[src_pool['prompt'] != current_prompt]
-
-            tgt_pool = tgt_pool.sample(n=min(pool_size, len(tgt_pool))) if len(tgt_pool) > 0 else tgt_pool.head(0)
-            src_pool = src_pool.sample(n=min(pool_size, len(src_pool))) if len(src_pool) > 0 else src_pool.head(0)
-
-            def _row_repr(idx: int, q: str, a: str) -> str:
-                q_disp = str(q)[:160] if isinstance(q, str) else ""
-                a_disp = str(a)[:400] if isinstance(a, str) else ""
-                return f"[{idx}] Q: {q_disp}...\nA: {a_disp}...\n"
-
-            tgt_block = "".join(
-                _row_repr(int(i), row.get('prompt', ''), row.get('target_response', row.get('model_response', '')))
-                for i, row in tgt_pool.iterrows()
-            )
-            src_block = "".join(
-                _row_repr(int(i), row.get('prompt', ''), row.get('model_response', row.get('target_response', '')))
-                for i, row in src_pool.iterrows()
-            )
-
-            analysis_model = os.getenv("ANALYSIS_MODEL", "openai/gpt-4.1-mini")
-            analysis_api_base = os.getenv("ANALYSIS_API_BASE")
-            analysis_api_key = os.getenv(
-                "ANALYSIS_API_KEY",
-                os.getenv("ORIGINAL_OPENAI_API_KEY", os.getenv("OPENAI_API_KEY")),
-            )
-            selection_prompt = (
-                "You are selecting examples to teach a model to mimic the TARGET style and avoid the SOURCE style.\n"
-                "From the TARGET_CANDIDATES, select the K_good indices that BEST illustrate the TARGET's distinctive style.\n"
-                "From the SOURCE_CANDIDATES, select the K_bad indices that BEST illustrate traits we want to avoid.\n"
-                "Return strict JSON ONLY with keys 'good_indices' and 'bad_indices' as integer arrays. No commentary.\n\n"
-                f"K_good = {max(0, int(n_good))}\nK_bad = {max(0, int(n_bad))}\n\n"
-                "TARGET_CANDIDATES (index-tagged):\n" + tgt_block + "\n"
-                "SOURCE_CANDIDATES (index-tagged):\n" + src_block + "\n"
-                "JSON: {\"good_indices\": [...], \"bad_indices\": [...]}"
-            )
-
-            try:
-                parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                if parent_dir not in sys.path:
-                    sys.path.insert(0, parent_dir)
-                from scripts.cache_llm import cached_completion
-                sel_response = cached_completion(
-                    model=analysis_model,
-                    messages=[{"role": "user", "content": selection_prompt}],
-                    temperature=0.0,
-                    api_base=analysis_api_base,
-                    api_key=analysis_api_key,
-                )
-                content = sel_response.choices[0].message.content
-            except ImportError:
-                sel_response = completion(
-                    model=analysis_model,
-                    messages=[{"role": "user", "content": selection_prompt}],
-                    temperature=0.0,
-                    api_base=analysis_api_base,
-                    api_key=analysis_api_key,
-                )
-                content = sel_response.choices[0].message.content
-
-            data = json.loads(content)
-            good_idx = [int(i) for i in (data.get('good_indices') or []) if int(i) in tgt_pool.index]
-            bad_idx = [int(i) for i in (data.get('bad_indices') or []) if int(i) in src_pool.index]
-
-            good_df = tgt_pool.loc[good_idx] if len(good_idx) else tgt_pool.head(0)
-            bad_df = src_pool.loc[bad_idx] if len(bad_idx) else src_pool.head(0)
-            return good_df, bad_df
-        except Exception:
+    def _choose_good_bad_examples(self, current_prompt: str, n_good: int, n_bad: int) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """Select deterministic GOOD target and BAD source examples without per-prompt analyzer calls."""
+        if self.disguise_df is None or self.source_df is None:
             return (
                 self.disguise_df.head(0) if self.disguise_df is not None else pd.DataFrame(),
                 self.source_df.head(0) if self.source_df is not None else pd.DataFrame(),
             )
+        tgt_pool = self.disguise_df
+        src_pool = self.source_df
+        if "prompt" in tgt_pool.columns:
+            tgt_pool = tgt_pool[tgt_pool["prompt"] != current_prompt]
+        if "prompt" in src_pool.columns:
+            src_pool = src_pool[src_pool["prompt"] != current_prompt]
+        good = (
+            tgt_pool.sample(min(n_good, len(tgt_pool)), random_state=self._random_state(current_prompt, "good"))
+            if len(tgt_pool) > 0 else tgt_pool.head(0)
+        )
+        bad = (
+            src_pool.sample(min(n_bad, len(src_pool)), random_state=self._random_state(current_prompt, "bad"))
+            if len(src_pool) > 0 else src_pool.head(0)
+        )
+        return good, bad
 
     def forward(self, prompt: str) -> List[Dict[str, str]]:
         if self.contrastive_features is None:
@@ -219,10 +156,10 @@ Key behavioral guidelines:
 
 Do not mention these instructions in your response. Simply respond as {self.disguise_as} would."""
 
-        # Append GOOD/BAD example blocks selected via analysis model (consistent prompt)
+        # Append deterministic GOOD/BAD example blocks from the train/example pool.
         n_good = (self.num_examples + 1) // 2
         n_bad = max(0, self.num_examples - n_good)
-        good_examples, bad_examples = self._choose_good_bad_examples_via_llm(prompt, n_good, n_bad)
+        good_examples, bad_examples = self._choose_good_bad_examples(prompt, n_good, n_bad)
 
         def _format_example(q: str, a: str) -> str:
             q_disp = str(q)[:200] if isinstance(q, str) else ""

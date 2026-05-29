@@ -38,7 +38,7 @@ def get_method(method_name, model, disguise_as, disguise_df=None, source_df=None
     
     Available methods:
         - contrastive: Learn differences between models
-        - behavioral_based: Capture personality and communication essence
+        - behavioral: Capture personality and communication essence
         - stylistic: Focus on measurable surface-level style patterns
         - random_sampling: Example-based disguise
         - stylistic_clustering: Cluster target responses on surface features
@@ -50,19 +50,31 @@ def get_method(method_name, model, disguise_as, disguise_df=None, source_df=None
     # Clean, concise method names
     method_kwargs = method_kwargs or {}
 
+    aliases = {
+        "behavioral_based": "behavioral",
+        "contrastive_system_prompting": "contrastive",
+        "behavioral_based_system_prompting": "behavioral",
+        "behavioral_system_prompting": "behavioral",
+        "stylistic_system_prompting": "stylistic",
+        "random_sampling_system_prompting": "random_sampling",
+    }
+    method_name = aliases.get(method_name, method_name)
+
     if method_name == "contrastive":
         if source_df is None:
             raise ValueError("contrastive method requires source_df parameter")
-        return ContrastiveSystemPrompting(model, disguise_as, disguise_df=disguise_df, source_df=source_df)
+        return ContrastiveSystemPrompting(
+            model, disguise_as, disguise_df=disguise_df, source_df=source_df, **method_kwargs
+        )
     
-    elif method_name == "behavioral_based":
-        return BehavioralBasedSystemPrompting(model, disguise_as, disguise_df=disguise_df)
+    elif method_name == "behavioral":
+        return BehavioralBasedSystemPrompting(model, disguise_as, disguise_df=disguise_df, **method_kwargs)
     
     elif method_name == "stylistic":
-        return StylisticSystemPrompting(model, disguise_as, disguise_df=disguise_df)
+        return StylisticSystemPrompting(model, disguise_as, disguise_df=disguise_df, **method_kwargs)
     
     elif method_name == "random_sampling":
-        return RandomSamplingSystemPrompting(model, disguise_as, disguise_df=disguise_df)
+        return RandomSamplingSystemPrompting(model, disguise_as, disguise_df=disguise_df, **method_kwargs)
 
     elif method_name == "just_name_it":
         from scripts.methods.extras.legacy_simple_methods import JustNameIt
@@ -94,17 +106,10 @@ def get_method(method_name, model, disguise_as, disguise_df=None, source_df=None
         if method_name == "behavioral_clustering":
             return FeatureClustering(method="behavioral", sample_at_init=True, **cluster_kwargs)
     
-    # Legacy support for old verbose names
-    elif method_name in ["contrastive_system_prompting", "behavioral_based_system_prompting",
-                        "stylistic_system_prompting", "random_sampling_system_prompting"]:
-        # Redirect to clean names
-        clean_name = method_name.replace("_system_prompting", "").replace("random_sampling_system_prompting", "random_sampling")
-        return get_method(clean_name, model, disguise_as, disguise_df, source_df)
-    
     else:
         available_methods = [
             "contrastive",
-            "behavioral_based",
+            "behavioral",
             "stylistic",
             "random_sampling",
             "just_name_it",

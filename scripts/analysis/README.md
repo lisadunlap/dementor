@@ -39,7 +39,10 @@ Outputs include `latent_scores.csv`, `axis_loadings.csv`,
 analysis figures when the selected feature set includes adjective
 descriptors. `per_axis_movement.csv` marks low-separation inactive axes so
 headline persistence is computed only on axes where source and target are
-meaningfully separated. `big5_dimension_movement.csv` is the direct named-axis
+meaningfully separated. The headline `projection_persistence` is the
+rotation-invariant projection onto the supervised source→target direction;
+the per-axis `source_persistence` is kept as a secondary diagnostic.
+`big5_dimension_movement.csv` is the direct named-axis
 diagnostic for dimensions such as Extraversion and Conscientiousness.
 
 Save a reusable source/target basis for a model pair:
@@ -72,12 +75,33 @@ Run feature ablations with `--feature-set`:
 --feature-set style_all       # style scalars + binary style heuristics
 ```
 
+## Cell Pipeline (open-source matrix)
+
+`run_cell_pipeline.py` is the one-command driver for a matrix cell: it generates
+the eval outputs and runs the cell. No manifest needed.
+
+```bash
+python3 -m scripts.analysis.run_cell_pipeline \
+  --dataset gsm8k --source llama-3.1-8b --target gpt-oss-20b --eval-size 200
+```
+
+It samples (all at one temperature so the self-baseline's inter-seed variance is
+comparable to the disguised draws): source & target baselines (2 seeds each, for
+the self-baseline ≈1 and identity ≈0 anchors), the prompting rungs
+(`just_name_it`, `random_sampling`, `stylistic`) via the source model, and the
+SFT/DPO adapter rungs via their Tinker sampler paths. Outputs go to
+`data/results/<dataset>/analysis/cells/<source>_to_<target>/` (gitignored), and it
+prints the calibrated ladder (`persistence`, `anchored` + CI, `z_vs_baseline`,
+`probe_cv`). Reruns skip cached generations. Use `--gen-only` to generate without
+evaluating.
+
 ## Cell Runner
 
-For multi-method runs, prefer the cell-level runner over manually invoking
-`run_behavioral_inertia.py` on each method. It enforces the basis-reuse
-invariant that all interventions in one `(dataset, source_model, target_model)`
-cell reuse the same source-target behavioral basis.
+For multi-method runs (or non-matrix sources), prefer the cell-level runner over
+manually invoking `run_behavioral_inertia.py` on each method. It enforces the
+basis-reuse invariant that all interventions in one
+`(dataset, source_model, target_model)` cell reuse the same source-target
+behavioral basis.
 
 Minimal manifest:
 
@@ -97,6 +121,9 @@ Minimal manifest:
       "data/model-responses/gsm8k/baselines/llama_seed1.csv",
       "data/model-responses/gsm8k/baselines/llama_seed2.csv"
     ]
+  },
+  "identity_control": {
+    "target_runs": ["data/model-responses/gsm8k/baselines/qwen_seed1.csv"]
   },
   "methods": [
     {
@@ -121,11 +148,15 @@ python3 -m scripts.analysis.behavioral_cell_evaluator --manifest path/to/cell.js
 Outputs:
 - `basis/behavioral_axis_basis.pkl`: the single source-target basis reused for
   all methods in the cell.
-- `self_baseline/summary.json`: source-run noise floor measured against the
-  same cell basis.
+- `self_baseline/summary.json`: source-run noise floor (≈ 1 anchor) measured
+  against the same cell basis.
+- `identity_control/summary.json`: independent-target positive control (≈ 0
+  anchor) when `identity_control` is configured.
 - `methods/*/summary.json`: method-level behavioral metrics with normalized
   persistence when a baseline is available.
-- `cell_summary.csv`: one row per method.
+- `cell_summary.csv`: one row per method, including `projection_persistence`,
+  `anchored` (+ CI), and `z_vs_baseline`.
+- `paired_method_comparisons.csv`: prompt-paired method comparison statistics.
 - `calibration/`: optional LLM-judge or pre-scored calibration summaries.
 - `feature_ablations/feature_ablation_stability.csv`: robustness of the
   headline metric across feature families.

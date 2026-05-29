@@ -18,8 +18,8 @@ Surface-form baseline. Estimates measurable target formatting traits such as
 length, markdown use, bullets, headers, questions, and code blocks, then turns
 those traits into system-prompt guidance.
 
-### `behavioral_based`
-Persona/profile baseline. Summarizes the target model's communication behavior
+### `behavioral`
+Behavioral baseline. Summarizes the target model's communication behavior
 and personality-like response tendencies into a system prompt.
 
 ### `contrastive`

@@ -2,6 +2,7 @@
 Stylistic disguise method focusing on measurable surface features.
 """
 from typing import List, Dict
+import hashlib
 import numpy as np
 import pandas as pd
 
@@ -40,18 +41,25 @@ class StylisticSystemPrompting(MethodBase):
     """Analyze and enforce surface-level stylistic patterns."""
     
     def __init__(self, model: str, disguise_as: str, disguise_df: pd.DataFrame = None,
-                 num_examples: int = 3, use_examples: bool = True):
+                 num_examples: int = 3, use_examples: bool = True, seed: int | None = None):
         super().__init__(model, disguise_as)
         self.disguise_df = disguise_df.copy() if disguise_df is not None else None
         self.num_examples = num_examples
         self.use_examples = use_examples
-        self.stylistic_profile = None
+        self.seed = seed
+        self.stylistic_rules = None
         
         if disguise_df is not None:
             self.disguise_df["token_length"] = self.disguise_df["target_response"].apply(get_token_count)
-            self._generate_stylistic_profile()
+            self._generate_stylistic_rules()
+
+    def _random_state(self, prompt: str) -> int | None:
+        if self.seed is None:
+            return None
+        payload = f"{self.seed}:{prompt}:stylistic".encode("utf-8")
+        return int(hashlib.sha256(payload).hexdigest()[:8], 16)
     
-    def _generate_stylistic_profile(self):
+    def _generate_stylistic_rules(self):
         responses = self.disguise_df['target_response'].tolist()
         style_analysis = {
             'avg_length': np.mean([len(r.split()) for r in responses]),
@@ -82,7 +90,7 @@ class StylisticSystemPrompting(MethodBase):
             guidelines.append("Ask clarifying questions or rhetorical questions")
         if style_analysis['uses_exclamations']:
             guidelines.append("Use exclamation points for enthusiasm and emphasis")
-        self.stylistic_profile = f"""Surface-level stylistic patterns for {self.disguise_as}:
+        self.stylistic_rules = f"""Surface-level stylistic patterns for {self.disguise_as}:
 
 {chr(10).join('• ' + g for g in guidelines)}
 
@@ -97,12 +105,19 @@ Key measurable characteristics:
     
     def forward(self, prompt: str) -> List[Dict[str, str]]:
         base_instruction = f"You are {self.disguise_as}. Match these specific stylistic patterns:"
-        if self.stylistic_profile:
-            system_prompt = f"{base_instruction}\n\n{self.stylistic_profile}"
+        if self.stylistic_rules:
+            system_prompt = f"{base_instruction}\n\n{self.stylistic_rules}"
         else:
             system_prompt = f"{base_instruction}\n\nFocus on matching the formatting, structure, and surface-level style patterns of {self.disguise_as}."
         if self.use_examples and self.disguise_df is not None:
-            examples = self.disguise_df.sample(min(self.num_examples, len(self.disguise_df)))
+            df = self.disguise_df
+            if "prompt" in df.columns:
+                df = df[df["prompt"] != prompt]
+            sample_size = min(self.num_examples, len(df))
+            examples = (
+                df.sample(sample_size, random_state=self._random_state(prompt))
+                if sample_size > 0 else df.head(0)
+            )
             system_prompt += f"\n\nReference examples showing these patterns:\n"
             for _, row in examples.iterrows():
                 truncated_response = row['target_response'][:300] + "..." if len(row['target_response']) > 300 else row['target_response']
