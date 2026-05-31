@@ -43,6 +43,8 @@ Companion to:
   - `cell_summary.csv` — behavioral-inertia metrics per rung
     (`persistence`, `anchored`, `trustworthy`, `over_assimilation`, …).
   - `cell.json` — the cell manifest.
+- `matrix_ladder/<dataset>/matrix_ladder.{csv,png}` — aggregated cross-cell
+  persistence ladder (all 12 source→target pairs) + headline figure per dataset.
 
 ## Scope
 4 models (llama-3.1-8b, gpt-oss-20b, qwen3.6-27b, nemotron-nano-30b-a3b);
@@ -89,13 +91,22 @@ def main() -> None:
                     shutil.copy(cell / extra, base / extra)
             n_cells += 1
 
-        print(f"staged {n_baselines} baselines + {n_cells} cells; creating repo...", flush=True)
+        n_figs = 0
+        for ladder in sorted(DATA.glob("results/*/analysis/matrix_ladder/matrix_ladder.csv")):
+            dataset = ladder.parts[ladder.parts.index("results") + 1]
+            dst = stage / "matrix_ladder" / dataset
+            dst.mkdir(parents=True, exist_ok=True)
+            for f in sorted(ladder.parent.glob("matrix_ladder.*")):  # csv + png
+                shutil.copy(f, dst / f.name)
+            n_figs += 1
+
+        print(f"staged {n_baselines} baselines + {n_cells} cells + {n_figs} dataset ladder figures; creating repo...", flush=True)
         api.create_repo(REPO, repo_type="dataset", private=args.private, exist_ok=True)
         api.upload_folder(
             folder_path=str(stage),
             repo_id=REPO,
             repo_type="dataset",
-            commit_message="Add matrix baselines + cell generations + summaries",
+            commit_message="Full 36-cell matrix: baselines + generations + summaries + ladder figures",
         )
         vis = "private" if args.private else "public"
         print(f"pushed ({vis}) -> https://huggingface.co/datasets/{REPO}", flush=True)
