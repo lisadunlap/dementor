@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 from dataclasses import dataclass
@@ -70,21 +71,31 @@ CHAT_TEMPLATE_KWARGS: dict[str, dict] = {
 
 
 def clean_response(model: str, raw: str) -> str:
-    """Strip per-model chat-template artifacts to leave just the assistant message."""
+    """Strip per-model chat-template artifacts to leave just the assistant message.
+
+    gpt-oss uses the harmony multi-channel format
+    (``<|channel|>analysis<|message|>CoT<|end|>…<|channel|>final<|message|>ANSWER``).
+    Normally the answer lives in the ``final`` channel. But a model fine-tuned —
+    especially with DPO — toward another model frequently STOPS emitting the
+    ``<|channel|>final<|message|>`` marker and dumps the answer straight under the
+    ``analysis`` (or ``commentary``) channel header. The previous version only
+    stripped when ``final`` was present, so post-DPO outputs leaked raw channel
+    markup (and reasoning) into the stored response, spuriously inflating measured
+    persistence. We now fall back to the last channel header when ``final`` is
+    absent, and strip any residual harmony scaffolding tokens for all models.
+    """
     text = raw
     if model == "openai/gpt-oss-20b":
-        # gpt-oss emits multi-channel: <|channel|>analysis<|message|>...<|end|>
-        # <|start|>assistant<|channel|>final<|message|>ACTUAL<|return|>
-        # Keep only the 'final' channel content.
-        final_marker = "<|channel|>final<|message|>"
-        if final_marker in text:
-            text = text.split(final_marker, 1)[1]
-    # Strip common chat tokens across all models
-    for tok in (
-        "<|eot_id|>", "<|eom_id|>", "<|im_end|>", "<|end|>",
-        "<|return|>", "<|endoftext|>",
-    ):
-        text = text.replace(tok, "")
+        final = "<|channel|>final<|message|>"
+        if final in text:
+            text = text.rsplit(final, 1)[1]                      # the genuine final answer
+        else:
+            headers = list(re.finditer(r"<\|channel\|>\w+<\|message\|>", text))
+            if headers:
+                text = text[headers[-1].end():]                 # answer dumped under analysis/commentary
+    # Strip any residual harmony / chat scaffolding tokens (harmless for other models).
+    text = re.sub(r"<\|(?:start|end|return|channel|message|constrain|"
+                  r"eot_id|eom_id|im_start|im_end|endoftext)\|>", "", text)
     return text.strip()
 
 # Train splits per dataset (HumanEval is eval-only)
