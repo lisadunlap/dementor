@@ -198,3 +198,6 @@ data/results/workflows/dpo_*_as_*/
 data/results/*/analysis/
 data/adapters/
 *.expired_backup
+
+# Big-Five/style direction analysis outputs (generated)
+data/results/big5_*
