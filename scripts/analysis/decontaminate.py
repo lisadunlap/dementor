@@ -72,8 +72,12 @@ def reeval(cell: Path, bootstrap: int = 300) -> pd.DataFrame:
 
 def main() -> None:
     cells = [c for c in sorted(DATA.glob("results/*/analysis/cells/*")) if (c / "staged").is_dir()]
-    old = pd.concat([pd.read_csv(p) for p in DATA.glob("results/*/analysis/matrix_ladder/matrix_ladder.csv")],
-                    ignore_index=True)[["source", "target", "rung", "persistence"]] \
+    old_parts = []
+    for p in DATA.glob("results/*/analysis/matrix_ladder/matrix_ladder.csv"):
+        o = pd.read_csv(p)
+        o["dataset"] = p.parts[p.parts.index("results") + 1]  # matrix_ladder.csv has no dataset col
+        old_parts.append(o)
+    old = pd.concat(old_parts, ignore_index=True)[["dataset", "source", "target", "rung", "persistence"]] \
         .rename(columns={"persistence": "persistence_before"})
 
     frames = []
@@ -92,7 +96,7 @@ def main() -> None:
             print(f"    [skip] {type(exc).__name__}: {str(exc)[:120]}", flush=True)
 
     new = pd.concat(frames, ignore_index=True).rename(columns={"persistence": "persistence_after"})
-    merged = new.merge(old, on=["source", "target", "rung"], how="left")
+    merged = new.merge(old, on=["dataset", "source", "target", "rung"], how="left")
     merged["delta"] = merged["persistence_after"] - merged["persistence_before"]
     out = DATA / "results" / "decontam_before_after.csv"
     merged.to_csv(out, index=False)
