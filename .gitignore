@@ -208,3 +208,7 @@ data/results/decontam_before_after.csv
 
 # D3 encoder-swap outputs (generated)
 data/results/encoder_swap_*
+
+# multi-seed CI re-eval outputs (generated)
+data/results/decontam_s*
+data/results/multiseed_ci_*.csv
