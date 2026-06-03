@@ -33,7 +33,7 @@ def main() -> None:
     cells = sorted(c for c in DECONTAM.glob("*/*") if (c / "gen").is_dir())
     rows = []
     for i, cell in enumerate(cells, 1):
-        dataset = cell.parts[cell.parts.index("results") + 1]
+        dataset = cell.parts[cell.parts.index("decontam") + 1]  # cells live under results/decontam/<dataset>/
         src, tgt = cell.name.split("_to_")
         out_cell = out_root / dataset / cell.name
         cache = out_cell / "cell_summary.csv"
