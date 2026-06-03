@@ -147,10 +147,13 @@ recommends a Findings/workshop target now.
   `clean_response`, chat-template kwargs), `run_gsm8k_workflow.py` (canonical SFT/DPO entry point),
   `tinker.py` (Tinker LoRA backend + adapter registry).
 
-> **Known artifact caveat** (from strategy.md §3–4): the on-disk encoder-swap CSV
-> (`data/results/encoder_swap_all-mpnet-base-v2.csv`) is still the buggy 12-cells-triplicated
-> version (all rows `dataset='decontam'`); the code fix landed in commit `6ad3d74` but was never
-> re-run. Regenerate before relying on a "36-cell encoder robustness" claim.
+> **Encoder-robustness note:** cross-encoder robustness is now carried by the **activation-bridge
+> probe** — e5-small-v2 (a different encoder *and* probe method) recovers the same source ordering as
+> MiniLM at **r=0.978**, so the two-tier split is not a MiniLM artifact. The older `encoder_swap.py`
+> (D3: mpnet/bge re-scoring of the full ladder) is a *secondary, partly-redundant* check. Its on-disk
+> mpnet CSV (`data/results/encoder_swap_all-mpnet-base-v2.csv`) is a **stale, buggy
+> 12-cells-triplicated** artifact (all rows `dataset='decontam'`; the fix landed in `6ad3d74`) — **do
+> not cite it**; a clean 36-cell bge regen is the one remaining housekeeping item.
 
 ## Reproduce
 
