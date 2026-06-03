@@ -131,6 +131,30 @@ True, verified, reproducible (seed-sd 0.018), de-confounded, size-dissociated. E
 
 ## 5. MECHANISM PLAN
 
+> **✅ RESULT (Move 2, run this session — supersedes the GO/NO-GO speculation below).**
+> Both cheap probes ran over all 36 cells, zero new generation.
+> - **Activation-bridge (Step 1), `bridge_decontam_driver.py`, e5-small-v2, CPU, 36 cells →
+>   verdict NO-GO for steering.** The probe behaved exactly as the gate intended. Survivors retain
+>   *more* decodable source residue than launderers (residue-curve-mean 0.168 vs 0.065; per-source
+>   llama 0.026 < qwen 0.104 < gpt-oss 0.164 < nemotron 0.173), and that residue ordering matches
+>   behavioral DPO-persistence at **Pearson r=0.978 / Spearman ρ=1.0** — an **independent, non-MiniLM
+>   encoder reproduces the two-tier split**, which is the cross-encoder robustness the distinctiveness
+>   collapse made us worry about. *But* the absolute residue (0.17) and the survivor−launderer gap
+>   (0.10) fall below the steering-justification bar (residue ≥0.30, gap ≥0.15), so steering is
+>   **NO-GO on this evidence.** Net: the gate bought a robustness number for free and saved the GPU
+>   spend. Caveat (in `verdict.json`): fixed-encoder reads a small encoder's view of the *output
+>   text*, not native internals — a *native-internals* probe (GPU) is the next gate if mechanism is
+>   pursued, **not** a steering run.
+> - **D4 structural decomposition (Step 2), `structural_decomp.py` → residue is document-FORMATTING.**
+>   Survivor−launderer residue-gap is largest for math/LaTeX symbols (0.50), numbered lists (0.45),
+>   contains-question (0.41), exclamation (0.40), markdown (0.39); raw word-count gap is 0.003. So
+>   what survives DPO is *how a document is laid out* (notation, lists, markdown) — not verbosity,
+>   not Big-Five personality.
+>
+> **Actionable upshot:** ship the paper now with the cross-encoder corroboration + D4 feature story
+> as the mechanism section ("what survives + that it isn't a metric artifact"); do **not** spend on
+> steering on this evidence. The planning text below is kept for the (now-answered) rationale.
+
 **Go/no-go on activation steering: conditional GO — but only as a scoped capstone, run *after* a cheap probe gates it, and NOT the version the docs imagine.** The mechanism lens corrected three stale blockers and I'm adopting its corrected picture:
 
 - The "hard-blocked at line 427" claim is **false** — that's a `note` string, not an error. `export_adapter_to_peft` (`workflows/run_matrix.py:662`) already downloads the Tinker checkpoint and unpacks a real PEFT dir, and is already wired (lines 921, 1045). **The Tinker→PEFT bridge is solved.**
@@ -147,7 +171,7 @@ True, verified, reproducible (seed-sd 0.018), de-confounded, size-dissociated. E
 
 **Three validity traps that will sink steering if ignored** (all verified): (1) the metric is ~81% MiniLM — build the steering vector from a *held-out* dataset and report the random-direction control, or it's the same circularity the rest of the project fights; (2) local generation does not replicate the gpt-oss `final`-channel extraction — steer through the hardened path or re-contaminate; (3) the marquee survivor cell is **length-fragile** (`full` 0.478 → `full_lenres` 0.003) — pick a `→qwen` writingprompts cell that survives lenres better, and report the effect on the length-residualized metric.
 
-**Bottom line:** **do NOT gate the paper on steering.** The honest auditing/negative-result paper ships *now* without it. The bridge probe (Step 1) is nearly free, has never been run, directly attacks the open *why*, and de-risks everything — **if you do only one mechanism thing, do that.** Steering is the capstone that *could* lift this to main-track; it is not a prerequisite for a real paper.
+**Bottom line:** **do NOT gate the paper on steering.** The honest auditing/negative-result paper ships *now* without it. The bridge probe (Step 1) **has now been run** (see the RESULT box at the top of this section): it returned a steering **NO-GO** but delivered an independent cross-encoder corroboration of the two-tier split (r=0.978) — exactly the de-risking it promised. Steering remains a *possible* main-track capstone, but only behind a **native-internals** probe (GPU); it is not a prerequisite for a real paper, and the current evidence does not justify the spend.
 
 ---
 

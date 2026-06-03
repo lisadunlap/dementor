@@ -88,10 +88,22 @@ distinctiveness-law paper (see `docs/strategy.md` §1–2 for the full argument 
 > relying on involuntary style therefore carry a **model-dependent false-negative risk.**
 
 The claim is *existence + unpredictability*, not a graded law — which survives the n=4 limitation
-honestly. The mechanism (*why* gpt-oss/nemotron retain) is stated as open. `docs/strategy.md`
-recommends a Findings/workshop target now and lists the cheap, never-run analyses
-(`activation_bridge.py` layerwise probe; structural-feature decomposition) that could push toward
-main-track.
+honestly. Two cheap mechanism analyses now sharpen *what* survives and gate the expensive next step:
+
+- **Structural decomposition (D4):** the surviving residue lives in **document-formatting** features
+  — math/LaTeX notation (survivor−launderer residue-gap **0.50**), numbered lists (0.45), markdown
+  (0.39) — **not** raw verbosity (word-count gap 0.003) and **not** Big-Five personality (null
+  probe). (`scripts/analysis/structural_decomp.py`)
+- **Activation-bridge probe (e5-small-v2, CPU, 36 cells):** an independent encoder + logistic probe
+  recovers the **same source ordering** as the MiniLM persistence metric (per-source residue vs
+  persistence **Pearson r=0.978, ρ=1.0**) — so the two-tier split is **not a MiniLM artifact**. But
+  the residual signal in the output text is weak (survivor residue 0.17, survivor−launderer gap
+  0.10), so the verdict for activation **steering is NO-GO** on this evidence: a native-internals
+  probe (GPU) is the next gate, not a steering run. (`scripts/analysis/bridge_decontam_driver.py` →
+  `data/results/bridge_decontam/verdict.json`)
+
+The mechanism (*why* gpt-oss/nemotron retain) remains open at the causal level; `docs/strategy.md`
+recommends a Findings/workshop target now.
 
 ## Where things live
 
@@ -119,12 +131,17 @@ main-track.
     distinctiveness figure and the zero-MiniLM structural recomputation that **inverts** it.
   - `behavioral_cell_evaluator.py`, `latent_behavior_axes.py`, `behavioral_inertia_metrics.py` —
     the metric internals (supervised basis, anchors, style features).
-  - `activation_bridge.py`, `activation_steering.py` — built, **never run**; the cheap layerwise
-    mechanism probe and the GPU steering capstone (future work; see strategy.md §5).
+  - `activation_bridge.py` + `bridge_decontam_driver.py` — the fixed-encoder mechanism probe, **run**
+    over 36 cells (CPU): cross-encoder corroboration r=0.978, steering verdict NO-GO.
+  - `structural_decomp.py` — D4 feature decomposition (residue = document-formatting structure).
+  - `activation_steering.py` — built, **not run** (GPU capstone; gated NO-GO by the bridge probe).
 - **Key data artifacts** (`data/results/`):
   - `multiseed_ci_s3.csv` — **the spine**: per-cell DPO persistence, 3-seed mean ± CI, seed-sd 0.018.
   - `decontam/` + `decontam_before_after.csv` — de-confounded re-eval text/results.
   - `big5_directions_matrix_{,_style_}logprob.csv` — personality-null / style-axis tables.
+  - `structural_decomp_byfeature.csv` — D4: per-feature survivor−launderer residue gaps.
+  - `bridge_decontam/verdict.json` + `per_source_summary.csv` — activation-bridge mechanism probe
+    (cross-encoder corroboration r=0.978; steering NO-GO).
   - `fig1_source_fingerprint.png` — the (superseded-thesis) source figure.
 - **Workflows** (`workflows/`): `run_matrix.py` (matrix runner; holds `MODEL_SLUG`,
   `clean_response`, chat-template kwargs), `run_gsm8k_workflow.py` (canonical SFT/DPO entry point),
