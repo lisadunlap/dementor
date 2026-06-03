@@ -41,6 +41,14 @@ def leak_rate(cell: Path) -> float:
     return float(d["model_response"].astype(str).str.contains("<|channel|>", regex=False).mean())
 
 
+def _summary(path: Path) -> pd.DataFrame:
+    """cell_summary.csv stores the rung name under `method` (feature_set=='full')."""
+    cs = pd.read_csv(path)
+    if "feature_set" in cs.columns:
+        cs = cs[cs["feature_set"] == "full"]
+    return cs[["method", "persistence"]].rename(columns={"method": "rung"})
+
+
 def reeval(cell: Path, bootstrap: int = 300) -> pd.DataFrame:
     dataset, src, tgt = parse_cell(cell)
     src_id, tgt_id = SLUG_TO_MODEL[src], SLUG_TO_MODEL[tgt]
@@ -57,7 +65,7 @@ def reeval(cell: Path, bootstrap: int = 300) -> pd.DataFrame:
     args = types.SimpleNamespace(dataset=dataset, source=src, target=tgt, bootstrap=bootstrap,
                                  adapter_seeds=1, calibration_judge=None, calibration_n=0)
     assemble_and_run(args, out_cell, cgen)
-    cs = pd.read_csv(out_cell / "cell_summary.csv")[["rung", "persistence"]]
+    cs = _summary(out_cell / "cell_summary.csv")
     cs["dataset"], cs["source"], cs["target"], cs["leak_rate"] = dataset, src, tgt, leak_rate(cell)
     return cs
 
@@ -75,7 +83,7 @@ def main() -> None:
         print(f"  [{i}/{len(cells)}] {dataset}/{cell.name}" + (" (cached)" if cache.exists() else ""), flush=True)
         try:
             if cache.exists():
-                cs = pd.read_csv(cache)[["rung", "persistence"]]
+                cs = _summary(cache)
                 cs["dataset"], cs["source"], cs["target"], cs["leak_rate"] = dataset, src, tgt, leak_rate(cell)
                 frames.append(cs)
             else:
