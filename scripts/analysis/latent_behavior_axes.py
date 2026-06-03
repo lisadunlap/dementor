@@ -146,22 +146,32 @@ def _style_binary_features(texts: list[str]) -> tuple[np.ndarray, list[str]]:
     return np.asarray(rows, dtype=float), [name for name, _func in feature_funcs]
 
 
+_ENCODER_CACHE: dict = {}
+
+
+def _load_encoder(encoder_model: str):
+    """Load + cache a SentenceTransformer by name. Reloading it on every call leaks
+    semaphores and crashes non-default encoders mid-matrix (the D3 encoder swap)."""
+    if encoder_model not in _ENCODER_CACHE:
+        try:
+            from sentence_transformers import SentenceTransformer
+        except ImportError as exc:
+            raise ImportError(
+                "Behavioral-inertia analysis now requires sentence-transformers for "
+                "Naz-style adjective embedding scoring. Install requirements.txt or run "
+                "`pip install sentence-transformers`."
+            ) from exc
+        _ENCODER_CACHE[encoder_model] = SentenceTransformer(encoder_model)
+    return _ENCODER_CACHE[encoder_model]
+
+
 def _embedding_descriptor_scores(
     texts: list[str],
     descriptors: list[str],
     *,
     encoder_model: str = DEFAULT_DESCRIPTOR_ENCODER,
 ) -> np.ndarray:
-    try:
-        from sentence_transformers import SentenceTransformer
-    except ImportError as exc:
-        raise ImportError(
-            "Behavioral-inertia analysis now requires sentence-transformers for "
-            "Naz-style adjective embedding scoring. Install requirements.txt or run "
-            "`pip install sentence-transformers`."
-        ) from exc
-
-    model = SentenceTransformer(encoder_model)
+    model = _load_encoder(encoder_model)
     descriptor_embeddings = model.encode(
         descriptors,
         normalize_embeddings=True,
