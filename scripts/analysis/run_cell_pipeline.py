@@ -179,6 +179,7 @@ def assemble_and_run(args, cell: Path, gen: Path) -> dict:
         "target_model": SLUG_TO_MODEL[args.target], "output_dir": str(cell),
         "feature_set": "full", "feature_ablation_sets": [], "basis_type": "supervised",
         "k": 5, "bootstrap_samples": args.bootstrap,
+        "encoder_model": getattr(args, "encoder_model", None),
         "calibration_judge_model": args.calibration_judge,
         "calibration_sample_size": args.calibration_n,
         "self_baseline": {"source_runs": [str(gen / "source_seed1.csv"), str(gen / "source_seed2.csv")]},

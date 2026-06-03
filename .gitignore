@@ -205,3 +205,6 @@ data/results/big5_*
 # D1 de-confound re-eval outputs (generated)
 data/results/decontam/
 data/results/decontam_before_after.csv
+
+# D3 encoder-swap outputs (generated)
+data/results/encoder_swap_*
