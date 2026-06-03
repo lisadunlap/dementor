@@ -214,3 +214,4 @@ data/results/decontam_s*
 data/results/multiseed_ci_*.csv
 
 data/results/fig1_*.png
+data/results/structural_decomp_percell.csv

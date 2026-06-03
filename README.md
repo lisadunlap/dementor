@@ -1,189 +1,181 @@
-# Dementor – Streamlined LLM Disguise
+# Dementor — measuring whether a model's behavioral fingerprint survives disguise
 
-Minimal toolkit for stealing the “voice” of one LLM and applying it to another. Pair concise prompt-based methods with optional SFT/DPO adapters; all evaluation artifacts land under `data/results/`.
+> **Collaborator onboarding.** This README brings a new contributor up to speed on what the
+> project is, the *honest* current headline, the recommended framing, where the artifacts live,
+> and how to reproduce one result. For the authoritative direction, read
+> [`docs/strategy.md`](docs/strategy.md) first — it supersedes the older `docs/argument.md` and
+> `docs/aaai_plan.md` on every point of conflict.
 
-## Quick Start
+## What this is
+
+Open-weight LLMs carry an **involuntary behavioral fingerprint** — stylistic/structural
+regularities (verbosity, markdown habits, list/LaTeX use, sentence shape) that make one model's
+outputs identifiable from another's. Dementor asks a robustness question: **when you push a
+*source* model to imitate a specific *target* model, how much of the source's own fingerprint
+survives?**
+
+We answer it with a **disguise ladder** of escalating interventions and a **calibrated, judge-free
+persistence metric**. The metric projects held-out responses onto a supervised Fisher-LDA
+source→target axis (over MiniLM adjective-descriptor scores + 32 hand-coded style features),
+anchored between a self-baseline (≈1, the fingerprint fully intact) and an identity control
+(≈0, fully laundered to the target), with a per-cell separability gate that refuses untrustworthy
+cells. It is deterministic and basis/k-independent by construction. Canonical definition:
+[`docs/evaluation_framework.md`](docs/evaluation_framework.md).
+
+### The 4×4×3 disguise ladder (36 cells)
+
+- **4 source × 4 target models** = 12 ordered source→target pairs (diagonal = self-baseline):
+  `llama-3.1-8b`, `qwen3.6-27b`, `gpt-oss-20b`, `nemotron-nano-30b-a3b`.
+- **3 datasets**: `gsm8k` (math), `writingprompts` (creative), `chatbot_arena` (open chat).
+- **5 rungs of increasing disguise strength** per cell: `just_name_it` (tell the model to act as
+  the target) → `random_sampling` (few-shot target exemplars) → `stylistic` (style prompt) →
+  **SFT** (LoRA toward target outputs) → **DPO** (preference tuning on top of SFT).
+
+All 180 cell-rungs pass the trust gate. Persistence collapses monotonically with intervention
+strength — **0.915 (naming) → 0.436 / 0.485 (prompting) → 0.369 (SFT) → 0.155 (DPO)** — i.e.
+naming alone never disguises; only weight-level edits move the fingerprint, and **DPO is the
+strongest eraser.** This monotone ladder is the experimental scaffold and Figure 1, not the
+headline.
+
+## The honest current headline
+
+**DPO erasure of the behavioral fingerprint is model-dependent and source-driven — not universal.**
+One epoch of LoRA-DPO drives source-vs-target separability to the floor for two of four models and
+leaves a robust, seed-stable structural residue for the other two. Verified this session against
+`data/results/multiseed_ci_s3.csv`:
+
+| source model | per-source DPO persistence | tier |
+|---|---|---|
+| nemotron-nano-30b-a3b | **0.211** | retains |
+| gpt-oss-20b | **0.190** | retains |
+| qwen3.6-27b | **0.077** | launders |
+| llama-3.1-8b | **0.012** | launders |
+
+- The two tiers are separated by a gap ~3× the within-tier spread; **seed-sd median 0.018** (≈20×
+  smaller than the survivor effect — the metric is highly reproducible across the 3 adapter seeds).
+- **Survivor enrichment is real but small-n**: 7/36 DPO cells survive (point estimate > 0.3), *all*
+  gpt-oss/nemotron-sourced (Fisher p ≈ 0.008). The exact count is definition-fragile (7 by point
+  estimate, 3 by a seed-sd lower bound).
+- **Which models retain is a property of the *source* model** — not the imitation target, the
+  domain, or model size: the 27B model (qwen) launders while the 20B (gpt-oss) resists, so capacity
+  is ruled out.
+- **The residue is structural style, not personality**: a Big-Five logprob probe is null
+  (mean |Cohen d| ≈ 0.14, 0/900 cell-facet pairs reach even a medium 0.5 effect); the faint
+  positive signal lives in verbosity/structure style axes.
+
+### What did NOT survive stress-testing (do not lead with this)
+
+An earlier thesis — *"a model's fingerprint resists DPO in proportion to how distinctive its
+outputs are"* — produced a striking r ≈ 0.97. **It did not survive.** Recomputing distinctiveness
+in a **zero-MiniLM, 32-feature structural space** (the circularity-killer test,
+[`scripts/analysis/distinctiveness_structural.py`](scripts/analysis/distinctiveness_structural.py))
+**inverts the relationship: r = −0.31**, and llama — the cleanest launderer (0.012) — is the *most*
+structurally distinctive model (0.577). The r=0.97 lives only in the MiniLM space the persistence
+metric is ~81% built from, i.e. exactly the circularity it was meant to kill. The "n=36 cell-level"
+backbone is also pseudo-replicated (the source-distinctiveness predictor has only 4 unique values;
+effective n is 4). **The mechanism for the source-driven split is therefore open.** Treat
+`source_fingerprint_figure.py` / `docs/argument.md` as the *superseded* distinctiveness story.
+
+## Recommended framing
+
+Sell this as an **auditing / provenance negative result**, not as a watermarking or
+distinctiveness-law paper (see `docs/strategy.md` §1–2 for the full argument and venue logic):
+
+> Black-box behavioral fingerprinting is proposed for model-provenance / distillation auditing.
+> We stress-test it under adversarial imitation (a disguise ladder up to DPO) and show its
+> reliability is **source-model-dependent and not predictable from output distinctiveness**: for
+> half of four open models, one epoch of LoRA-DPO drives the signal to the floor. Provenance tools
+> relying on involuntary style therefore carry a **model-dependent false-negative risk.**
+
+The claim is *existence + unpredictability*, not a graded law — which survives the n=4 limitation
+honestly. The mechanism (*why* gpt-oss/nemotron retain) is stated as open. `docs/strategy.md`
+recommends a Findings/workshop target now and lists the cheap, never-run analyses
+(`activation_bridge.py` layerwise probe; structural-feature decomposition) that could push toward
+main-track.
+
+## Where things live
+
+- **Branch**: `ethan` (current working branch; `main` for PRs).
+- **HuggingFace org `dementor-research`** (the canonical hand-off; any `ethantsliu/...` reference is
+  stale):
+  - **228 LoRA adapters** (SFT + DPO + self-SFT per cell × seed): https://huggingface.co/dementor-research
+  - **Dataset** `dementor-matrix-responses` (all matrix generations):
+    https://huggingface.co/datasets/dementor-research/dementor-matrix-responses
+  - The analysis pipeline is **HF-independent** — it reads Tinker sampler paths from
+    `data/tinker_adapters.json`, not HF. The HF artifacts are for external reproduction.
+- **Docs**: [`docs/strategy.md`](docs/strategy.md) (authoritative decision memo — read first),
+  [`docs/argument.md`](docs/argument.md) (the *superseded* distinctiveness write-up; kept for the
+  objection/rebuttal table), [`docs/aaai_plan.md`](docs/aaai_plan.md) (paper plan; its
+  distinctiveness/"n=36" framing is superseded by strategy.md),
+  [`docs/evaluation_framework.md`](docs/evaluation_framework.md) (canonical metric definition).
+- **Key analysis scripts** (`scripts/analysis/`):
+  - `run_cell_pipeline.py` — end-to-end runner for **one** cell (generate → stage → score → ladder).
+  - `decontaminate.py` — re-evaluates all 36 cells on chat-template-CLEANED cached text (the D1
+    gpt-oss CoT-leak de-confound; no regeneration). Supports `--adapter-seeds` for multi-seed CIs.
+  - `gen_multiseed.py` — generates seed2/seed3 SFT+DPO eval outputs for the CIs.
+  - `big5_directions.py` — named-direction probes (Big-Five personality vs style axes; logprob
+    backend).
+  - `source_fingerprint_figure.py` / `distinctiveness_structural.py` — the (superseded) MiniLM
+    distinctiveness figure and the zero-MiniLM structural recomputation that **inverts** it.
+  - `behavioral_cell_evaluator.py`, `latent_behavior_axes.py`, `behavioral_inertia_metrics.py` —
+    the metric internals (supervised basis, anchors, style features).
+  - `activation_bridge.py`, `activation_steering.py` — built, **never run**; the cheap layerwise
+    mechanism probe and the GPU steering capstone (future work; see strategy.md §5).
+- **Key data artifacts** (`data/results/`):
+  - `multiseed_ci_s3.csv` — **the spine**: per-cell DPO persistence, 3-seed mean ± CI, seed-sd 0.018.
+  - `decontam/` + `decontam_before_after.csv` — de-confounded re-eval text/results.
+  - `big5_directions_matrix_{,_style_}logprob.csv` — personality-null / style-axis tables.
+  - `fig1_source_fingerprint.png` — the (superseded-thesis) source figure.
+- **Workflows** (`workflows/`): `run_matrix.py` (matrix runner; holds `MODEL_SLUG`,
+  `clean_response`, chat-template kwargs), `run_gsm8k_workflow.py` (canonical SFT/DPO entry point),
+  `tinker.py` (Tinker LoRA backend + adapter registry).
+
+> **Known artifact caveat** (from strategy.md §3–4): the on-disk encoder-swap CSV
+> (`data/results/encoder_swap_all-mpnet-base-v2.csv`) is still the buggy 12-cells-triplicated
+> version (all rows `dataset='decontam'`); the code fix landed in commit `6ad3d74` but was never
+> re-run. Regenerate before relying on a "36-cell encoder robustness" claim.
+
+## Reproduce
+
+Use the project venv and set `PYTHONPATH`. `TINKER_API_KEY` (generation) and `OPENAI_API_KEY`
+(logprob probes) live in `.env`. The venv is a `uv` venv (no `pip`); install with
+`VIRTUAL_ENV=.venv uv pip install <pkg>`.
+
 ```bash
-pip install -r requirements.txt
-
-# 1. Generate target-model responses
-python scripts/generate_responses.py \
-  --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
-  --output-csv data/model-responses/gsm8k/openai_gpt-4.1-mini.csv \
-  basic --model openai/gpt-4.1-mini
-
-# 2. Disguise the source model as the target
-python scripts/disguise.py \
-  --model meta-llama/Meta-Llama-3.1-8B-Instruct \
-  --disguise-as openai/gpt-4.1-mini \
-  --method contrastive \
-  --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv
+export PYTHONPATH=/Users/EthanLiu/Documents/Programming/dementor
+PY=./.venv/bin/python   # arm64 venv with numpy/pandas/scipy/sklearn/sentence-transformers
 ```
 
-## Reference Docs
-- `AGENTS.md` – repo guidance + coding conventions.
-- `docs/experiment_implementation_plan.md` – matrix and run-count planning notes.
-- `docs/local_generation.md` – HF/vLLM/provider routing (includes the local vLLM walkthrough).
-- `workflows/README.md` – GSM8K SFT/DPO orchestration + Tinker adapter registry.
-- `METHODS.md` – stable disguise method names and the intervention ladder.
-- `examples/` – copy/paste provider configs.
-- `scripts/gsm8k/` – automation for GSM8K workflows, cleanup, and plotting.
+**Run one cell end-to-end** (generate all 5 rungs via Tinker, stage on shared endpoints, score,
+print the calibrated ladder). This is the cleanest zero-CoT-leak survivor:
 
-## Workflow in Four Steps
-1. **Generate base responses** – `scripts/generate_responses.py` (provider/HF/vLLM/Tinker).
-2. **Disguise** – `scripts/disguise.py`.
-3. **Score** – `python -m scripts.scorer ...` for LLM judge + heuristics.
-4. **Review outputs** – CSVs in `data/results/<dataset>/...`; cache lives in `cache/llm_cache/`.
-
-The behavioral analysis path uses Naz's adjective-matching latent analysis:
-Big-Five + model-style descriptors are embedded with
-`sentence-transformers/all-MiniLM-L6-v2`, responses are scored against those
-descriptors, and a source/target-only fixed SVD basis measures which
-behavioral axes move. Disguised outputs are projected into that basis; they do
-not define the axes used to evaluate them.
-See `docs/evaluation_framework.md` for the canonical evaluator definition,
-artifact schema, and metric field definitions.
-Activation steering is a local Transformers-hooks rung after Tinker adapter
-export, not a Tinker remote-sampling feature.
-
-## Disguise Options
-
-| Prompt Method | What it does | When to use |
-| --- | --- | --- |
-| `random_sampling` | Few-shot prompt of target answers. | Fast baseline when target responses are clean. |
-| `behavioral` | Builds behavior / tone system prompt. | You need the target’s “voice.” |
-| `stylistic` | Enforces formatting heuristics. | Rubric-heavy, surface-style benchmarks. |
-| `contrastive` | Learns correction rules from src vs tgt pairs. | Models diverge sharply; need targeted edits. |
-| `stylistic_clustering` | Clusters target exemplars by formatting traits. | Datasets with multiple style regimes. |
-| `embedding_clustering` | Embedding-based exemplar clusters per semantic regime. | Mixed semantic tasks (math vs chit-chat). |
-
-### Finetune Adapters
-| Path | Summary | Entry point |
-| --- | --- | --- |
-| **SFT (LoRA)** | Tinker/OpenAI fine-tunes for GSM8K (300 train / 200 eval). | `python -m workflows.run_gsm8k_workflow --stage sft ...` |
-| **DPO** | Preference tuning stacked on SFT adapters. | `python -m workflows.run_gsm8k_workflow --stage dpo ...` |
-
-## Scoring Cheatsheet
 ```bash
-# Single file (baseline quality)
-python -m scripts.scorer single data/model-responses/<dataset>/full/<model>.csv \
-  --output data/results/<dataset>/scores/<model>/scored.csv
-
-# Pairwise (disguised vs target)
-python -m scripts.scorer pairwise \
-  --input data/results/<dataset>/comparisons/disguised_vs_target/<method>/<src>_as_<tgt>.csv \
-  --output data/results/<dataset>/comparisons/disguised_vs_target/<method>/<src>_as_<tgt>_scored.csv \
-  --judge-model openai/gpt-4.1-mini
+$PY -m scripts.analysis.run_cell_pipeline \
+  --dataset gsm8k --source nemotron-nano-30b-a3b --target gpt-oss-20b \
+  --eval-size 200 --adapter-seeds 3
+# idempotent: cached outputs with the right row count are skipped, so reruns only fill gaps.
 ```
 
-## Directory Skeleton
+**Re-run the headline analyses on cached text (no regeneration, no GPU):**
 
-The repository is split into reusable experiment code, workflow orchestration,
-planning docs, and data artifacts. Treat `scripts/`, `workflows/`, `docs/`,
-`AGENTS.md`, `METHODS.md`, and `examples/` as the source-of-truth code/docs
-layer. Treat most of `data/model-responses/` and `data/results/` as experiment
-artifacts.
-
-```
-dementor/
-├── AGENTS.md                    # Agent-facing repo conventions and current project guidance
-├── METHODS.md                   # Stable method names and the intervention ladder
-├── README.md                    # Human-facing entry point
-├── requirements.txt             # Core Python dependencies
-├── main.py                      # Thin compatibility CLI; prefer direct scripts below
-├── docs/
-│   ├── behavioral_inertia_notes.md        # Historical behavioral-inertia notes
-│   ├── evaluation_framework.md            # Canonical behavioral-inertia evaluator definition
-│   ├── experiment_implementation_plan.md  # Concrete matrix/model/run plan
-│   └── local_generation.md                # Local HF/vLLM/provider generation notes
-├── examples/
-│   └── README.md                # Provider/model routing examples
-├── scripts/
-│   ├── generate_responses.py    # Base generations through provider, HF, vLLM, or Tinker
-│   ├── disguise.py              # Prompt/intervention disguise runner
-│   ├── scorer.py                # Single, pairwise, and compare scoring CLI
-│   ├── make_matrix_splits.py    # Deterministic dataset split builder for matrix runs
-│   ├── analysis/
-│   │   ├── behavioral_cell_evaluator.py   # Per source-target cell runner; fixed basis, baseline, ablations
-│   │   ├── behavioral_inertia_metrics.py  # Behavioral axis movement / residual signature metrics
-│   │   ├── latent_behavior_axes.py        # Naz-style adjective scoring + SVD axes
-│   │   ├── activation_bridge.py           # Cross-model activation alignment utilities
-│   │   ├── activation_steering.py         # Local Transformers steering hooks
-│   │   └── run_intervention_ladder.py     # Aggregate prompting/SFT/DPO/steering outputs
-│   ├── methods/
-│   │   ├── base.py               # MethodBase contract
-│   │   ├── get_method.py         # Method registry
-│   │   ├── random_sampling.py    # Few-shot target exemplar prompting
-│   │   ├── behavioral_based.py   # Behavioral prompt construction
-│   │   ├── stylistic.py          # Surface-form style controls
-│   │   └── contrastive.py        # Source-vs-target contrastive prompting
-│   ├── gsm8k/                    # Legacy/convenience GSM8K shell runners and plots
-│   ├── serve/                    # Shared local/server-side model utilities
-│   ├── tests/                    # Lightweight regression tests and fixtures
-│   ├── tools/                    # Adapter export, summaries, and artifact utilities
-│   └── utils/                    # One-off CSV/data repair helpers
-├── workflows/
-│   ├── data.py                   # Shared train/eval artifact builders
-│   ├── dpo.py                    # Preference-pair preparation
-│   ├── openai.py                 # OpenAI fine-tuning backend
-│   ├── tinker.py                 # Tinker LoRA/SFT/DPO backend and adapter registry
-│   ├── pipeline.py               # Shared workflow orchestration helpers
-│   ├── run_gsm8k_workflow.py     # Canonical GSM8K SFT/DPO entry point
-│   ├── run_matrix.py             # Matrix runner
-│   └── run_eval200_scoring.py    # Eval scoring orchestration
-├── data/
-│   ├── datasets/                 # Prompt splits and benchmark inputs
-│   ├── model-responses/          # Base model responses; generated or imported
-│   ├── recovered/                # Recovered Naz/BayLearn-era artifacts
-│   ├── results/                  # Disguise outputs, scores, manifests, plots
-│   └── tinker_adapters.json      # Local registry of Tinker adapter/sampler paths
-├── figures/                      # Report figures when materialized
-└── cache/
-    └── llm_cache/                # Persistent API cache; ignored by git
-```
-
-### What Belongs Where
-
-- **New disguise method**: add implementation under `scripts/methods/`, register it in `scripts/methods/get_method.py`, and document the stable method name in `METHODS.md`.
-- **New behavioral/latent metric**: add reusable code under `scripts/analysis/`; add a small fixture-backed test under `scripts/tests/` when the metric affects shared analysis behavior.
-- **New full experiment run**: add orchestration to `workflows/` and keep the generated outputs under `data/results/`.
-- **New model-response baseline**: write it under `data/model-responses/<dataset>/...`; commit only curated/provenance-critical baselines.
-- **Generated matrix artifacts**: keep them local under `data/model-responses/matrix_baselines/`, `data/results/matrix/`, or `data/results/workflows/<run>/`. These are ignored by git while Tinker jobs are running.
-- **External or recovered data**: keep provenance notes near the files, as in `data/results/call_center/MANIFEST.md`.
-
-### Canonical Entry Points
-
-- Base response generation: `python scripts/generate_responses.py ...`
-- Prompt disguise: `python scripts/disguise.py ...`
-- Scoring: `python -m scripts.scorer single|pairwise|compare ...`
-- GSM8K SFT/DPO: `python -m workflows.run_gsm8k_workflow ...`
-- Matrix workflow: `python -m workflows.run_matrix ...`
-- Behavioral cell evaluation: `python -m scripts.analysis.behavioral_cell_evaluator --manifest <cell.json>`
-- Behavioral inertia analysis: `python -m scripts.analysis.run_behavioral_inertia ...`
-- Intervention ladder aggregation: `python -m scripts.analysis.run_intervention_ladder ...`
-
-`main.py` remains for compatibility, but new automation should call the script/module entry points above directly.
-
-## Handy Commands
 ```bash
-# Generate base responses (provider/HF/vLLM)
-python scripts/generate_responses.py \
-  --prompts-file data/datasets/chatbot_arena/chatbot_arena_prompts.csv \
-  --output-csv data/model-responses/chatbot_arena/full/openai_gpt-4.1-mini.csv \
-  basic --model openai/gpt-4.1-mini
+# De-confounded 36-cell re-eval + multi-seed CIs -> writes multiseed_ci_s3.csv
+$PY -m scripts.analysis.decontaminate --adapter-seeds 3
 
-# Contrastive disguise with custom prompts
-python scripts/disguise.py \
-  --model google/gemma-3-1b-it \
-  --disguise-as openai/gpt-4.1-mini \
-  --method contrastive \
-  --prompts-file my_prompts.csv \
-  --num-samples 200
+# Named-direction probes: Big-Five personality (null) vs style axes (the faint positive)
+$PY -m scripts.analysis.big5_directions --matrix --axes big5  --backend logprob --max-prompts 40 --workers 16
+$PY -m scripts.analysis.big5_directions --matrix --axes style --backend logprob --max-prompts 40 --workers 16
+
+# The (superseded) MiniLM distinctiveness figure ...
+$PY scripts/analysis/source_fingerprint_figure.py
+# ... and the zero-MiniLM structural recomputation that INVERTS it (prints r = -0.31)
+$PY scripts/analysis/distinctiveness_structural.py
 ```
 
-## Inputs & Outputs
-- **Prompts**: CSV with `prompt` column (`data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv`, `data/datasets/chatbot_arena/chatbot_arena_prompts.csv`). Plain-text lists still work for lightweight cases.
-- **Base responses**: `data/model-responses/<dataset>/full/…`
-- **Results / scores**: `data/results/<dataset>/comparisons/...`
+Tests (no pytest installed): `$PY -m unittest scripts.tests.test_behavioral_inertia`.
 
-Need more detail? Open `AGENTS.md`, `docs/local_generation.md`, or `workflows/README.md` depending on whether you’re coding, routing providers, or fine-tuning. Everything else lives in the scripts described above.
+---
+
+For coding conventions see `AGENTS.md`; for local HF/vLLM/provider routing see
+`docs/local_generation.md`; for SFT/DPO orchestration see `workflows/README.md`. **Everything about
+direction and current status is in `docs/strategy.md`.**
