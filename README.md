@@ -147,13 +147,16 @@ recommends a Findings/workshop target now.
   `clean_response`, chat-template kwargs), `run_gsm8k_workflow.py` (canonical SFT/DPO entry point),
   `tinker.py` (Tinker LoRA backend + adapter registry).
 
-> **Encoder-robustness note:** cross-encoder robustness is now carried by the **activation-bridge
-> probe** — e5-small-v2 (a different encoder *and* probe method) recovers the same source ordering as
-> MiniLM at **r=0.978**, so the two-tier split is not a MiniLM artifact. The older `encoder_swap.py`
-> (D3: mpnet/bge re-scoring of the full ladder) is a *secondary, partly-redundant* check. Its on-disk
-> mpnet CSV (`data/results/encoder_swap_all-mpnet-base-v2.csv`) is a **stale, buggy
-> 12-cells-triplicated** artifact (all rows `dataset='decontam'`; the fix landed in `6ad3d74`) — **do
-> not cite it**; a clean 36-cell bge regen is the one remaining housekeeping item.
+> **Encoder-robustness (two independent checks, both pass):**
+> - **Activation-bridge probe** — e5-small-v2 (a different encoder *and* probe method) recovers the
+>   same source ordering as MiniLM at **r=0.978**.
+> - **Encoder-swap (D3, `encoder_swap.py` → `encoder_swap_bge-small-en-v1.5.csv`)** — re-scoring the
+>   full ladder under **bge-small-en-v1.5** (35/36 cells; the gsm8k qwen→gpt-oss cell errored)
+>   reproduces the ladder almost exactly: rung means within 0.03 of MiniLM at every rung (DPO floor
+>   **0.116 vs 0.119**; overall Spearman 0.80). The exact per-cell DPO survivor *set* is
+>   encoder-sensitive (Jaccard 0.38, ~3/6 robust across encoders) — so the load-bearing claim is the
+>   **tier-level split**, not exact per-cell survivor identity. (The earlier buggy
+>   12-cells-triplicated mpnet CSV has been removed.)
 
 ## Reproduce
 
