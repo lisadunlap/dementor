@@ -143,6 +143,13 @@ recommends a Findings/workshop target now.
   - `bridge_decontam/verdict.json` + `per_source_summary.csv` — activation-bridge mechanism probe
     (cross-encoder corroboration r=0.978; steering NO-GO).
   - `fig1_source_fingerprint.png` — the (superseded-thesis) source figure.
+- **Curated paper-handoff subset** (`results/`, committed via LFS): the small,
+  paper-relevant CSVs + figures lifted out of `data/results/` — `matrix_ladder/` (per-rung
+  ladder per dataset), `d2_multiseed_ci.csv`, `d1_decontam_before_after.csv`,
+  `d3_encoder_swap_bge.csv`, `source_distinctiveness.csv`, `style_directions.csv` /
+  `big5_personality_directions.csv`, `fig1_source_fingerprint.png`. See
+  [`results/README.md`](results/README.md) for the index. (`data/results/` above is the
+  working tree the scripts read/write; `results/` is the trimmed external hand-off.)
 - **Workflows** (`workflows/`): `run_matrix.py` (matrix runner; holds `MODEL_SLUG`,
   `clean_response`, chat-template kwargs), `run_gsm8k_workflow.py` (canonical SFT/DPO entry point),
   `tinker.py` (Tinker LoRA backend + adapter registry).
