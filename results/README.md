@@ -13,8 +13,10 @@ Reproduce any of these from the cached text with the scripts in `scripts/analysi
 ## The headline result — model-dependent DPO erasure
 - `d2_multiseed_ci.csv` — **D2**: per-cell persistence, mean ± 95% CI over 3 adapter
   seeds (de-confounded). Seed-sd median 0.018. The two-tier source split: nemotron
-  0.211 / gpt-oss 0.190 **retain**, qwen 0.077 / llama 0.012 **launder**. Survivors
-  (6–7/36, all gpt-oss/nemotron-sourced, Fisher p≈0.008).
+  0.211 / gpt-oss 0.190 **retain**, qwen 0.077 / llama 0.012 **launder**. Survivors,
+  pinned to one definition: **7** by point estimate (mean>0.3; gpt-oss×4, nemotron×3,
+  qwen/llama×0; Fisher p=0.0076) / **3** high-confidence (mean−1.96·seed_sd>0.3), all
+  gpt-oss/nemotron-sourced.
 - `fig1_source_fingerprint.png` — DPO persistence per source model (two-tier split).
 
 ## Robustness / corrections
