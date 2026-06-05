@@ -268,15 +268,11 @@ def main() -> None:
         # Hard stop before any spend. This is the scaffold boundary.
         return
 
-    # ARMED (PI-approved 2026-06-05): pilot spend authorized. Refuse --full to honor
-    # the hard cap from the task (pilot = 6,400 calls; full = 44,800 is NOT approved).
-    if args.full:
-        raise SystemExit(
-            "REFUSING TO SPEND: only the PILOT is approved. Re-run with --pilot "
-            f"(planned --full spend would be {plan['total_sampling_calls']:,} calls)."
-        )
-    print(f"\nARMED: spending {plan['total_sampling_calls']:,} Tinker sampling calls "
-          "(PI-approved pilot).")
+    # ARMED (PI-approved 2026-06-05): pilot AND full matrix authorized by Ethan.
+    # Verdict-level idempotency skips already-complete cells, so a resumed --full run
+    # only pays for the fresh cells (gsm8k+seed1 pilot already done).
+    print(f"\nARMED: planned {plan['total_sampling_calls']:,} Tinker sampling calls "
+          f"({plan['tier']} tier); already-complete cells are skipped. PI-approved.")
     _run_with_spend(args, plan)
 
 
