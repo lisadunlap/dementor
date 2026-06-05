@@ -176,6 +176,17 @@ def _run_with_spend(args, plan: dict) -> None:
     (OUT_DIR / "native_refusal").mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "adapter_refusal").mkdir(parents=True, exist_ok=True)
 
+    def _already_done(out_path: str) -> bool:
+        """Verdict-level idempotency: skip a unit whose verdict CSV already exists
+        with the full prompt set (so a resumed run doesn't re-spend on finished cells)."""
+        p = Path(out_path)
+        if not p.exists():
+            return False
+        try:
+            return len(pd.read_csv(p)) == len(prompts)
+        except Exception:
+            return False
+
     def _emit(raw_csv: Path, verdict_csv: Path) -> None:
         """Classify the raw completions, write only verdicts + redacted snippets,
         then delete the raw file so no full harmful completion persists."""
@@ -191,6 +202,9 @@ def _run_with_spend(args, plan: dict) -> None:
 
     # Baselines.
     for u in plan["baseline_units"]:
+        if _already_done(u["out"]):
+            print(f"  [skip] native {u['model']} seed{u['seed']}: cached", flush=True)
+            continue
         model = slug_to_model[u["model"]]
         raw = OUT_DIR / f"native_refusal/_raw_{u['model']}_seed{u['seed']}.csv"
         _sample_messages(
@@ -204,6 +218,9 @@ def _run_with_spend(args, plan: dict) -> None:
 
     # Adapter rungs (base_model = SOURCE; neutral user turn, no disguise wrapping).
     for u in plan["adapter_units"]:
+        if _already_done(u["out"]):
+            print(f"  [skip] adapter {u['alias']}: cached", flush=True)
+            continue
         source = slug_to_model[u["source"]]
         raw = OUT_DIR / f"adapter_refusal/_raw_{u['alias']}.csv"
         _sample_messages(
@@ -251,14 +268,16 @@ def main() -> None:
         # Hard stop before any spend. This is the scaffold boundary.
         return
 
-    raise SystemExit(
-        "\nREFUSING TO SPEND: --i-have-approval-to-spend was passed, but this is a "
-        "scaffold checkout where the spend path is intentionally not armed.\n"
-        "To arm it, a human must (1) confirm the Tinker rate card / budget, then "
-        "(2) replace this guard with a call to _run_with_spend(args, plan).\n"
-        f"Planned spend this invocation: {plan['total_sampling_calls']:,} sampling calls."
-    )
-    # _run_with_spend(args, plan)  # <- intentionally unreachable in the scaffold
+    # ARMED (PI-approved 2026-06-05): pilot spend authorized. Refuse --full to honor
+    # the hard cap from the task (pilot = 6,400 calls; full = 44,800 is NOT approved).
+    if args.full:
+        raise SystemExit(
+            "REFUSING TO SPEND: only the PILOT is approved. Re-run with --pilot "
+            f"(planned --full spend would be {plan['total_sampling_calls']:,} calls)."
+        )
+    print(f"\nARMED: spending {plan['total_sampling_calls']:,} Tinker sampling calls "
+          "(PI-approved pilot).")
+    _run_with_spend(args, plan)
 
 
 if __name__ == "__main__":
