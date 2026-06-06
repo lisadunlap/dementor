@@ -8,7 +8,7 @@ full plan in `docs/plans/` and an implementation on its own branch off `ethan`.
 |-----|--------|----------|---------|
 | D1 | `d1-capability-vs-style` | Does *capability* ride along (the payload) while style launders? | **Real on MATH-500** (+0.075 acc transfer at DPO; false-clean existence proof). Null on gsm8k was a ceiling artifact. |
 | D2 | `d2-reasoning-structure` | Decompose style vs reasoning-structure vs capability transfer | **Positive (H3)** — reasoning durability ranks the survivor split (pooled +1.00; seed2-alone +0.80) |
-| D3 | `d3-safety-scaffold` | Does alignment/refusal survive black-box imitation? | **Refusals erode**: DPO erases ~15.6% of native refusals; coupled to (not decoupled from) style persistence |
+| D3 | `d3-safety-scaffold` | Does alignment/refusal survive black-box imitation? | **Refusals erode on all 3 datasets** (full 216-cell matrix): DPO erases 19.4% pooled [CI 13.2–26.1]; coupled to style persistence (r=−0.35) |
 
 > **Update 2026-06-05 (Tinker fix pass).** A bounded ~9k-call Tinker run fixed all three.
 > Details in the "Fix pass" section at the bottom; the table above already reflects the
@@ -74,16 +74,19 @@ huge CI). Caveat/confound: MATH capability tiers {nemotron,gpt-oss}>{qwen,llama}
 with the style-survivor tiers — survivors may partly just be the more capable models.
 Files: `results/d1fix_*`, `scripts/analysis/{census_mathbench,grade_mathbench,d1fix_capgen,d1fix_analyze}.py`.
 
-**D3 — safety pilot, all 12 pairs (gsm8k, seed1).** Native refusal high on all 4
-(0.92–1.00). **Benign-output imitation collaterally erases refusals: SFT −10.9%, DPO
-−15.6%** of the source's native refusals. **H5:** |refusal drift| correlates *negatively*
-with style persistence (Pearson −0.36) → **not decoupled** as hypothesized — durable-style
-models keep their refusals, launderers shed both (durability is model-wide). H6:
-over-refusal on safe prompts slightly drops (no new over-caution). Dual-use: only binary
-verdicts + redacted snippets persisted; raw completions discarded. Decision pending: the
-**44.8k full matrix** (3 datasets × 3 seeds) was deliberately NOT run — pilot signal is
-clear; scale only if a main-track safety claim is wanted.
-Files: `results/safety/*`, `figures/safety_*.png`, `scripts/safety/analyze_safety.py`.
+**D3 — safety, FULL 216-cell matrix (3 datasets × 12 pairs × 2 rungs × 3 seeds).**
+Native refusal high on all 4 (0.92–1.00). **Benign-output imitation collaterally erases
+refusals on every training dataset:** DPO erases gsm8k **14.7%** [CI 7.5–22.9],
+writingprompts **24.8%** [12.1–38.5], chatbot_arena **18.6%** [7.9–31.0]; **pooled 19.4%**
+[13.2–26.1] (SFT pooled 17.6%). Near-zero seed variance (e.g. wp 0.248/0.249/0.248) → robust,
+not noise; writingprompts-trained imitation strips the most refusal. **H5 at full power:**
+|refusal drift| correlates *negatively* with style persistence (Pearson **−0.35** at DPO,
+n=108) → **not decoupled** as hypothesized — durable-style models keep their refusals,
+launderers shed both (durability is model-wide). H6: over-refusal on safe prompts flat
+(~0.08, no new over-caution). Dual-use: only binary verdicts + redacted snippets persisted;
+raw completions discarded.
+Files: `results/safety/safety_full_*.csv`, `figures/safety_full_*.png`,
+`scripts/safety/d3full_analyze.py` (pilot: `analyze_safety.py`).
 
 **D2 — seed-robustness.** seed1↔seed2 reasoning-persistence agreement Pearson 0.92; H3
 keeper holds **pooled (+1.00)** and reproduces seed1 exactly, but **seed2-alone softens to
@@ -97,5 +100,6 @@ honest seed bars. Files: `data/results/reasoning/reasoning_seed_*`, `*_seed2`, `
   confound (D1 census) disclosed.
 - **D1 false-clean** = a sharp, concrete illustration (qwen→nemotron) for the "style audits
   are insufficient" argument; honest about modest magnitude + low power.
-- **D3 safety erosion** = a separable second paper / safety-workshop angle; pilot is enough
-  to motivate, full matrix only if going main-track on it.
+- **D3 safety erosion** = a separable second paper / safety-workshop angle, now on a full
+  216-cell matrix with CIs and 3-dataset replication — strong enough to stand on its own
+  (DPO erases ~19% of refusals, coupled to fingerprint durability).
