@@ -58,6 +58,11 @@ MODEL_SLUG: dict[str, str] = {
     "Qwen/Qwen3.6-27B": "qwen3.6-27b",
     "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16": "nemotron-nano-30b-a3b",
     "openai/gpt-oss-20b": "gpt-oss-20b",
+    # B2a confound-breaker sources (high-capability models from "launderer" lineages).
+    # Added to the slug/chat maps only (NOT to MODELS) so the global matrix is unchanged;
+    # B2a trains an explicit 8-cell subset via launch_sft(cells=...).
+    "meta-llama/Llama-3.3-70B-Instruct": "llama-3.3-70b",
+    "Qwen/Qwen3-32B": "qwen3-32b",
 }
 
 # Per-model kwargs for tokenizer.apply_chat_template — disables thinking traces
@@ -67,6 +72,8 @@ CHAT_TEMPLATE_KWARGS: dict[str, dict] = {
     "Qwen/Qwen3.6-27B": {"enable_thinking": False},
     "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16": {"enable_thinking": False},
     "openai/gpt-oss-20b": {"reasoning_effort": "low"},
+    "meta-llama/Llama-3.3-70B-Instruct": {},
+    "Qwen/Qwen3-32B": {"enable_thinking": False},
 }
 
 
@@ -127,6 +134,8 @@ def renderer_for(model: str) -> str:
             "Qwen/Qwen3.6-27B": "qwen3",
             "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16": "nemotron",
             "openai/gpt-oss-20b": "gpt-oss",
+            "meta-llama/Llama-3.3-70B-Instruct": "llama3",
+            "Qwen/Qwen3-32B": "qwen3",
         }.get(model, "unknown")
 
 
@@ -218,7 +227,7 @@ def generate_target_responses(
 
     total_generated = 0
     for model in models:
-        renderer = get_recommended_renderer_name(model)
+        renderer = renderer_for(model)  # guarded helper (cookbook with dict fallback)
         sampling = None
         tok = None
         for dataset in datasets:
