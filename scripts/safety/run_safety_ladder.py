@@ -120,6 +120,36 @@ def build_plan(args) -> dict:
     }
 
 
+def build_diagonal_plan(args) -> dict:
+    """A3 placebo: the 12 self-SFT adapters (model imitating its OWN outputs) on the refusal
+    prompts. Verdicts -> results/safety/self_adapter_refusal/. No baselines (native rates are
+    already cached). Comparator stays r_native(SOURCE) = the model itself."""
+    reg = json.loads(ADAPTER_REGISTRY.read_text())
+    eval_df = pd.read_csv(args.eval_csv)
+    n_prompts = len(eval_df)
+    units, missing = [], []
+    for ds in DATASETS:
+        for m in MODELS:
+            alias = f"self_sft_{ds}_{m}_as_{m}_seed1"
+            entry = reg.get(alias)
+            path = entry.get("path") if entry else None
+            if not path:
+                missing.append(alias)
+                continue
+            units.append({
+                "kind": "adapter", "alias": alias, "dataset": ds, "source": m, "target": m,
+                "rung": "self_sft", "seed": 1, "path": path, "base_model_slug": m,
+                "n_prompts": n_prompts,
+                "out": str(OUT_DIR / f"self_adapter_refusal/{alias}.csv"),
+            })
+    total = sum(u["n_prompts"] for u in units)
+    return {"tier": "diagonal(self-SFT placebo)", "n_prompts": n_prompts, "datasets": DATASETS,
+            "baseline_seeds": [], "adapter_seeds": [1], "baseline_units": [],
+            "adapter_units": units, "missing_aliases": missing, "n_baseline_calls": 0,
+            "n_adapter_calls": total, "total_sampling_calls": total,
+            "est_usd_placeholder": 0.0}
+
+
 def print_plan(plan: dict) -> None:
     print("=" * 72)
     print(f"SAFETY LADDER — DRY RUN ({plan['tier'].upper()} tier)  [NO SPEND]")
@@ -175,6 +205,7 @@ def _run_with_spend(args, plan: dict) -> None:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "native_refusal").mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "adapter_refusal").mkdir(parents=True, exist_ok=True)
+    (OUT_DIR / "self_adapter_refusal").mkdir(parents=True, exist_ok=True)
 
     def _already_done(out_path: str) -> bool:
         """Verdict-level idempotency: skip a unit whose verdict CSV already exists
@@ -222,7 +253,7 @@ def _run_with_spend(args, plan: dict) -> None:
             print(f"  [skip] adapter {u['alias']}: cached", flush=True)
             continue
         source = slug_to_model[u["source"]]
-        raw = OUT_DIR / f"adapter_refusal/_raw_{u['alias']}.csv"
+        raw = Path(u["out"]).parent / f"_raw_{u['alias']}.csv"  # raw next to verdict (handles self_adapter_refusal/)
         _sample_messages(
             service, base_model=source, model_path=u["path"],
             messages_by_prompt=base_msgs(prompts), prompts=prompts,
@@ -244,6 +275,8 @@ def main() -> None:
                       help="gsm8k + seed1 only (cost-bounded go/no-go pilot).")
     tier.add_argument("--full", action="store_true",
                       help="Full matrix: 3 datasets x 3 adapter seeds x 2 baseline seeds.")
+    tier.add_argument("--diagonal", action="store_true",
+                      help="A3 placebo: the 12 self-SFT adapters (model imitating itself) on refusals.")
     ap.add_argument("--eval-csv", dest="eval_csv", type=Path, default=DEFAULT_EVAL,
                     help="Refusal eval prompt CSV (prompt,category,expected).")
     ap.add_argument("--parallel", type=int, default=8)
@@ -253,7 +286,7 @@ def main() -> None:
                     help="EXPLICIT spend gate. Without this, the script dry-runs only.")
     args = ap.parse_args()
 
-    if not (args.pilot or args.full):
+    if not (args.pilot or args.full or args.diagonal):
         args.pilot = True  # default to the cheaper plan for the dry run
 
     if not args.eval_csv.exists():
@@ -261,7 +294,7 @@ def main() -> None:
             f"Eval CSV not found: {args.eval_csv}\n"
             "Run scripts/safety/fetch_refusal_prompts.py first (free download).")
 
-    plan = build_plan(args)
+    plan = build_diagonal_plan(args) if args.diagonal else build_plan(args)
     print_plan(plan)
 
     if not args.i_have_approval_to_spend:

@@ -62,6 +62,8 @@ def main():
     ap.add_argument("--parallel", type=int, default=8)
     ap.add_argument("--max-tokens", type=int, default=1024)
     ap.add_argument("--cap", type=int, default=3000, help="hard cap on sampling calls")
+    ap.add_argument("--diagonal", action="store_true",
+                    help="A3 capability placebo: sample the 4 self-SFT gsm8k adapters on MATH-500")
     args = ap.parse_args()
 
     # Bump the reasoning budget for MATH (gsm8k default is 512) — affects every
@@ -115,6 +117,19 @@ def main():
                 continue
             out = GEN_DIR / f"{rung}_{src}_as_{tgt}.csv"
             if do_unit(f"adapter {alias}", SLUG2FULL[src], entry["path"], out) == "stop":
+                return
+
+    # 3) A3 capability placebo: self-SFT gsm8k adapters (model imitating its OWN gsm8k outputs).
+    #    Expectation: MATH acc ≈ native base acc (self-imitation should not move capability).
+    if args.diagonal:
+        print("=== self-SFT gsm8k adapters on MATH-500 (capability placebo) ===", flush=True)
+        for full, slug in MODELS:
+            alias = f"self_sft_gsm8k_{slug}_as_{slug}_seed1"
+            entry = reg.get(alias)
+            if not entry or not entry.get("path"):
+                print(f"  [missing] {alias}", flush=True)
+                continue
+            if do_unit(f"self {alias}", full, entry["path"], GEN_DIR / f"self_{slug}.csv") == "stop":
                 return
 
     print(f"\n[done] sampling calls this run: {spent['calls']}", flush=True)

@@ -20,6 +20,7 @@ the census driver census_mathbench.py.
 """
 from __future__ import annotations
 
+import math
 import re
 import sys
 from pathlib import Path
@@ -45,7 +46,9 @@ def canon_num(raw: Optional[str]) -> Optional[str]:
         return None
     try:
         f = float(m.group(0))
-    except ValueError:
+    except (ValueError, OverflowError):
+        return None
+    if not math.isfinite(f):  # guard: a very long digit string overflows to inf -> round(inf) raises
         return None
     if abs(f - round(f)) < 1e-9:
         return str(int(round(f)))
