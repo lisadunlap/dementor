@@ -105,6 +105,69 @@ honestly. Two cheap mechanism analyses now sharpen *what* survives and gate the 
 The mechanism (*why* gpt-oss/nemotron retain) remains open at the causal level; `docs/strategy.md`
 recommends a Findings/workshop target now.
 
+## Beyond style: four behavioral axes (D1–D4, A1–A4)
+
+Style persistence is **one** axis. The disguise question generalizes: when a source imitates a
+target, what *else* of the source survives? We now measure four behavioral axes per cell — and the
+load-bearing finding is that **the same two sources (gpt-oss, nemotron) retain across axes while
+the other two (qwen, llama) shed them.** That cross-axis alignment is the project's central
+empirical hook **and** its central honesty problem (see the n=4 caveat below).
+
+| Axis | What it measures | DPO headline | Script / CSV |
+|---|---|---|---|
+| **Style** (core) | Fisher-LDA movement on MiniLM + 32 style features | mean **0.155**, median 0.04 | `results/matrix_ladder/*.csv` (de-confounded `multiseed_ci_s3.csv` gives 0.122) |
+| **Reasoning** (D2) | Movement on 15-D CoT-structure features (steps, equations, scaffolding) | per-source **0.31 → 0.10** | `data/results/reasoning/h3_persource_reasoning.csv` |
+| **Safety** (D3) | Refusal erosion on held-out harmful prompts after *benign* imitation | **14.7–24.8%** eroded | `results/safety/safety_full_refusal_ladder.csv` |
+| **Capability** (D1) | MATH-500 accuracy transfer (escapes the gsm8k ceiling) | **+0.29** transfer, ⊥ style | `results/d1fix_dissociation_stats.csv` (per-cell: `..._capability_transfer_percell.csv`) |
+
+**A2 — is per-source durability a *stable trait* (not n=4-bound)?** A hand-rolled Type-II ANOVA
+(`scripts/analysis/variance_decomp.py`, no statsmodels) partitions variance over the 36-cell ×
+3-seed design. The source main effect is powered by 9 cells/source, **not** by n=4. Verdict
+(`results/durability/gate_summary.csv`):
+
+| Axis | source η² | p | Kendall W | stable trait? |
+|---|---|---|---|---|
+| **Style** | 0.391 | 0.003 | 0.91 | **yes** |
+| **Safety** | 0.656 | ≈0 | 0.78 | **yes** |
+| Reasoning | 0.101 | 0.285 | 0.47 | **no** |
+
+So style and safety durability are genuine, reproducible per-source properties; the reasoning
+"+1.00 survivor ranking" (D2) is real per-source but **not** a stable variance component — it's an
+averaging artifact, so we do **not** lead with reasoning as a mechanism.
+
+**D1 — capability rides along independently.** On MATH-500 (real spread: nemotron 0.80 → llama
+0.45, vs the gsm8k ceiling), capability transfer is **orthogonal** to style persistence
+(Pearson r = −0.06, n=10). Existence proof: qwen→nemotron at DPO reads style-persistence **0.0**
+("audit-clean") yet gains **+21 MATH points** — a behavioral disguise that a capability probe sees
+straight through. This is the **provenance false-clean**.
+
+**D3 + A3 — safety laundering is real, replicated, and imitation-specific.** Benign imitation
+(gsm8k/writingprompts/chatbot_arena, *no* harmful data) erodes refusals on held-out harmful prompts
+by **14.7% (gsm8k) / 24.8% (writingprompts) / 18.6% (chatbot_arena)** at DPO, near-zero seed
+variance (216-cell matrix). Erosion is **negatively coupled to style persistence** (r = −0.35):
+launderers shed style *and* safety. The **A3 self-SFT placebo** makes it causal — training a model
+on its *own* benign outputs erodes refusals ≈0%, while cross-imitation does not — so it is
+**laundering-specific, not generic fine-tuning damage**. (Honest scope: the large cross-imitation
+drift is **llama-dominated** — llama −0.61 vs ≈−0.01 for the other three sources;
+`results/safety/self_placebo_vs_cross_sft.csv`.)
+
+**A1 — the durability table, and its load-bearing caveat.** Joined per-source
+(`results/durability/per_source_durability.csv`): every axis — style, reasoning, refusal retention,
+capability, native cross-dataset stability — **co-ranks ρ = 1.0** with the same 2-2 source split.
+**This is the confound, stated plainly: with n=4 sources a perfect ρ has permutation p ≈ 0.33 and
+carries ~1 bit; all columns are entangled with capability.** A2 proves *stability*, not
+*independence from capability*. (Structural distinctiveness is the lone column that **inverts** —
+llama is the most structurally distinctive yet launders most — which is why the old r=0.97
+distinctiveness law was dropped.)
+
+**Phase B — breaking the confound (in progress, gated by A2).** Because A2 passed for style+safety,
+we registered two **high-capability launderer-lineage** sources — `Llama-3.3-70B` (MATH 0.70) and
+`Qwen3-32B` (0.69) — to dissociate capability from durability at n=6
+(`results/durability/extra_census.csv`, `scripts/analysis/b2a_train.py`, 8 cells, gsm8k). The
+pre-registered test: if these capable models *launder* like their lineage cousins → durability is a
+**separate axis** from capability; if they *retain* → durability **is** capability. Adapters are
+training; the n=6 recompute is the open task.
+
 ## Where things live
 
 - **Branch**: `ethan` (current working branch; `main` for PRs).
@@ -116,6 +179,10 @@ recommends a Findings/workshop target now.
   - The analysis pipeline is **HF-independent** — it reads Tinker sampler paths from
     `data/tinker_adapters.json`, not HF. The HF artifacts are for external reproduction.
 - **Docs**: [`docs/strategy.md`](docs/strategy.md) (authoritative decision memo — read first),
+  [`docs/research_directions_results.md`](docs/research_directions_results.md) (D1/D2/D3 + A1–A4
+  verdicts — the multi-axis story above),
+  [`docs/plans/`](docs/plans/) (per-direction plans: `d1-capability-vs-style.md`,
+  `d2-reasoning-structure-transfer.md`, `d3-safety-behavior-laundering.md`),
   [`docs/argument.md`](docs/argument.md) (the *superseded* distinctiveness write-up; kept for the
   objection/rebuttal table), [`docs/aaai_plan.md`](docs/aaai_plan.md) (paper plan; its
   distinctiveness/"n=36" framing is superseded by strategy.md),
@@ -135,6 +202,20 @@ recommends a Findings/workshop target now.
     over 36 cells (CPU): cross-encoder corroboration r=0.978, steering verdict NO-GO.
   - `structural_decomp.py` — D4 feature decomposition (residue = document-formatting structure).
   - `activation_steering.py` — built, **not run** (GPU capstone; gated NO-GO by the bridge probe).
+  - **Multi-axis directions** (the four-axis section above):
+    - `variance_decomp.py` (A2) — hand-rolled Type-II ANOVA → `results/durability/gate_summary.csv`.
+    - `durability_table.py` (A1) — per-source join + Spearman → `results/durability/per_source_durability*.csv`.
+    - `native_style_stability.py` (A4) — TTR/entropy/cross-dataset/verbosity → `results/findings/*.csv`.
+    - `reasoning_structure.py` / `reasoning_figures.py` / `reasoning_seed_robustness.py` (D2) →
+      `data/results/reasoning/`.
+    - `grade_mathbench.py` / `census_mathbench.py` / `d1fix_capgen.py` / `d1fix_analyze.py` (D1) →
+      `results/d1fix_*.csv`.
+    - `extra_model_census.py` / `b2a_train.py` (B1/B2a confound-breaker) →
+      `results/durability/extra_census.csv`.
+  - **Safety** (`scripts/safety/`): `run_safety_ladder.py` (refusal sampler; `--full`, `--diagonal`),
+    `d3full_analyze.py` (216-cell matrix), `self_placebo_analyze.py` (A3 causal de-confound) →
+    `results/safety/safety_full_*.csv`, `self_placebo_*.csv`. Dual-use safety: only binary refusal
+    verdicts + redacted snippets persist; no raw harmful completions are saved.
 - **Key data artifacts** (`data/results/`):
   - `multiseed_ci_s3.csv` — **the spine**: per-cell DPO persistence, 3-seed mean ± CI, seed-sd 0.018.
   - `decontam/` + `decontam_before_after.csv` — de-confounded re-eval text/results.
