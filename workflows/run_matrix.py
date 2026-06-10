@@ -63,6 +63,10 @@ MODEL_SLUG: dict[str, str] = {
     # B2a trains an explicit 8-cell subset via launch_sft(cells=...).
     "meta-llama/Llama-3.3-70B-Instruct": "llama-3.3-70b",
     "Qwen/Qwen3-32B": "qwen3-32b",
+    # B2b confound-breaker: high-capability SMALL model (4B, MATH 0.64). Breaks the
+    # capability<->size confound B2a introduced — completes the small+strong cell of the
+    # capability x size 2x2 (the only missing corner).
+    "Qwen/Qwen3-4B-Instruct-2507": "qwen3-4b",
 }
 
 # Per-model kwargs for tokenizer.apply_chat_template — disables thinking traces
@@ -74,6 +78,7 @@ CHAT_TEMPLATE_KWARGS: dict[str, dict] = {
     "openai/gpt-oss-20b": {"reasoning_effort": "low"},
     "meta-llama/Llama-3.3-70B-Instruct": {},
     "Qwen/Qwen3-32B": {"enable_thinking": False},
+    "Qwen/Qwen3-4B-Instruct-2507": {},
 }
 
 
@@ -136,6 +141,7 @@ def renderer_for(model: str) -> str:
             "openai/gpt-oss-20b": "gpt-oss",
             "meta-llama/Llama-3.3-70B-Instruct": "llama3",
             "Qwen/Qwen3-32B": "qwen3",
+            "Qwen/Qwen3-4B-Instruct-2507": "qwen3",
         }.get(model, "unknown")
 
 
