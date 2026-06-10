@@ -115,6 +115,7 @@ TRAIN_DATASETS: dict[str, Path] = {
     "gsm8k": DATASETS / "gsm8k" / "gsm8k_prompts_train_500_seed42.csv",
     "chatbot_arena": DATASETS / "chatbot_arena" / "chatbot_arena_prompts_train_500_seed42.csv",
     "writingprompts": DATASETS / "writingprompts" / "writingprompts_train_500_seed42.csv",
+    "oasst1": DATASETS / "oasst1" / "oasst1_prompts_train_500_seed42.csv",
 }
 
 # Per-dataset templates for SFT
@@ -122,6 +123,7 @@ DATASET_TEMPLATES: dict[str, tuple[str, str]] = {
     "gsm8k": ("Question: {prompt}\nAnswer:", " {completion}\n"),
     "chatbot_arena": ("{prompt}", "{completion}"),
     "writingprompts": ("Prompt: {prompt}\nStory:", " {completion}\n"),
+    "oasst1": ("{prompt}", "{completion}"),
 }
 
 SEEDS: list[int] = [1, 2, 3]

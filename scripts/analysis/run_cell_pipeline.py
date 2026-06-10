@@ -31,6 +31,7 @@ EVAL_PROMPTS = {
     "gsm8k": DATA / "datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv",
     "chatbot_arena": DATA / "datasets/chatbot_arena/chatbot_arena_prompts_eval_1000_seed42.csv",
     "writingprompts": DATA / "datasets/writingprompts/writingprompts_eval_500_seed42.csv",
+    "oasst1": DATA / "datasets/oasst1/oasst1_prompts_eval_200_seed42.csv",
 }
 TRAIN_BASELINE = lambda ds, slug: DATA / f"model-responses/matrix_baselines/{ds}/{slug}_train.csv"
 PROMPT_METHODS = ["just_name_it", "random_sampling", "stylistic"]
