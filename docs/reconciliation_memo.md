@@ -156,12 +156,18 @@ agreement in §2 (which is internal to our pipeline), only the absolute magnitud
   traits** (SOURCE η² large, rank-consistent); **reasoning durability is not stable**. So the
   partner's "stability" framing is supported by us *for style and safety, not reasoning* — state
   the asymmetry, don't generalize it.
-- **Phase B is where durability earns confidence**: B2b dissociates **capability** from **size** at
-  n=7 — a small+strong model (Qwen3-4B, 4B/MATH 0.64) retains (0.194 ≈ large-strong mean 0.212)
-  while a large+weak model (qwen3.6-27b, 27B) launders (0.077). Capability, not scale, predicts
-  durability (Spearman cap +0.61 vs size +0.29; neither significant at n=7 → the clean separator is
-  the 2×2 cell means). Residual honesty: source-mean retention is still partly a **target-pair**
-  effect (Qwen3-4B retains only into →nemotron, launders into the other three targets).
+- **Phase B is an honest null — capability does *not* drive durability** (corrected; an earlier
+  draft of this memo overstated it). The B2b gsm8k result *looked* like "capability drives
+  durability" (new high-cap sources retained at 0.17–0.27), but the retention was concentrated
+  almost entirely in the **→nemotron** target cell (0.52–0.76) and laundered into the other three.
+  B2c re-ran all three new sources across writingprompts + chatbot_arena + oasst1 and the →nemotron
+  retention **does not replicate**: mean **0.613 on gsm8k → 0.007 on the other datasets**
+  (`scripts/analysis/b2c_verdict.py`, `results/durability/b2c_cross_dataset.csv`). So the only
+  defensible Phase-B claim is the null: high-capability sources launder like everyone else, and
+  capability joins distinctiveness/size/Big-Five as a **failed** predictor of durability. This makes
+  the "every intuitive predictor fails" story *stronger*, not weaker. The robust durability signal
+  remains the original gpt-oss/nemotron broad retention (A2: SOURCE η² large for style+safety),
+  mechanism open.
 
 ---
 

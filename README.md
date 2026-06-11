@@ -160,13 +160,30 @@ carries ~1 bit; all columns are entangled with capability.** A2 proves *stabilit
 llama is the most structurally distinctive yet launders most — which is why the old r=0.97
 distinctiveness law was dropped.)
 
-**Phase B — breaking the confound (in progress, gated by A2).** Because A2 passed for style+safety,
-we registered two **high-capability launderer-lineage** sources — `Llama-3.3-70B` (MATH 0.70) and
-`Qwen3-32B` (0.69) — to dissociate capability from durability at n=6
-(`results/durability/extra_census.csv`, `scripts/analysis/b2a_train.py`, 8 cells, gsm8k). The
-pre-registered test: if these capable models *launder* like their lineage cousins → durability is a
-**separate axis** from capability; if they *retain* → durability **is** capability. Adapters are
-training; the n=6 recompute is the open task.
+**Phase B — breaking the confound (complete; capability is a *null*).** Because A2 passed for
+style+safety, we registered three **high-capability** sources to dissociate capability from
+durability: `Llama-3.3-70B` (MATH 0.70), `Qwen3-32B` (0.69), and — to break the capability×size
+confound — the small-but-strong `Qwen3-4B` (4B, MATH 0.64). The pre-registered test: if these
+capable models *launder* → durability is separate from capability; if they *retain* → durability
+**is** capability.
+
+- **B2a/B2b (gsm8k, n=7):** the new sources appeared to *retain* (per-source DPO persistence
+  0.17–0.27), which looked like "capability drives durability." But the retention was an artifact:
+  it concentrated almost entirely in the **→nemotron** target cell (0.52–0.76) while the same
+  sources laundered into the other three targets. The per-source means — and the capability verdict
+  built on them — were carried by one cell.
+- **B2c (writingprompts + chatbot_arena + oasst1):** re-running the same cells across datasets kills
+  it. The →nemotron retention is **gsm8k-specific and does not replicate** — mean **0.613 on gsm8k
+  → 0.007 on the other datasets** (`scripts/analysis/b2c_verdict.py`,
+  `results/durability/b2c_cross_dataset.csv`). High-capability sources launder like everyone else
+  on every dataset except the one gsm8k cell.
+
+**Verdict: capability does *not* drive durability.** Phase B is an honest null — and it strengthens
+the central claim: *every* intuitive predictor of fingerprint durability fails (distinctiveness
+inverts to −0.31, size doesn't predict, Big-Five is null, and capability is a single-dataset
+mirage). The only robust durability is the original gpt-oss/nemotron *broad* retention; its
+mechanism remains open. (oasst1 was added here to align with the partner's 4-dataset set; see
+`docs/reconciliation_memo.md`.)
 
 ## Where things live
 
