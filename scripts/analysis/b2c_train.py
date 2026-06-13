@@ -44,8 +44,9 @@ SEED = 1
 
 
 def my_cells(datasets: list[str], sources: list[str]) -> list[Cell]:
+    # Exclude self-pairs (s==t); those are the self-SFT controls, not disguise cells.
     return [Cell(source=s, target=t, dataset=ds, seed=SEED)
-            for ds in datasets for s in sources for t in ORIG_TARGETS]
+            for ds in datasets for s in sources for t in ORIG_TARGETS if s != t]
 
 
 def _col_str(df, col):

@@ -67,6 +67,11 @@ MODEL_SLUG: dict[str, str] = {
     # capability<->size confound B2a introduced — completes the small+strong cell of the
     # capability x size 2x2 (the only missing corner).
     "Qwen/Qwen3-4B-Instruct-2507": "qwen3-4b",
+    # B2d size-axis extension: the two 120B-class models Tinker still supports, added
+    # to extend the size range past 70B (the deprecated Llama-3.3-70B was the prior
+    # top). Slug/chat maps only (NOT MODELS); trained as an explicit cell subset.
+    "openai/gpt-oss-120b": "gpt-oss-120b",
+    "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16": "nemotron-super-120b",
 }
 
 # Per-model kwargs for tokenizer.apply_chat_template — disables thinking traces
@@ -79,6 +84,8 @@ CHAT_TEMPLATE_KWARGS: dict[str, dict] = {
     "meta-llama/Llama-3.3-70B-Instruct": {},
     "Qwen/Qwen3-32B": {"enable_thinking": False},
     "Qwen/Qwen3-4B-Instruct-2507": {},
+    "openai/gpt-oss-120b": {"reasoning_effort": "low"},
+    "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16": {"enable_thinking": False},
 }
 
 
@@ -97,7 +104,7 @@ def clean_response(model: str, raw: str) -> str:
     absent, and strip any residual harmony scaffolding tokens for all models.
     """
     text = raw
-    if model == "openai/gpt-oss-20b":
+    if model.startswith("openai/gpt-oss"):  # 20b and 120b both use the harmony format
         final = "<|channel|>final<|message|>"
         if final in text:
             text = text.rsplit(final, 1)[1]                      # the genuine final answer
@@ -144,6 +151,8 @@ def renderer_for(model: str) -> str:
             "meta-llama/Llama-3.3-70B-Instruct": "llama3",
             "Qwen/Qwen3-32B": "qwen3",
             "Qwen/Qwen3-4B-Instruct-2507": "qwen3",
+            "openai/gpt-oss-120b": "gpt-oss",
+            "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16": "nemotron",
         }.get(model, "unknown")
 
 
