@@ -61,7 +61,11 @@ class BehavioralCellSpec:
     self_baseline: SelfBaselineSpec | None = None
     identity_control: IdentityControlSpec | None = None
     enforce_shared_endpoints: bool = True
-    endpoint_tolerance: float = 1e-6
+    # Endpoints must still match closely, but the absolute PC means drift at the
+    # ~1e-6 level across encoder/torch/transformers versions (observed pc2 deltas
+    # of ~1.5e-6 on the drifted stack). 1e-5 keeps the shared-endpoint guarantee
+    # tight while tolerating that float/library noise. Override per-manifest if needed.
+    endpoint_tolerance: float = 1e-5
     basis_type: str = "supervised"
     lda_shrinkage: float = 0.1
     descriptor_mode: str = "big5_style"
@@ -419,7 +423,7 @@ def _check_endpoints(
     method_dir: Path,
     canonical: dict[str, Any],
     *,
-    tolerance: float,
+    tolerance: float = 1e-5,
     label: str,
 ) -> None:
     """Assert a method's source/target PC means match the cell reference.

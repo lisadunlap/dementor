@@ -11,7 +11,6 @@ from statistics import NormalDist
 from typing import Dict, Iterable, List, Sequence
 
 import pandas as pd
-import plotly.express as px
 
 
 @dataclass
@@ -268,6 +267,9 @@ def build_figure(
     show_values: bool = True,
 ):
     """Create a faceted horizontal bar chart with one panel per metric."""
+
+    # Lazy import: keep merely importing this module free of a hard plotly dependency.
+    import plotly.express as px
 
     run_order = list(dict.fromkeys(tidy_df["run"].tolist()))
     tidy_copy = tidy_df.copy()
