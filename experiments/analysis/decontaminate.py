@@ -13,10 +13,9 @@ import argparse
 import types
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
-
-from dementor.metric.run_cell_pipeline import assemble_and_run, SLUG_TO_MODEL
-from dementor.training.matrix import clean_response
+from scipy import stats
 
 DATA = Path("data")
 CLEAN_ROOT = DATA / "results" / "decontam"
@@ -51,6 +50,10 @@ def _summary(path: Path) -> pd.DataFrame:
 
 
 def reeval(cell: Path, root: Path, *, adapter_seeds: int = 1, bootstrap: int = 300) -> pd.DataFrame:
+    # Imported lazily (torch/transformers-heavy) so that importing this module just for
+    # the small statistical helpers below (e.g. _ci95_halfwidth in tests) stays CPU-only.
+    from dementor.metric.run_cell_pipeline import assemble_and_run, SLUG_TO_MODEL
+    from dementor.training.matrix import clean_response
     dataset, src, tgt = parse_cell(cell)
     src_id, tgt_id = SLUG_TO_MODEL[src], SLUG_TO_MODEL[tgt]
     out_cell = root / dataset / cell.name
@@ -99,12 +102,38 @@ def _report_before_after(frames) -> None:
     print(f"wrote {out}")
 
 
+def _ci95_halfwidth(sd, n):
+    """Per-cell 95% CI half-width using the Student-t multiplier, not the normal 1.96.
+
+        half_width = t(0.975, df=n-1) * sd / sqrt(n)
+
+    Two correctness fixes over the old ``1.96 * sd.fillna(0) / sqrt(n)``:
+      * For the n=3 adapter seeds the right 95% multiplier is t(0.975, df=2)=4.303, not
+        1.96 — the normal approximation understates the half-width ~2.2x at n=3.
+      * n<2 has no within-cell variance estimate, so the CI is UNDEFINED (-> NaN) and the
+        cell is excluded from CI-based survivor tests, instead of being handed a spurious
+        zero-width interval by ``sd.fillna(0)`` (which let n=1 cells falsely "survive").
+
+    On the current data this changes the DPO survivor count (``mean - ci95 > 0.3``) from
+    6 (buggy 1.96 + fillna(0)) to 3 (correct Student-t, n>=2 only) — verified.
+
+    Accepts scalars or arrays/Series; returns a NumPy value/array (NaN where n<2).
+    """
+    sd = np.asarray(sd, dtype=float)
+    n = np.asarray(n, dtype=float)
+    with np.errstate(invalid="ignore", divide="ignore"):
+        hw = stats.t.ppf(0.975, df=np.maximum(n - 1.0, 1.0)) * sd / np.sqrt(n)
+    return np.where(n >= 2, hw, np.nan)
+
+
 def _report_multiseed(frames, seeds) -> None:
     d = pd.concat(frames, ignore_index=True)
     d["base_rung"] = d["rung"].str.replace(r"_seed\d+$", "", regex=True)
     g = (d.groupby(["dataset", "source", "target", "base_rung"])["persistence"]
          .agg(mean="mean", sd="std", n="count").reset_index())
-    g["ci95"] = 1.96 * g["sd"].fillna(0.0) / g["n"].clip(lower=1) ** 0.5
+    # Student-t 95% half-width (t(.975,df=n-1)), NOT the normal 1.96; n<2 -> NaN (excluded).
+    # This changes the DPO survivor count (mean-ci95>0.3) from 6 (buggy 1.96+fillna0) to 3.
+    g["ci95"] = _ci95_halfwidth(g["sd"], g["n"])
     out = DATA / "results" / f"multiseed_ci_s{seeds}.csv"
     g.to_csv(out, index=False)
     for rung in ("dpo", "sft"):
@@ -113,9 +142,12 @@ def _report_multiseed(frames, seeds) -> None:
         print(f"\n=== {rung.upper()}: persistence mean ± 95% CI across {seeds} seeds (de-confounded) ===")
         print(r.sort_values("mean", ascending=False)[["dataset", "pair", "mean", "ci95", "n"]]
               .round(3).head(10).to_string(index=False))
-    surv = g[(g["base_rung"] == "dpo") & (g["mean"] - g["ci95"] > 0.3)]
-    print(f"\nDPO survivors with 95%-CI lower bound > 0.3: {len(surv)} cells "
-          f"(median seed-sd across cells: {g[g.base_rung=='dpo']['sd'].median():.3f})")
+    dpo = g[g["base_rung"] == "dpo"]
+    # n<2 cells carry an UNDEFINED CI (ci95=NaN) and are EXCLUDED — not handed a spurious
+    # zero-width interval that lets them falsely clear the survivor bar.
+    surv = dpo[(dpo["n"] >= 2) & (dpo["mean"] - dpo["ci95"] > 0.3)]
+    print(f"\nDPO survivors with 95%-CI lower bound > 0.3 (Student-t, n>=2): {len(surv)} cells "
+          f"(median seed-sd across cells: {dpo['sd'].median():.3f})")
     print(f"wrote {out}")
 
 

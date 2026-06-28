@@ -32,14 +32,27 @@ def load_baselines():
         seen.add((src, ds))
         for r in pd.read_csv(f)["model_response"].astype(str):
             texts.append(r); m.append(src); d.append(ds)
+    if not texts:
+        raise FileNotFoundError(
+            "No decontam baselines found under data/results/decontam/*/*/gen/source_seed1.csv "
+            "— these intermediates are gitignored and produced by the de-confound pass. Run "
+            "`python -m experiments.analysis.decontaminate` first (or `... --adapter-seeds 1`) "
+            "to generate them, then re-run this script."
+        )
     return texts, np.array(m), np.array(d)
 
 
 def structural_features(texts):
     s, _ = _style_scalar_features(texts)
     b, _ = _style_binary_features(texts)
-    X = np.hstack([s, b]).astype(float)
+    # _style_* return a 1-D (0,) array for empty `texts`; force a 2-D (n_rows, n_feats)
+    # matrix so X.std(0) is always a 1-D vector we can index — never a 0-d scalar (which
+    # raised "'numpy.float64' object does not support item assignment").
+    X = np.atleast_2d(np.hstack([s, b]).astype(float)) if len(texts) else np.empty((0, 0))
+    if X.shape[0] < 2:
+        return X  # <2 rows: std is undefined/degenerate; skip z-scoring instead of crashing
     mu, sd = X.mean(0), X.std(0)
+    sd = np.atleast_1d(sd)
     sd[sd < 1e-9] = 1.0
     return (X - mu) / sd  # z-score so length doesn't dominate the centroid distance
 
@@ -58,7 +71,10 @@ def distinctiveness(X, m, d):
 
 
 def main():
-    texts, m, d = load_baselines()
+    try:
+        texts, m, d = load_baselines()
+    except FileNotFoundError as exc:
+        raise SystemExit(str(exc))  # clean, actionable message — no numpy traceback
     distinct = structural = distinctiveness(structural_features(texts), m, d)
     dd = pd.read_csv("data/results/multiseed_ci_s3.csv")
     dpo = dd[dd["base_rung"] == "dpo"]
