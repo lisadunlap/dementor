@@ -1,0 +1,23 @@
+name: tests
+
+on:
+  push:
+    branches: [main, ethan]
+  pull_request:
+
+jobs:
+  pytest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install CPU torch + package
+        run: |
+          python -m pip install --upgrade pip
+          # CPU-only torch to avoid the large CUDA wheel
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -e ".[dev]"
+      - name: Run fast test suite
+        run: pytest -q

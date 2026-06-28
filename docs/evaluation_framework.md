@@ -98,10 +98,10 @@ normalization:
 For multi-method cell runs, use the cell-level evaluator:
 
 ```bash
-python3 -m scripts.analysis.behavioral_cell_evaluator --manifest path/to/cell.json
+python3 -m dementor.metric.behavioral_cell_evaluator --manifest path/to/cell.json
 ```
 
-Use `scripts.analysis.run_behavioral_inertia` only for a single comparison CSV,
+Use `dementor.metric.run_behavioral_inertia` only for a single comparison CSV,
 quick diagnostics, or manual debugging. The cell evaluator is preferred because
 it enforces one fixed source-target basis per cell.
 

@@ -1,0 +1,60 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dementor"
+version = "0.1.0"
+description = "Measuring behavioral-fingerprint persistence in LLMs under disguise."
+requires-python = ">=3.11"
+# Lower bounds only — the working venv has already diverged past the old pins
+# (transformers 5.x, torch 2.12). Keep these loose so `pip install -e .` never
+# downgrades a provisioned analysis environment.
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "scikit-learn>=1.6",
+    "scipy",
+    "sentence-transformers>=3.4",
+    "transformers>=4.48",
+    "torch>=2.5",
+    "huggingface-hub>=0.28",
+    "python-dotenv",
+    "pyyaml>=6.0",
+    "litellm",
+    "openai",
+    "tiktoken",
+    "lmdb",
+    "matplotlib",
+    "rich",
+    "tqdm",
+    "requests",
+    "kmodes>=0.12",
+]
+
+[project.optional-dependencies]
+# Local-GPU training backend (run-later; not needed for analysis or CPU tests of the metric).
+train = ["peft>=0.10", "trl>=0.12", "accelerate>=1.0", "datasets>=2.0", "tinker"]
+serve = ["vllm>=0.7.3", "gradio>=5.0", "diffusers", "pillow"]
+dev = ["pytest"]
+
+[project.scripts]
+dementor-matrix = "dementor.training.matrix:main"
+dementor-plan = "dementor.training.plan:main"
+dementor-disguise = "dementor.cli.disguise:main"
+dementor-generate = "dementor.cli.generate_responses:main"
+dementor-viewer = "dementor.cli.viewer_app:main"
+dementor-score = "dementor.scorer:main"
+dementor-cache = "dementor.cache_llm:main"
+dementor-visualize = "dementor.visualize_scores:main"
+dementor-make-prompts = "dementor.data_utils.make_prompts:main"
+dementor-make-splits = "dementor.data_utils.make_matrix_splits:main"
+
+[tool.setuptools.packages.find]
+include = ["dementor*", "experiments*"]
+exclude = ["tests*", "scripts*", "workflows*", "data*", "docs*", "figures*", "results*", "cache*", "examples*"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+filterwarnings = ["ignore::DeprecationWarning"]

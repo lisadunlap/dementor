@@ -1,12 +1,12 @@
 # Methods Overview
 
-This document records the stable disguise methods in the current `scripts/`
+This document records the stable disguise methods in the current `dementor/`
 layout. Older notes may refer to a `disguising/` package; that is not the
 current entry point.
 
 ## Stable Method Names
 
-Use these with `scripts/disguise.py --method <name>`:
+Use these with `dementor-disguise --method <name>`:
 
 | Method | Purpose | Required data |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ Use these with `scripts/disguise.py --method <name>`:
 | `embedding_clustering` | Pick examples from semantic/embedding clusters. | source + target responses |
 | `behavioral_clustering` | Pick examples from behavioral feature clusters. | source + target responses |
 
-The method registry is [scripts/methods/get_method.py](/Users/EthanLiu/Documents/Programming/dementor/scripts/methods/get_method.py).
+The method registry is [dementor/methods/get_method.py](/Users/EthanLiu/Documents/Programming/dementor/dementor/methods/get_method.py).
 
 ## Recommended Ladder
 
@@ -43,7 +43,7 @@ become stronger.
 Generate base responses:
 
 ```bash
-python scripts/generate_responses.py \
+dementor-generate \
   --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
   --output-csv data/model-responses/gsm8k/full/openai_gpt-4.1-mini.csv \
   basic --model openai/gpt-4.1-mini
@@ -52,7 +52,7 @@ python scripts/generate_responses.py \
 Run a contrastive disguise:
 
 ```bash
-python scripts/disguise.py \
+dementor-disguise \
   --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
   --model meta-llama/Meta-Llama-3.1-8B-Instruct \
   --disguise-as openai/gpt-4.1-mini \
@@ -63,7 +63,7 @@ python scripts/disguise.py \
 Score a pairwise comparison:
 
 ```bash
-python -m scripts.scorer pairwise \
+python -m dementor.scorer pairwise \
   --input data/results/gsm8k/comparisons/disguised_vs_target/contrastive/llama_as_gpt-4.1-mini.csv \
   --output data/results/gsm8k/comparisons/disguised_vs_target/contrastive/llama_as_gpt-4.1-mini_scored.csv
 ```

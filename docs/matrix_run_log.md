@@ -18,13 +18,13 @@ run, where the artifacts live, and what remains.
 | Errors | 0 SFT, 0 DPO |
 | Storage | All adapters mirrored to HuggingFace org `dementor-research/{sft,dpo,self_sft}_*` (public; grouped into per-dataset collections) |
 
-## Pipeline (workflows/run_matrix.py)
+## Pipeline (dementor/training/matrix.py)
 
 All phases driven by a single dispatcher with subcommands:
 
 | Subcommand | Phase | What it does |
 | --- | --- | --- |
-| `make-splits` (scripts/make_matrix_splits.py) | A.1 | 7 prompt CSVs; train/eval disjointness audited |
+| `make-splits` (dementor/data_utils/make_matrix_splits.py) | A.1 | 7 prompt CSVs; train/eval disjointness audited |
 | `generate-target-responses` | A.2 | Target model responses on train prompts (SFT completions) |
 | `build-sft-data` | B | Join (train_prompt, target_response) → 36 SFT CSVs |
 | `launch-sft` | C | 108 Tinker LoRA SFT jobs, parallel-4, retry + Llama-first |

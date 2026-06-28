@@ -68,7 +68,7 @@ leaves a robust, seed-stable structural residue for the other two. Verified this
 An earlier thesis — *"a model's fingerprint resists DPO in proportion to how distinctive its
 outputs are"* — produced a striking r ≈ 0.97. **It did not survive.** Recomputing distinctiveness
 in a **zero-MiniLM, 32-feature structural space** (the circularity-killer test,
-[`scripts/analysis/distinctiveness_structural.py`](scripts/analysis/distinctiveness_structural.py))
+[`experiments/analysis/distinctiveness_structural.py`](experiments/analysis/distinctiveness_structural.py))
 **inverts the relationship: r = −0.31**, and llama — the cleanest launderer (0.012) — is the *most*
 structurally distinctive model (0.577). The r=0.97 lives only in the MiniLM space the persistence
 metric is ~81% built from, i.e. exactly the circularity it was meant to kill. The "n=36 cell-level"
@@ -93,13 +93,13 @@ honestly. Two cheap mechanism analyses now sharpen *what* survives and gate the 
 - **Structural decomposition (D4):** the surviving residue lives in **document-formatting** features
   — math/LaTeX notation (survivor−launderer residue-gap **0.50**), numbered lists (0.45), markdown
   (0.39) — **not** raw verbosity (word-count gap 0.003) and **not** Big-Five personality (null
-  probe). (`scripts/analysis/structural_decomp.py`)
+  probe). (`dementor/steering/structural_decomp.py`)
 - **Activation-bridge probe (e5-small-v2, CPU, 36 cells):** an independent encoder + logistic probe
   recovers the **same source ordering** as the MiniLM persistence metric (per-source residue vs
   persistence **Pearson r=0.978, ρ=1.0**) — so the two-tier split is **not a MiniLM artifact**. But
   the residual signal in the output text is weak (survivor residue 0.17, survivor−launderer gap
   0.10), so the verdict for activation **steering is NO-GO** on this evidence: a native-internals
-  probe (GPU) is the next gate, not a steering run. (`scripts/analysis/bridge_decontam_driver.py` →
+  probe (GPU) is the next gate, not a steering run. (`experiments/analysis/bridge_decontam_driver.py` →
   `data/results/bridge_decontam/verdict.json`)
 
 The mechanism (*why* gpt-oss/nemotron retain) remains open at the causal level; `docs/strategy.md`
@@ -121,7 +121,7 @@ empirical hook **and** its central honesty problem (see the n=4 caveat below).
 | **Capability** (D1) | MATH-500 accuracy transfer (escapes the gsm8k ceiling) | **+0.29** transfer, ⊥ style | `results/d1fix_dissociation_stats.csv` (per-cell: `..._capability_transfer_percell.csv`) |
 
 **A2 — is per-source durability a *stable trait* (not n=4-bound)?** A hand-rolled Type-II ANOVA
-(`scripts/analysis/variance_decomp.py`, no statsmodels) partitions variance over the 36-cell ×
+(`experiments/analysis/variance_decomp.py`, no statsmodels) partitions variance over the 36-cell ×
 3-seed design. The source main effect is powered by 9 cells/source, **not** by n=4. Verdict
 (`results/durability/gate_summary.csv`):
 
@@ -174,7 +174,7 @@ capable models *launder* → durability is separate from capability; if they *re
   built on them — were carried by one cell.
 - **B2c (writingprompts + chatbot_arena + oasst1):** re-running the same cells across datasets kills
   it. The →nemotron retention is **gsm8k-specific and does not replicate** — mean **0.613 on gsm8k
-  → 0.007 on the other datasets** (`scripts/analysis/b2c_verdict.py`,
+  → 0.007 on the other datasets** (`experiments/analysis/b2c_verdict.py`,
   `results/durability/b2c_cross_dataset.csv`). High-capability sources launder like everyone else
   on every dataset except the one gsm8k cell.
 
@@ -204,7 +204,7 @@ mechanism remains open. (oasst1 was added here to align with the partner's 4-dat
   objection/rebuttal table), [`docs/aaai_plan.md`](docs/aaai_plan.md) (paper plan; its
   distinctiveness/"n=36" framing is superseded by strategy.md),
   [`docs/evaluation_framework.md`](docs/evaluation_framework.md) (canonical metric definition).
-- **Key analysis scripts** (`scripts/analysis/`):
+- **Key analysis scripts** (across `dementor/metric/`, `dementor/steering/`, `experiments/analysis/`, `experiments/figures/`):
   - `run_cell_pipeline.py` — end-to-end runner for **one** cell (generate → stage → score → ladder).
   - `decontaminate.py` — re-evaluates all 36 cells on chat-template-CLEANED cached text (the D1
     gpt-oss CoT-leak de-confound; no regeneration). Supports `--adapter-seeds` for multi-seed CIs.
@@ -229,7 +229,7 @@ mechanism remains open. (oasst1 was added here to align with the partner's 4-dat
       `results/d1fix_*.csv`.
     - `extra_model_census.py` / `b2a_train.py` (B1/B2a confound-breaker) →
       `results/durability/extra_census.csv`.
-  - **Safety** (`scripts/safety/`): `run_safety_ladder.py` (refusal sampler; `--full`, `--diagonal`),
+  - **Safety** (`dementor/safety/` + `experiments/safety/`): `run_safety_ladder.py` (refusal sampler; `--full`, `--diagonal`),
     `d3full_analyze.py` (216-cell matrix), `self_placebo_analyze.py` (A3 causal de-confound) →
     `results/safety/safety_full_*.csv`, `self_placebo_*.csv`. Dual-use safety: only binary refusal
     verdicts + redacted snippets persist; no raw harmful completions are saved.
@@ -248,9 +248,9 @@ mechanism remains open. (oasst1 was added here to align with the partner's 4-dat
   `big5_personality_directions.csv`, `fig1_source_fingerprint.png`. See
   [`results/README.md`](results/README.md) for the index. (`data/results/` above is the
   working tree the scripts read/write; `results/` is the trimmed external hand-off.)
-- **Workflows** (`workflows/`): `run_matrix.py` (matrix runner; holds `MODEL_SLUG`,
+- **Training** (`dementor/training/`): `matrix.py` (matrix runner; holds `MODEL_SLUG`,
   `clean_response`, chat-template kwargs), `run_gsm8k_workflow.py` (canonical SFT/DPO entry point),
-  `tinker.py` (Tinker LoRA backend + adapter registry).
+  `tinker_backend.py` (Tinker LoRA backend + adapter registry).
 
 > **Encoder-robustness (two independent checks, both pass):**
 > - **Activation-bridge probe** — e5-small-v2 (a different encoder *and* probe method) recovers the
@@ -265,20 +265,21 @@ mechanism remains open. (oasst1 was added here to align with the partner's 4-dat
 
 ## Reproduce
 
-Use the project venv and set `PYTHONPATH`. `TINKER_API_KEY` (generation) and `OPENAI_API_KEY`
-(logprob probes) live in `.env`. The venv is a `uv` venv (no `pip`); install with
-`VIRTUAL_ENV=.venv uv pip install <pkg>`.
+Use the project venv with the package installed editable (`uv pip install -e .`), so no
+`PYTHONPATH` is needed. `TINKER_API_KEY` (generation) and `OPENAI_API_KEY` (logprob probes)
+live in `.env`. The venv is a `uv` venv (no `pip`); install with
+`VIRTUAL_ENV=.venv uv pip install <pkg>`. The model roster, datasets, seeds, and LoRA/SFT/DPO
+hyperparameters live in `config.yaml` (loaded via `dementor.config`).
 
 ```bash
-export PYTHONPATH=/Users/EthanLiu/Documents/Programming/dementor
-PY=./.venv/bin/python   # arm64 venv with numpy/pandas/scipy/sklearn/sentence-transformers
+PY=./.venv/bin/python   # arm64 venv (editable install via `uv pip install -e .`; no PYTHONPATH needed)
 ```
 
 **Run one cell end-to-end** (generate all 5 rungs via Tinker, stage on shared endpoints, score,
 print the calibrated ladder). This is the cleanest zero-CoT-leak survivor:
 
 ```bash
-$PY -m scripts.analysis.run_cell_pipeline \
+$PY -m dementor.metric.run_cell_pipeline \
   --dataset gsm8k --source nemotron-nano-30b-a3b --target gpt-oss-20b \
   --eval-size 200 --adapter-seeds 3
 # idempotent: cached outputs with the right row count are skipped, so reruns only fill gaps.
@@ -288,22 +289,22 @@ $PY -m scripts.analysis.run_cell_pipeline \
 
 ```bash
 # De-confounded 36-cell re-eval + multi-seed CIs -> writes multiseed_ci_s3.csv
-$PY -m scripts.analysis.decontaminate --adapter-seeds 3
+$PY -m experiments.analysis.decontaminate --adapter-seeds 3
 
 # Named-direction probes: Big-Five personality (null) vs style axes (the faint positive)
-$PY -m scripts.analysis.big5_directions --matrix --axes big5  --backend logprob --max-prompts 40 --workers 16
-$PY -m scripts.analysis.big5_directions --matrix --axes style --backend logprob --max-prompts 40 --workers 16
+$PY -m experiments.analysis.big5_directions --matrix --axes big5  --backend logprob --max-prompts 40 --workers 16
+$PY -m experiments.analysis.big5_directions --matrix --axes style --backend logprob --max-prompts 40 --workers 16
 
 # The (superseded) MiniLM distinctiveness figure ...
-$PY scripts/analysis/source_fingerprint_figure.py
+$PY -m experiments.figures.source_fingerprint_figure
 # ... and the zero-MiniLM structural recomputation that INVERTS it (prints r = -0.31)
-$PY scripts/analysis/distinctiveness_structural.py
+$PY -m experiments.analysis.distinctiveness_structural
 ```
 
-Tests (no pytest installed): `$PY -m unittest scripts.tests.test_behavioral_inertia`.
+Tests: `pytest -q` (configured in `pyproject.toml`; suite under `tests/`).
 
 ---
 
 For coding conventions see `AGENTS.md`; for local HF/vLLM/provider routing see
-`docs/local_generation.md`; for SFT/DPO orchestration see `workflows/README.md`. **Everything about
+`docs/local_generation.md`; for SFT/DPO orchestration see `dementor/training/README.md`. **Everything about
 direction and current status is in `docs/strategy.md`.**

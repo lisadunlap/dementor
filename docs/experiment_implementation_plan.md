@@ -39,7 +39,7 @@ Coverage: 4 labs, 2 dense + 2 MoE, scale band 8–30B. All four appear in
 Tinker's published model list as of 2026-05.
 
 **Pre-flight check:** before Phase D, run
-`python -c "from tinker import ServiceClient; from workflows.tinker import list_available_models; print('\n'.join(list_available_models(ServiceClient())))"`
+`python -c "from tinker import ServiceClient; from dementor.training.tinker_backend import list_available_models; print('\n'.join(list_available_models(ServiceClient())))"`
 and confirm each of the four model IDs above is in the returned list. If
 any disappear, fall back to the closest available sibling and update this
 table.
@@ -82,7 +82,7 @@ expecting code completions (not free-form instructions), disguise
 methods that inject persona/style instructions in a system prompt must
 be adapted to wrap the code-completion prompt rather than replace it.
 This is a Phase A prep item (~half a day of wrapper code in
-`scripts/disguise.py`).
+`dementor/cli/disguise.py`).
 
 ### Held-out integrity
 
@@ -125,7 +125,7 @@ training-set outputs (rejected) vs the target's training-set outputs
 | 2 examples | `contrastive` | source + target | source→target deltas |
 | 2 examples (clustering) | `stylistic_clustering` | source + target | needs `kmodes` |
 | 2 examples (clustering) | `embedding_clustering` | source + target | needs embedding provider |
-| 3 SFT | Tinker LoRA | train+eval splits | epochs/batch from `workflows/run_gsm8k_workflow.py` defaults |
+| 3 SFT | Tinker LoRA | train+eval splits | epochs/batch from `dementor/training/run_gsm8k_workflow.py` defaults |
 | 4 DPO | Tinker DPO | preference pairs | build pairs from SFT residuals or contrastive winners |
 
 We **omit `stylistic_clustering_resample` and `behavioral_clustering`**
@@ -401,7 +401,7 @@ reviewers ask, swap-in SFT-residual DPO as a Phase G ablation.
 ### Hyperparameters
 
 Defaults come from the existing workflow at
-`workflows/run_gsm8k_workflow.py:167–201` and are held constant across
+`dementor/training/run_gsm8k_workflow.py:167–201` and are held constant across
 all (S, T, D, seed) cells to keep apples-to-apples comparability:
 
 | Param | SFT | DPO |
@@ -484,8 +484,8 @@ Phase C/D launch order:
 
 ### Workflow code gaps to close in Phase A
 
-Before Phase C can launch, `workflows/run_gsm8k_workflow.py` (or a new
-`workflows/run_matrix.py` generalization) needs:
+Before Phase C can launch, `dementor/training/run_gsm8k_workflow.py` (or a new
+`dementor/training/matrix.py` generalization) needs:
 
 1. `--source` and `--target` flags (currently target is implicit in the
    train CSV path).
@@ -494,7 +494,7 @@ Before Phase C can launch, `workflows/run_gsm8k_workflow.py` (or a new
    hardcoded `llama3`.
 4. `--weights-name` auto-generated from the
    `{dataset}_{source}_as_{target}_{stage}_seed{N}` convention.
-5. A small dispatcher script (`workflows/launch_matrix.py`) that
+5. A small dispatcher script (`dementor/training/launch_matrix.py`) that
    iterates the 216 cells, builds the per-cell config, and submits jobs
    to Tinker with Llama-first priority.
 
@@ -557,7 +557,7 @@ plan so the grid has consistent provenance.
 2. **GSM8K train split** extended from 300 → 500 (drawn from
    `gsm8k.train`, seed 42 — disjoint from test).
 3. **Chatbot-Arena eval split** at 1000 prompts (seed 42) — pinned via
-   `scripts/make_prompts.py`.
+   `dementor/data_utils/make_prompts.py`.
 4. **Chatbot-Arena train split** at 500 prompts (seed 42) — disjoint
    indices from the eval split.
 5. **WritingPrompts eval split** at 500 prompts (seed 42) — sampled from
@@ -568,7 +568,7 @@ plan so the grid has consistent provenance.
    `data/datasets/humaneval/humaneval_prompts.csv` with a `prompt` column
    containing the function signature + docstring. All 164 problems,
    eval-only (no train split).
-8. **HumanEval disguise-method wrapper** added to `scripts/disguise.py`
+8. **HumanEval disguise-method wrapper** added to `dementor/cli/disguise.py`
    so the persona/style instructions wrap rather than replace the
    code-completion prompt.
 
@@ -619,11 +619,11 @@ Designed so cheap+fast work surfaces problems before expensive jobs start.
   - Verify train/eval disjointness via index audit on all three
     train+eval pairs.
 - **Tooling**
-  - Add HumanEval-aware wrapper to `scripts/disguise.py`.
+  - Add HumanEval-aware wrapper to `dementor/cli/disguise.py`.
 - **Tier 0 baselines**
   - Generate baseline runs: 4 models × 4 datasets × 3 seeds = 48 jobs.
   - Compute source self-baseline persistence through
-    `scripts.analysis.behavioral_cell_evaluator`, using independent source
+    `dementor.metric.behavioral_cell_evaluator`, using independent source
     runs projected into the same fixed source-target basis used by the
     intervention methods.
 - **Training-data cache**
@@ -667,18 +667,18 @@ Designed so cheap+fast work surfaces problems before expensive jobs start.
 ### Phase E — calibration sample
 - Sample 500 (prompt, disguised, target) triples uniformly at random
   across all Phase B + C + D cells.
-- Run `scripts.analysis.behavioral_cell_evaluator` with
+- Run `dementor.metric.behavioral_cell_evaluator` with
   `calibration_judge_model=gpt-4.1-mini`, or attach pre-scored calibration CSVs
   through each method manifest entry.
 - Compute Spearman correlation between heuristic persistence and judged
   stylistic-similarity.
 
 ### Phase F — aggregate
-- `python -m scripts.analysis.behavioral_cell_evaluator --manifest <cell.json>`
+- `python -m dementor.metric.behavioral_cell_evaluator --manifest <cell.json>`
   for each `(dataset, source, target)` cell. This fits one basis per cell,
   computes source self-baseline normalization, attaches activation bridge
   summaries, and writes feature-ablation stability tables.
-- `python -m scripts.analysis.run_intervention_ladder` over the full grid.
+- `python -m dementor.metric.run_intervention_ladder` over the full grid.
 - Produce the headline figure: persistence vs intervention strength,
   one line per (source, target) pair, with tier 0 floor.
 - Produce the probe-agreement supplementary plot.
@@ -743,7 +743,7 @@ Still open:
 Phase A example (tier 0 baseline run for Llama-3.1-8B on GSM8K, seed 1):
 
 ```bash
-python scripts/generate_responses.py \
+dementor-generate \
   --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_1000_seed42.csv \
   --output-csv data/model-responses/gsm8k/baselines/llama-3.1-8b-instruct_seed1.csv \
   tinker \
@@ -755,7 +755,7 @@ Phase B example (run `contrastive` for Llama-3.1-8B disguised as
 Qwen3.6-27B on GSM8K, seed 1):
 
 ```bash
-python scripts/disguise.py \
+dementor-disguise \
   --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_1000_seed42.csv \
   --model meta-llama/Llama-3.1-8B-Instruct \
   --disguise-as Qwen/Qwen3.6-27B \
@@ -770,7 +770,7 @@ Phase C example (Tinker SFT for Llama-3.1-8B disguising as Qwen3.6-27B
 on GSM8K, seed 1):
 
 ```bash
-python -m workflows.run_gsm8k_workflow \
+python -m dementor.training.run_gsm8k_workflow \
   --stage sft \
   --provider tinker \
   --source meta-llama/Llama-3.1-8B-Instruct \

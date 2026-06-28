@@ -164,9 +164,9 @@ Under a deliberate, escalating effort to erase a model's behavioral style finger
 | Ladder collapse | `results/matrix_ladder/*_matrix_ladder.{csv,png}` |
 | Two-tier split, seed CIs | `results/d2_multiseed_ci.csv`, `data/results/multiseed_ci_s3.csv` |
 | Survivor enrichment (7/3, Fisher) | `data/results/multiseed_ci_s3.csv` (+ `docs/argument.md` §2c) |
-| Distinctiveness inversion | `scripts/analysis/distinctiveness_structural.py`, `results/source_distinctiveness.csv` |
+| Distinctiveness inversion | `experiments/analysis/distinctiveness_structural.py`, `results/source_distinctiveness.csv` |
 | Big-Five null / style axes | `results/big5_personality_directions.csv`, `results/style_directions.csv` |
-| D4 structural-formatting residue | `scripts/analysis/structural_decomp.py`, `data/results/structural_decomp_byfeature.csv` |
+| D4 structural-formatting residue | `dementor/steering/structural_decomp.py`, `data/results/structural_decomp_byfeature.csv` |
 | D1 de-confound | `results/d1_decontam_before_after.csv`, `data/results/decontam/` |
 | Cross-encoder corroboration (r=0.978) | `data/results/bridge_decontam/verdict.json` |
 | Encoder-swap (D3) | `results/d3_encoder_swap_bge.csv` |

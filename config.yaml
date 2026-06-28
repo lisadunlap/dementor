@@ -1,0 +1,70 @@
+# Dementor experiment configuration — single source of truth.
+# Consumed via dementor.config (see dementor/config.py for accessors).
+
+seeds: [42, 43, 44]              # active matrix; legacy adapters used [1, 2, 3]
+
+paths:                            # relative paths anchor on the repo root; absolute paths pass through
+  data: data
+  datasets: data/datasets
+  results: data/results
+  registry: data/tinker_adapters.json
+  peft_adapters: data/adapters/peft
+  baselines: data/model-responses/matrix_baselines
+  overleaf_img: /Users/EthanLiu/Documents/Programming/dementor-overleaf/img
+
+# Active scale-up roster: 10 models, 4 providers.
+#   backend: tinker -> trained via the Tinker API (7 models)
+#   backend: local  -> trained on a local GPU (3 google/gemma-4-* models; run-later)
+# chat_template_kwargs disable thinking traces for cross-model comparability.
+# tier: launder | retain (DPO fingerprint-erasure behavior); unknown for new lineages.
+# NOTE: chat_template_kwargs for the new (qwen3.5-4b, qwen3.6-35b-a3b) and gemma models
+#       are best-guess pending tokenizer verification when matrix dispatch is wired.
+roster:
+  - {id: Qwen/Qwen3.5-4B,                                  slug: qwen3.5-4b,          provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "4B",        params_b: 4}
+  - {id: Qwen/Qwen3.6-27B,                                 slug: qwen3.6-27b,         provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "27B",       params_b: 27}
+  - {id: Qwen/Qwen3.6-35B-A3B,                             slug: qwen3.6-35b-a3b,     provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "35B-A3B",   params_b: 35}
+  - {id: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16,       slug: nemotron-nano-30b-a3b, provider: nvidia, backend: tinker, renderer: nemotron, chat_template_kwargs: {enable_thinking: false}, tier: retain, param_size: "30B-A3B", params_b: 30}
+  - {id: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16,    slug: nemotron-super-120b, provider: nvidia, backend: tinker, renderer: nemotron, chat_template_kwargs: {enable_thinking: false}, tier: retain,  param_size: "120B-A12B", params_b: 120}
+  - {id: openai/gpt-oss-20b,                               slug: gpt-oss-20b,         provider: openai, backend: tinker, renderer: gpt-oss,  chat_template_kwargs: {reasoning_effort: low},  tier: retain,  param_size: "20B",       params_b: 20}
+  - {id: openai/gpt-oss-120b,                              slug: gpt-oss-120b,        provider: openai, backend: tinker, renderer: gpt-oss,  chat_template_kwargs: {reasoning_effort: low},  tier: retain,  param_size: "120B",      params_b: 120}
+  - {id: google/gemma-4-E4B-it,                            slug: gemma-4-e4b,         provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "E4B",       params_b: 4}
+  - {id: google/gemma-4-31B-it,                            slug: gemma-4-31b,         provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "31B",       params_b: 31}
+  - {id: google/gemma-4-26B-A4B-it,                        slug: gemma-4-26b-a4b,     provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "26B-A4B",   params_b: 26}
+
+# Retired/extra models referenced by existing adapters & analysis (slug<->id resolution
+# only; NOT part of the active matrix). All retired from the Tinker catalog as of 2026-06-27.
+roster_legacy:
+  - {id: meta-llama/Llama-3.1-8B-Instruct,  slug: llama-3.1-8b,  provider: meta, backend: tinker, renderer: llama3, chat_template_kwargs: {}, tier: launder, param_size: "8B",  params_b: 8}
+  - {id: Qwen/Qwen3-4B-Instruct-2507,       slug: qwen3-4b,      provider: qwen, backend: tinker, renderer: qwen3,  chat_template_kwargs: {}, tier: launder, param_size: "4B",  params_b: 4}
+  - {id: meta-llama/Llama-3.3-70B-Instruct, slug: llama-3.3-70b, provider: meta, backend: tinker, renderer: llama3, chat_template_kwargs: {}, tier: launder, param_size: "70B", params_b: 70}
+  - {id: Qwen/Qwen3-32B,                    slug: qwen3-32b,     provider: qwen, backend: tinker, renderer: qwen3,  chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "32B", params_b: 32}
+
+datasets:
+  gsm8k:
+    train_csv: data/datasets/gsm8k/gsm8k_prompts_train_500_seed42.csv
+    eval_csv: data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv
+    prompt_template: "Question: {prompt}\nAnswer:"
+    completion_template: " {completion}\n"
+  chatbot_arena:
+    train_csv: data/datasets/chatbot_arena/chatbot_arena_prompts_train_500_seed42.csv
+    eval_csv: data/datasets/chatbot_arena/chatbot_arena_prompts_eval_1000_seed42.csv
+    prompt_template: "{prompt}"
+    completion_template: "{completion}"
+  writingprompts:
+    train_csv: data/datasets/writingprompts/writingprompts_train_500_seed42.csv
+    eval_csv: data/datasets/writingprompts/writingprompts_eval_500_seed42.csv
+    prompt_template: "Prompt: {prompt}\nStory:"
+    completion_template: " {completion}\n"
+  oasst1:
+    train_csv: data/datasets/oasst1/oasst1_prompts_train_500_seed42.csv
+    eval_csv: data/datasets/oasst1/oasst1_prompts_eval_200_seed42.csv
+    prompt_template: "{prompt}"
+    completion_template: "{completion}"
+
+lora: {rank: 32, alpha: 64, dropout: 0.0, target_modules: all-linear}
+
+sft: {batch_size: 16, epochs: 3, learning_rate: 1.0e-4, train_size: 500, eval_size: 0}
+
+dpo: {batch_size: 16, num_epochs: 1, learning_rate: 1.0e-5, dpo_beta: 0.1, lora_rank: 32, max_length: 4096, save_every: 50}
+
+generation: {max_tokens: 512, temperature: 0.0}

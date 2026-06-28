@@ -17,7 +17,7 @@
 - **Provider APIs (default)**  
   Pass `openai/...`, `anthropic/...`, etc. and LiteLLM handles routing via your API keys. No local weights required.
 
-`scripts/generate_responses.py basic` uses whichever backend you specify. The disguise step (`scripts/disguise.py`) defaults to LiteLLM; to force a local vLLM endpoint, provide:
+`dementor-generate basic` uses whichever backend you specify. The disguise step (`dementor-disguise`) defaults to LiteLLM; to force a local vLLM endpoint, provide:
 
 ```
 --openai-api-base http://localhost:8000/v1
@@ -33,7 +33,7 @@
    ```
 2. **Generate base outputs (LiteLLM routed to vLLM)**
    ```bash
-   python scripts/generate_responses.py \
+   dementor-generate \
      --prompts-file data/datasets/chatbot_arena/chatbot_arena_prompts.csv \
      --output-csv data/model-responses/chatbot_arena/full/llama31_8b.csv \
      basic \
@@ -43,7 +43,7 @@
    ```
 3. **Run disguise**
    ```bash
-   python scripts/disguise.py \
+   dementor-disguise \
      --model openai/meta-llama/Llama-3.1-8B-Instruct \
      --disguise-as openai/gpt-4.1-mini \
      --method contrastive \
@@ -53,9 +53,9 @@
    ```
 4. **Score results**
    ```bash
-   python -m scripts.scorer pairwise \
+   python -m dementor.scorer pairwise \
      --input data/results/chatbot_arena/disguised/my_run.csv \
      --output data/results/chatbot_arena/scores/my_run_scored/scored.csv
    ```
 
-Use `bash scripts/run_local_vllm.sh ...` to orchestrate the entire loop (server launch, generation, disguise, scoring) with one command.
+Chain the steps above — vLLM server launch, then `dementor-generate`, `dementor-disguise`, and `dementor.scorer` — to drive the entire local loop.

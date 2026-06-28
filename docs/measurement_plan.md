@@ -15,7 +15,7 @@ control ≈0) into `anchored`. The original hypothesis was that persistence
 decreases monotonically across rungs but stays above zero even after DPO.
 
 > **Status (first cells).** The pipeline is operational
-> (`scripts/analysis/run_cell_pipeline.py`); the headline figure still needs the
+> (`dementor/metric/run_cell_pipeline.py`); the headline figure still needs the
 > full matrix. First cells (llama-3.1-8b → {gpt-oss-20b, qwen3.6-27b,
 > nemotron-30b}, gsm8k; + gpt-oss on writingprompts) already complicate the prior:
 > **DPO drove persistence to ≈0 (full assimilation, sometimes overshoot) on every
@@ -55,7 +55,7 @@ that rung.
 - **~180k (in-dist) to ~575k (full cross-dist) generations**
 
 ### Phase F — Scoring (CPU, no API cost)
-For every cell, run `scripts/analysis/run_behavioral_inertia.py`:
+For every cell, run `dementor/metric/run_behavioral_inertia.py`:
 - Inputs: source baseline, target baseline, disguised output
 - Outputs: `source_persistence`, probe (`source_residue`/`target_assimilation`),
   per-axis movement, anisotropy

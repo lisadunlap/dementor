@@ -1,7 +1,7 @@
 # D2 — Reasoning-Structure Transfer
 
 **Status:** plan only (no generation/training authorized here).
-**Branch:** ethan. **Runtime:** `./.venv/bin/python`, `PYTHONPATH=.`.
+**Branch:** ethan. **Runtime:** `./.venv/bin/python` (editable install; no `PYTHONPATH` needed).
 
 ## Claim
 
@@ -63,7 +63,7 @@ reasoning-feature vector — measured strictly on the **de-confounded** generati
   `data/results/multiseed_ci_s3.csv` (180 rows = 3 datasets × 12 pairs × 5 rungs;
   cols `dataset, source, target, base_rung, mean, sd, n, ci95`).
 - Existing per-feature structural decomposition template:
-  `scripts/analysis/structural_decomp.py` (DPO-only, 32-D style features, 36 cells).
+  `dementor/steering/structural_decomp.py` (DPO-only, 32-D style features, 36 cells).
 - gsm8k gold: decontam gsm8k uses the **test** split (verified: 200/200 prompts
   match gsm8k test, 0 match the local train CSV that has answers). Gold final
   answers are NOT in `data/datasets/gsm8k/gsm8k_test.csv` (cols `prompt, split`
@@ -89,7 +89,7 @@ reasoning-feature vector — measured strictly on the **de-confounded** generati
 
 ### Step 0 — reasoning-feature extractor (new module)
 
-New file: `scripts/analysis/reasoning_structure.py`. Deterministic, regex/counting
+New file: `experiments/analysis/reasoning_structure.py`. Deterministic, regex/counting
 only, CPU, no MiniLM, no API. Mirror the signature style of
 `structural_matrix()` in `structural_decomp.py`:
 `reasoning_matrix(texts) -> (X: np.ndarray[n, F], names: list[str])`.
@@ -127,7 +127,7 @@ confirm step-count etc. behave (e.g. nemotron > gpt-oss on `rs_step_count`).
 
 ### Step 1 — per-cell, per-rung reasoning persistence (H1, H3)
 
-New driver: `scripts/analysis/reasoning_transfer.py`. Reuse the projection-
+New driver: `experiments/analysis/reasoning_transfer.py`. Reuse the projection-
 persistence recipe verbatim from `structural_decomp.per_feature_persistence`,
 but (a) over the reasoning matrix, (b) for **every rung**, not just DPO, and
 (c) collapsed to a single per-cell scalar via the **Fisher-LDA projection axis**
@@ -175,7 +175,7 @@ H1 statistic (removes the seed-count / pipeline mismatch confound:
 
 ### Step 3 — capability transfer (H2, gsm8k only)
 
-New helper `scripts/analysis/gsm8k_capability.py`:
+New helper `experiments/analysis/gsm8k_capability.py`:
 
 1. Fetch gold once via `datasets` (cache-gated; see cost gate G2). Build
    `{normalized_prompt: gold_int}`.
@@ -247,16 +247,16 @@ Figures (under `figures/reasoning/`):
 
 ## Reuse map
 
-- `scripts/analysis/structural_decomp.py` — `structural_matrix`, the z-score-on-
+- `dementor/steering/structural_decomp.py` — `structural_matrix`, the z-score-on-
   source+target basis rule, `per_feature_persistence`, `load_all_cells`,
   `SEP_GATE`, `SHORT`, the per-source aggregation. **Primary template**; copy its
   cell-loop and per-feature logic, swap the feature matrix for the reasoning one.
-- `scripts/analysis/latent_behavior_axes.py` — `_fit_supervised_basis(...,
+- `dementor/metric/latent_behavior_axes.py` — `_fit_supervised_basis(...,
   k=1, shrinkage=0.15)` for the Fisher-LDA axis; `_style_scalar_features`,
   `_style_binary_features` for the recomputed-identical-pipeline style baseline.
-- `scripts/analysis/behavioral_inertia_metrics.py` — `projection_movement`,
+- `dementor/metric/behavioral_inertia_metrics.py` — `projection_movement`,
   `projection_persistence`, `projection_movement_per_row`, `axis_separation`.
-- `scripts/analysis/distinctiveness_structural.py` — pattern for the per-source
+- `experiments/analysis/distinctiveness_structural.py` — pattern for the per-source
   distinctiveness baseline H3 compares against (and its r=−0.31 inversion).
 - `data/results/multiseed_ci_s3.csv` — cached style persistence to join (H1) and
   the per-source DPO style numbers (H3).

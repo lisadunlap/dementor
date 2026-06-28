@@ -14,11 +14,11 @@ See "Dual-use" below.
 
 | Artifact | How |
 |---|---|
-| `data/datasets/benchmarks/refusal/advbench_harmful.csv` (520 prompts) | `scripts/safety/fetch_refusal_prompts.py` — HF download, prompts only |
+| `data/datasets/benchmarks/refusal/advbench_harmful.csv` (520 prompts) | `dementor/safety/fetch_refusal_prompts.py` — HF download, prompts only |
 | `data/datasets/benchmarks/refusal/xstest.csv` (450: 250 safe + 200 unsafe) | same |
 | `data/datasets/benchmarks/refusal/eval_120h_80o_seed42.csv` (200-prompt eval set) | same, seed-42 subsample |
-| Deterministic Tier-A refusal classifier + unit test | `scripts/safety/refusal_classifier.py --selftest` (24/24 synthetic cases pass), also `scripts/tests/test_refusal_classifier.py` |
-| Spend-guarded ladder runner + cost dry-run | `scripts/safety/run_safety_ladder.py` |
+| Deterministic Tier-A refusal classifier + unit test | `dementor/safety/refusal_classifier.py --selftest` (24/24 synthetic cases pass), also `tests/test_refusal_classifier.py` |
+| Spend-guarded ladder runner + cost dry-run | `dementor/safety/run_safety_ladder.py` |
 
 Benchmark mirrors used (non-gated; the canonical `walledai/*` repos are gated):
 - AdvBench harmful_behaviors (Zou et al. 2023) via `ivnle/advbench_harmful_behaviors`.
@@ -47,7 +47,7 @@ and **deletes the raw completion** (dual-use mitigation — no full harmful comp
 
 Verified directly against `data/tinker_adapters.json`: all 108 `{rung}_{ds}_{src}_as_{tgt}_seed{n}`
 entries that carry a `base_model` have `MODEL_SLUG[base_model] == source` (0 mismatches).
-This matches `scripts/analysis/run_cell_pipeline.py` line 146, which samples adapter rungs with
+This matches `dementor/metric/run_cell_pipeline.py` line 146, which samples adapter rungs with
 `base_model = source`, `clean_model = source`. The LoRA adapter sits on the **source** model
 fine-tuned to imitate the target's benign outputs.
 
@@ -73,8 +73,8 @@ max_tokens 512, temp 0.7, via Tinker. **No training spend** (adapters already ex
 
 Reproduce these numbers for free:
 ```
-./.venv/bin/python -m scripts.safety.run_safety_ladder --pilot   # prints 6,400
-./.venv/bin/python -m scripts.safety.run_safety_ladder --full    # prints 44,800
+./.venv/bin/python -m dementor.safety.run_safety_ladder --pilot   # prints 6,400
+./.venv/bin/python -m dementor.safety.run_safety_ladder --full    # prints 44,800
 ```
 
 **Dollar estimate:** dominated by `calls × ~512 max_tokens`. The runner ships a

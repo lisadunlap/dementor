@@ -43,7 +43,7 @@ first; our erasure is a statement about the second.
 ## 2. Primary reconciliation — native stability *predicts* our durability (A4 / S7 is the bridge)
 
 We reproduced the partner's native-stability measurement on our 4 models using the **shared 20
-binary style features** (`scripts/analysis/native_style_stability.py`, reusing
+binary style features** (`experiments/analysis/native_style_stability.py`, reusing
 `latent_behavior_axes.py::_style_binary_features`). Three of the partner's findings reproduce in
 shape:
 
@@ -162,7 +162,7 @@ agreement in §2 (which is internal to our pipeline), only the absolute magnitud
   almost entirely in the **→nemotron** target cell (0.52–0.76) and laundered into the other three.
   B2c re-ran all three new sources across writingprompts + chatbot_arena + oasst1 and the →nemotron
   retention **does not replicate**: mean **0.613 on gsm8k → 0.007 on the other datasets**
-  (`scripts/analysis/b2c_verdict.py`, `results/durability/b2c_cross_dataset.csv`). So the only
+  (`experiments/analysis/b2c_verdict.py`, `results/durability/b2c_cross_dataset.csv`). So the only
   defensible Phase-B claim is the null: high-capability sources launder like everyone else, and
   capability joins distinctiveness/size/Big-Five as a **failed** predictor of durability. This makes
   the "every intuitive predictor fails" story *stronger*, not weaker. The robust durability signal

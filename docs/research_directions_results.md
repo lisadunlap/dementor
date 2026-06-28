@@ -12,7 +12,7 @@ full plan in `docs/plans/` and an implementation on its own branch off `ethan`.
 
 > **Update 2026-06-05 (Tinker fix pass).** A bounded ~9k-call Tinker run fixed all three.
 > Details in the "Fix pass" section at the bottom; the table above already reflects the
-> post-fix verdicts. Initial-pass scripts/results remain on the three branches; the fixes
+> post-fix verdicts. Initial-pass scripts and results remain on the three branches; the fixes
 > are committed on `ethan` (commits `4bc7961` D1, `8a7fecc` D3, `5a36762` D2).
 
 ## D1 — Capability vs Style (clean negative)
@@ -72,7 +72,7 @@ reads clean) yet **+21 pts** MATH capability (cap_xfer 0.65). Capability transfe
 ~orthogonal to style persistence (r=−0.06, p=0.87) but **underpowered** (n=10 gap-ok cells,
 huge CI). Caveat/confound: MATH capability tiers {nemotron,gpt-oss}>{qwen,llama} coincide
 with the style-survivor tiers — survivors may partly just be the more capable models.
-Files: `results/d1fix_*`, `scripts/analysis/{census_mathbench,grade_mathbench,d1fix_capgen,d1fix_analyze}.py`.
+Files: `results/d1fix_*`, `experiments/analysis/{census_mathbench,grade_mathbench,d1fix_capgen,d1fix_analyze}.py`.
 
 **D3 — safety, FULL 216-cell matrix (3 datasets × 12 pairs × 2 rungs × 3 seeds).**
 Native refusal high on all 4 (0.92–1.00). **Benign-output imitation collaterally erases
@@ -86,7 +86,7 @@ launderers shed both (durability is model-wide). H6: over-refusal on safe prompt
 (~0.08, no new over-caution). Dual-use: only binary verdicts + redacted snippets persisted;
 raw completions discarded.
 Files: `results/safety/safety_full_*.csv`, `figures/safety_full_*.png`,
-`scripts/safety/d3full_analyze.py` (pilot: `analyze_safety.py`).
+`experiments/safety/d3full_analyze.py` (pilot: `analyze_safety.py`).
 
 **D2 — seed-robustness.** seed1↔seed2 reasoning-persistence agreement Pearson 0.92; H3
 keeper holds **pooled (+1.00)** and reproduces seed1 exactly, but **seed2-alone softens to

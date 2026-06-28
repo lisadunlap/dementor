@@ -25,14 +25,14 @@ Model strings
 
 Disguise commands
 - Random baseline
-  - `python disguise.py --model openai/gpt-4o-mini --disguise-as gpt-4o --method random_sampling --num-samples 200`
+  - `dementor-disguise --model openai/gpt-4o-mini --disguise-as gpt-4o --method random_sampling --num-samples 200`
 
 - Contrastive rules
-  - `python disguise.py --model openai/gpt-4o-mini --disguise-as gpt-4o --method contrastive --num-samples 200`
+  - `dementor-disguise --model openai/gpt-4o-mini --disguise-as gpt-4o --method contrastive --num-samples 200`
 
 Scoring with metrics
 ```bash
-python -m scripts.scorer pairwise \
+python -m dementor.scorer pairwise \
   --input data/results/chatbot_arena/disguised/my_run.csv \
   --output data/results/chatbot_arena/scores/my_run_scored/scored.csv
 cat data/results/chatbot_arena/scores/my_run_scored/scored_metrics.csv

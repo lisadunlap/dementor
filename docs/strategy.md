@@ -157,7 +157,7 @@ True, verified, reproducible (seed-sd 0.018), de-confounded, size-dissociated. E
 
 **Go/no-go on activation steering: conditional GO — but only as a scoped capstone, run *after* a cheap probe gates it, and NOT the version the docs imagine.** The mechanism lens corrected three stale blockers and I'm adopting its corrected picture:
 
-- The "hard-blocked at line 427" claim is **false** — that's a `note` string, not an error. `export_adapter_to_peft` (`workflows/run_matrix.py:662`) already downloads the Tinker checkpoint and unpacks a real PEFT dir, and is already wired (lines 921, 1045). **The Tinker→PEFT bridge is solved.**
+- The "hard-blocked at line 427" claim is **false** — that's a `note` string, not an error. `export_adapter_to_peft` (`dementor/training/matrix.py:662`) already downloads the Tinker checkpoint and unpacks a real PEFT dir, and is already wired (lines 921, 1045). **The Tinker→PEFT bridge is solved.**
 - Survivor DPO adapters are already in local HF cache (verified PEFT, LoRA r=32, all-linear).
 - **The genuine bind:** the survivor *base models* (gpt-oss-20B MXFP4, nemotron-30B) do not fit in 16 GB with hidden-state capture. The only locally-runnable model is **llama-8B — which is the launderable one with no fingerprint to steer.** So the cheap-local version is a null that proves nothing; the informative version needs a rented GPU.
 
@@ -197,10 +197,10 @@ This is the only move that touches the paper's deepest weakness (the *interestin
 ### Files that matter
 
 - `/Users/EthanLiu/Documents/Programming/dementor/data/results/multiseed_ci_s3.csv` — the real spine: per-source tiers, seed-sd 0.018, survivor cells.
-- `/Users/EthanLiu/Documents/Programming/dementor/scripts/analysis/distinctiveness_structural.py` — reproduces the inversion (structural r=−0.31, llama most distinctive yet lowest persistence). The dead thesis.
+- `/Users/EthanLiu/Documents/Programming/dementor/experiments/analysis/distinctiveness_structural.py` — reproduces the inversion (structural r=−0.31, llama most distinctive yet lowest persistence). The dead thesis.
 - `/tmp/highn_percell.csv` — the pseudo-replication: `src_distinct` has 4 unique values; `tgt_distinct` vs dpo is r=0.193, p=0.26 (n.s.).
 - `/Users/EthanLiu/Documents/Programming/dementor/data/results/encoder_swap_all-mpnet-base-v2.csv` — still the buggy 12-cells-triplicated version (all 180 rows `dataset='decontam'`); regenerate before anyone greps it.
-- `/Users/EthanLiu/Documents/Programming/dementor/scripts/analysis/activation_bridge.py` — built, never run; the cheap mechanism win (Move 2).
-- `/Users/EthanLiu/Documents/Programming/dementor/scripts/analysis/activation_steering.py` — steering capstone; the L425 "note" is not a blocker.
-- `/Users/EthanLiu/Documents/Programming/dementor/workflows/run_matrix.py:662` — `export_adapter_to_peft`, the Tinker→PEFT bridge (already solved/wired).
+- `/Users/EthanLiu/Documents/Programming/dementor/dementor/steering/activation_bridge.py` — built, never run; the cheap mechanism win (Move 2).
+- `/Users/EthanLiu/Documents/Programming/dementor/dementor/steering/activation_steering.py` — steering capstone; the L425 "note" is not a blocker.
+- `/Users/EthanLiu/Documents/Programming/dementor/dementor/training/matrix.py:662` — `export_adapter_to_peft`, the Tinker→PEFT bridge (already solved/wired).
 - `/Users/EthanLiu/Documents/Programming/dementor/docs/argument.md` — §5 over-claims A2 and "n=36"; this memo supersedes its recommendation.

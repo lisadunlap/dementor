@@ -1,193 +1,156 @@
 # AGENTS.md
 
-This file provides guidance to AI agents when working in this repository.
+Guidance for AI agents working in this repository.
 
-## Project Overview
+## Project overview
 
-Dementor is a research framework for LLM disguise and behavioral inertia:
-techniques that make one language model imitate another, plus analyses that
-measure which behavioral axes move under prompting, fine-tuning, and
-activation-level interventions.
+Dementor measures **behavioral-fingerprint persistence** in LLMs under disguise: techniques that
+make one model imitate another (naming → few-shot/style prompting → SFT → DPO → activation
+steering), plus analyses of which behavioral axes survive each intervention. The canonical metric
+definitions live in `docs/evaluation_framework.md` — treat it as the source of truth for the
+persistence metric, manifest shape, and evaluator usage.
 
-## Core Architecture
+## Repository layout
 
-### Disguise Methods (`scripts/methods/`)
+Installable package (`pip install -e .`). Three top-level trees:
 
-Stable method names are registered in `scripts/methods/get_method.py`:
+- **`dementor/`** — the importable library:
+  - `config.py` — loads `config.yaml` (the single source of truth; see below).
+  - `methods/` — disguise methods (registered in `get_method.py`).
+  - `metric/` — persistence metric + cell evaluator (`behavioral_cell_evaluator`, `run_cell_pipeline`,
+    `run_matrix_cells`, `latent_behavior_axes`, `behavioral_inertia_metrics`, `run_intervention_ladder`, …).
+  - `steering/` — activation steering + fixed-encoder probes (`activation_steering`, `activation_bridge`).
+  - `training/` — Tinker + OpenAI + **local-GPU** backends, the experiment-matrix driver (`matrix.py`),
+    and the dry-run planner (`plan.py`).
+  - `serve/`, `safety/`, `data_utils/` — serving utils, refusal evaluation, dataset/prompt builders.
+  - `cli/` plus top-level `scorer.py` / `cache_llm.py` / `visualize_scores.py` — entry points.
+- **`experiments/`** — one-off analysis / figure / tool scripts (`analysis/`, `figures/`, `tools/`,
+  `gsm8k/`, `safety/`). NOT imported by the library; safe to run, edit, or delete in isolation.
+- **`tests/`** — pytest suite (CPU-only). CI: `.github/workflows/ci.yml`.
 
-- `just_name_it`
-- `random_sampling`
-- `behavioral`
-- `stylistic`
-- `contrastive`
-- `stylistic_clustering`
-- `stylistic_clustering_resample`
-- `embedding_clustering`
-- `behavioral_clustering`
+## Configuration — `config.yaml` is the single source of truth
 
-All methods inherit from `MethodBase` and expose `forward(prompt: str)`.
+`dementor.config` reads `config.yaml`; **nothing else hardcodes** the roster, seeds, datasets, or
+hyperparameters. `matrix.py` and `plan.py` derive the entire experiment from it.
 
-### Main Scripts
+- **Roster:** 10 active models + a legacy list. Each row carries `id, slug, provider, backend,
+  renderer, chat_template_kwargs, tier, param_size`. `backend: tinker` (7 models, trained via the
+  Tinker API) or `backend: local` (the 3 `google/gemma-4-*` models, trained on a local GPU via
+  `training/local_backend.py`). `roster_legacy` holds retired models so existing adapters still
+  resolve slug↔id.
+- **Accessors:** `config.roster()`, `config.model(slug_or_id)`, `config.backend_for(id)`,
+  `config.dataset(name)`, `config.seeds()`, `config.sft()/dpo()/lora()`, `config.registry_path()`,
+  `config.project_root()`. Paths anchor on the repo root, never the cwd.
+- To change the experiment, edit `config.yaml` — do not reintroduce hardcoded model/seed lists.
 
-- `scripts/generate_responses.py`: generate base responses.
-  - Use `basic` for provider/HF/vLLM models.
-  - Use `tinker` for Tinker sampler checkpoints or adapter aliases.
-  - Use `openai` for OpenAI or OpenAI-compatible endpoints.
-- `scripts/disguise.py`: apply disguise methods.
-- `scripts/scorer.py`: score single files or pairwise disguised-vs-target outputs.
-- `scripts/analysis/run_cell_pipeline.py`: end-to-end driver for one open-source-matrix cell. `--dataset --source --target` generates eval outputs (source/target baselines ×2 seeds, prompting rungs, and the SFT/DPO adapter rungs via Tinker; `--adapter-seeds N` for multi-seed rungs; `--calibration-judge`/`--calibration-n` for LLM-judge validation), stages them on shared endpoints, runs the supervised-basis cell with self-baseline + identity controls, and prints the calibrated ladder. Idempotent (cached generations are skipped). Generation needs HF online; only cached-eval + calibration runs use `HF_HUB_OFFLINE=1`.
-- `scripts/analysis/run_matrix_cells.py`: batch driver over the `(source, target)` matrix for a dataset; runs each cell via `run_cell_pipeline` then aggregates all cells into one cross-cell ladder (seeds averaged per rung) + figure. `--aggregate-only` rebuilds the figure from cells on disk with no Tinker.
-- `scripts/analysis/behavioral_cell_evaluator.py`: preferred multi-method evaluator for one `(dataset, source, target)` cell; fits one basis (supervised LDA axis by default), computes source self-baseline + identity control, runs all methods, attaches calibration/activation evidence, and writes feature-ablation stability tables. Headline metric is `persistence` (k-independent full-feature source→target projection); `anchored` rescales it by both controls.
-- `scripts/analysis/run_behavioral_inertia.py`: latent behavioral-axis analysis for a single comparison CSV.
-- `scripts/analysis/activation_bridge.py`: representation probes without intervention.
-- `scripts/analysis/activation_steering.py`: local Transformers activation steering.
-- `workflows/run_gsm8k_workflow.py`: dry-run or launch GSM8K SFT/DPO workflows.
+## Disguise methods (`dementor/methods/`)
 
-Canonical evaluator documentation lives in `docs/evaluation_framework.md`.
-Use it as the source of truth for metric definitions, manifest shape, artifact
-fields, and evaluator usage.
+Registered in `get_method.py`; all inherit `MethodBase` and expose `forward(prompt: str)`:
+`just_name_it`, `random_sampling`, `behavioral`, `stylistic`, `contrastive`,
+`stylistic_clustering`, `stylistic_clustering_resample`, `embedding_clustering`, `behavioral_clustering`.
 
-### Data Flow
+## Evaluation pipeline
 
-1. Generate or import base responses into `data/model-responses/`.
-2. Apply disguise methods into `data/results/<dataset>/comparisons/...`.
-3. Score comparisons with `scripts.scorer`.
-4. For multi-method analysis, use `scripts.analysis.behavioral_cell_evaluator` so every intervention in the same source-target cell shares the same saved behavioral basis.
-5. Aggregate summaries with `scripts.analysis.run_intervention_ladder`.
+Headline metric is `persistence` (k-independent full-feature source→target projection); `anchored`
+rescales it by a source self-baseline and an identity control. Flow:
 
-For the open-source matrix, `scripts.analysis.run_cell_pipeline` does steps 1–4 for one
-`(dataset, source, target)` cell in a single command (generation through calibrated
-ladder). Generated cell outputs live under `data/results/<dataset>/analysis/cells/`
-and are gitignored.
+1. base responses → `data/model-responses/`
+2. disguise → `data/results/<dataset>/comparisons/…`
+3. score → `dementor.scorer`
+4. multi-method cell → `dementor.metric.behavioral_cell_evaluator` (one shared basis per source→target cell)
+5. aggregate → `dementor.metric.run_intervention_ladder`
 
-Use local CSVs as the reproducible source of truth. Old BAIR/cthulu-only
-artifacts should not be assumed available; regenerate missing results locally or
-through Tinker/OpenAI workflows.
+`dementor.metric.run_cell_pipeline` runs 1–4 for one `(dataset, source, target)` cell;
+`run_matrix_cells` batches it over a matrix. The "full"/"adjectives" feature path needs
+`sentence-transformers` (MiniLM scoring before the supervised source/target basis is fit — disguised
+outputs are *projected* into that basis, never used to fit it).
 
-## Common Commands
+## Training matrix & backends (`dementor/training/`)
 
-### Setup
+The active matrix is config-driven: `config.roster()` × datasets × seeds × {SFT, DPO} + self-SFT
+controls. Sources route to the Tinker or local backend by `config.backend_for`.
 
-```bash
-pip install -r requirements.txt
-```
+- **Dry-run the full plan (no spend):** `dementor-plan` (a.k.a. `python -m dementor.training.plan`) —
+  enumerates every job with its backend and prints counts; launches nothing.
+- **Run (gated — costs money / needs a GPU):** `dementor-matrix {generate-target-responses,
+  build-sft-data, launch-sft, build-dpo-data, launch-dpo, …}`; all support `--dry-run`.
+- Adapters are recorded in `data/tinker_adapters.json` (Tinker `tinker://` URIs or local PEFT dirs,
+  tagged with `backend`). Registry-touching ops resolve the source model from the alias, so they
+  cover both current and legacy adapters.
 
-Behavioral-inertia analysis requires `sentence-transformers`; it is used for
-Naz-style Big-Five/model-style adjective scoring before fitting a source/target
-fixed SVD basis. Disguised outputs are projected into that basis and must not
-participate in fitting it.
+Local SFT/DPO are exercised on CPU in `tests/test_local_backend.py`; actual training is run later on
+a GPU. Do **not** launch Tinker/GPU jobs without explicit confirmation.
 
-Tinker workflows (SFT/DPO adapters via Thinking Machines, and the
-`tinker` backend in `scripts/generate_responses.py`) require two
-extra packages that are not on PyPI:
-
-- `tinker` — Thinking Machines SDK; install from their docs.
-- `tinker_cookbook` — preference-dataset helpers used by
-  `workflows/dpo.py`; install from the public cookbook repo.
-
-A `TINKER_API_KEY` environment variable is also required at runtime.
-If you are only running the OpenAI/HF/vLLM paths you can skip both
-packages — every Tinker import is guarded and only fires on those
-code paths.
-
-### Generate Responses
+## Install & dependencies
 
 ```bash
-python scripts/generate_responses.py \
-  --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
-  --output-csv data/model-responses/gsm8k/full/openai_gpt-4.1-mini.csv \
-  basic --model openai/gpt-4.1-mini
+pip install -e .            # or: uv pip install -e .   (registers the dementor-* console scripts)
 ```
 
-### Apply Disguise
+No `PYTHONPATH` prefix is needed. Core install covers analysis + the metric. Optional extras:
+
+- `.[train]` — `peft, trl, accelerate, datasets, tinker` (local + Tinker training).
+- `.[serve]` — `vllm, gradio` (local serving + the viewer UI).
+- `.[dev]`   — `pytest`.
+
+`tinker` / `tinker_cookbook` are not on PyPI (install from Thinking Machines); a `TINKER_API_KEY`
+(in `.env`) is required for Tinker runs. Every remote/training import is lazy, so analysis works
+without them.
+
+Console scripts: `dementor-matrix`, `dementor-plan`, `dementor-generate`, `dementor-disguise`,
+`dementor-viewer`, `dementor-score`, `dementor-cache`, `dementor-visualize`, `dementor-make-prompts`,
+`dementor-make-splits`.
+
+## Common commands
 
 ```bash
-python scripts/disguise.py \
-  --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
-  --model meta-llama/Meta-Llama-3.1-8B-Instruct \
-  --disguise-as openai/gpt-4.1-mini \
-  --method contrastive \
-  --num-samples 50
+# Generate base responses
+dementor-generate --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
+  --output-csv data/model-responses/gsm8k/full/openai_gpt-4.1-mini.csv basic --model openai/gpt-4.1-mini
+
+# Apply a disguise method
+dementor-disguise --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
+  --model meta-llama/Llama-3.1-8B-Instruct --disguise-as openai/gpt-4.1-mini --method contrastive --num-samples 50
+
+# Score disguised-vs-target
+python -m dementor.scorer pairwise --input <comparison.csv> --output <scored.csv>
+
+# Plan / dry-run the training matrix (no spend)
+dementor-plan
+python -m dementor.training.matrix list-cells
+
+# Activation steering (export the Tinker LoRA to a local PEFT adapter first)
+python -m experiments.tools.export_tinker_adapter --tinker-path 'tinker://<run>/sampler_weights/<name>' \
+  --base-model meta-llama/Llama-3.1-8B-Instruct --output-dir <peft_dir> --format peft
+python -m dementor.steering.activation_steering --comparison-csv <comparison.csv> \
+  --model-name meta-llama/Llama-3.1-8B-Instruct --peft-adapter-path <peft_dir> \
+  --output-dir <out> --layer -8 --strengths 0,0.5,1,2
 ```
 
-### Score
+## Testing
 
 ```bash
-python -m scripts.scorer pairwise \
-  --input data/results/gsm8k/comparisons/disguised_vs_target/contrastive/llama_as_gpt-4.1-mini.csv \
-  --output data/results/gsm8k/comparisons/disguised_vs_target/contrastive/llama_as_gpt-4.1-mini_scored.csv
+pytest -q                              # CPU-only
+HF_HUB_OFFLINE=1 TRANSFORMERS_OFFLINE=1 pytest -q   # skip the cached-MiniLM network check
 ```
 
-### Tinker SFT/DPO
+The local-backend SFT/DPO tests download a tiny random model (need network). CI runs `pytest` on push.
 
-Dry-run first:
+## Result organization
 
-```bash
-python -m workflows.run_gsm8k_workflow --stage sft --provider tinker --dry-run
-python -m workflows.run_gsm8k_workflow --stage dpo --provider tinker --dry-run
-```
+- `data/model-responses/<dataset>/` — base-model outputs.
+- `data/results/<dataset>/comparisons/` — disguise comparisons.
+- `data/results/<dataset>/analysis/` — behavioral-inertia / bridge / steering / ladder outputs (gitignored).
+- `data/tinker_adapters.json` — adapter registry (Tinker URIs or local PEFT dirs).
 
-Launch after confirming inputs and environment:
+## Agent guidelines
 
-```bash
-python -m workflows.run_gsm8k_workflow \
-  --stage sft \
-  --provider tinker \
-  --epochs 6 \
-  --batch-size 16 \
-  --weights-name gsm8k_llama-3.1-8b-instruct
-```
-
-Generate from a saved Tinker sampler:
-
-```bash
-python scripts/generate_responses.py \
-  --prompts-file data/datasets/gsm8k/gsm8k_prompts_eval_200_seed42.csv \
-  --output-csv data/results/gsm8k/500/sft_tinker/eval.csv \
-  tinker \
-  --model-path 'tinker://<run-id>/sampler_weights/<name>' \
-  --renderer-name llama3
-```
-
-### Activation Steering
-
-Tinker remote sampling does not expose generation hooks. For steering, export
-the Tinker LoRA to a local PEFT adapter or merged HF model, then use
-Transformers hooks.
-
-```bash
-python scripts/tools/export_tinker_adapter.py \
-  --tinker-path 'tinker://<run-id>/sampler_weights/<name>' \
-  --base-model meta-llama/Llama-3.1-8B-Instruct \
-  --output-dir data/model-responses/adapters/gsm8k_llama_sft_peft \
-  --format peft
-```
-
-```bash
-python -m scripts.analysis.activation_steering \
-  --comparison-csv data/results/gsm8k/comparisons/disguised_vs_target/contrastive/llama_as_gpt-4.1-mini.csv \
-  --model-name meta-llama/Llama-3.1-8B-Instruct \
-  --peft-adapter-path data/model-responses/adapters/gsm8k_llama_sft_peft \
-  --output-dir data/results/gsm8k/analysis/activation_steering/llama_as_gpt-4.1-mini \
-  --layer -8 \
-  --strengths 0,0.5,1,2
-```
-
-## Result Organization
-
-- `data/model-responses/<dataset>/`: base model outputs.
-- `data/results/<dataset>/comparisons/`: disguise comparisons.
-- `data/results/<dataset>/analysis/`: behavioral-inertia, bridge, steering, and ladder outputs.
-- `data/recovered/`: imported legacy/Naz recovered comparison CSVs.
-- `data/tinker_adapters.json`: local alias registry for Tinker sampler paths.
-
-## Agent Guidelines
-
-- Run commands directly; do not ask the user to execute commands.
-- Prefer existing scripts and workflow entry points over adding parallel scripts.
+- Run commands directly; don't ask the user to run them.
+- `config.yaml` is the single source of truth — extend the roster/datasets/seeds/hparams there, not in code.
+- Keep remote/training imports (`tinker`, `tinker_cookbook`, `peft`, `trl`, `vllm`, `gradio`, `lmdb`)
+  lazy, inside the paths that need them, so analysis stays importable without every backend.
+- Never launch Tinker/GPU training (cost) without explicit confirmation; prefer `--dry-run` / `dementor-plan`.
 - Keep generated results under `data/results/` and base responses under `data/model-responses/`.
-- Do not depend on unavailable cthulu/BAIR paths in code or docs.
-- Do not merge noisy result branches wholesale. Selectively import useful CSVs and docs, leaving out caches, W&B logs, `.DS_Store`, and transient artifacts.
-- Optional provider packages such as `tinker`, `tinker_cookbook`, and `openai` should be imported lazily inside the paths that need them, so local analysis remains usable without every remote backend installed.
-- Update README or relevant docs when command arguments, data layout, or workflow structure changes.
-- Use focused tests for analysis/math behavior and CLI parsing. Avoid broad generated-output tests that require remote APIs or large model downloads.
+- Use focused CPU tests for metric/math/CLI behavior; avoid tests that need remote APIs or large downloads.
+- Update this file, `README.md`, and `docs/` when command args, the data layout, or the config schema change.
+</content>

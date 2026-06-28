@@ -114,8 +114,8 @@ Style persistence to join against (cached, no recompute):
   `datasets` library is installed and importable in `./.venv` (verified). This is a free,
   offline-cacheable download, **not** an API/compute spend. Build a `prompt → gold_int`
   lookup once and persist it as `data/datasets/gsm8k/gsm8k_test_gold.csv`.
-- **An exact-match grader.** None exists. `scripts/scorer.py` is an LLM *quality/pairwise*
-  judge, not a math grader; `scripts/methods/utils/math_style_extractor.py` extracts *style*
+- **An exact-match grader.** None exists. `dementor/scorer.py` is an LLM *quality/pairwise*
+  judge, not a math grader; `dementor/methods/utils/math_style_extractor.py` extracts *style*
   features, not the final numeric answer. We must add a small deterministic
   `final-answer extractor + exact-match` (no model calls).
 
@@ -228,7 +228,7 @@ cap_xfer    = clip(cap_xfer, 0, 1)                         # report clipped head
 
 ### Step 7 — H3 (optional, GATED) chatbot_arena quality transfer
 Only if the cost gate is approved:
-1. Reuse `scripts/scorer.py::score_pairwise_dataframe` (judge default `openai/gpt-4.1-mini`).
+1. Reuse `dementor/scorer.py::score_pairwise_dataframe` (judge default `openai/gpt-4.1-mini`).
    Honor the `.env` gotcha: read the real `OPENAI_API_KEY`/base from `.env` explicitly and
    **unset/override** the proxy `OPENAI_BASE_URL=https://pass.wafer.ai/v1` before judging.
 2. For each arena cell, for each rung and for the source-vs-target baseline, build pairwise
@@ -299,15 +299,15 @@ demonstrably lifted."*
 - **Style-survivor tiers / distinctiveness:** `results/source_distinctiveness.csv`,
   `data/results/structural_decomp_percell.csv`, and the existing matrix findings (MEMORY:
   matrix-eval-findings) for the 7/3 survivor split.
-- **Cell semantics / model slugs:** `scripts/analysis/run_cell_pipeline.py`
+- **Cell semantics / model slugs:** `dementor/metric/run_cell_pipeline.py`
   (`SLUG_TO_MODEL`, source=base, target=imitated), `cell.json` per cell.
-- **LLM judge (H3 only):** `scripts/scorer.py::score_pairwise_dataframe` /
+- **LLM judge (H3 only):** `dementor/scorer.py::score_pairwise_dataframe` /
   `score_pairwise` (default judge `openai/gpt-4.1-mini`). Mind the `.env` proxy override.
-- **Robust CSV read:** `scripts/analysis/behavioral_cell_evaluator.py::read_csv_robust`
+- **Robust CSV read:** `dementor/metric/behavioral_cell_evaluator.py::read_csv_robust`
   (multiline responses are common — reuse it instead of bare `pd.read_csv` for the gen files).
-- **New code to add (small, deterministic, no model calls):** `scripts/analysis/grade_gsm8k.py`
+- **New code to add (small, deterministic, no model calls):** `experiments/analysis/grade_gsm8k.py`
   (gold builder + final-answer extractor + exact-match + per-cell grading) and
-  `scripts/analysis/d1_capability_vs_style.py` (join + stats + figures).
+  `experiments/analysis/d1_capability_vs_style.py` (join + stats + figures).
 
 ---
 

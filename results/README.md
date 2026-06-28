@@ -3,7 +3,7 @@
 Curated, paper-relevant result artifacts (small CSVs + figures). The heavy raw
 generations (per-cell source/target/disguised text, 36 cells × rungs × seeds) live on
 the HuggingFace dataset `dementor-research/dementor-matrix-responses`, not here.
-Reproduce any of these from the cached text with the scripts in `scripts/analysis/`.
+Reproduce any of these from the cached text with the scripts under `experiments/`.
 
 ## The disguise ladder (the experimental scaffold)
 - `matrix_ladder/<dataset>_matrix_ladder.{csv,png}` — per-rung persistence across all
