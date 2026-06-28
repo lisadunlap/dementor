@@ -15,11 +15,13 @@ outputs identifiable from another's. Dementor asks a robustness question: **when
 survives?**
 
 We answer it with a **disguise ladder** of escalating interventions and a **calibrated, judge-free
-persistence metric**. The metric projects held-out responses onto a supervised Fisher-LDA
-source→target axis (over MiniLM adjective-descriptor scores + 32 hand-coded style features),
-anchored between a self-baseline (≈1, the fingerprint fully intact) and an identity control
-(≈0, fully laundered to the target), with a per-cell separability gate that refuses untrustworthy
-cells. It is deterministic and basis/k-independent by construction. Canonical definition:
+persistence metric**. The metric projects held-out responses onto a supervised source→target axis —
+the **standardized difference of class means** (a diagonal-LDA / nearest-centroid direction; the full
+Fisher discriminant is carried only as a secondary basis axis, not the headline) — over MiniLM
+adjective-descriptor scores + 32 hand-coded style features, anchored between a self-baseline (≈1, the
+fingerprint fully intact) and an identity control (≈0, fully laundered to the target), with a per-cell
+separability diagnostic that flags untrustworthy cells. It is deterministic and basis/k-independent by
+construction. Canonical definition:
 [`docs/evaluation_framework.md`](docs/evaluation_framework.md).
 
 ### The 4×4×3 disguise ladder (36 cells)
@@ -54,8 +56,12 @@ leaves a robust, seed-stable structural residue for the other two. Verified this
 - The two tiers are separated by a gap ~3× the within-tier spread; **seed-sd median 0.018** (≈20×
   smaller than the survivor effect — the metric is highly reproducible across the 3 adapter seeds).
 - **Survivor enrichment is real but small-n**: 7/36 DPO cells survive (point estimate > 0.3), *all*
-  gpt-oss/nemotron-sourced (Fisher p ≈ 0.008). The exact count is definition-fragile (7 by point
-  estimate, 3 by a seed-sd lower bound).
+  gpt-oss/nemotron-sourced. The exact count is definition-fragile — **7** by point estimate, **3** by
+  the corrected Student-t 95%-CI lower bound (`t(df=2)=4.303`, not the normal 1.96; the old 1.96 rule
+  over-reported **6**). On significance, lead with the **source-level exact test (p ≈ 0.33, effective
+  n=4)**, *not* the cell-level Fisher p ≈ 0.008, which is pseudo-replicated (36 non-independent cells,
+  only 4 unique source values). Both are computed by
+  [`experiments/analysis/survivor_enrichment.py`](experiments/analysis/survivor_enrichment.py).
 - **Which models retain is a property of the *source* model** — not the imitation target, the
   domain, or model size: the 27B model (qwen) launders while the 20B (gpt-oss) resists, so capacity
   is ruled out.
@@ -265,6 +271,16 @@ mechanism remains open. (oasst1 was added here to align with the partner's 4-dat
 
 ## Reproduce
 
+**Prerequisites — materialize the LFS data first.** All `*.csv` / `*.json` / `*.png` / `*.pdf` /
+`*.svg` / `*.html` artifacts (datasets, results, figures, and the test fixtures) are stored via
+**git-LFS**; a fresh `git clone` contains only ~130-byte pointer stubs, and the test suite and every
+analysis script will fail on them. Install git-lfs and pull the real content (~2 GB) before anything
+else:
+
+```bash
+git lfs install && git lfs pull
+```
+
 Use the project venv with the package installed editable (`uv pip install -e .`), so no
 `PYTHONPATH` is needed. `TINKER_API_KEY` (generation) and `OPENAI_API_KEY` (logprob probes)
 live in `.env`. The venv is a `uv` venv (no `pip`); install with
@@ -272,7 +288,7 @@ live in `.env`. The venv is a `uv` venv (no `pip`); install with
 hyperparameters live in `config.yaml` (loaded via `dementor.config`).
 
 ```bash
-PY=./.venv/bin/python   # arm64 venv (editable install via `uv pip install -e .`; no PYTHONPATH needed)
+PY=./.venv/bin/python   # editable install via `uv pip install -e .`; no PYTHONPATH needed
 ```
 
 **Run one cell end-to-end** (generate all 5 rungs via Tinker, stage on shared endpoints, score,

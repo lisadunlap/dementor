@@ -83,7 +83,11 @@ a GPU. Do **not** launch Tinker/GPU jobs without explicit confirmation.
 
 ## Install & dependencies
 
+**First, materialize the LFS data** (`*.csv/json/png/pdf/svg/html` are git-LFS; a fresh clone has only
+~130-byte pointer stubs and the test suite + every analysis will fail on them):
+
 ```bash
+git lfs install && git lfs pull
 pip install -e .            # or: uv pip install -e .   (registers the dementor-* console scripts)
 ```
 

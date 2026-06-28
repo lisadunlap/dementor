@@ -15,8 +15,10 @@ Reproduce any of these from the cached text with the scripts under `experiments/
   seeds (de-confounded). Seed-sd median 0.018. The two-tier source split: nemotron
   0.211 / gpt-oss 0.190 **retain**, qwen 0.077 / llama 0.012 **launder**. Survivors,
   pinned to one definition: **7** by point estimate (mean>0.3; gpt-oss×4, nemotron×3,
-  qwen/llama×0; Fisher p=0.0076) / **3** high-confidence (mean−1.96·seed_sd>0.3), all
-  gpt-oss/nemotron-sourced.
+  qwen/llama×0; cell-level Fisher p=0.0076 — but lead with the source-level p≈0.33, effective n=4)
+  / **3** by the corrected Student-t 95%-CI lower bound (mean − t(df=2)·sd/√n > 0.3; the old 1.96
+  multiplier over-reported 6), all gpt-oss/nemotron-sourced. (Note: this CSV's `ci95` column predates
+  the Student-t fix and still stores 1.96·sd/√n; recompute via `experiments.analysis.decontaminate`.)
 - `fig1_source_fingerprint.png` — DPO persistence per source model (two-tier split).
 
 ## Robustness / corrections
@@ -24,7 +26,7 @@ Reproduce any of these from the cached text with the scripts under `experiments/
   CoT-leak fix. corr(leak-rate, Δpersistence) = −0.99; clean cells untouched
   (mean|Δ|=0.002). The leak inflated the raw arena survivors (0.84 → ~0.46).
 - `d3_encoder_swap_bge.csv` — **D3**: persistence re-scored under a different encoder
-  (bge-small). Rung ordering replicates (Spearman ~0.70 vs MiniLM).
+  (bge-small). Rung ordering replicates (Spearman ~0.80 vs MiniLM; DPO floor 0.116 vs 0.119).
 - `source_distinctiveness.csv` — baseline distinctiveness of each model under 4
   measures (MiniLM, bge, mpnet, 32 structural features) vs DPO persistence.
   **Caveat:** the distinctiveness↔persistence link is *encoder-sensitive* — it holds
