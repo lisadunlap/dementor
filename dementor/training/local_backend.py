@@ -217,6 +217,48 @@ def generate_local_responses(
     return outputs
 
 
+def _save_peft_adapter(trainer, output_dir, tokenizer=None) -> None:
+    """Save the trained PEFT adapter, FSDP-aware.
+
+    Under FSDP, ``accelerator.unwrap_model`` only peels the wrapper object while the
+    parameters stay SHARDED across ranks, so a plain ``save_pretrained`` writes rank0's
+    flat shard => a truncated / empty / NaN adapter. Instead we gather a FULL (unsharded)
+    state dict as a COLLECTIVE on all ranks (offloaded to CPU, materialized on rank0 only),
+    then save the adapter on rank0 — PEFT filters the LoRA weights out via its own naming.
+    When FSDP is inactive (single GPU / CPU / plain DDP) this falls back to the original
+    rank0 ``save_pretrained``, so off-FSDP behavior is unchanged.
+
+    MUST be called on EVERY rank — the gather is a collective. Do NOT wrap it in a rank0
+    guard (that deadlocks: rank0 enters the all-gather, the others never do).
+    """
+    acc = trainer.accelerator
+    unwrapped = acc.unwrap_model(trainer.model)
+    from torch.distributed.fsdp import (
+        FullStateDictConfig,
+        FullyShardedDataParallel as FSDP,
+        StateDictType,
+    )
+
+    # The FSDP root is ``model_wrapped`` under the HF Trainer; fall back to ``model``.
+    candidates = [getattr(trainer, "model_wrapped", None), trainer.model]
+    fsdp_root = next((m for m in candidates if m is not None and isinstance(m, FSDP)), None)
+
+    if fsdp_root is None:  # no FSDP -> original single-process save path
+        if acc.is_main_process:
+            unwrapped.save_pretrained(str(output_dir))
+            if tokenizer is not None:
+                tokenizer.save_pretrained(str(output_dir))
+        return
+
+    cfg = FullStateDictConfig(offload_to_cpu=True, rank0_only=True)
+    with FSDP.state_dict_type(fsdp_root, StateDictType.FULL_STATE_DICT, cfg):
+        full_sd = fsdp_root.state_dict()  # collective: every rank enters; rank0 materializes
+    if acc.is_main_process:
+        unwrapped.save_pretrained(str(output_dir), state_dict=full_sd)
+        if tokenizer is not None:
+            tokenizer.save_pretrained(str(output_dir))
+
+
 def run_local_sft_job(
     *,
     dataset_config: SFTDatasetConfig,
@@ -303,13 +345,12 @@ def run_local_sft_job(
 
     loss = getattr(result, "training_loss", None)
     loss_history = [float(loss)] if loss is not None else []
-    # Under DDP (`accelerate launch`) the post-train code runs in every rank; only the
-    # main process writes the adapter/tokenizer/registry (concurrent writers corrupt the
-    # files) and a barrier makes other ranks wait for the files. No-op for 1 process.
+    # Save the adapter (FSDP-aware: the helper gathers a full state dict as a collective
+    # on every rank, then writes on rank0). Under `accelerate launch` the post-train code
+    # runs in every rank, so the registry write stays rank0-only (concurrent writers
+    # corrupt files) and the barrier makes other ranks wait. No-op for 1 process.
+    _save_peft_adapter(trainer, output_dir, tokenizer)
     if trainer.is_world_process_zero():
-        model_to_save = trainer.accelerator.unwrap_model(trainer.model)
-        model_to_save.save_pretrained(str(output_dir))
-        tokenizer.save_pretrained(str(output_dir))
         record_adapter_mapping(
             weights_name,
             str(output_dir),
@@ -396,9 +437,10 @@ def run_local_dpo_job(*, train_jsonl: Path, eval_jsonl: Optional[Path], params: 
         peft_config=_lora_config({"rank": params.lora_rank}),
     )
     trainer.train()
+    # FSDP-aware adapter save (collective gather on all ranks; rank0 writes); then rank0
+    # records the registry mapping.
+    _save_peft_adapter(trainer, out_dir)
     if trainer.is_world_process_zero():  # DDP-safe: only the main process writes artifacts
-        model_to_save = trainer.accelerator.unwrap_model(trainer.model)
-        model_to_save.save_pretrained(str(out_dir))
         record_adapter_mapping(
             params.weights_name,
             str(out_dir),
