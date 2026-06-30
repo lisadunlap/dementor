@@ -148,6 +148,13 @@ def _load_causal_lm(model_name: str, *, use_cuda: bool):
     NOTE: the multimodal fallback is best-effort and unverified against the real gemma-4
     checkpoints (CPU-only validation here) — the orchestrator should sanity-check it on
     the actual ``google/gemma-4-*-it`` weights.
+
+    TODO(multimodal-training): the fallback hands back the multimodal checkpoint's text decoder
+    (``.language_model``) so it can load + generate, but full multimodal *training* — proper
+    text-tower extraction, an image-text processor/collator, and a frozen vision tower — is
+    OUT OF SCOPE and NOT implemented here. Running SFT/DPO on a multimodal checkpoint via this
+    path would tune only the text decoder and ignore image inputs; build a dedicated multimodal
+    training path before relying on it.
     """
     import torch
     from transformers import AutoModelForCausalLM
@@ -167,6 +174,80 @@ def _load_causal_lm(model_name: str, *, use_cuda: bool):
         if text_model is not None and hasattr(text_model, "get_input_embeddings"):
             return text_model
         raise exc
+
+
+def fsdp_wrap_layer_names(model) -> list[str]:
+    """Decoder-layer class name(s) for FSDP transformer wrapping — architecture-agnostic.
+
+    Returns the transformer-block class name(s) that FSDP should wrap into shards, derived
+    generically for ANY HuggingFace model with NO per-architecture hardcoding (the user's ask:
+    "one general function for all of them" instead of a hardcoded ``GptOssForCausalLM`` etc.):
+
+    1. Primary — ``model._no_split_modules``: transformers defines this attribute per
+       architecture and it IS the decoder-layer class list (Qwen2.5 -> ``["Qwen2DecoderLayer"]``,
+       gpt-oss -> ``["GptOssDecoderLayer"]``, Llama -> ``["LlamaDecoderLayer"]``, ...). accelerate
+       reads the very same attribute to auto-build the FSDP wrap policy, so this matches the
+       config-only path (the generic ``dementor/training/fsdp.yaml``) exactly.
+    2. Fallback — module introspection: for the rare checkpoint that does not set
+       ``_no_split_modules``, return the most common module class found AT a ``*.layers.<int>``
+       path (the repeated decoder block). Returns ``[]`` when nothing matches.
+
+    Pure inspection (no training/CUDA); works on a meta-device / ``init_empty_weights`` model,
+    so the wrap class can be verified config-only for any checkpoint.
+    """
+    no_split = getattr(model, "_no_split_modules", None)
+    if no_split:
+        seen: set[str] = set()  # de-dup, preserve order
+        ordered: list[str] = []
+        for name in no_split:
+            if name and name not in seen:
+                seen.add(name)
+                ordered.append(name)
+        if ordered:
+            return ordered
+
+    import re
+    from collections import Counter
+
+    at_layer = re.compile(r"(?:^|\.)layers\.\d+$")  # module sitting at `...layers.<int>`
+    counts: Counter[str] = Counter()
+    for name, module in model.named_modules():
+        if at_layer.search(name):
+            counts[type(module).__name__] += 1
+    return [counts.most_common(1)[0][0]] if counts else []
+
+
+def _ensure_fsdp_wrap_class(model) -> None:
+    """Make the FSDP wrap class general for ANY model, including those lacking ``_no_split_modules``.
+
+    The generic ``dementor/training/fsdp.yaml`` intentionally OMITS
+    ``fsdp_transformer_layer_cls_to_wrap``; with ``fsdp_auto_wrap_policy: TRANSFORMER_BASED_WRAP``
+    accelerate then auto-derives the layer class to wrap from ``model._no_split_modules`` at
+    ``accelerator.prepare`` time — correct for every standard HF arch (Qwen2.5 -> Qwen2DecoderLayer,
+    gpt-oss -> GptOssDecoderLayer, Llama -> LlamaDecoderLayer, ...). That config-only path is the
+    primary, verified mechanism and needs NO code here.
+
+    This function is a belt-and-suspenders fallback for the ONLY gap: a checkpoint that doesn't
+    define ``_no_split_modules`` (accelerate would then wrap no transformer layer => no per-layer
+    FSDP shards). For exactly that case we publish ``fsdp_wrap_layer_names``'s introspected class via
+    the ``FSDP_TRANSFORMER_CLS_TO_WRAP`` env BEFORE the HF Trainer builds its Accelerator (the FSDP
+    plugin reads that env in its ``__post_init__``).
+
+    No-op unless running under an FSDP ``accelerate launch`` (``ACCELERATE_USE_FSDP=true``) AND the
+    env is still unset AND the model lacks ``_no_split_modules`` — so it never overrides accelerate's
+    own derive or an explicit user setting, and is a plain no-op for single-GPU / CPU / DDP runs.
+    """
+    import os
+
+    if os.environ.get("ACCELERATE_USE_FSDP") != "true":
+        return  # not an FSDP launch (single-GPU / CPU / plain DDP) -> nothing to wrap
+    if os.environ.get("FSDP_TRANSFORMER_CLS_TO_WRAP"):
+        return  # explicitly set (e.g. legacy hardcoded yaml) -> respect it
+    if getattr(model, "_no_split_modules", None):
+        return  # accelerate auto-derives from _no_split_modules -> let the config-only path run
+    names = fsdp_wrap_layer_names(model)
+    if names:
+        os.environ["FSDP_TRANSFORMER_CLS_TO_WRAP"] = ",".join(names)
 
 
 def generate_local_responses(
@@ -313,6 +394,10 @@ def run_local_sft_job(
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     model = _load_causal_lm(base_model, use_cuda=use_cuda)
+    # Architecture-agnostic FSDP: the generic fsdp.yaml lets accelerate auto-derive the
+    # decoder-layer wrap class from model._no_split_modules; this only steps in for the rare
+    # checkpoint lacking that attribute (no-op off an FSDP launch, so single-GPU is unchanged).
+    _ensure_fsdp_wrap_class(model)
     if use_cuda:
         model.config.use_cache = False  # incompatible with gradient checkpointing
         model.enable_input_require_grads()  # let grad-ckpt reach LoRA params over a frozen base
@@ -404,6 +489,9 @@ def run_local_dpo_job(*, train_jsonl: Path, eval_jsonl: Optional[Path], params: 
     if use_cuda:
         model.config.use_cache = False
         model.enable_input_require_grads()
+    # Architecture-agnostic FSDP wrap class (see run_local_sft_job); after merge_and_unload the
+    # model is the plain base, whose _no_split_modules accelerate auto-derives from. No-op off FSDP.
+    _ensure_fsdp_wrap_class(model)
 
     files = {"train": str(train_jsonl)}
     if eval_jsonl is not None:

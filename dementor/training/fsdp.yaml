@@ -1,0 +1,36 @@
+# Architecture-agnostic FSDP config for the Dementor local training backend.
+#
+# ONE config for ANY HuggingFace model — no per-architecture decoder-layer class.
+# `fsdp_transformer_layer_cls_to_wrap` is intentionally OMITTED: with
+# `fsdp_auto_wrap_policy: TRANSFORMER_BASED_WRAP`, accelerate auto-derives the
+# decoder-layer class to wrap from `model._no_split_modules` at prepare time
+# (Qwen2.5 -> Qwen2DecoderLayer, gpt-oss -> GptOssDecoderLayer, Llama -> LlamaDecoderLayer, ...).
+# See `dementor.training.local_backend.fsdp_wrap_layer_names` for the same derivation
+# (and a `*.layers.<int>` introspection fallback for checkpoints lacking `_no_split_modules`).
+#
+# Usage (pick the GPUs + process count at launch; --num_processes overrides the value below):
+#   CUDA_VISIBLE_DEVICES=0,1 accelerate launch --config_file dementor/training/fsdp.yaml \
+#     --num_processes 2 <entrypoint> ...
+compute_environment: LOCAL_MACHINE
+debug: false
+distributed_type: FSDP
+downcast_bf16: 'no'
+machine_rank: 0
+main_training_function: main
+mixed_precision: bf16
+num_machines: 1
+num_processes: 2
+rdzv_backend: static
+same_network: true
+tpu_use_cluster: false
+tpu_use_sudo: false
+use_cpu: false
+fsdp_config:
+  fsdp_sharding_strategy: FULL_SHARD
+  fsdp_auto_wrap_policy: TRANSFORMER_BASED_WRAP
+  fsdp_state_dict_type: FULL_STATE_DICT
+  fsdp_use_orig_params: true
+  fsdp_offload_params: false
+  fsdp_cpu_ram_efficient_loading: true
+  fsdp_sync_module_states: true
+  fsdp_backward_prefetch: BACKWARD_PRE

@@ -99,12 +99,20 @@ with `python -m dementor.training.matrix cell --source <id> --target <id> ...`.
   shards the model across ranks. The single-process multi-GPU `nn.DataParallel` path is guarded off
   (`_guard_no_dataparallel`) — multi-GPU MUST go through `accelerate launch` / `torchrun`:
   ```bash
-  CUDA_VISIBLE_DEVICES=0,1,2,3 accelerate launch --config_file <fsdp.yaml> --num_processes 4 \
-    -m dementor.training.matrix cell --source <id> --target <id> ...
+  CUDA_VISIBLE_DEVICES=0,1,2,3 accelerate launch --config_file dementor/training/fsdp.yaml \
+    --num_processes 4 -m dementor.training.matrix cell --source <id> --target <id> ...
   ```
-  The accelerate FSDP config must set `fsdp_transformer_layer_cls_to_wrap` to the model's
-  decoder-layer class (`Qwen2DecoderLayer` for Qwen2.5, the Gemma layer class for gemma-4) and
-  `fsdp_use_orig_params: true`. Verified sharding a 32B across 2 H100s at ~46 GiB/GPU.
+  **Architecture-agnostic wrap class (no per-model config).** `dementor/training/fsdp.yaml` is ONE
+  generic config for ANY HuggingFace model: it sets `fsdp_auto_wrap_policy: TRANSFORMER_BASED_WRAP`
+  and `fsdp_use_orig_params: true` but intentionally OMITS `fsdp_transformer_layer_cls_to_wrap`.
+  accelerate then auto-derives the decoder-layer class to wrap from `model._no_split_modules` at
+  prepare time (`Qwen2DecoderLayer` for Qwen2.5, `GptOssDecoderLayer` for gpt-oss, `LlamaDecoderLayer`
+  for Llama, the Gemma layer class for gemma-4, ...) — no hardcoded class, no per-architecture yaml.
+  `local_backend.fsdp_wrap_layer_names(model)` exposes the same derivation (for tests/inspection),
+  and `_ensure_fsdp_wrap_class` is a belt-and-suspenders fallback that publishes the introspected
+  class via `FSDP_TRANSFORMER_CLS_TO_WRAP` only for the rare checkpoint lacking `_no_split_modules`.
+  Verified sharding a 32B across 2 H100s at ~46 GiB/GPU, and gpt-oss-20b across 2 H100s via the
+  generic config (clean, NaN-free adapter).
 
 - **FSDP adapter save** (`_save_peft_adapter`): under FSDP, `unwrap_model().save_pretrained()` would
   write rank0's *sharded* slice → an empty/NaN adapter. The helper instead gathers a

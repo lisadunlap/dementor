@@ -159,6 +159,60 @@ class LocalBackendSFTTest(unittest.TestCase):
             self.assertEqual(reg["test_dpo_from_sft"]["backend"], "local")
             self.assertEqual(reg["test_dpo_from_sft"]["sft_parent"], str(sft_dir))
 
+    def test_fsdp_wrap_layer_names_from_no_split_modules(self):
+        """Primary path: derive the decoder-layer wrap class from ``model._no_split_modules``.
+
+        This is the architecture-agnostic mechanism — no per-model hardcoding. The tiny Llama
+        stand-in exposes ``_no_split_modules == {"LlamaDecoderLayer"}`` exactly like the real
+        Qwen2.5 (``Qwen2DecoderLayer``) / gpt-oss (``GptOssDecoderLayer``) checkpoints.
+        """
+        from dementor.training.local_backend import _load_causal_lm, fsdp_wrap_layer_names
+
+        try:
+            model = _load_causal_lm(TINY_MODEL, use_cuda=False)
+        except OSError as exc:
+            self.skipTest(f"tiny model unavailable (offline?): {exc}")
+        self.assertEqual(fsdp_wrap_layer_names(model), ["LlamaDecoderLayer"])
+
+    def test_fsdp_wrap_layer_names_fallback_introspection(self):
+        """Fallback path (no ``_no_split_modules``): most-repeated class at a ``*.layers.<int>`` path."""
+        import torch.nn as nn
+
+        from dementor.training.local_backend import fsdp_wrap_layer_names
+
+        class _Block(nn.Module):
+            def __init__(self):
+                super().__init__()
+                self.lin = nn.Linear(2, 2)
+
+        class _Toy(nn.Module):
+            _no_split_modules = None  # force the introspection fallback
+
+            def __init__(self):
+                super().__init__()
+                self.layers = nn.ModuleList([_Block() for _ in range(3)])
+
+        self.assertEqual(fsdp_wrap_layer_names(_Toy()), ["_Block"])
+
+    def test_ensure_fsdp_wrap_class_noop_off_fsdp(self):
+        """``_ensure_fsdp_wrap_class`` must NOT touch the env unless under an FSDP launch."""
+        import os
+
+        from dementor.training.local_backend import _ensure_fsdp_wrap_class
+
+        prev_use, prev_cls = os.environ.get("ACCELERATE_USE_FSDP"), os.environ.get("FSDP_TRANSFORMER_CLS_TO_WRAP")
+        os.environ.pop("ACCELERATE_USE_FSDP", None)
+        os.environ.pop("FSDP_TRANSFORMER_CLS_TO_WRAP", None)
+        try:
+            _ensure_fsdp_wrap_class(object())  # off-FSDP -> pure no-op, never inspects the model
+            self.assertIsNone(os.environ.get("FSDP_TRANSFORMER_CLS_TO_WRAP"))
+        finally:
+            for k, v in (("ACCELERATE_USE_FSDP", prev_use), ("FSDP_TRANSFORMER_CLS_TO_WRAP", prev_cls)):
+                if v is None:
+                    os.environ.pop(k, None)
+                else:
+                    os.environ[k] = v
+
     def test_export_local_adapter_writes_provenance(self):
         from dementor.training import local_backend
 
