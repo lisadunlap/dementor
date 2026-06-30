@@ -322,5 +322,6 @@ Tests: `pytest -q` (configured in `pyproject.toml`; suite under `tests/`).
 ---
 
 For coding conventions see `AGENTS.md`; for local HF/vLLM/provider routing see
-`docs/local_generation.md`; for SFT/DPO orchestration see `dementor/training/README.md`. **Everything about
+`docs/local_generation.md`; for SFT/DPO orchestration (incl. the local single- & multi-GPU-FSDP
+backend) see `dementor/training/README.md`. **Everything about
 direction and current status is in `docs/strategy.md`.**
