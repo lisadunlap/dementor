@@ -91,3 +91,24 @@ and stored portably on HuggingFace.
 - Phase F — behavioral-inertia scoring (source_persistence, probe, per-axis)
 - Rung 5 — activation steering (optional)
 - Headline figure — persistence vs intervention-ladder rung
+
+---
+
+## Local-backend + FSDP validation (2026-06-30)
+
+Supplementary to the Tinker matrix above. This validates the **non-Tinker local training
+path** (`dementor/training/local_backend.py`) and adds **multi-GPU FSDP** — the capability the
+`backend: local` roster models (`google/gemma-4-*`) and any large local source need.
+**These are infrastructure + methods checks on DENSE Qwen stand-ins — NOT roster cells.**
+
+| Item | Result |
+| --- | --- |
+| Pipeline | local SFT → DPO → held-out gen → persistence, scored end-to-end with no Tinker (Qwen2.5-7B/14B/32B → Qwen3-8B, chatbot_arena, 60 held-out eval) |
+| FSDP + PEFT fix | the FSDP adapter save wrote a sharded/empty slice; fixed in `_save_peft_adapter` (commit `5da6016`) via an all-rank `FULL_STATE_DICT` gather. Validated on dense Qwen: single-GPU and 2-GPU FSDP produce identical 392-tensor adapters; 32B genuinely shards (~46 GiB/GPU vs the 57.7 GiB full model). |
+| Methods note (stand-ins, **not** roster) | DPO erases ≥ SFT fingerprint; **significant only at 14B/32B, indistinguishable at 7B** (0.39 vs 0.38, overlapping CIs); larger source ⇒ more persistent + more self-consistent (self-baseline B 0.74 → 0.90 → 0.97). Caveats: persistence is generation-length-sensitive; bf16 LoRA is NaN-prone at lr ≥ 3e-5 (use ≤ 1e-5). |
+| **Roster readiness** | **All 10 roster models are multimodal (6), MoE (7), or hybrid-Mamba (2) — none is the dense text arch validated above.** The FSDP wrap config is `Qwen2DecoderLayer`-only; each family needs its own wrap class + (multimodal ones) text-decoder extraction. **gpt-oss-20b validation in progress.** |
+
+Metric caveat: the headline `persistence` is a **difference-of-means** projection
+(basis-independent), not the Fisher-LDA "supervised" axis; `sep_ratio` is a geometry diagnostic,
+not the trust gate (the gate is probe CV accuracy ≥ 0.70). Verified definitions in
+`dementor/metric/behavioral_inertia_metrics.py:253-262` and `latent_behavior_axes.py:668-686`.
