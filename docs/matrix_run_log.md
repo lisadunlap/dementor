@@ -112,3 +112,29 @@ Metric caveat: the headline `persistence` is a **difference-of-means** projectio
 (basis-independent), not the Fisher-LDA "supervised" axis; `sep_ratio` is a geometry diagnostic,
 not the trust gate (the gate is probe CV accuracy ≥ 0.70). Verified definitions in
 `dementor/metric/behavioral_inertia_metrics.py:253-262` and `latent_behavior_axes.py:668-686`.
+
+---
+
+## First roster cell — gpt-oss-20b → Qwen3-8B (2026-06-30)
+
+The first genuine roster persistence cell trained fully locally (no Tinker, source = a real roster
+model). Single-GPU bf16 sufficed (21B MoE dequantizes to ~42 GiB, fits one H100). Trustworthy:
+sep_ratio 0.937, probe_cv 0.975, all controls present.
+
+| anchor / rung | persistence | movement | z vs baseline |
+| --- | --- | --- | --- |
+| identity I (Qwen3-8B) | 0.053 | — | — |
+| **DPO** | **0.731** | 0.269 | 1.56 |
+| baseline B (gpt-oss self) | 0.866 | — | — |
+| **SFT** | **0.959** | 0.041 | 0.04 |
+
+**Finding:** DPO disguises gpt-oss toward Qwen3-8B (z=1.56 below baseline) while **SFT does not**
+(z=0.04, at baseline) — but gpt-oss **retains most of its fingerprint either way** (DPO floor 0.73 vs
+the "launder"-tier Qwen stand-in's ~0.38), matching gpt-oss's roster `tier: retain` tag.
+**Honest caveat:** the per-prompt paired SFT-vs-DPO test is NOT significant (Δ=0.016, p=0.68; bootstrap
+CIs wide/overlapping at n=60) — the robust claims are "DPO moves vs baseline, SFT doesn't" and the
+retain-tier persistence; tightening the SFT↔DPO gap needs more eval prompts. gpt-oss specifics handled:
+harmony final-channel extraction (0 token leaks / 360 gens), `reasoning_effort=low`, MoE LoRA on
+attention q/k/v/o (fused expert tensors skipped). Artifacts: `/data/ethantsliu/roster/gptoss_cell/`.
+Note: `download_roster.py` originally dropped `chat_template.jinja` (now fixed to include `.jinja`/
+templates) — gpt-oss ships no chat_template in the weights, so the harmony template was fetched separately.
