@@ -31,8 +31,11 @@ The keyword refusal detector produced a false null. With **Llama-Guard-3-1B** + 
 genuine leaks **0 → 1 → 4**; Llama-Guard "unsafe" 5.0% → 10.8%), via a **"refuse-then-leak"**
 mechanism — DPO refuses, then delivers the methodology under "so you understand the risks" framing
 (fraud evasion, fake news, identity theft, a working access-denial script). Over-refusal is genuinely
-low and flat (~2%; the earlier 8% was rebuttal false-positives). Real, directional, mechanistic —
-but **marginal two-sided at n=120** (Guard base→dpo p=0.065); confirm on full AdvBench/StrongREJECT.
+low and flat (~2%; the earlier 8% was rebuttal false-positives). **SCALED to full AdvBench (520) +
+StrongREJECT (288), n=808: DECISIVELY significant** — Guard-unsafe base 9.0% → sft 11.4% → dpo 16.5%;
+base→dpo McNemar **p=1.4e-7** (p=5.3e-8 on AdvBench alone; p=0.032 StrongREJECT), sft→dpo p=5.8e-4;
+hand-adjudicated genuine-leak ~0% → ~5% via a confirmed **refuse-then-leak** mechanism. Caveat: single
+disguise seed/greedy decode. This is now a solid, powered result (up from the marginal p=0.065 at n=120).
 
 ### Exp 4 — Capability fallback — REFUTED for the paper cell; CONDITIONALLY salvaged
 On the equal-capability paper cell (Qwen2.5-7B ≈ Qwen3-8B, gsm8k 0.887 vs 0.863) the original
@@ -57,10 +60,12 @@ it. Verdict: inference-time steering can't *freely* disguise this model; project
 lever (matches DPO while coherent, at a fluency cost), additive is not.
 
 ## Bottom line
-- **Solid (with caveats):** Exp 2 (protocol dominates launderability); Exp 5 (projection-ablation as
-  an inference-time disguise operator); the safety-erosion **direction + mechanism** (Exp 3).
-- **Needs more before it's a p<0.05 claim:** Exp 3 (bigger safety benchmark), Exp 4 (must use the
-  real-capability-gap framing), Exp 1 (saturated-regime reframe; 5/7 rungs).
+- **Solid:** Exp 2 (protocol dominates launderability); **Exp 3 — DPO safety erosion, now powered at
+  n=808 (p=1.4e-7)**; Exp 5 — projection-ablation as an inference-time disguise operator, now
+  **implemented in the package** (`dementor/steering/steering_rung.py`, tested, reaches ≤ DPO-level
+  persistence while coherent).
+- **Needs the right framing:** Exp 4 (holds only with a real capability gap), Exp 1 (saturated-regime;
+  5/7 rungs — behavioral/contrastive need an external analysis LLM).
 - **The self-correction is the point:** every shaky first-pass claim was caught by adversarial review
   and either fixed or honestly retracted before it could reach the paper.
 
