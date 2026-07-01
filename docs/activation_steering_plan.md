@@ -5,6 +5,38 @@ ladder, alongside the prompt rungs (name/stylistic/...) and the trained rungs (S
 Grounded in a verified literature synthesis (citations below) and this codebase's existing
 difference-of-means persistence machinery.
 
+## Status: IMPLEMENTED (`dementor/steering/steering_rung.py`)
+
+The validated recipe below is productionized in **`dementor/steering/steering_rung.py`**
+(tests: `tests/test_steering_rung.py`, CPU-only). Public API — torch/transformers imports
+are lazy, so analysis code imports it without a GPU:
+
+- **`derive_steering_vector(source_model, target_model, prompts, *, source_responses=None,
+  target_responses=None, layers=None, device=..., ...) -> dict[int, Tensor]`** — per-layer
+  source→target diff-of-means over **response tokens**. Both response sets are teacher-forced
+  through the SOURCE model (`v_L = mean_p act_src(prompt+target_resp)[L] − mean_p
+  act_src(prompt+source_resp)[L]`, `hidden_states[L+1]` = output of decoder layer `L`), because
+  source (3584-d) and target (4096-d) live in different residual spaces so the vector must live
+  in source space. Decoder layers are found generically via `get_transformer_layers` (no
+  hardcoded layer class; same spirit as `local_backend.fsdp_wrap_layer_names`). Responses are
+  generated greedily if not supplied.
+- **`generate_steered_responses(model, prompts, vector, layer, *, mode="ablate"|"add",
+  strength, max_new_tokens, temperature, ...) -> list[str]`** — forward-hook generation.
+  `mode="ablate"` → `h −= β·(h·v̂)v̂` (projection-ablation, the winning operator);
+  `mode="add"` → `h += α·v̂` (additive). Hook factories `make_ablation_hook` /
+  `make_additive_hook` are pure and unit-tested (post-ablation `h·v̂ == (1−β)·original`).
+- **`run_steering_rung(...)` + CLI (`python -m dementor.steering.steering_rung`)** — derives
+  or loads a vector, generates steered eval responses, and writes a `{prompt, model_response}`
+  CSV in the same format as `gen/rung_sft.csv` / `gen/rung_dpo.csv`, so `run_behavioral_cell`
+  scores it as a disguise rung (`activation_steering_optional` slot in the ladder).
+
+**Validated end-to-end** (Qwen2.5-7B-Instruct → Qwen3-8B, layer 14 of 28, 60 held-out eval
+prompts, same cell manifest as sft/dpo): the module reproduces the scratch vector exactly
+(cosine 1.000000 at layers 10/14/18) and the persistence sweep —
+`β0.6 → ~0.43`, `β0.7 → ~0.35` (coherent, beats DPO ~0.38), `β0.8 → ~0.09` (≈ real target);
+`β ≥ 1.0` collapses (`over_assimilation` flag fires — that flag, not perplexity, catches the
+degenerate attractor). Additive steering has no clean disguise regime.
+
 ## Why it fits Dementor exactly
 The dominant, label-cheap recipe for a behavior/persona/style steering direction is
 **difference-of-means of residual-stream activations** — `v = mean(D+) − mean(D−)` per layer
@@ -38,9 +70,10 @@ metric already computes. So Rung 5 reuses our existing math, in activation space
    the *train* prompts (`gen/source_train_greedy.csv`, `gen/target_train_greedy.csv`), capture
    residual activations averaged over response tokens per layer, `v_l = mean(target) − mean(source)`.
 2. **Steered generation path** — steering edits the forward pass, so it is NOT a `dementor/methods/*`
-   prompt method. Add `generate_steered_responses(...)` next to `generate_local_responses` in
-   `local_backend.py`: a forward hook on the chosen decoder layer adds `α·v_l` to the residual stream
-   per token during `.generate()`. Support additive and projection-ablation modes.
+   prompt method. Implemented as `generate_steered_responses(...)` in
+   `dementor/steering/steering_rung.py`: a forward hook on the chosen decoder layer edits the
+   residual stream per token during `.generate()`, supporting additive (`h += α·v̂`) and
+   projection-ablation (`h −= β·(h·v̂)v̂`) modes.
 3. **Tune (layer, α)** on a small dev slice: layer ∈ {~40–60% of depth}, α swept; pick the point that
    maximizes movement toward target persistence while MMLU/perplexity stay within tolerance.
 4. **Score** the steered eval responses with the existing `run_behavioral_cell` — add an
