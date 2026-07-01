@@ -21,9 +21,12 @@ Matrix: 4 sources × 4 targets × 3 datasets (`llama-3.1-8b`, `qwen3.6-27b`, `gp
 
 ## What we find
 
-1. **Only weight-level edits disguise; DPO erases most.** Persistence collapses monotonically down
-   the ladder — naming ~0.92 → prompting ~0.45 → SFT ~0.37 → **DPO ~0.16**. Prompting alone never
-   disguises. (Figure-1 scaffold, not the headline.)
+1. **Disguise scales with how hard you push; the trained rungs erase most.** Persistence falls
+   monotonically down the ladder — naming ~0.92 (barely disguised) → prompting ~0.45 (~half) →
+   SFT ~0.37 → **DPO ~0.16** (mostly erased). Prompt-only rungs *under*-disguise — they move the
+   fingerprint about halfway, not to zero — and the largest erasure comes from weight-level edits
+   (SFT/DPO), **but not exclusively**: inference-time activation steering disguises just as well
+   with no weight change (finding 6). (Figure-1 scaffold, not the headline.)
 2. **But erasure is source-dependent, not universal.** DPO floors 2/4 sources (llama 0.01, qwen 0.08
    — *launderers*) and leaves a seed-stable residue for 2/4 (gpt-oss 0.19, nemotron 0.21 —
    *retainers*). Which models retain is a property of the **source**, not the target, domain, or size
