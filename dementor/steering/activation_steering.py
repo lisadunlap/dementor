@@ -10,18 +10,23 @@ import pandas as pd
 
 from dementor.metric.common import git_commit, normalize_comparison_df, write_json
 
+# Model-agnostic layer discovery / index resolution and the shared HF causal-LM loader
+# live in `_common` now (they used to be defined here). `get_transformer_layers` and
+# `resolve_layer_index` are re-exported so the existing import paths
+# `from dementor.steering.activation_steering import get_transformer_layers, resolve_layer_index`
+# keep working (tests/test_steering.py, tests/test_behavioral_inertia.py).
+from dementor.steering._common import (  # noqa: F401  (re-export shim)
+    get_transformer_layers,
+    load_causal_lm,
+    resolve_layer_index,
+)
+
 
 def parse_strengths(value: str) -> list[float]:
     strengths = [float(part.strip()) for part in value.split(",") if part.strip()]
     if not strengths:
         raise ValueError("At least one steering strength is required.")
     return strengths
-
-
-def _resolve_device(device: str | None) -> str:
-    import torch
-
-    return device or ("cuda" if torch.cuda.is_available() else "cpu")
 
 
 def _load_causal_lm(
@@ -31,70 +36,17 @@ def _load_causal_lm(
     device: str | None = None,
     dtype: str = "auto",
 ):
-    import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-
-    resolved_device = _resolve_device(device)
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-    if tokenizer.pad_token is None and tokenizer.eos_token is not None:
-        tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = "left"
-
-    model_kwargs: dict[str, Any] = {"trust_remote_code": True}
-    if dtype == "auto":
-        if resolved_device == "cuda":
-            model_kwargs["torch_dtype"] = torch.bfloat16
-    elif dtype != "default":
-        model_kwargs["torch_dtype"] = getattr(torch, dtype)
-
-    model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
-    if peft_adapter_path is not None:
-        try:
-            from peft import PeftModel
-        except ModuleNotFoundError as exc:
-            raise ModuleNotFoundError(
-                "Loading PEFT adapters requires `peft`. Install it or pass a merged HF model path."
-            ) from exc
-        model = PeftModel.from_pretrained(model, str(peft_adapter_path))
-
-    model.to(resolved_device)
-    model.eval()
-    return tokenizer, model, resolved_device
-
-
-def _candidate_layer_containers(model: Any) -> list[Any]:
-    candidates = [
-        ("model", "layers"),
-        ("transformer", "h"),
-        ("gpt_neox", "layers"),
-        ("backbone", "layers"),
-        ("language_model", "model", "layers"),
-    ]
-    out = []
-    for path in candidates:
-        obj = model
-        for attr in path:
-            obj = getattr(obj, attr, None)
-            if obj is None:
-                break
-        if obj is not None and hasattr(obj, "__len__"):
-            out.append(obj)
-    return out
-
-
-def get_transformer_layers(model: Any) -> Any:
-    for layers in _candidate_layer_containers(model):
-        if len(layers) > 0:
-            return layers
-    raise ValueError("Could not locate transformer block list on this model.")
-
-
-def resolve_layer_index(layer: int, n_layers: int) -> int:
-    if layer < 0:
-        layer = n_layers + layer
-    if layer < 0 or layer >= n_layers:
-        raise ValueError(f"Layer index {layer} out of range for {n_layers} layers.")
-    return layer
+    # Left-padded (decoder-only generation) loader. `strict_auto=True` preserves this
+    # module's original dtype policy: `dtype="auto"` -> bf16 only on an exact "cuda"
+    # device, and `dtype="default"` never auto-selects a dtype.
+    return load_causal_lm(
+        model_name,
+        padding_side="left",
+        device=device,
+        dtype=dtype,
+        peft_adapter_path=peft_adapter_path,
+        strict_auto=True,
+    )
 
 
 def _format_pair_text(prompt: str, response: str) -> str:

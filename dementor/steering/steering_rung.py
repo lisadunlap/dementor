@@ -42,10 +42,12 @@ from typing import Any, Iterable, Mapping
 
 import pandas as pd
 
-# Architecture-agnostic decoder-layer discovery + index resolution are shared with the
-# additive module (they locate the `*.layers.<int>` ModuleList generically, in the same
-# spirit as training.local_backend.fsdp_wrap_layer_names -- no hardcoded layer class).
-from dementor.steering.activation_steering import get_transformer_layers, resolve_layer_index
+# Architecture-agnostic decoder-layer discovery + index resolution and the shared HF
+# causal-LM loader now live in `_common` (they locate the `*.layers.<int>` ModuleList
+# generically, in the same spirit as training.local_backend.fsdp_wrap_layer_names -- no
+# hardcoded layer class). This previously imported them from `activation_steering`, which
+# was a backwards dependency (this is the newer production module).
+from dementor.steering._common import get_transformer_layers, load_causal_lm, resolve_layer_index
 
 __all__ = [
     "derive_steering_vector",
@@ -117,22 +119,9 @@ def _load_causal_encoder(model_name: str, device: str | None, dtype: str):
 
     padding_side='right' so the exact response span ``[p_len:tot]`` can be sliced.
     """
-    import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
-
-    resolved_device = device or ("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
-    if tokenizer.pad_token is None and tokenizer.eos_token is not None:
-        tokenizer.pad_token = tokenizer.eos_token
-    tokenizer.padding_side = "right"
-
-    model_kwargs: dict[str, Any] = {"trust_remote_code": True}
-    if dtype not in ("auto", "default"):
-        model_kwargs["torch_dtype"] = getattr(torch, dtype)
-    elif resolved_device.startswith("cuda"):
-        model_kwargs["torch_dtype"] = torch.bfloat16
-    model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
-    model.to(resolved_device).eval()
+    tokenizer, model, resolved_device = load_causal_lm(
+        model_name, padding_side="right", device=device, dtype=dtype
+    )
     n_layers = len(get_transformer_layers(model))
     return tokenizer, model, resolved_device, n_layers
 
@@ -304,19 +293,15 @@ def _resolve_vector(vector: Any, layer: int):
 def _ensure_model_tokenizer(model: Any, tokenizer: Any, device: str | None, dtype: str):
     """Accept a loaded model (+tokenizer) or an HF id/path; return (model, tokenizer, device)."""
     import torch
-    from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    resolved_device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     if isinstance(model, str):
-        if tokenizer is None:
-            tokenizer = AutoTokenizer.from_pretrained(model, trust_remote_code=True)
-        model_kwargs: dict[str, Any] = {"trust_remote_code": True}
-        if dtype not in ("auto", "default"):
-            model_kwargs["torch_dtype"] = getattr(torch, dtype)
-        elif resolved_device.startswith("cuda"):
-            model_kwargs["torch_dtype"] = torch.bfloat16
-        model = AutoModelForCausalLM.from_pretrained(model, **model_kwargs)
-        model.to(resolved_device).eval()
+        # Left-padded (decoder-only generation) load; a passed-in `tokenizer` is reused
+        # (and still pad/padding-side normalized) rather than reloaded.
+        tokenizer, model, resolved_device = load_causal_lm(
+            model, padding_side="left", device=device, dtype=dtype, tokenizer=tokenizer
+        )
+        return model, tokenizer, resolved_device
+    resolved_device = device or ("cuda" if torch.cuda.is_available() else "cpu")
     if tokenizer is None:
         raise ValueError("A tokenizer is required when passing a loaded model object.")
     if tokenizer.pad_token is None and tokenizer.eos_token is not None:
