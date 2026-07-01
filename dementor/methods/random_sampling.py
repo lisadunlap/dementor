@@ -3,21 +3,15 @@ Random sampling disguise method.
 Samples k target examples and builds a clean system prompt.
 """
 from typing import List, Dict
-import hashlib
 import pandas as pd
 
 try:
-    from .base import MethodBase
+    from .base import MethodBase, get_token_count
 except ImportError:
     try:
-        from dementor.methods.base import MethodBase
+        from dementor.methods.base import MethodBase, get_token_count
     except ImportError:
-        from base import MethodBase
-
-try:
-    from dementor.data_utils import get_token_count
-except ImportError:
-    from utils import get_token_count
+        from base import MethodBase, get_token_count
 
 
 class RandomSamplingSystemPrompting(MethodBase):
@@ -34,12 +28,6 @@ class RandomSamplingSystemPrompting(MethodBase):
         if disguise_df is not None:
             self.disguise_df["token_length"] = self.disguise_df["target_response"].apply(get_token_count)
 
-    def _random_state(self, prompt: str) -> int | None:
-        if self.seed is None:
-            return None
-        payload = f"{self.seed}:{prompt}".encode("utf-8")
-        return int(hashlib.sha256(payload).hexdigest()[:8], 16)
-    
     def forward(self, prompt: str) -> List[Dict[str, str]]:
         if self.disguise_df is None or len(self.disguise_df) == 0:
             system_prompt = f"You are {self.disguise_as}. Respond in the style and manner of {self.disguise_as}."
@@ -65,13 +53,4 @@ Examples:
                 system_prompt += f"\nQ: {row['prompt']}\nA: {response}\n"
             system_prompt += f"\n\nNow respond to the following prompt in the same style as {self.disguise_as}. Match the formatting, tone, level of detail, and approach shown in the examples."
 
-        if "gemma" in self.model.lower():
-            formatted_prompt = f"""<start_of_turn>user
-{system_prompt}
-
-{prompt}<end_of_turn>
-<start_of_turn>model
-"""
-            return [{"role": "user", "content": formatted_prompt}]
-        else:
-            return [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
+        return self._wrap(system_prompt, prompt)

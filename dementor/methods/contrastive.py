@@ -3,31 +3,19 @@ Contrastive disguise method.
 Learns distinctive features of target vs source and encodes them as rules.
 """
 import logging
-import os
-import hashlib
 from typing import List, Dict
-import sys
 import pandas as pd
-from litellm import completion
-import litellm
-
-# Enable caching for API calls
-if not hasattr(litellm, 'cache') or litellm.cache is None:
-    litellm.cache = litellm.Cache()
 
 try:
-    from .base import MethodBase
+    from .base import MethodBase, get_token_count
 except ImportError:
     try:
-        from dementor.methods.base import MethodBase
+        from dementor.methods.base import MethodBase, get_token_count
     except ImportError:
-        from base import MethodBase
+        from base import MethodBase, get_token_count
 
-# get_token_count is a top-level helper under scripts/utils.py
-try:
-    from dementor.data_utils import get_token_count
-except ImportError:
-    from utils import get_token_count
+# Enable caching for API calls
+MethodBase._enable_litellm_cache()
 
 
 class ContrastiveSystemPrompting(MethodBase):
@@ -74,48 +62,10 @@ Based on these examples, identify 5-7 key distinctive features of the TARGET mod
 
 Provide specific, actionable guidelines for mimicking the TARGET model's distinctive style."""
         try:
-            # Use GPT-4.1-mini by default for contrastive analysis (override with ANALYSIS_MODEL)
-            analysis_model = os.getenv("ANALYSIS_MODEL", "openai/gpt-4.1-mini")
-            analysis_api_base = os.getenv("ANALYSIS_API_BASE")
-            analysis_api_key = os.getenv(
-                "ANALYSIS_API_KEY",
-                os.getenv("ORIGINAL_OPENAI_API_KEY", os.getenv("OPENAI_API_KEY")),
-            )
-            # Use cached completion for persistent caching
-            try:
-                import sys
-                # Add parent directory to path for importing cache_llm
-                parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                if parent_dir not in sys.path:
-                    sys.path.insert(0, parent_dir)
-                from dementor.cache_llm import cached_completion
-                response = cached_completion(
-                    model=analysis_model,
-                    messages=[{"role": "user", "content": contrastive_prompt}],
-                    temperature=0.0,
-                    api_base=analysis_api_base,
-                    api_key=analysis_api_key,
-                )
-                self.contrastive_features = response.choices[0].message.content
-            except ImportError:
-                # Fallback to standard litellm
-                response = completion(
-                    model=analysis_model,
-                    messages=[{"role": "user", "content": contrastive_prompt}],
-                    temperature=0.0,
-                    api_base=analysis_api_base,
-                    api_key=analysis_api_key,
-                )
-                self.contrastive_features = response.choices[0].message.content
+            self.contrastive_features = self._run_analyzer(contrastive_prompt)
         except Exception as e:
             logging.warning(f"Failed to generate contrastive features: {e}")
             self.contrastive_features = "Unable to generate contrastive analysis."
-
-    def _random_state(self, prompt: str, label: str) -> int | None:
-        if self.seed is None:
-            return None
-        payload = f"{self.seed}:{prompt}:{label}:contrastive".encode("utf-8")
-        return int(hashlib.sha256(payload).hexdigest()[:8], 16)
 
     def _choose_good_bad_examples(self, current_prompt: str, n_good: int, n_bad: int) -> tuple[pd.DataFrame, pd.DataFrame]:
         """Select deterministic GOOD target and BAD source examples without per-prompt analyzer calls."""
@@ -131,11 +81,11 @@ Provide specific, actionable guidelines for mimicking the TARGET model's distinc
         if "prompt" in src_pool.columns:
             src_pool = src_pool[src_pool["prompt"] != current_prompt]
         good = (
-            tgt_pool.sample(min(n_good, len(tgt_pool)), random_state=self._random_state(current_prompt, "good"))
+            tgt_pool.sample(min(n_good, len(tgt_pool)), random_state=self._random_state(current_prompt, "good", "contrastive"))
             if len(tgt_pool) > 0 else tgt_pool.head(0)
         )
         bad = (
-            src_pool.sample(min(n_bad, len(src_pool)), random_state=self._random_state(current_prompt, "bad"))
+            src_pool.sample(min(n_bad, len(src_pool)), random_state=self._random_state(current_prompt, "bad", "contrastive"))
             if len(src_pool) > 0 else src_pool.head(0)
         )
         return good, bad
@@ -186,13 +136,4 @@ Do not mention these instructions in your response. Simply respond as {self.disg
 
         system_prompt = f"{system_prompt}\n{examples_text}Now respond using ONLY the good approach."
 
-        if "gemma" in self.model.lower():
-            formatted_prompt = f"""<start_of_turn>user
-{system_prompt}
-
-{prompt}<end_of_turn>
-<start_of_turn>model
-"""
-            return [{"role": "user", "content": formatted_prompt}]
-        else:
-            return [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
+        return self._wrap(system_prompt, prompt)

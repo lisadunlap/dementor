@@ -2,23 +2,17 @@
 Stylistic disguise method focusing on measurable surface features.
 """
 from typing import List, Dict
-import hashlib
 import numpy as np
 import pandas as pd
 
 try:
-    from .base import MethodBase
+    from .base import MethodBase, get_token_count
 except ImportError:
     try:
-        from dementor.methods.base import MethodBase
+        from dementor.methods.base import MethodBase, get_token_count
     except ImportError:
-        from base import MethodBase
+        from base import MethodBase, get_token_count
 
-# get_token_count is defined in scripts/utils.py (top-level module)
-try:
-    from dementor.data_utils import get_token_count
-except ImportError:
-    from utils import get_token_count
 try:
     from .utils.stylistic_analysis import (
         has_markdown, contains_list, contains_header, contains_code,
@@ -53,12 +47,6 @@ class StylisticSystemPrompting(MethodBase):
             self.disguise_df["token_length"] = self.disguise_df["target_response"].apply(get_token_count)
             self._generate_stylistic_rules()
 
-    def _random_state(self, prompt: str) -> int | None:
-        if self.seed is None:
-            return None
-        payload = f"{self.seed}:{prompt}:stylistic".encode("utf-8")
-        return int(hashlib.sha256(payload).hexdigest()[:8], 16)
-    
     def _generate_stylistic_rules(self):
         responses = self.disguise_df['target_response'].tolist()
         style_analysis = {
@@ -115,7 +103,7 @@ Key measurable characteristics:
                 df = df[df["prompt"] != prompt]
             sample_size = min(self.num_examples, len(df))
             examples = (
-                df.sample(sample_size, random_state=self._random_state(prompt))
+                df.sample(sample_size, random_state=self._random_state(prompt, "stylistic"))
                 if sample_size > 0 else df.head(0)
             )
             system_prompt += f"\n\nReference examples showing these patterns:\n"
@@ -123,13 +111,4 @@ Key measurable characteristics:
                 truncated_response = row['target_response'][:300] + "..." if len(row['target_response']) > 300 else row['target_response']
                 system_prompt += f"Q: {row['prompt'][:100]}...\nA: {truncated_response}\n\n"
         system_prompt += f"\nRespond to the following prompt matching these stylistic patterns exactly. Focus on surface features: formatting, length, structure, and presentation style."
-        if "gemma" in self.model.lower():
-            formatted_prompt = f"""<start_of_turn>user
-{system_prompt}
-
-{prompt}<end_of_turn>
-<start_of_turn>model
-"""
-            return [{"role": "user", "content": formatted_prompt}]
-        else:
-            return [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
+        return self._wrap(system_prompt, prompt)

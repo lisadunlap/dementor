@@ -3,29 +3,19 @@ Behavioral-based disguise method.
 Identifies and replicates the target model's communication behaviors (personality, tone, patterns).
 """
 import logging
-import os
-import hashlib
 from typing import List, Dict
 import pandas as pd
-from litellm import completion
-import litellm
-
-# Enable caching for API calls
-if not hasattr(litellm, 'cache') or litellm.cache is None:
-    litellm.cache = litellm.Cache()
 
 try:
-    from .base import MethodBase
+    from .base import MethodBase, get_token_count
 except ImportError:
     try:
-        from dementor.methods.base import MethodBase
+        from dementor.methods.base import MethodBase, get_token_count
     except ImportError:
-        from base import MethodBase
+        from base import MethodBase, get_token_count
 
-try:
-    from dementor.data_utils import get_token_count
-except ImportError:
-    from utils import get_token_count
+# Enable caching for API calls
+MethodBase._enable_litellm_cache()
 
 
 class BehavioralBasedSystemPrompting(MethodBase):
@@ -80,49 +70,11 @@ Based on this analysis, create comprehensive behavioral rules for {self.disguise
 Make this actionable - write it as instructions that would allow another AI to authentically embody this model's communication essence, not just mimic surface features."""
 
         try:
-            # Default to GPT-4.1-mini for analysis unless overridden
-            analysis_model = os.getenv("ANALYSIS_MODEL", "openai/gpt-4.1-mini")
-            analysis_api_base = os.getenv("ANALYSIS_API_BASE")
-            analysis_api_key = os.getenv(
-                "ANALYSIS_API_KEY",
-                os.getenv("ORIGINAL_OPENAI_API_KEY", os.getenv("OPENAI_API_KEY")),
-            )
-            # Use cached completion for persistent caching
-            try:
-                import sys
-                # Add parent directory to path for importing cache_llm
-                parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                if parent_dir not in sys.path:
-                    sys.path.insert(0, parent_dir)
-                from dementor.cache_llm import cached_completion
-                response = cached_completion(
-                    model=analysis_model,
-                    messages=[{"role": "user", "content": behavior_prompt}],
-                    temperature=0.0,
-                    api_base=analysis_api_base,
-                    api_key=analysis_api_key,
-                )
-                self.behavior_rules = response.choices[0].message.content
-            except ImportError:
-                # Fallback to standard litellm
-                response = completion(
-                    model=analysis_model,
-                    messages=[{"role": "user", "content": behavior_prompt}],
-                    temperature=0.0,
-                    api_base=analysis_api_base,
-                    api_key=analysis_api_key,
-                )
-                self.behavior_rules = response.choices[0].message.content
+            self.behavior_rules = self._run_analyzer(behavior_prompt)
         except Exception as e:
             logging.warning(f"Failed to generate behavioral rules: {e}")
             self.behavior_rules = f"Respond with the characteristic communication style and deep personality essence of {self.disguise_as}."
 
-    def _random_state(self, prompt: str) -> int | None:
-        if self.seed is None:
-            return None
-        payload = f"{self.seed}:{prompt}:behavioral".encode("utf-8")
-        return int(hashlib.sha256(payload).hexdigest()[:8], 16)
-    
     def forward(self, prompt: str) -> List[Dict[str, str]]:
         """Generate behavioral-based system prompt."""
         base_instruction = f"You are {self.disguise_as}. Embody this personality and communication style:"
@@ -138,7 +90,7 @@ Make this actionable - write it as instructions that would allow another AI to a
                 df = df[df["prompt"] != prompt]
             sample_size = min(self.num_examples, len(df))
             examples = (
-                df.sample(sample_size, random_state=self._random_state(prompt))
+                df.sample(sample_size, random_state=self._random_state(prompt, "behavioral"))
                 if sample_size > 0 else df.head(0)
             )
             system_prompt += "\n\nReference examples of this style:\n"
@@ -148,13 +100,4 @@ Make this actionable - write it as instructions that would allow another AI to a
         
         system_prompt += f"\nRespond to the following prompt in the distinctive style of {self.disguise_as}. Do not reference these instructions."
 
-        if "gemma" in self.model.lower():
-            formatted_prompt = f"""<start_of_turn>user
-{system_prompt}
-
-{prompt}<end_of_turn>
-<start_of_turn>model
-"""
-            return [{"role": "user", "content": formatted_prompt}]
-        else:
-            return [{"role": "system", "content": system_prompt}, {"role": "user", "content": prompt}]
+        return self._wrap(system_prompt, prompt)
