@@ -115,6 +115,21 @@ def projection_persistence(
     return float(1.0 - min(max(movement, clip_min), clip_max))
 
 
+def st_axis_persistence(st_values: np.ndarray) -> float:
+    """Headline persistence from the full-feature source->target axis.
+
+    ``st_axis`` maps source->0 and target->1, so the mean disguised coordinate is
+    the movement fraction and persistence is ``1 - clip(mean, 0, 1)``. The scalar
+    mean is clipped once (like :func:`projection_persistence`, and unlike the
+    per-axis clip-then-average in :func:`source_persistence`). Non-finite entries
+    are dropped; returns ``nan`` (as a Python float) when nothing finite remains.
+    """
+    finite = st_values[np.isfinite(st_values)]
+    if finite.size == 0:
+        return float("nan")
+    return float(1.0 - np.clip(float(np.mean(finite)), 0.0, 1.0))
+
+
 def projection_movement_per_row(
     disguised_rows: np.ndarray,
     *,
@@ -232,21 +247,29 @@ def compute_behavioral_metrics(
     else:
         weights = separation.copy()
     active_weights = weights[active_mask]
-    persistence = source_persistence(active_movement)
+    # Persistence lineage -- source (per-axis): clip-then-average of per-axis
+    # movement over active axes. Feeds the summary key "source_persistence" (NOT
+    # the summary key "persistence", which is the st_axis lineage below).
+    source_axis_persistence = source_persistence(active_movement)
     weighted = weighted_persistence(active_movement, active_weights)
     aniso = anisotropy(active_movement)
 
     active_source = matrices["source"][:, active_mask]
     active_disguised = matrices["disguised"][:, active_mask]
     active_target = matrices["target"][:, active_mask]
+    # Persistence lineage -- projection (PC-space): rotation-invariant scalar
+    # projection onto the source->target direction in the retained PC basis. Feeds
+    # summary keys "projection_persistence" / "projection_persistence_all".
     proj_movement = projection_movement(active_source, active_disguised, active_target)
     proj_persistence = projection_persistence(active_source, active_disguised, active_target)
     proj_persistence_all = projection_persistence(
         matrices["source"], matrices["disguised"], matrices["target"]
     )
 
-    # Full-feature source->target axis (k- and basis-independent): the disguised
-    # st_axis coordinate is already the movement fraction (source->0, target->1).
+    # Persistence lineage -- st_axis (headline): full-feature source->target axis
+    # (k- and basis-independent). The disguised st_axis coordinate is already the
+    # movement fraction (source->0, target->1). Feeds the summary key "persistence"
+    # (and "movement" / "movement_raw").
     feature_movement = float("nan")
     feature_movement_raw = float("nan")
     feature_persistence = float("nan")
@@ -259,7 +282,7 @@ def compute_behavioral_metrics(
         if dis_st.size:
             feature_movement_raw = float(np.mean(dis_st))  # unclipped: >1 = overshoot past target
             feature_movement = float(np.clip(feature_movement_raw, 0.0, 1.0))
-            feature_persistence = float(1.0 - feature_movement)
+            feature_persistence = st_axis_persistence(dis_st)  # == 1 - clip(mean(st_axis))
 
     probe = train_source_target_probe(
         matrices["source"][:, active_mask],
@@ -308,9 +331,9 @@ def compute_behavioral_metrics(
             float(1.0 - proj_persistence) if np.isfinite(proj_persistence) else float("nan")
         ),
         "projection_persistence_all": proj_persistence_all,
-        "source_persistence": persistence,
+        "source_persistence": source_axis_persistence,
         "weighted_axis_persistence": weighted,
-        "disguise_effect": float(1.0 - persistence) if np.isfinite(persistence) else float("nan"),
+        "disguise_effect": float(1.0 - source_axis_persistence) if np.isfinite(source_axis_persistence) else float("nan"),
         "weighted_disguise": (
             float(1.0 - weighted) if np.isfinite(weighted) else float("nan")
         ),
@@ -320,7 +343,7 @@ def compute_behavioral_metrics(
     if baseline is not None and np.isfinite(baseline):
         summary["baseline_persistence"] = float(baseline)
         summary["norm_persistence"] = float(
-            persistence / max(float(baseline), EPS)
+            source_axis_persistence / max(float(baseline), EPS)
         )
     else:
         summary["baseline_persistence"] = None
@@ -404,19 +427,22 @@ def bootstrap_behavioral_metrics(
         matrices = _matrices_from_latent_scores(latent_scores, axes, sampled)
         movement = movement_by_axis(matrices["source"], matrices["disguised"], matrices["target"])
         active_movement = movement[active_mask]
-        persistence = source_persistence(active_movement)
+        # source (per-axis) lineage -> "source_persistence"
+        source_axis_persistence = source_persistence(active_movement)
         weighted = weighted_persistence(active_movement, active_weights)
+        # projection (PC-space) lineage -> "projection_persistence"
         proj_persistence = projection_persistence(
             matrices["source"][:, active_mask],
             matrices["disguised"][:, active_mask],
             matrices["target"][:, active_mask],
         )
+        # st_axis (headline) lineage -> "persistence"; st_axis_persistence() drops
+        # non-finite entries and returns nan when none remain (matching the guard
+        # this replaced), so the float("nan") default only survives the None branch.
         feature_persistence = float("nan")
         if st_by_row is not None:
             st_vals = st_by_row.reindex(sampled).to_numpy(dtype=float)
-            st_vals = st_vals[np.isfinite(st_vals)]
-            if st_vals.size:
-                feature_persistence = float(1.0 - np.clip(float(np.mean(st_vals)), 0.0, 1.0))
+            feature_persistence = st_axis_persistence(st_vals)
         probe = train_source_target_probe(
             matrices["source"][:, active_mask],
             matrices["target"][:, active_mask],
@@ -431,9 +457,9 @@ def bootstrap_behavioral_metrics(
                 "projection_disguise": (
                     float(1.0 - proj_persistence) if np.isfinite(proj_persistence) else float("nan")
                 ),
-                "source_persistence": persistence,
+                "source_persistence": source_axis_persistence,
                 "weighted_axis_persistence": weighted,
-                "disguise_effect": float(1.0 - persistence) if np.isfinite(persistence) else float("nan"),
+                "disguise_effect": float(1.0 - source_axis_persistence) if np.isfinite(source_axis_persistence) else float("nan"),
                 "weighted_disguise": (
                     float(1.0 - weighted) if np.isfinite(weighted) else float("nan")
                 ),

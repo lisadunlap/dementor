@@ -12,7 +12,7 @@ import pandas as pd
 from scipy import stats
 
 from dementor.steering.activation_bridge import run_activation_bridge
-from .behavioral_inertia_metrics import EPS, projection_movement_per_row
+from .behavioral_inertia_metrics import EPS, projection_movement_per_row, st_axis_persistence
 from .common import normalize_comparison_df, read_csv_robust, slugify, write_json
 from .latent_behavior_axes import LENGTH_RESIDUALIZED_SUFFIX
 from .run_behavioral_inertia import run_behavioral_inertia
@@ -484,16 +484,18 @@ def _self_baseline(
         basis_type=spec.basis_type,
         lda_shrinkage=spec.lda_shrinkage,
     )
-    persistence = summary.get("source_persistence")
+    # Local holds the source (per-axis) lineage value read back from the summary;
+    # renamed off the bare "persistence" to avoid implying the st_axis headline.
+    source_axis_persistence = summary.get("source_persistence")
     weighted = summary.get("weighted_axis_persistence")
-    if persistence is None or not np.isfinite(float(persistence)):
+    if source_axis_persistence is None or not np.isfinite(float(source_axis_persistence)):
         return None, None, summary
     weighted = (
         float(weighted)
         if weighted is not None and np.isfinite(float(weighted))
         else None
     )
-    return float(persistence), weighted, summary
+    return float(source_axis_persistence), weighted, summary
 
 
 def _identity_control(
@@ -663,11 +665,9 @@ def _disguised_st(latent_path: Path) -> pd.Series | None:
 
 
 def _st_persistence(values: np.ndarray, idx: np.ndarray) -> float:
-    sampled = values[idx]
-    sampled = sampled[np.isfinite(sampled)]
-    if not sampled.size:
-        return float("nan")
-    return float(1.0 - np.clip(float(np.mean(sampled)), 0.0, 1.0))
+    # st_axis (headline) lineage: 1 - clip(mean(st_axis)) over the sampled rows,
+    # via the shared helper (drops non-finite entries; nan when none remain).
+    return st_axis_persistence(values[idx])
 
 
 def _anchor(method: float, baseline: float | None, identity: float | None) -> float:
