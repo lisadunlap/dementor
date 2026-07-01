@@ -17,6 +17,7 @@ import json
 import re
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -41,6 +42,77 @@ SELF_SFT_OUTPUT_DIR = DATA / "results" / "matrix" / "self_sft_runs"
 DPO_DATA_DIR = DATA / "results" / "matrix" / "dpo_data"
 DPO_OUTPUT_DIR = DATA / "results" / "matrix" / "dpo_runs"
 PEFT_ADAPTER_DIR = DATA / "adapters" / "peft"
+
+
+# ============================================================================
+# Concurrency helpers (shared retry + ThreadPool dispatch scaffolding)
+# ============================================================================
+
+def _retry_call(
+    fn,
+    *,
+    attempts: int,
+    base_wait: float,
+    label: str,
+    name: str = "",
+    err_trunc: int = 120,
+    sleep_verb: str = "sleep",
+    max_wait: float = 60,
+    indent: str = "  ",
+):
+    """Call ``fn()`` up to ``attempts`` times, retrying on any exception.
+
+    On each failure prints ``{indent}[retry {label} {attempt}/{attempts}] ...``
+    then sleeps ``min(max_wait, base_wait * 2 ** (attempt - 1))`` seconds before
+    the next try. Returns ``fn()``'s value on the first success; re-raises the
+    last exception if every attempt fails.
+    """
+    last_err: Exception | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return fn()
+        except Exception as e:
+            last_err = e
+            wait_s = min(max_wait, base_wait * 2 ** (attempt - 1))
+            name_part = f"{name} " if name else ""
+            print(
+                f"{indent}[retry {label} {attempt}/{attempts}] "
+                f"{name_part}{type(e).__name__}: {str(e)[:err_trunc]} — {sleep_verb} {wait_s}s",
+                flush=True,
+            )
+            time.sleep(wait_s)
+    if last_err is None:  # attempts <= 0: loop never ran — avoid `raise None`
+        raise RuntimeError(f"{label} failed after {attempts} attempts")
+    raise last_err
+
+
+def _dispatch(items, worker, *, parallel, label, key, on_success, on_error):
+    """Run ``worker(item)`` over ``items``, sequentially or via a thread pool.
+
+    When ``parallel <= 1`` results are handed to ``on_success`` in item order and
+    worker exceptions propagate (matching the original inline loops). Otherwise a
+    ``ThreadPoolExecutor(max_workers=parallel)`` fans the work out: results reach
+    ``on_success`` in completion order, and each worker exception is logged as
+    ``[worker exception] {key}`` then routed to ``on_error(key, exc)``. A
+    ``[progress] done/total {label} complete`` line prints per completion.
+    """
+    if parallel <= 1:
+        for item in items:
+            on_success(worker(item))
+        return
+    with ThreadPoolExecutor(max_workers=parallel) as pool:
+        futures = {pool.submit(worker, item): key(item) for item in items}
+        done = 0
+        total = len(futures)
+        for fut in as_completed(futures):
+            done += 1
+            try:
+                on_success(fut.result())
+            except Exception as e:
+                k = futures[fut]
+                print(f"  [worker exception] {k}: {e}", flush=True)
+                on_error(k, e)
+            print(f"[progress] {done}/{total} {label} complete", flush=True)
 
 
 # ============================================================================
@@ -549,7 +621,6 @@ def launch_dpo(
 ) -> dict:
     """Launch DPO jobs (one per cell), starting from the corresponding SFT adapter."""
     from dotenv import load_dotenv
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     load_dotenv()
 
@@ -635,18 +706,13 @@ def launch_dpo(
         t0 = time.time()
         last_err: Exception | None = None
         result = None
-        for attempt in range(1, 5):
-            try:
-                result = run_dpo_workflow(cfg)
-                break
-            except Exception as e:
-                last_err = e
-                wait_s = min(60, 5 * 2 ** (attempt - 1))
-                print(
-                    f"  [retry dpo {attempt}/4] {cell.slug} {type(e).__name__}: {str(e)[:120]} — sleep {wait_s}s",
-                    flush=True,
-                )
-                time.sleep(wait_s)
+        try:
+            result = _retry_call(
+                lambda: run_dpo_workflow(cfg),
+                attempts=4, base_wait=5, label="dpo", name=cell.slug,
+            )
+        except Exception as e:
+            last_err = e
         if result is None:
             print(f"  [DPO FAILED after 4 attempts] {cell.slug}: {last_err}", flush=True)
             record["error"] = str(last_err)
@@ -675,26 +741,15 @@ def launch_dpo(
         print(f"  -> {cell.slug} dpo done ({elapsed:.0f}s) | sampler={sampler_path}", flush=True)
         return record
 
-    if parallel <= 1:
-        for cell, record, sft_entry in pending:
-            manifest.append(_run_one(cell, record, sft_entry))
-    else:
-        with ThreadPoolExecutor(max_workers=parallel) as pool:
-            futures = {
-                pool.submit(_run_one, cell, record, sft_entry): cell.slug
-                for cell, record, sft_entry in pending
-            }
-            done = 0
-            total = len(futures)
-            for fut in as_completed(futures):
-                done += 1
-                try:
-                    manifest.append(fut.result())
-                except Exception as e:
-                    cell_slug = futures[fut]
-                    print(f"  [worker exception] {cell_slug}: {e}", flush=True)
-                    manifest.append({"cell": cell_slug, "error": str(e)})
-                print(f"[progress] {done}/{total} DPO jobs complete", flush=True)
+    _dispatch(
+        pending,
+        lambda it: _run_one(*it),
+        parallel=parallel,
+        label="DPO jobs",
+        key=lambda it: it[0].slug,
+        on_success=manifest.append,
+        on_error=lambda k, e: manifest.append({"cell": k, "error": str(e)}),
+    )
 
     return {"jobs": manifest, "n_jobs": len(manifest)}
 
@@ -954,24 +1009,19 @@ def push_adapters_to_hf(
             print(f"[upload] {alias} -> {repo_id}", flush=True)
             last_err: Exception | None = None
             res = None
-            for attempt in range(1, max_retries + 1):
-                try:
-                    res = upload_adapter_to_hf(
+            try:
+                res = _retry_call(
+                    lambda: upload_adapter_to_hf(
                         peft_dir=local_dir,
                         repo_id=repo_id,
                         base_model=source,
                         alias=alias,
                         private=private,
-                    )
-                    break
-                except Exception as e:
-                    last_err = e
-                    wait_s = min(60, 10 * 2 ** (attempt - 1))
-                    print(
-                        f"  [retry upload {attempt}/{max_retries}] {alias} {type(e).__name__}: {str(e)[:120]} — sleep {wait_s}s",
-                        flush=True,
-                    )
-                    time.sleep(wait_s)
+                    ),
+                    attempts=max_retries, base_wait=10, label="upload", name=alias,
+                )
+            except Exception as e:
+                last_err = e
             if res is None:
                 raise RuntimeError(f"upload failed after {max_retries} attempts: {last_err}")
             print(f"  -> {alias} {res['status']}: {res['repo_url']}", flush=True)
@@ -986,33 +1036,23 @@ def push_adapters_to_hf(
     print(f"\nProcessing {len(pending)} adapters with parallel={parallel}\n", flush=True)
 
     uploaded = 0
-    if parallel <= 1:
-        for alias, meta in pending:
-            res = _handle_one(alias, meta)
-            if "error" in res:
-                errors.append(res)
-            else:
-                uploaded += 1
-    else:
-        from concurrent.futures import ThreadPoolExecutor, as_completed
 
-        with ThreadPoolExecutor(max_workers=parallel) as pool:
-            futures = {pool.submit(_handle_one, alias, meta): alias for alias, meta in pending}
-            done = 0
-            total = len(futures)
-            for fut in as_completed(futures):
-                done += 1
-                try:
-                    res = fut.result()
-                    if "error" in res:
-                        errors.append(res)
-                    else:
-                        uploaded += 1
-                except Exception as e:
-                    cell_alias = futures[fut]
-                    print(f"  [worker exception] {cell_alias}: {e}", flush=True)
-                    errors.append({"alias": cell_alias, "error": str(e)})
-                print(f"[progress] {done}/{total} uploads complete", flush=True)
+    def _collect(res):
+        nonlocal uploaded
+        if "error" in res:
+            errors.append(res)
+        else:
+            uploaded += 1
+
+    _dispatch(
+        pending,
+        lambda it: _handle_one(*it),
+        parallel=parallel,
+        label="uploads",
+        key=lambda it: it[0],
+        on_success=_collect,
+        on_error=lambda k, e: errors.append({"alias": k, "error": str(e)}),
+    )
 
     return {"uploaded": uploaded, "skipped": skipped, "errors": errors}
 
@@ -1092,7 +1132,6 @@ def launch_sft(
         serialized by a threading.Lock in dementor.training.tinker_backend.
     """
     from dotenv import load_dotenv
-    from concurrent.futures import ThreadPoolExecutor, as_completed
 
     load_dotenv()
     if only_llama:
@@ -1176,18 +1215,13 @@ def launch_sft(
         t0 = time.time()
         last_err: Exception | None = None
         result = None
-        for attempt in range(1, 5):
-            try:
-                result = run_sft_workflow(sft_cfg)
-                break
-            except Exception as e:
-                last_err = e
-                wait_s = min(60, 5 * 2 ** (attempt - 1))
-                print(
-                    f"  [retry sft {attempt}/4] {cell.slug} {type(e).__name__}: {str(e)[:120]} — sleeping {wait_s}s",
-                    flush=True,
-                )
-                time.sleep(wait_s)
+        try:
+            result = _retry_call(
+                lambda: run_sft_workflow(sft_cfg),
+                attempts=4, base_wait=5, label="sft", name=cell.slug, sleep_verb="sleeping",
+            )
+        except Exception as e:
+            last_err = e
         if result is None:
             print(f"  [SFT FAILED after 4 attempts] {cell.slug}: {last_err}", flush=True)
             record["error"] = str(last_err)
@@ -1217,26 +1251,15 @@ def launch_sft(
         print(f"  -> {cell.slug} sft done ({elapsed:.0f}s) | sampler={sampler_path}", flush=True)
         return record
 
-    if parallel <= 1:
-        for cell, record, sft_cfg in pending:
-            manifest.append(_run_one(cell, record, sft_cfg))
-    else:
-        with ThreadPoolExecutor(max_workers=parallel) as pool:
-            futures = {
-                pool.submit(_run_one, cell, record, sft_cfg): cell.slug
-                for cell, record, sft_cfg in pending
-            }
-            done = 0
-            total = len(futures)
-            for fut in as_completed(futures):
-                done += 1
-                try:
-                    manifest.append(fut.result())
-                except Exception as e:
-                    cell_slug = futures[fut]
-                    print(f"  [worker exception] {cell_slug}: {e}", flush=True)
-                    manifest.append({"cell": cell_slug, "error": str(e)})
-                print(f"[progress] {done}/{total} SFT jobs complete", flush=True)
+    _dispatch(
+        pending,
+        lambda it: _run_one(*it),
+        parallel=parallel,
+        label="SFT jobs",
+        key=lambda it: it[0].slug,
+        on_success=manifest.append,
+        on_error=lambda k, e: manifest.append({"cell": k, "error": str(e)}),
+    )
 
     return {"jobs": manifest, "n_jobs": len(manifest)}
 
