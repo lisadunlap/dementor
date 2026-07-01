@@ -284,14 +284,6 @@ def _summary_path(path: Path) -> Path:
     return path / "summary.json"
 
 
-def _load_summary(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text(encoding="utf-8"))
-
-
-def _write_summary(path: Path, summary: dict[str, Any]) -> None:
-    write_json(path, summary)
-
-
 def _attach_activation_summary(summary: dict[str, Any], activation: dict[str, Any]) -> dict[str, Any]:
     updated = dict(summary)
     updated["activation_bridge_mode"] = activation.get("activation_bridge_mode", activation.get("mode", "attached"))
@@ -371,7 +363,7 @@ def _run_method(
         activation = _run_activation(method=method, method_dir=method_dir, spec=spec)
         if activation:
             summary = _attach_activation_summary(summary, activation)
-            _write_summary(_summary_path(method_dir), summary)
+            write_json(_summary_path(method_dir), summary)
     return summary
 
 
