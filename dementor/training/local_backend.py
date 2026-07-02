@@ -19,9 +19,9 @@ from typing import Optional
 
 import pandas as pd
 
-from .tinker_backend import (
+from .common import (
     SFTDatasetConfig,
-    TinkerSFTOutcome,
+    SFTOutcome,
     format_completion,
     format_prompt,
     prepare_sft_examples,
@@ -136,25 +136,10 @@ def _guard_no_dataparallel(use_cuda: bool) -> None:
 def _load_causal_lm(model_name: str, *, use_cuda: bool):
     """Load a causal-LM for training/generation.
 
-    On CUDA we load in bf16 (H100-friendly, ~halves memory vs fp32); on CPU we keep the
-    framework default so the CPU smoke test stays correct. Some target checkpoints (the
-    multimodal ``google/gemma-4-*-it`` -> ``Gemma4ForConditionalGeneration``) aren't
-    registered for ``AutoModelForCausalLM``; only in that *architecture* failure do we
-    fall back to the checkpoint's causal-LM text tower (``.language_model``). Plain text
-    CausalLM checkpoints (Qwen2.5, Llama, ...) load on the first try and never reach the
-    fallback, so their behavior is unchanged. Network/OS errors are NOT swallowed (they
-    propagate so the CPU test's offline-skip still works).
-
-    NOTE: the multimodal fallback is best-effort and unverified against the real gemma-4
-    checkpoints (CPU-only validation here) — the orchestrator should sanity-check it on
-    the actual ``google/gemma-4-*-it`` weights.
-
-    TODO(multimodal-training): the fallback hands back the multimodal checkpoint's text decoder
-    (``.language_model``) so it can load + generate, but full multimodal *training* — proper
-    text-tower extraction, an image-text processor/collator, and a frozen vision tower — is
-    OUT OF SCOPE and NOT implemented here. Running SFT/DPO on a multimodal checkpoint via this
-    path would tune only the text decoder and ignore image inputs; build a dedicated multimodal
-    training path before relying on it.
+    bf16 on CUDA (H100-friendly, ~halves memory vs fp32); framework default on CPU. Only on an
+    *architecture* failure do we fall back to a multimodal checkpoint's text tower
+    (``.language_model``); plain CausalLM checkpoints are unchanged and network/OS errors propagate.
+    Multimodal caveat: the fallback tunes only the text decoder (images ignored), so it is not a true multimodal training path.
     """
     import torch
     from transformers import AutoModelForCausalLM
@@ -179,21 +164,10 @@ def _load_causal_lm(model_name: str, *, use_cuda: bool):
 def fsdp_wrap_layer_names(model) -> list[str]:
     """Decoder-layer class name(s) for FSDP transformer wrapping — architecture-agnostic.
 
-    Returns the transformer-block class name(s) that FSDP should wrap into shards, derived
-    generically for ANY HuggingFace model with NO per-architecture hardcoding (the user's ask:
-    "one general function for all of them" instead of a hardcoded ``GptOssForCausalLM`` etc.):
-
-    1. Primary — ``model._no_split_modules``: transformers defines this attribute per
-       architecture and it IS the decoder-layer class list (Qwen2.5 -> ``["Qwen2DecoderLayer"]``,
-       gpt-oss -> ``["GptOssDecoderLayer"]``, Llama -> ``["LlamaDecoderLayer"]``, ...). accelerate
-       reads the very same attribute to auto-build the FSDP wrap policy, so this matches the
-       config-only path (the generic ``dementor/training/fsdp.yaml``) exactly.
-    2. Fallback — module introspection: for the rare checkpoint that does not set
-       ``_no_split_modules``, return the most common module class found AT a ``*.layers.<int>``
-       path (the repeated decoder block). Returns ``[]`` when nothing matches.
-
-    Pure inspection (no training/CUDA); works on a meta-device / ``init_empty_weights`` model,
-    so the wrap class can be verified config-only for any checkpoint.
+    Primary: ``model._no_split_modules`` (the per-arch decoder-layer class list that accelerate
+    itself reads to build the FSDP wrap policy). Fallback for checkpoints lacking it: the most
+    common module class at a ``*.layers.<int>`` path, else ``[]``. Pure inspection (no
+    training/CUDA), so it works on a meta-device model.
     """
     no_split = getattr(model, "_no_split_modules", None)
     if no_split:
@@ -218,24 +192,13 @@ def fsdp_wrap_layer_names(model) -> list[str]:
 
 
 def _ensure_fsdp_wrap_class(model) -> None:
-    """Make the FSDP wrap class general for ANY model, including those lacking ``_no_split_modules``.
+    """Publish the FSDP transformer wrap class for checkpoints that lack ``_no_split_modules``.
 
-    The generic ``dementor/training/fsdp.yaml`` intentionally OMITS
-    ``fsdp_transformer_layer_cls_to_wrap``; with ``fsdp_auto_wrap_policy: TRANSFORMER_BASED_WRAP``
-    accelerate then auto-derives the layer class to wrap from ``model._no_split_modules`` at
-    ``accelerator.prepare`` time — correct for every standard HF arch (Qwen2.5 -> Qwen2DecoderLayer,
-    gpt-oss -> GptOssDecoderLayer, Llama -> LlamaDecoderLayer, ...). That config-only path is the
-    primary, verified mechanism and needs NO code here.
-
-    This function is a belt-and-suspenders fallback for the ONLY gap: a checkpoint that doesn't
-    define ``_no_split_modules`` (accelerate would then wrap no transformer layer => no per-layer
-    FSDP shards). For exactly that case we publish ``fsdp_wrap_layer_names``'s introspected class via
-    the ``FSDP_TRANSFORMER_CLS_TO_WRAP`` env BEFORE the HF Trainer builds its Accelerator (the FSDP
-    plugin reads that env in its ``__post_init__``).
-
-    No-op unless running under an FSDP ``accelerate launch`` (``ACCELERATE_USE_FSDP=true``) AND the
-    env is still unset AND the model lacks ``_no_split_modules`` — so it never overrides accelerate's
-    own derive or an explicit user setting, and is a plain no-op for single-GPU / CPU / DDP runs.
+    Belt-and-suspenders fallback: normally the generic ``fsdp.yaml`` lets accelerate auto-derive the
+    wrap class from ``model._no_split_modules``; only when that is absent do we export
+    ``fsdp_wrap_layer_names``'s introspected class via ``FSDP_TRANSFORMER_CLS_TO_WRAP`` before the
+    Trainer builds its Accelerator. No-op unless ``ACCELERATE_USE_FSDP=true`` with that env unset and
+    ``_no_split_modules`` missing, so single-GPU / CPU / DDP and explicit settings are untouched.
     """
     import os
 
@@ -357,11 +320,11 @@ def run_local_sft_job(
     device: Optional[str] = None,
     max_length: int = 1024,
     gradient_accumulation_steps: Optional[int] = None,
-) -> TinkerSFTOutcome:
+) -> SFTOutcome:
     """LoRA SFT on a local model via TRL; writes a PEFT adapter + registry entry.
 
     Local counterpart of ``run_tinker_sft_job`` — same signature shape, returns the
-    same :class:`TinkerSFTOutcome`, and records the adapter under the shared registry
+    same :class:`SFTOutcome`, and records the adapter under the shared registry
     with ``backend: "local"`` (path is the local PEFT dir, not a ``tinker://`` URI).
 
     On CUDA: bf16 weights + gradient checkpointing for H100 memory headroom, and the
@@ -443,7 +406,7 @@ def run_local_sft_job(
             metadata={"backend": "local", "checkpoint_path": str(output_dir), "base_model": base_model},
         )
     trainer.accelerator.wait_for_everyone()
-    return TinkerSFTOutcome(
+    return SFTOutcome(
         loss_history=loss_history,
         eval_results=pd.DataFrame(),
         output_csv=output_dir / "eval.csv",

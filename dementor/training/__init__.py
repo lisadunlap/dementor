@@ -40,6 +40,7 @@ from .pipeline import (
 from .tinker_backend import (
     EvaluationConfig,
     SFTDatasetConfig,
+    SFTOutcome,
     TinkerSFTOutcome,
     ensure_output_dir,
     list_available_models,
@@ -62,6 +63,7 @@ __all__ = [
     "parse_metadata_arg",
     "SFTDatasetConfig",
     "EvaluationConfig",
+    "SFTOutcome",
     "TinkerSFTOutcome",
     "prepare_sft_examples",
     "run_tinker_sft_job",

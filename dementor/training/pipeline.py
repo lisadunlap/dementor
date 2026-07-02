@@ -79,6 +79,17 @@ def _default_plot_path(base_dir: Path, filename: str) -> Path:
     return base_dir / "plots" / filename
 
 
+def _maybe_plot(
+    series: Optional["ConvergenceSeries"],
+    path: Path,
+    title: str,
+) -> Optional[Path]:
+    """Render a single convergence ``series`` to ``path``; return the path (or None if empty)."""
+    if not series:
+        return None
+    return plot_convergence([series], path, title=title)
+
+
 def _load_tinker_jsonl_series(log_dir: Path, metric_key: str, *, label: str) -> Optional["ConvergenceSeries"]:
     metrics_path = (log_dir / "metrics.jsonl").expanduser()
     if not metrics_path.exists():
@@ -158,11 +169,9 @@ def run_sft_workflow(config: SFTWorkflowConfig) -> SFTWorkflowResult:
             seed=params.seed,
             lora_kwargs=params.lora_kwargs,
         )
-        convergence = None
-        plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "tinker_sft.png")
         series = series_from_loss_history(outcome.loss_history, label=params.weights_name)
-        if series:
-            convergence = plot_convergence([series], plot_path, title="Tinker SFT Convergence")
+        plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "tinker_sft.png")
+        convergence = _maybe_plot(series, plot_path, "Tinker SFT Convergence")
         artifacts = {
             "eval_csv": outcome.output_csv,
             "sampler_path": outcome.sampler_path,
@@ -182,11 +191,9 @@ def run_sft_workflow(config: SFTWorkflowConfig) -> SFTWorkflowResult:
         output_dir=config.output_dir,
         job_config=params,
     )
-    convergence = None
-    plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "openai_sft.png")
     series = series_from_metric_rows(metric_rows, "train_loss", label=params.model)
-    if series:
-        convergence = plot_convergence([series], plot_path, title="OpenAI SFT Convergence")
+    plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "openai_sft.png")
+    convergence = _maybe_plot(series, plot_path, "OpenAI SFT Convergence")
     artifact_dict = {
         "train_jsonl": artifacts.train_jsonl,
         "eval_jsonl": artifacts.eval_jsonl,
@@ -355,11 +362,9 @@ def run_dpo_workflow(config: DPOWorkflowConfig) -> DPOWorkflowResult:
             eval_jsonl=artifacts.eval_jsonl if artifacts.eval_jsonl.exists() else None,
             params=params,
         )
-        convergence = None
         series = _load_tinker_jsonl_series(run_log, "dpo_loss", label=params.model_name)
-        if series:
-            plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "tinker_dpo.png")
-            convergence = plot_convergence([series], plot_path, title="Tinker DPO Convergence")
+        plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "tinker_dpo.png")
+        convergence = _maybe_plot(series, plot_path, "Tinker DPO Convergence")
         return DPOWorkflowResult(
             provider="tinker",
             artifacts={
@@ -407,8 +412,7 @@ def run_dpo_workflow(config: DPOWorkflowConfig) -> DPOWorkflowResult:
         metric_rows = collect_job_metrics(client, job_id)
         plot_path = config.convergence_plot or _default_plot_path(config.output_dir, "openai_dpo.png")
         series = series_from_metric_rows(metric_rows, "train_loss", label=params.model)
-        if series:
-            convergence = plot_convergence([series], plot_path, title="OpenAI DPO Convergence")
+        convergence = _maybe_plot(series, plot_path, "OpenAI DPO Convergence")
         artifacts_map.update(
             {
                 "train_file_id": uploaded_train,
