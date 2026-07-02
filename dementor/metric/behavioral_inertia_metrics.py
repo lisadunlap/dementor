@@ -1,3 +1,51 @@
+"""Behavioral-inertia metrics: one headline plus grouped secondary diagnostics.
+
+HEADLINE
+--------
+``persistence`` is THE headline metric. It is the *st_axis* lineage: the mean
+disguised coordinate on the full-feature, k- and basis-independent
+source->target difference-of-means axis (source -> 0, target -> 1), reported as
+``1 - clip(mean, 0, 1)``. Consumers should read ``persistence`` (and its
+bootstrap CI ``persistence_ci_low`` / ``persistence_ci_high``) as the single
+answer.
+
+SECONDARY DIAGNOSTICS
+---------------------
+Every summary dict ALSO carries a nested, purely additive ``"diagnostics"``
+block that merely GROUPS the pre-existing secondary-lineage flat keys by lineage
+for readability. The flat keys are unchanged and remain the source of truth;
+``diagnostics`` only references the same already-computed values (nothing is
+recomputed). The groups are:
+
+* ``source_axis`` -- per-axis clip-then-average movement over the active axes
+  (flat keys ``source_persistence`` / ``disguise_effect`` / ``anisotropy`` and,
+  when a self-baseline is supplied, ``baseline_persistence`` /
+  ``norm_persistence``).
+* ``projection``  -- rotation-invariant scalar projection onto the source->target
+  direction in the retained PC basis (flat keys ``projection_persistence`` /
+  ``projection_persistence_all`` / ``projection_movement`` /
+  ``projection_disguise``).
+* ``weighted``    -- the separation/variance-weighted variant of the per-axis
+  lineage (flat keys ``weighted_axis_persistence`` / ``weighted_disguise`` and,
+  when a weighted self-baseline is supplied, ``baseline_weighted`` /
+  ``norm_weighted_persistence``).
+
+In :func:`bootstrap_behavioral_metrics` the same group keys carry the matching
+``*_ci_low`` / ``*_ci_high`` references instead, so the point-estimate groups
+(from :func:`compute_behavioral_metrics`) and the CI groups compose under a
+deep merge rather than one shallow-overwriting the other.
+
+CAVEAT -- the anchors mix lineages
+----------------------------------
+The three calibration anchors do NOT all use the headline lineage:
+``_self_baseline`` anchors the *source-axis* lineage (it feeds
+``norm_persistence``), ``_anchored_bootstrap`` resamples the *st_axis*
+(headline) coordinate, and ``_identity_control`` anchors the *projection*
+lineage (its ``projection_persistence`` pins the 0 end of the calibrated
+scale). Keep this in mind when comparing a normalized/anchored number against
+the raw ``persistence`` headline.
+"""
+
 from __future__ import annotations
 
 import argparse
@@ -22,6 +70,35 @@ NAN_PROBE_METRICS = {
     "mean_source_prob": float("nan"),
     "mean_target_prob": float("nan"),
 }
+
+
+def merge_summaries(base: dict, extra: dict) -> dict:
+    """In-place ``base.update(extra)`` that deep-merges nested ``dict`` values.
+
+    Behaviour is byte-identical to ``base.update(extra)`` for every flat key.
+    The only difference is that when the same key holds a ``dict`` in BOTH
+    summaries -- in practice only the additive ``"diagnostics"`` grouped view --
+    the two are merged two levels deep so the point-estimate groups (from
+    :func:`compute_behavioral_metrics`) and the CI groups (from
+    :func:`bootstrap_behavioral_metrics`) coexist instead of the shallow update
+    dropping one. This never removes, renames or changes any existing value.
+    """
+    for key, value in extra.items():
+        existing = base.get(key)
+        if isinstance(value, dict) and isinstance(existing, dict):
+            merged = dict(existing)
+            for sub_key, sub_value in value.items():
+                sub_existing = merged.get(sub_key)
+                if isinstance(sub_value, dict) and isinstance(sub_existing, dict):
+                    combined = dict(sub_existing)
+                    combined.update(sub_value)
+                    merged[sub_key] = combined
+                else:
+                    merged[sub_key] = sub_value
+            base[key] = merged
+        else:
+            base[key] = value
+    return base
 
 
 def movement_by_axis(
@@ -357,6 +434,34 @@ def compute_behavioral_metrics(
         summary["baseline_weighted"] = None
         summary["norm_weighted_persistence"] = None
 
+    # Additive, read-only grouped view of the SECONDARY diagnostic lineages (see
+    # the module docstring). Every entry references an already-computed flat value
+    # from ``summary`` above, so the values are identical by construction and the
+    # headline stays the flat key ``persistence``. Nothing here recomputes or
+    # mutates an existing key.
+    summary["diagnostics"] = {
+        "headline_metric": "persistence",
+        "source_axis": {
+            "persistence": summary["source_persistence"],
+            "disguise_effect": summary["disguise_effect"],
+            "anisotropy": summary["anisotropy"],
+            "baseline_persistence": summary["baseline_persistence"],
+            "norm_persistence": summary["norm_persistence"],
+        },
+        "projection": {
+            "persistence": summary["projection_persistence"],
+            "all": summary["projection_persistence_all"],
+            "movement": summary["projection_movement"],
+            "disguise": summary["projection_disguise"],
+        },
+        "weighted": {
+            "persistence": summary["weighted_axis_persistence"],
+            "disguise": summary["weighted_disguise"],
+            "baseline_weighted": summary["baseline_weighted"],
+            "norm_weighted_persistence": summary["norm_weighted_persistence"],
+        },
+    }
+
     return per_axis, summary
 
 
@@ -493,6 +598,36 @@ def bootstrap_behavioral_metrics(
         else:
             summary[f"{metric}_ci_low"] = float("nan")
             summary[f"{metric}_ci_high"] = float("nan")
+
+    # Additive, read-only grouped view mirroring compute_behavioral_metrics but
+    # carrying the bootstrap CI bounds. Same group keys, so a deep merge composes
+    # the point estimates and CIs per lineage instead of shallow-overwriting. Each
+    # entry references an already-computed ``*_ci_low`` / ``*_ci_high`` flat value.
+    summary["diagnostics"] = {
+        "headline_metric": "persistence",
+        "headline": {
+            "persistence_ci_low": summary["persistence_ci_low"],
+            "persistence_ci_high": summary["persistence_ci_high"],
+        },
+        "source_axis": {
+            "persistence_ci_low": summary["source_persistence_ci_low"],
+            "persistence_ci_high": summary["source_persistence_ci_high"],
+            "disguise_effect_ci_low": summary["disguise_effect_ci_low"],
+            "disguise_effect_ci_high": summary["disguise_effect_ci_high"],
+        },
+        "projection": {
+            "persistence_ci_low": summary["projection_persistence_ci_low"],
+            "persistence_ci_high": summary["projection_persistence_ci_high"],
+            "disguise_ci_low": summary["projection_disguise_ci_low"],
+            "disguise_ci_high": summary["projection_disguise_ci_high"],
+        },
+        "weighted": {
+            "persistence_ci_low": summary["weighted_axis_persistence_ci_low"],
+            "persistence_ci_high": summary["weighted_axis_persistence_ci_high"],
+            "disguise_ci_low": summary["weighted_disguise_ci_low"],
+            "disguise_ci_high": summary["weighted_disguise_ci_high"],
+        },
+    }
     return boot_df, summary
 
 
@@ -528,7 +663,9 @@ def main() -> None:
             seed=args.bootstrap_seed,
         )
         boot_df.to_csv(out_dir / "bootstrap_summary.csv", index=False)
-        summary.update(boot_summary)
+        # Deep-merge so the additive "diagnostics" groups from both summaries
+        # coexist; identical to summary.update(boot_summary) for every flat key.
+        merge_summaries(summary, boot_summary)
     write_json(out_dir / "summary.json", summary)
     print(f"Wrote metrics to {out_dir}")
 

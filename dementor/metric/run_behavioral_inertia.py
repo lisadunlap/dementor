@@ -5,7 +5,11 @@ from pathlib import Path
 
 import pandas as pd
 
-from .behavioral_inertia_metrics import bootstrap_behavioral_metrics, compute_behavioral_metrics
+from .behavioral_inertia_metrics import (
+    bootstrap_behavioral_metrics,
+    compute_behavioral_metrics,
+    merge_summaries,
+)
 from .common import read_csv_robust, write_json
 from .latent_behavior_axes import DEFAULT_DESCRIPTOR_ENCODER, FEATURE_SETS, plot_persistence_radar, run_latent_analysis
 
@@ -97,7 +101,9 @@ def run_behavioral_inertia(
             seed=bootstrap_seed,
         )
         boot_df.to_csv(out_dir / "bootstrap_summary.csv", index=False)
-        summary.update(boot_summary)
+        # Deep-merge so the additive "diagnostics" groups from both summaries
+        # coexist; identical to summary.update(boot_summary) for every flat key.
+        merge_summaries(summary, boot_summary)
     write_json(out_dir / "summary.json", summary)
     return summary
 
