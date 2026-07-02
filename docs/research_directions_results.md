@@ -1,8 +1,8 @@
 # Beyond the style-fingerprint result: three directions (2026-06)
 
 The style/behavioral-fingerprint provenance question is now crowded (arXiv:2602.09434,
-2603.19022). We spun up three specialists to test directions *beyond* it. Each has a
-full plan in `docs/plans/` and an implementation on its own branch off `ethan`.
+2603.19022). We spun up three specialists to test directions *beyond* it. Each has an
+implementation on its own branch off `ethan`.
 
 | Dir | Branch | Question | Verdict (after the Tinker fix pass) |
 |-----|--------|----------|---------|

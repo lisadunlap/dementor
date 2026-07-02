@@ -13,7 +13,7 @@ unreproducible from committed code. This script reproduces it from the committed
 
 The cell-level test's "significance" is the n=4 two-tier source split mechanically
 tripled across 3 datasets x 3 targets (9 non-independent cells per source), so its small
-p-value overstates the evidence. The repo's own docs (docs/argument.md, docs/strategy.md)
+p-value overstates the evidence. The repo's own docs (docs/strategy.md)
 already concede the honest model-level p is ~0.33.
 
 Usage:
