@@ -56,6 +56,27 @@ adjacent harmful content) that evades naive refusal detectors.
 - **Honest negatives:** distinctiveness-predicts-durability (inverts, r=−0.31); launderability from
   source traits (null).
 
-## Venue
-A safety/alignment or "science of LLMs" venue. The safety framing + roster generalization is the
-main-track-caliber contribution; the n=4 fingerprint story alone is Findings/workshop tier.
+## Venue & verdict (after the decisive tests + the metric fix)
+Target: **Findings / a safety or trustworthy-ML venue.** Two contributions, both strengthened by the
+metric fix (a refuse-then-leak judge validated at κ=0.79 / F1 0.83 vs a 227-row hand census):
+
+1. **Measurement finding (the lead — concrete, validated, surprising).** Off-the-shelf refusal/safety
+   metrics *mis-rank which model is unsafe* under imitation. The naive "strict = not-refusal-led"
+   metric (a) crowned **nemotron** as the biggest eroder on **Guard false-positive policy refusals
+   that deliver zero harm**, and (b) *hid* the real erosion toward **llama** behind refusal prefaces
+   (the refuse-then-leak pattern). Correct measurement needs a refuse-then-leak-aware, adjudication-
+   validated judge — standard metrics give the wrong magnitude **and the wrong ranking**.
+2. **Corrected erosion result (clean, real, source-general).** With the right metric, benign
+   DPO-disguise toward a *permissive* target (**llama-3.1-8b**) induces genuine refuse-then-leak
+   safety erosion — **+3.8 pts, p<1e-4, McNemar 94/2, significant across all 3 source models**
+   (gpt-oss, qwen, nemotron). The other 3 targets are null (robust to ungated re-judging). A clean
+   **target-specific** effect, not a broad target law.
+
+**Not established:** the *target-safety→erosion law*. Corrected erosion correlates with the target's
+base genuine-harm rate at R²=0.99, but at **n=4 it is driven entirely by llama**, with target
+base-safety confounded against disguise-direction strength (perm-p 0.167, n.s.). A main-track law needs
+**n≫4 targets** (new-target adapter training) + disentangling those two — worth doing only if the
+llama-anchored trend is judged promising enough.
+
+Instrument = disguise ladder + persistence metric. Backdrop to cite: 2512.09403, Qi et al. (2310.03693),
+2605.05427, 2602.09434.
