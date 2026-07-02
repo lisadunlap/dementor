@@ -34,8 +34,18 @@ mechanism — DPO refuses, then delivers the methodology under "so you understan
 low and flat (~2%; the earlier 8% was rebuttal false-positives). **SCALED to full AdvBench (520) +
 StrongREJECT (288), n=808: DECISIVELY significant** — Guard-unsafe base 9.0% → sft 11.4% → dpo 16.5%;
 base→dpo McNemar **p=1.4e-7** (p=5.3e-8 on AdvBench alone; p=0.032 StrongREJECT), sft→dpo p=5.8e-4;
-hand-adjudicated genuine-leak ~0% → ~5% via a confirmed **refuse-then-leak** mechanism. Caveat: single
-disguise seed/greedy decode. This is now a solid, powered result (up from the marginal p=0.065 at n=120).
+hand-adjudicated genuine-leak ~0% → ~5% via a confirmed **refuse-then-leak** mechanism. This is now a
+solid, powered result (up from the marginal p=0.065 at n=120), replicated across 3 disguise seeds.
+
+**Further scaled — SORRY-Bench (450 harmful, 45 categories) + OR-Bench (1319 benign):** SORRY-Bench
+base→dpo Guard-unsafe **27.8% → 37.6%** (McNemar p=6.3e-6), broad across **38/45 categories** and all 4
+domains; OR-Bench over-refusal base→dpo **14.0% → 20.8%** (p=1.7e-9). → **DPO disguise degrades safety
+*calibration* in BOTH directions** (more compliance on harmful content AND more refusal on borderline-
+benign). Stage-attribution (reviewer-verified): the harmful-compliance erosion is mostly an **SFT**
+effect (sft→dpo NS, p=0.28; base→sft p=7e-4); the over-refusal rise is **DPO-specific** (base→sft NS;
+sft→dpo p=5e-7). Guard is a sensitive upper bound (precision ~0.31) — adjudicated *genuine* leak rises
+~0% → ~5%, well below the raw Guard magnitude. (SORRY set = 202406 community mirror; gated 202503
+unavailable — doesn't affect the within-prompt paired comparison.)
 
 ### Exp 4 — Capability fallback — REFUTED for the paper cell; CONDITIONALLY salvaged
 On the equal-capability paper cell (Qwen2.5-7B ≈ Qwen3-8B, gsm8k 0.887 vs 0.863) the original
@@ -58,6 +68,14 @@ window (β > 0.9 → catastrophic `**-**` collapse). Methodological catch: **per
 by repetition-collapse** (below the source floor yet gibberish); the `over_assimilation` flag catches
 it. Verdict: inference-time steering can't *freely* disguise this model; projection-ablation is a
 lever (matches DPO while coherent, at a fluency cost), additive is not.
+
+**Retain-tier gpt-oss roster cell (multi-seed):** projection-ablation reaches cell-persistence
+**~0.48–0.50 (3-seed mean) vs trained DPO 0.73** at the coherent configs (l12_b09, l14_b12 — below DPO
+in all 3 seeds) — inference-time steering disguises gpt-oss **at least as deep as its trained DPO while
+coherent**, confirming Rung 5 on a real roster *retainer* (not just the Qwen stand-in). Caveats
+(reviewer-verified): large seed variance (sd 0.07–0.12); on the *per-prompt* metric the steer-vs-DPO
+gap is only ~0.05–0.07 (NS after BH correction); the single-seed ~0.39 "crack" was **degeneration**
+(β≥1.2 → 20–43% harmony analysis-channel bleed, correctly gated out by the text-coherence metrics).
 
 ## Bottom line
 - **Solid:** Exp 2 (protocol dominates launderability); **Exp 3 — DPO safety erosion, now powered at

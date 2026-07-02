@@ -1,8 +1,7 @@
 # Matrix Run Log — SFT + DPO Fine-Tuning (2026-05-26 → 05-28)
 
-Execution record for rungs 3–4 of the intervention-ladder experiment
-(`docs/experiment_implementation_plan.md`). This documents what was actually
-run, where the artifacts live, and what remains.
+Execution record for rungs 3–4 of the intervention-ladder experiment. This
+documents what was actually run, where the artifacts live, and what remains.
 
 ## Summary
 
