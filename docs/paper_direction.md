@@ -22,16 +22,17 @@ adjacent harmful content) that evades naive refusal detectors.
   fingerprint erasure is a supporting result, not the headline.
 
 ## Evidence (current; roster numbers pending independent re-verification)
-- **Roster generalization — PRELIMINARY + target-confounded (independently reviewed).** 4 real
-  sources show a base→DPO Guard-unsafe rise, but the design **aliases source with target**: all 3
-  large-erosion cells disguise toward the *same* target (llama-3.1-8b), and the one different-target
-  cell (llama→qwen) is small and reverses. So "generalizes across sources" is **not yet supported** —
-  it is equally consistent with "disguising *toward* llama erodes safety." The raw Guard magnitude is
-  also inflated: **78–95% of "unsafe" flags are refusal-led** (qwen: ~59% degenerate repeated-refusal
-  *loops*). On the strict genuine-compliance metric the honest effect is a **few points**,
-  two-sided-significant for only **gpt-oss + nemotron** (qwen one-sided; llama reverses). The
-  **target-varied 3×3 run (Gap 1) is the decisive test** — until it lands, the load-bearing safety
-  evidence is the Qwen cell below, not the roster.
+- **Roster generalization — REFUTED as source-general; the effect is TARGET-driven and small**
+  (target-varied 3×3, strict metric, resolved). Base→DPO strict genuine-compliance erosion sorts by
+  *target* (disguising →nemotron +3.6pts [2/2 sig], →llama +2.4 [3/3] — leak; →gpt-oss +0.3, →qwen
+  −0.25 — flat/null) **not by source** (no source erodes across all its targets). The "generalizes
+  across 4 sources" result was an artifact of all 3 big cells sharing target=llama. Magnitude is
+  small (strict Δ ≤ +5.6pts); the raw +20–32% →llama swings are ~85–95% degenerate refusal-loops +
+  hedged refuse-then-engage that Llama-Guard over-flags — **not** harmful compliance. **Mechanistic
+  read: you partly inherit the safety profile of the model you *imitate*, not a generic source-level
+  degradation.** Honest claim = *target-conditioned safety transfer + a measurement caution*, not
+  roster-wide source-general erosion. Load-bearing solid evidence remains the census-adjudicated Qwen
+  cell.
 - **Two-directional calibration** (Qwen cell + SORRY/OR-Bench): harmful-compliance ↑
   (SORRY-Bench 27.8→37.6%, p=6.3e-6) *and* over-refusal ↑ (OR-Bench 14.0→20.8%, p=1.7e-9).
 - **Mechanism — refuse-then-leak.** A keyword detector missed it entirely; even Llama-Guard
