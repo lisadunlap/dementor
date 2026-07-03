@@ -101,6 +101,17 @@ fingerprint, steering, and safety threads into one mechanism. **Refuted with bot
   uptick — gpt-oss ablation at β=0.7, +4pts p=0.012 — which is on the *safe*-target direction and
   coincides with the onset of degeneration, i.e. a coherence artifact, not identity-driven erosion).
 
+- **Layer sweep (4/8/14/20) — null holds at every depth.** To close the "wrong layer" objection,
+  re-derived the qwen→llama identity axis at early (4, 8), mid (14), and late (20) layers (re-derived
+  L14 vector reproduces the original at cosine 1.0000) and re-ran the ablation × random-control sweep.
+  Every llama-ablation cell is *fully coherent* (coherent_frac = 1.000 at all layers/β) and **no
+  layer/β erodes safety above baseline** (pooled per-layer n=900: llama-coh harm 1.2–2.1%, all Fisher
+  p ≥ 0.40 vs baseline; llama-vs-random paired McNemar n.s. everywhere, p 0.11–1.0). The identity
+  direction does not carry safety *regardless of the layer it is derived/ablated at* — including the
+  early layers where shallow-safety-alignment theory would place it. Artifacts:
+  `exp_steer_safety/analysis/ml_cell_summary.csv`, `gen/all_gens_ml.csv`, scripts `derive_ml.py`,
+  `gen_ml.py`, `analyze_ml.py`.
+
 **Conclusion (now robust): the fingerprint/identity direction and the safety disposition are
 SEPARABLE.** The operator that erases a model's behavioral fingerprint training-free (projection-ablation
 ≈ DPO) leaves its safety at the random-control level; imitation-induced safety erosion requires the
