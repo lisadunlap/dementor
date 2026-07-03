@@ -80,3 +80,15 @@ llama-anchored trend is judged promising enough.
 
 Instrument = disguise ladder + persistence metric. Backdrop to cite: 2512.09403, Qi et al. (2310.03693),
 2605.05427, 2602.09434.
+
+## Unification test (steering ↔ safety) — NULL (decisive, sensitive)
+Hypothesis: additively steering an aligned model toward a permissive model's benign diff-of-means
+identity direction erodes its safety at inference time (would unify fingerprint + steering + safety).
+**Refuted.** Steering Qwen2.5-7B →llama (layer 14, α to coherence-breakage): no coherent dose-response
+(harm drifts *down* 0.020→0.003), →llama never > random or →gpt-oss control (all p≥0.14), upticks only
+at coherence collapse and are judge false-positives. Assay proven sensitive (same pipeline caught
+DPO→llama at p≈1e-25). **Conclusion: the fingerprint/identity direction and the safety disposition are
+SEPARABLE — imitation-induced safety erosion is a weight-update (fine-tuning) phenomenon, not a
+steerable-identity-direction one.** The steering-disguise result and the safety-erosion result are two
+*separate* real findings, not one mechanism. (The two are the honest paper; a follow-up with the
+projection-ablation operator / later layers could fully close the steering-safety question, low odds.)
