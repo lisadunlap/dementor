@@ -81,14 +81,31 @@ llama-anchored trend is judged promising enough.
 Instrument = disguise ladder + persistence metric. Backdrop to cite: 2512.09403, Qi et al. (2310.03693),
 2605.05427, 2602.09434.
 
-## Unification test (steering ↔ safety) — NULL (decisive, sensitive)
-Hypothesis: additively steering an aligned model toward a permissive model's benign diff-of-means
-identity direction erodes its safety at inference time (would unify fingerprint + steering + safety).
-**Refuted.** Steering Qwen2.5-7B →llama (layer 14, α to coherence-breakage): no coherent dose-response
-(harm drifts *down* 0.020→0.003), →llama never > random or →gpt-oss control (all p≥0.14), upticks only
-at coherence collapse and are judge false-positives. Assay proven sensitive (same pipeline caught
-DPO→llama at p≈1e-25). **Conclusion: the fingerprint/identity direction and the safety disposition are
-SEPARABLE — imitation-induced safety erosion is a weight-update (fine-tuning) phenomenon, not a
-steerable-identity-direction one.** The steering-disguise result and the safety-erosion result are two
-*separate* real findings, not one mechanism. (The two are the honest paper; a follow-up with the
-projection-ablation operator / later layers could fully close the steering-safety question, low odds.)
+## Unification test (steering ↔ safety) — NULL, confirmed by BOTH operators
+Hypothesis: steering an aligned model (Qwen2.5-7B) toward a permissive model's (llama) benign
+diff-of-means *identity* direction erodes its safety at inference time — which would unify the
+fingerprint, steering, and safety threads into one mechanism. **Refuted with both steering operators.**
+
+- **Additive (α-sweep, layer 14) — null but confounded.** No coherent dose-response (harm drifts
+  *down* 0.020→0.003); →llama never > random or →gpt-oss control (all p≥0.14); the only upticks sit at
+  coherence collapse and are judge false-positives. Weakness: additive is the operator with *no clean
+  disguise regime* (it over-steers into gibberish before it disguises), so this null was under-powered
+  by construction.
+- **Projection-ablation (β-sweep, layer 14) — clean, well-powered null (the decisive test).** This is
+  the *validated* disguise operator — the one that erases the style fingerprint and matches DPO. Ablating
+  the qwen→llama benign identity axis stays **fully coherent across the entire β=0.3–1.3 sweep**
+  (coherent_frac ≥0.99, ppl ≤2.7) — so unlike additive, the disguise operator *works* here and safety
+  simply doesn't move. Pooled over the coherent range (n≈1800): genuine-harm **1.39%, at/below the
+  random-direction control (1.89%) and the unsteered baseline (2.0%)**; llama-vs-random McNemar n.s. at
+  every dose (p 0.29–1.0), Fisher pooled p=0.29. The assay is adequately powered (it *does* flag the sole
+  uptick — gpt-oss ablation at β=0.7, +4pts p=0.012 — which is on the *safe*-target direction and
+  coincides with the onset of degeneration, i.e. a coherence artifact, not identity-driven erosion).
+
+**Conclusion (now robust): the fingerprint/identity direction and the safety disposition are
+SEPARABLE.** The operator that erases a model's behavioral fingerprint training-free (projection-ablation
+≈ DPO) leaves its safety at the random-control level; imitation-induced safety erosion requires the
+*weight update* (fine-tuning), it is not carried by the steerable identity direction. So the
+**steering-erases-fingerprint** result and the **DPO-imitation-erodes-safety** result are two *separate*
+real findings, not one mechanism — a clean dissociation (identity is a shallow steerable direction;
+safety is not). Artifacts: `exp_steer_safety/analysis/{cell_summary,pairwise_mcnemar}_ablate.csv`,
+`gen/all_gens_ablate.csv`, `judged/all_judged_ablate.csv`, script `steer_gen_ablate.py`.
