@@ -17,7 +17,8 @@ per-cell separability *trust gate*. Deterministic, basis-independent. Definition
 **Ladder (weak → strong):** `just_name_it` → `random_sampling` → `stylistic` (prompt-only) → **SFT**
 → **DPO** (LoRA weight edits) → **activation steering** (inference-time; `dementor/steering/`).
 Matrix: 4 sources × 4 targets × 3 datasets (`llama-3.1-8b`, `qwen3.6-27b`, `gpt-oss-20b`,
-`nemotron-nano-30b-a3b`; gsm8k / writingprompts / chatbot_arena).
+`nemotron-nano-30b-a3b`; gsm8k / writingprompts / chatbot_arena). Every committed result is on this
+**executed 4-model matrix**; `config.yaml`'s larger roster is a planned, unexecuted scale-up.
 
 ## What we find
 
@@ -37,21 +38,34 @@ Matrix: 4 sources × 4 targets × 3 datasets (`llama-3.1-8b`, `qwen3.6-27b`, `gp
    **auditing negative result**: black-box provenance tools that rely on involuntary style carry a
    **model-dependent false-negative risk.** (Honest scope: n = 4 sources; *why* gpt-oss/nemotron
    retain is mechanistically open.)
-4. **Disguise erodes safety.** Benign imitation (gsm8k/writingprompts/chat — *no* harmful data)
-   erodes refusals on held-out harmful prompts, worst under DPO, via a **refuse-then-leak** pattern
-   (refuse, then deliver the methodology under an "educational" frame). On 808 harmful prompts
-   (AdvBench + StrongREJECT): base→DPO Guard-unsafe 9.0% → 16.5% (McNemar **p = 1.4e-7**),
-   census-adjudicated genuine methodology-leaks ~1.0% → 3.0% (paired **p ≈ 5e-4**), **replicated
-   across 3 disguise seeds**. Details + caveats: [`docs/experiment_review_status.md`](docs/experiment_review_status.md).
+4. **"Disguise erodes safety" — real, but target-conditioned and heavily metric-dependent.** Benign
+   imitation (gsm8k/writingprompts/chat — *no* harmful data) can erode refusals via a **refuse-then-leak**
+   pattern (refuse, then deliver the methodology under an "educational" frame). Two caveats the raw
+   numbers hide: **(a) off-the-shelf safety metrics overcount ~10×** — on 808 harmful prompts
+   (AdvBench + StrongREJECT) the flagship self-similar DPO shows Guard-unsafe 9.0% → 16.5% (McNemar
+   **p = 1.4e-7**, 3-seed replicated), but a validated refuse-then-leak judge puts *genuine*
+   methodology-leak at only ~1–5% (Guard over-flags refusal-led text). **(b) The genuine effect is
+   target-driven, not disguise-general** — across the roster, genuine erosion appears almost entirely
+   when impersonating a *less-safe* target (→llama-3.1-8b: 0.12% → 3.92%, **p = 1.2e-25**); the other
+   three targets are null. You partly inherit the safety profile of the model you imitate.
+   Details + caveats: [`docs/experiment_review_status.md`](docs/experiment_review_status.md).
 5. **Capability rides along, independently** (⊥ style, r ≈ −0.06): a disguise can read style-clean yet
-   still transfer +21 MATH-500 points — a provenance **false-clean**.
+   still transfer +21 MATH-500 points — a provenance **false-clean**. (Honest scope: n = 10 gap cells.)
 6. **Activation steering (Rung 5).** Projection-ablation `h −= β·(h·v̂)v̂` reaches DPO-level
    persistence with *coherent* target-style text; naive additive steering only over-steers into
    gibberish. A training-free disguise lever at a ~1.5× fluency cost.
    [`docs/activation_steering_plan.md`](docs/activation_steering_plan.md).
+7. **Identity is steerable; safety is not — a dissociation.** The same steering operator that erases the
+   fingerprint (finding 6) does **not** erode safety: across both operators and layers 4/8/14/20 it
+   leaves genuine-harm at the random-direction-control level, while DPO *weight* imitation of the same
+   target does erode it (finding 4). So the fingerprint/identity direction and the safety disposition are
+   **separately represented** — imitation-induced erosion is a weight-update effect, not carried by the
+   steerable identity direction. Novelty is real but *contested* by concurrent persona work; status +
+   closest prior art: [`docs/novelty_dissociation_lit_review.md`](docs/novelty_dissociation_lit_review.md).
 
-Authoritative direction + full caveats: [`docs/strategy.md`](docs/strategy.md) (read first; supersedes
-older docs on conflict).
+Current direction + full caveats: [`docs/paper_direction.md`](docs/paper_direction.md), with honest
+per-finding status in [`docs/experiment_review_status.md`](docs/experiment_review_status.md).
+(`docs/strategy.md` is the earlier fingerprint-era memo — superseded as the lead.)
 
 ## Reproduce
 
@@ -96,8 +110,9 @@ pytest -q
 - **`data/results/matrix/safety_sft_data` / `safety_dpo_data`** — constrained-imitation training
   CSVs plus `.manifest.json` audit files; corresponding launch outputs go under
   `safety_sft_runs` / `safety_dpo_runs`.
-- **`docs/`** — `strategy.md` (direction, read first), `evaluation_framework.md` (metric),
-  `experiment_review_status.md` (honest per-experiment status), `matrix_run_log.md` (training log).
+- **`docs/`** — `paper_direction.md` (current direction, read first), `evaluation_framework.md` (metric),
+  `experiment_review_status.md` (honest per-experiment status), `novelty_dissociation_lit_review.md`
+  (novelty vs prior art), `matrix_run_log.md` (training log). `strategy.md` is the earlier memo (superseded).
 - **`experiments/analysis/`** — the de-confound / robustness re-analyses behind the caveats above.
 - **HuggingFace `dementor-research`** — 228 LoRA adapters + the `dementor-matrix-responses` dataset
   (external reproduction; the analysis pipeline itself is HF-independent).

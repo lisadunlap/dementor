@@ -1,25 +1,33 @@
-# Paper direction — *Benign model imitation is a safety hazard*
+# Paper direction — what survives model imitation (identity vs. safety)
 
-The spine of the paper. Supersedes the "fingerprints persist" framing as the lead contribution
-(that work becomes the instrument + a supporting finding). Prior strategic analysis: `strategy.md`.
+**Status — read this first.** This doc has tracked three framings in chronological order; the *lead*
+has moved twice:
+- **F1 "fingerprints persist"** → now the **instrument** (disguise ladder + persistence metric) + a
+  supporting result, not the headline. Earlier memo: `strategy.md` (superseded as lead).
+- **F2 "benign imitation is a safety hazard"** → **tempered** (see "The F2 claim" below): the
+  source-general form is *refuted*; the genuine effect is target-conditioned and small, and standard
+  metrics overcount it ~10×.
+- **F3 the identity-vs-safety dissociation** → the **current lead** (see the Unification section at the
+  bottom + `novelty_dissociation_lit_review.md`): the steerable fingerprint/identity direction is
+  *separable* from the safety disposition.
 
-## The claim
-Fine-tuning one open LLM to **imitate another on entirely benign data** (SFT/DPO on innocuous
-imitation targets — *no harmful data*) systematically **degrades the disguised model's safety**, and
-this **generalizes across real open models**. The degradation is **two-directional — a calibration
-collapse**: the model both complies more with harmful requests *and* over-refuses more on
-borderline-benign ones, via a subtle **"refuse-then-leak"** failure (refuse, then hedge/pivot to
-adjacent harmful content) that evades naive refusal detectors.
+## The F2 claim — as originally posed, now tempered
+Originally: fine-tuning one open LLM to **imitate another on entirely benign data** (SFT/DPO — *no
+harmful data*) **systematically degrades safety and generalizes across real open models**, two-
+directionally, via a **"refuse-then-leak"** failure. **What survived scrutiny (see Evidence):** the
+source-general and "generalizes across 4 models" claims are **REFUTED** (artifact of shared
+target=llama); the genuine effect is **target-driven and small** — you partly inherit the safety of the
+model you imitate — and off-the-shelf Guard/keyword metrics **overcount it ~10×**. Refuse-then-leak is
+real as the *mechanism* but is prior art (NOICE 2502.19537). Treat F2 as a supporting, target-
+conditioned finding, not the headline.
 
-## Why this is the paper (not "fingerprints persist")
-- **Novel** — distinct from the crowded "behavioral fingerprints survive fine-tuning" literature
-  (three such papers Feb–Mar 2026). Nobody has shown *benign imitation → safety degradation, in both
-  directions, via refuse-then-leak*.
-- **General** — demonstrated on **4 real roster models**, not one stand-in.
-- **Consequential** — a safety hazard of ordinary distillation/personalization, with a clear audience
-  (safety/alignment; model-provenance/distillation auditing).
-- The fingerprint-disguise **ladder + persistence metric are the *instrument***; source-dependent
-  fingerprint erasure is a supporting result, not the headline.
+## Why the lead moved off F2
+- **F2 is crowded** — "benign imitation → safety loss" is owned by 2512.09403 + the Qi lineage
+  (2310.03693, 2406.05946); see `lit_review_safety_hazard.md`.
+- **F2's general form didn't hold** — target-driven, n=4, metric-inflated.
+- **F3 is the one uncrowded cell** — a provenance/identity direction separable from safety; contested
+  by 2606.26161 but not directly preempted. The **ladder + persistence metric remain the instrument**;
+  source-dependent fingerprint erasure is a supporting result.
 
 ## Evidence (current; roster numbers pending independent re-verification)
 - **Roster generalization — REFUTED as source-general; the effect is TARGET-driven and small**

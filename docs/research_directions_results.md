@@ -1,5 +1,10 @@
 # Beyond the style-fingerprint result: three directions (2026-06)
 
+> **⚠️ SUPERSEDED / historical.** Fingerprint-era exploration (D1 capability, D2 reasoning, D3 safety).
+> D3 became the safety thread — now known to be *target-conditioned* and metric-sensitive; cite the
+> reconciled [`experiment_review_status.md`](experiment_review_status.md) + [`paper_direction.md`](paper_direction.md).
+> Numbers here are underpowered (n=4 / n=10 cells) and stated more confidently than they held up.
+
 The style/behavioral-fingerprint provenance question is now crowded (arXiv:2602.09434,
 2603.19022). We spun up three specialists to test directions *beyond* it. Each has an
 implementation on its own branch off `ethan`.

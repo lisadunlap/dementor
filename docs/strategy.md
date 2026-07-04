@@ -1,5 +1,10 @@
 # Dementor — where this goes next
 
+> **⚠️ SUPERSEDED (F1 fingerprint-era memo).** This picked the fingerprint/auditing paper as the lead.
+> The project has since moved on — current direction is [`paper_direction.md`](paper_direction.md)
+> (F3 identity-vs-safety dissociation). Kept for its data-adjudicated caveats (distinctiveness *inverts*
+> r=−0.31; honest n=4 scope), which remain valid.
+
 *Decision memo for Ethan (PI). One synthesis across five assessments (value/positioning, methodological consolidation, results-strength, story, mechanism-route). Where the assessments disagreed, I re-ran the numbers against the live CSVs this session and adjudicated with data, not opinion. Every load-bearing figure below was reproduced from `multiseed_ci_s3.csv`, `/tmp/highn_percell.csv`, and `distinctiveness_structural.py` on the current `ethan` branch. This memo is decisive on purpose: it tells you the one paper to write, the four numbers to cut, and the next three moves.*
 
 ---

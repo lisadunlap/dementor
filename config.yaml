@@ -12,13 +12,20 @@ paths:                            # relative paths anchor on the repo root; abso
   baselines: data/model-responses/matrix_baselines
   overleaf_img: /Users/EthanLiu/Documents/Programming/dementor-overleaf/img
 
-# Active scale-up roster: 10 models, 4 providers.
+# PLANNED scale-up roster: 10 models, 4 providers. NOT all executed — see REPRODUCIBILITY below.
 #   backend: tinker -> trained via the Tinker API (7 models)
 #   backend: local  -> trained on a local GPU (3 google/gemma-4-* models; run-later)
 # chat_template_kwargs disable thinking traces for cross-model comparability.
 # tier: launder | retain (DPO fingerprint-erasure behavior); unknown for new lineages.
-# NOTE: chat_template_kwargs for the new (qwen3.5-4b, qwen3.6-35b-a3b) and gemma models
-#       are best-guess pending tokenizer verification when matrix dispatch is wired.
+#
+# REPRODUCIBILITY (read before running the matrix): every committed result (results/,
+# README findings, docs) is computed on the 4-MODEL matrix ONLY —
+#   qwen3.6-27b, gpt-oss-20b, nemotron-nano-30b  (from `roster` below)
+#   + llama-3.1-8b  (from `roster_legacy`, retired from the Tinker catalog 2026-06-27).
+# The OTHER 7 models below (qwen3.5-4b, qwen3.6-35b-a3b, nemotron-super-120b, gpt-oss-120b,
+# and the 3 gemma-4-*) are a PLANNED scale-up: they have NO results yet and their
+# chat_template_kwargs are best-guess pending tokenizer verification. Running the matrix
+# over the full `roster` will dispatch on unvalidated cells that the paper does not cover.
 roster:
   - {id: Qwen/Qwen3.5-4B,                                  slug: qwen3.5-4b,          provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "4B",        params_b: 4}
   - {id: Qwen/Qwen3.6-27B,                                 slug: qwen3.6-27b,         provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "27B",       params_b: 27}
