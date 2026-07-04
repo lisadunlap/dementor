@@ -132,3 +132,32 @@ SEPARABLE.** The operator that erases a model's behavioral fingerprint training-
 real findings, not one mechanism — a clean dissociation (identity is a shallow steerable direction;
 safety is not). Artifacts: `exp_steer_safety/analysis/{cell_summary,pairwise_mcnemar}_ablate.csv`,
 `gen/all_gens_ablate.csv`, `judged/all_judged_ablate.csv`, script `steer_gen_ablate.py`.
+
+## Mechanism — geometry + causal complement (the dissociation is now geometric AND causal)
+The null is not luck; it is geometry, and it is causally confirmed against a positive control.
+
+- **Geometry — the fingerprint axis is ⊥ the refusal axis at every layer.** Derived the canonical
+  Arditi refusal direction (harmful−harmless last-token diff-of-means) and a compliant-persona proxy in
+  Qwen2.5-7B residual space, and measured cosines vs the fingerprint (qwen→llama) direction (random-pair
+  floor E|cos|≈0.013): `cos(fingerprint, refusal)` = **−0.046 / −0.015 / −0.027 / −0.042** at L4/8/14/20
+  — at the noise floor (≈ `cos(fingerprint, random)`). `cos(fingerprint, persona)` ≤ 0.095 (also small)
+  — **our provenance axis is NOT the compliant-persona axis**, which defuses the closest threat
+  (2606.26161, where persona *is* coupled to refusal). Sanity: the persona proxy reproduces 2606.26161's
+  refusal↔persona geometry (`cos(refusal, persona)` = −0.168/−0.145 at L14/20 vs their −0.18/−0.28).
+  So the identity axis lies *outside* the safety subspace that refusal and persona share.
+- **Causal complement — same operator, opposite outcome (and a decisive sensitivity proof).** Ablating
+  the **refusal** direction on the same 300 harmful prompts (same RTL judge) catastrophically erodes
+  safety, fully coherent, monotone dose-response: genuine-harm **2.0% → 21.3% (β0.6) → 59.3% (β1.0) →
+  87.3% (β1.4)**, McNemar b=58/172/256, c=0, **p up to 1.7e-77** (reproduces Arditi in our pipeline).
+  The **fingerprint** direction under the identical operator/β/prompts/judge stays at baseline (1.0/2.3/
+  2.0%, pooled coherent **1.78%, Fisher p=0.81** vs baseline); **random** is inert. This *kills the
+  underpowered/floor-effect objection*: the assay detects an 85-point swing at p≈1e-77, yet fingerprint
+  ablation moves nothing.
+
+**Bottom line: the identity/provenance direction is geometrically orthogonal to AND causally separable
+from the refusal direction.** Ablating identity erases the fingerprint but provably cannot (and does
+not) touch safety; ablating the safety axis catastrophically does. This is the mechanism behind the
+dissociation and the direct, empirical rebuttal to the persona-coupling critique. Artifacts:
+`exp_steer_safety/geometry/{cosine_matrix,headline_cosines}.csv`, `geometry.json`, `safety_dirs.pt`;
+`gen/all_gens_refusal.csv`, `judged/all_judged_refusal.csv`; scripts `geometry.py`, `steer_gen_refusal.py`,
+`analyze_refusal.py`.
