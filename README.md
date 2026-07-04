@@ -73,6 +73,13 @@ $PY -m experiments.analysis.decontaminate --adapter-seeds 3
 # Local (non-Tinker) SFT/DPO for large / backend:local roster models — single- or multi-GPU FSDP.
 $PY -m dementor.training.matrix cell --source <id> --target <id> ...   # dementor/training/README.md
 
+# Safety-constrained imitation mitigation scaffold: target imitation plus refusal replay.
+# Data builders are free; launch commands support dry-run and must not be run for real without approval.
+$PY -m dementor.training.matrix build-safety-sft-data --dry-run --max-cells 1
+$PY -m dementor.training.matrix build-safety-dpo-data --dry-run --max-cells 1
+$PY -m dementor.training.matrix launch-safety-sft --dry-run --max-cells 1
+$PY -m dementor.training.matrix launch-safety-dpo --dry-run --max-cells 1
+
 # Activation-steering rung (writes a scorable rung CSV).
 $PY -m dementor.steering.steering_rung ...
 
@@ -86,6 +93,9 @@ pytest -q
   `training/` (Tinker + local SFT/DPO backends, multi-GPU FSDP), `steering/` (activation-steering rung).
 - **`data/results/`** (working, git-LFS) + **`results/`** (trimmed paper hand-off) — per-cell
   persistence CSVs + figures. Spine: `data/results/multiseed_ci_s3.csv`.
+- **`data/results/matrix/safety_sft_data` / `safety_dpo_data`** — constrained-imitation training
+  CSVs plus `.manifest.json` audit files; corresponding launch outputs go under
+  `safety_sft_runs` / `safety_dpo_runs`.
 - **`docs/`** — `strategy.md` (direction, read first), `evaluation_framework.md` (metric),
   `experiment_review_status.md` (honest per-experiment status), `matrix_run_log.md` (training log).
 - **`experiments/analysis/`** — the de-confound / robustness re-analyses behind the caveats above.
