@@ -308,6 +308,8 @@ def _run_tinker_dpo_job(train_jsonl: Path, eval_jsonl: Optional[Path], params: T
     config = train_dpo.Config(
         log_path=str(params.log_path),
         model_name=params.model_name,
+        # tinker_cookbook >=0.4.x made recipe_name a required (metadata-only) field.
+        recipe_name=(params.wandb_name or "dementor_dpo"),
         dataset_builder=dataset_builder,
         load_checkpoint_path=params.load_checkpoint_path,
         learning_rate=params.learning_rate,
