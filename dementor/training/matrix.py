@@ -130,9 +130,11 @@ def _dispatch(items, worker, *, parallel, label, key, on_success, on_error):
 # Matrix definition
 # ============================================================================
 
-# Derived from config.yaml (the single source of truth). MODELS is the active
-# 10-model roster; the slug/chat maps also cover roster_legacy so existing adapters
-# and the B2 cell-subset drivers still resolve. Module-level MUTABLE dicts on
+# Derived from config.yaml (the single source of truth). MODELS is the config `roster`
+# (10 models — but per config.yaml's REPRODUCIBILITY note only qwen3.6-27b, gpt-oss-20b,
+# nemotron-nano-30b + llama-3.1-8b[legacy] are executed; the other 7 are a planned scale-up,
+# so unfiltered matrix runs will dispatch unvalidated cells). The slug/chat maps also cover
+# roster_legacy so existing adapters and the B2 cell-subset drivers still resolve. Module-level MUTABLE dicts on
 # purpose — extra_model_census.py registers extra models by mutating CHAT_TEMPLATE_KWARGS.
 MODELS: list[str] = [m["id"] for m in config.roster()]
 MODEL_SLUG: dict[str, str] = {m["id"]: m["slug"] for m in config.roster(include_legacy=True)}

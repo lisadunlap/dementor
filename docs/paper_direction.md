@@ -64,21 +64,25 @@ conditioned finding, not the headline.
 - **Honest negatives:** distinctiveness-predicts-durability (inverts, r=−0.31); launderability from
   source traits (null).
 
-## Venue & verdict (after the decisive tests + the metric fix)
+## Venue & verdict — the F2/measurement thread (after the decisive tests + the metric fix)
+*(This section scopes the safety/measurement thread specifically. The project's overall lead is F3, the
+identity-vs-safety dissociation — see the Status banner + Unification section + `novelty_dissociation_lit_review.md`.)*
+
 Target: **Findings / a safety or trustworthy-ML venue.** Two contributions, both strengthened by the
 metric fix (a refuse-then-leak judge validated at κ=0.79 / F1 0.83 vs a 227-row hand census):
 
-1. **Measurement finding (the lead — concrete, validated, surprising).** Off-the-shelf refusal/safety
+1. **Measurement finding (concrete, validated, surprising).** Off-the-shelf refusal/safety
    metrics *mis-rank which model is unsafe* under imitation. The naive "strict = not-refusal-led"
    metric (a) crowned **nemotron** as the biggest eroder on **Guard false-positive policy refusals
    that deliver zero harm**, and (b) *hid* the real erosion toward **llama** behind refusal prefaces
    (the refuse-then-leak pattern). Correct measurement needs a refuse-then-leak-aware, adjudication-
    validated judge — standard metrics give the wrong magnitude **and the wrong ranking**.
-2. **Corrected erosion result (clean, real, source-general).** With the right metric, benign
-   DPO-disguise toward a *permissive* target (**llama-3.1-8b**) induces genuine refuse-then-leak
-   safety erosion — **+3.8 pts, p<1e-4, McNemar 94/2, significant across all 3 source models**
-   (gpt-oss, qwen, nemotron). The other 3 targets are null (robust to ungated re-judging). A clean
-   **target-specific** effect, not a broad target law.
+2. **Corrected erosion result (clean, real — source-robust but target-specific).** With the right
+   metric, benign DPO-disguise toward a *permissive* target (**llama-3.1-8b**) induces genuine
+   refuse-then-leak safety erosion — **+3.8 pts, p<1e-4, McNemar 94/2, consistent across all 3 source
+   models** (gpt-oss, qwen, nemotron) **but only for target=llama**; the other 3 targets are null
+   (robust to ungated re-judging). So the effect is **target-specific, not a disguise-general or
+   source-general hazard** — consistent with the Status banner's refutation of the broad F2 claim.
 
 **Not established:** the *target-safety→erosion law*. Corrected erosion correlates with the target's
 base genuine-harm rate at R²=0.99, but at **n=4 it is driven entirely by llama**, with target
