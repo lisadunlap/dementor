@@ -147,7 +147,7 @@ def _load_causal_lm(model_name: str, *, use_cuda: bool):
     # transformers 5.x renamed `torch_dtype` -> `dtype` (torch_dtype now warns + maps to it).
     load_kwargs = {"dtype": torch.bfloat16} if use_cuda else {}
     try:
-        return AutoModelForCausalLM.from_pretrained(model_name, **load_kwargs)
+        model = AutoModelForCausalLM.from_pretrained(model_name, **load_kwargs)
     except (ValueError, KeyError) as exc:
         try:
             from transformers import AutoModelForImageTextToText
@@ -159,6 +159,43 @@ def _load_causal_lm(model_name: str, *, use_cuda: bool):
         if text_model is not None and hasattr(text_model, "get_input_embeddings"):
             return text_model
         raise exc
+    return _maybe_extract_vision_text_tower(model)
+
+
+def _maybe_extract_vision_text_tower(model):
+    """Splice a Gemma-4 VLM's text decoder into a pure-text ``Gemma4ForCausalLM``.
+
+    The larger Gemma-4 checkpoints (26B/31B) load as ``Gemma4ForConditionalGeneration`` and
+    set ``text_config.use_bidirectional_attention == "vision"``; that mask path *requires*
+    ``mm_token_type_ids`` at train time (``ValueError: mm_token_type_ids is required ... when
+    training``), which text-only SFT/DPO batches never carry. We build a ``Gemma4ForCausalLM``
+    shell on the meta device (no allocation) and reference-transplant the VLM's real text
+    decoder (``model.model.language_model``) and ``lm_head`` into it, then pin its config to the
+    text config — so forward/generate run entirely on the text path and never touch the vision
+    mask. No weight copy, so memory is unchanged. Text-only gemmas (E4B, whose flag is not
+    ``"vision"``) and every non-Gemma checkpoint are returned untouched; any failure falls back
+    to the full model."""
+    import torch
+
+    try:
+        text_cfg = model.config.get_text_config()
+    except Exception:
+        return model
+    if getattr(text_cfg, "use_bidirectional_attention", None) != "vision":
+        return model
+    try:
+        from transformers import Gemma4ForCausalLM
+
+        text_decoder = model.model.language_model  # real Gemma4TextModel (loaded weights)
+        lm_head = model.lm_head
+        with torch.device("meta"):
+            causal = Gemma4ForCausalLM(text_cfg)
+        causal.model = text_decoder
+        causal.lm_head = lm_head
+        causal.config = text_cfg
+        return causal
+    except Exception:
+        return model
 
 
 def fsdp_wrap_layer_names(model) -> list[str]:
@@ -222,17 +259,27 @@ def generate_local_responses(
     temperature: float = 0.0,
     device: Optional[str] = None,
     adapter_dir: Optional[str] = None,
+    batch_size: int = 16,
 ) -> list[str]:
     """Sample a local HF model (optionally with a PEFT adapter).
 
     Local counterpart of ``matrix.generate_target_responses``: applies the chat
     template (greedy when ``temperature == 0``) and returns decoded completions.
+
+    Prompts are generated in left-padded batches for throughput. On a CUDA OOM the
+    batch size is halved (and kept reduced for the remaining prompts) down to 1, so a
+    large dense model degrades to single-sequence generation instead of crashing. Pair
+    with ``PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True`` to survive the tightest
+    single-sequence case (e.g. gemma-4-31B at bf16 on one 80 GB card).
     """
     import torch
     from transformers import AutoTokenizer
 
     dev = _resolve_device(device)
     tok = AutoTokenizer.from_pretrained(model)
+    if tok.pad_token_id is None:
+        tok.pad_token = tok.eos_token
+    tok.padding_side = "left"  # decoder-only batched generation requires left padding
     mdl = _load_causal_lm(model, use_cuda=dev.startswith("cuda"))  # bf16 on CUDA
     if adapter_dir:
         from peft import PeftModel
@@ -242,22 +289,39 @@ def generate_local_responses(
     # too large for one GPU, pass device_map="auto" at the call site instead.
     mdl.to(dev).eval()
 
-    outputs: list[str] = []
-    for prompt in prompts:
-        text = tok.apply_chat_template(
+    gen_kwargs = {"max_new_tokens": max_new_tokens, "do_sample": temperature > 0}
+    if temperature > 0:
+        gen_kwargs["temperature"] = temperature
+
+    texts = [
+        tok.apply_chat_template(
             [{"role": "user", "content": prompt}],
             tokenize=False,
             add_generation_prompt=True,
             **(chat_template_kwargs or {}),
         )
-        enc = tok(text, return_tensors="pt").to(dev)
-        gen_kwargs = {"max_new_tokens": max_new_tokens, "do_sample": temperature > 0}
-        if temperature > 0:
-            gen_kwargs["temperature"] = temperature
-        with torch.no_grad():
-            seq = mdl.generate(**enc, **gen_kwargs)
-        new_tokens = seq[0][enc["input_ids"].shape[1]:]
-        outputs.append(tok.decode(new_tokens, skip_special_tokens=True))
+        for prompt in prompts
+    ]
+
+    outputs: list[str] = []
+    i = 0
+    bs = max(1, batch_size)
+    while i < len(texts):
+        chunk = texts[i:i + bs]
+        enc = tok(chunk, return_tensors="pt", padding=True).to(dev)
+        try:
+            with torch.no_grad():
+                seq = mdl.generate(**enc, **gen_kwargs)
+        except torch.cuda.OutOfMemoryError:
+            del enc
+            torch.cuda.empty_cache()
+            if bs == 1:
+                raise
+            bs = max(1, bs // 2)  # keep the smaller batch for the rest of the run
+            continue
+        new_tokens = seq[:, enc["input_ids"].shape[1]:]
+        outputs.extend(tok.batch_decode(new_tokens, skip_special_tokens=True))
+        i += len(chunk)
     return outputs
 
 
@@ -478,6 +542,18 @@ def run_local_dpo_job(*, train_jsonl: Path, eval_jsonl: Optional[Path], params: 
         gradient_checkpointing=use_cuda,
         gradient_checkpointing_kwargs={"use_reentrant": False} if use_cuda else None,
     )
+    # trl logs a per-token entropy metric via entropy_from_logits(shift_logits.detach()), which
+    # forces a contiguous [tokens, vocab] fp32 copy. On gemma's ~256K vocab with a 62 GB text
+    # tower (gemma-4-31B) that ~4.6 GB copy OOMs a single 80 GB card mid-run. The metric is
+    # detached — not part of the DPO loss or gradient — so we swap it for a zero-cost stand-in.
+    # The trained adapter is byte-identical; only the logged 'entropy' reads 0.
+    try:
+        import trl.trainer.dpo_trainer as _dpo_mod
+        import torch as _torch
+        _dpo_mod.entropy_from_logits = lambda logits, *a, **k: _torch.zeros(
+            logits.shape[:-1], device=logits.device, dtype=_torch.float32)
+    except Exception:
+        pass
     trainer = DPOTrainer(
         model=model,
         ref_model=None,  # PEFT -> reference is the adapter-disabled (base+merged-SFT) model

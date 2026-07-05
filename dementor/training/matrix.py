@@ -302,11 +302,21 @@ def _build_dpo_cfg(*, cell: Cell, ds_cfg, output_dir: Path, sft_state_path,
     hp = config.dpo()
     weights_name = weights_name or f"dpo_{cell.slug}"
     if config.backend_for(cell.source) == "local":
+        # Local DPO upcasts logits to fp32 over the full vocab; gemma's ~256K vocab makes that
+        # tensor ~21 GB at length 4096, OOMing a single 80 GB card for the large text towers.
+        # Cap local DPO length (chatbot_arena replies are ~400-600 tokens, so this rarely
+        # truncates). Tinker DPO keeps the full config length (its backend shards differently).
+        local_max_length = min(hp["max_length"], 1536)
+        # gemma-4-31B (~62 GB bf16 text tower) leaves so little headroom that even at 1536,
+        # trl's entropy-from-logits *metric* allocates another full-vocab tensor and OOMs a
+        # single 80 GB card mid-run. Tighten it further (its chatbot_arena replies still fit).
+        if "31B" in cell.source or "31b" in cell.source:
+            local_max_length = min(local_max_length, 1024)
         return DPOWorkflowConfig(provider="local", dataset=ds_cfg, output_dir=output_dir,
             local=LocalDPOParams(model_name=cell.source, load_checkpoint_path=sft_state_path,
                 weights_name=weights_name, registry_path=config.registry_path(),
                 learning_rate=hp["learning_rate"], dpo_beta=hp["dpo_beta"], num_epochs=hp["num_epochs"],
-                batch_size=hp["batch_size"], max_length=hp["max_length"], lora_rank=hp["lora_rank"],
+                batch_size=hp["batch_size"], max_length=local_max_length, lora_rank=hp["lora_rank"],
                 seed=cell.seed))
     return DPOWorkflowConfig(provider="tinker", dataset=ds_cfg, output_dir=output_dir,
         tinker=TinkerDPOParams(model_name=cell.source, renderer_name=renderer_name, log_path=log_path,
