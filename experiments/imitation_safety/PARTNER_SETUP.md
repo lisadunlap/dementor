@@ -1,13 +1,21 @@
 # Partner setup — Dementor imitation pipeline on a fresh 4×H100 box
 
 This package runs the **imitation** side of Dementor end-to-end on a machine that does **not** share
-our `/data` layout. Two evaluations, both keyed off the same disguise-adapter registry:
+our `/data` layout. Three evaluations, all keyed off the same disguise-adapter registry:
 
 - **Erosion** (`tinker_erosion.py`, `erosion_daemon.py`, `run_erosion_item.py`, `build_erosion_csv.py`):
   for each disguise adapter *A_as_B* (source model A trained to imitate target B), how much does A's
   safety erode vs A's own unadapted baseline, across 7 safety benchmarks.
 - **Fidelity** (`fidelity_daemon.py`, `fidelity_eval.py`): does *A_as_B* actually behave like B on
   held-out dataset prompts (behavioral similarity, embed or LLM-judge scorer).
+- **Prompt rung** — disguise-ladder (`prompt_tinker_erosion.py`, `prompt_erosion_daemon.py`,
+  `run_prompt_erosion_item.py`, `prompt_erosion_common.py`, `build_prompt_erosion_csv.py`): the
+  **prompt-only** analog of erosion. Instead of *training* A to imitate B, A is **prompted** to imitate
+  B via one of **5 disguise methods** (`just_name_it`, `random_sampling`, `stylistic`, `behavioral`,
+  `contrastive`), measuring the same safety erosion on the same 7 benchmarks. **Its baselines are
+  shared byte-for-byte with the erosion (SFT/DPO) rung** (`work/baseline_<slug>/metrics.json`, reused
+  never recomputed) so the two rungs are directly comparable. `behavioral`/`contrastive` build their
+  disguise with an OpenAI analyzer and need `OPENAI_API_KEY` (§4); the other three are fully local.
 
 There are **two generation tracks**:
 
@@ -88,6 +96,23 @@ export HF_TOKEN=...            # yours or ours; needed for gated judge/base mode
 Needed for gated HF repos — notably **`meta-llama/Llama-Guard-3-8B`** (SG-Bench grader) and some base
 tokenizers/weights.
 
+### `OPENAI_API_KEY` (prompt rung only — `behavioral` + `contrastive` disguise methods)
+
+The prompt rung's two **analyzer** disguise methods build their system prompt by calling
+**`gpt-4.1-mini`** to distill target B's communication essence (`behavioral`) or contrast B-vs-A
+distinctive features (`contrastive`). Those two methods **require `OPENAI_API_KEY`**; the other three
+(`just_name_it`, `random_sampling`, `stylistic`) are fully local and need no OpenAI key. Analyzer rules
+are **cached** per (method, source, target) under `work_prompt_erosion/_rules_cache/`, so a resume
+never re-calls the API and each disguise is reproducible.
+
+```bash
+export OPENAI_API_KEY=...    # only for prompt-rung behavioral/contrastive
+```
+
+`prompt_erosion_common.py` also reads `OPENAI_API_KEY` (+ `TINKER_API_KEY` / `HF_TOKEN`) from the repo
+`.env` via `_load_env`, so a repo-root `.env` works too. (Not needed at all for the erosion / fidelity
+evaluations — those are 100% local graders.)
+
 ## 5. Environment variables (path portability)
 
 Every root defaults to an in-repo / in-package location. On your box you only need to set a few. All
@@ -98,6 +123,8 @@ are optional except where noted.
 | `DEMENTOR_GPUS` | `5,6,7` (our box) | **Yes → `0,1,2,3`** |
 | `HF_HOME` | `~/.cache/huggingface` | Recommended → a big-disk path |
 | `DEMENTOR_DATA_ROOT` | `<repo>/data` | Recommended → big-disk path (holds `work/`, `subsamples/`, `results/`) |
+| `OPENAI_API_KEY` | — | **Prompt rung only** → set for `behavioral`/`contrastive` disguise methods (gpt-4.1-mini analyzer; §4) |
+| `DEMENTOR_DISGUISE_DATA` | `<DATA_ROOT>/model-responses/matrix_baselines/chatbot_arena` | No (prompt rung; follows `DATA_ROOT`) |
 | `DEMENTOR_IMITATION_ROOT` | `<DATA_ROOT>/imitation_safety` | Optional (scratch/work root; overrides `DATA_ROOT` for work dirs + GPU-lease dir) |
 | `DEMENTOR_RESULTS_SAFETY` | `<DATA_ROOT>/results/safety` | Optional |
 | `DEMENTOR_RESULTS_FIDELITY` | `<DATA_ROOT>/results/fidelity` | Optional |
@@ -190,7 +217,7 @@ fidelity `judge` scorer reuses the Qwen3-8B judge above.
 - Adapter registries → `registry/tinker_adapters.json` (live snapshot: chatbot_arena cells) +
   `registry/tinker_adapters.backup_20260707T015844.json` (gsm8k/oasst1/writingprompts cells)
 - Fidelity held-out subsamples (n=200, seed=42) + manifests → `fidelity_subsamples/`
-- All 9 pipeline scripts.
+- All 14 pipeline scripts (9 erosion/fidelity + 5 prompt-rung disguise-ladder).
 
 Also committed in-repo (via the steering-consolidation work): the 4 judge/grader modules at
 `experiments/steering/port/` (§6) — resolved automatically, no rsync.
@@ -234,6 +261,36 @@ python experiments/imitation_safety/fidelity_eval.py build-csv --scorer embed --
 
 The `--scorer judge` variant needs a GPU + `rtl_judge.py` (§6). Run `fidelity_eval.py status` for
 counts.
+
+### Prompt rung — disguise-ladder (5 disguise methods)
+
+Prompt-only analog of erosion: A is **prompted** to imitate B (no training) via one of 5 methods —
+`just_name_it`, `random_sampling`, `stylistic`, `behavioral`, `contrastive`. Same 7 safety benchmarks,
+same cached subsamples, same judge/graders as erosion, and — critically — **the same baselines**,
+reused from `work/baseline_<slug>/metrics.json` and **never recomputed here**. `behavioral` /
+`contrastive` need `OPENAI_API_KEY` (§4); the other three are fully local. It mirrors the erosion rung's
+two tracks (remote-sample **Tinker** sources + a polite local-GPU daemon for local-weight sources):
+
+```bash
+# Tinker track (gpt-oss / nemotron / qwen sources) — remote SAMPLE, then local batched JUDGE:
+python experiments/imitation_safety/prompt_tinker_erosion.py sample --sample-workers 64
+python experiments/imitation_safety/prompt_tinker_erosion.py judge  --gpus 0,1,2,3
+python experiments/imitation_safety/prompt_tinker_erosion.py status              # progress snapshot
+#   restrict methods with e.g.  --methods just_name_it,stylistic
+
+# Local track (local-weight sources; idle-GPU-polite daemon; NO baselines run here — shared):
+python experiments/imitation_safety/prompt_erosion_daemon.py --dry-run           # worklist + GPU snapshot
+python experiments/imitation_safety/prompt_erosion_daemon.py
+
+# Aggregate to the prompt-rung CSVs (prompt_erosion_all_{long,summary}.csv):
+python experiments/imitation_safety/build_prompt_erosion_csv.py
+```
+
+> **Baselines are shared with the erosion (SFT/DPO) rung.** The prompt rung reuses
+> `work/baseline_<slug>/metrics.json` (model A unadapted) rather than recomputing it, so those
+> baselines must exist first (run the erosion track, or its `erosion_daemon` baselines). Until they do,
+> `build_prompt_erosion_csv.py` reports the affected sources as `baseline_available=False` and their
+> erosion stays NaN — the samples/judgments are still valid and fill in once the baseline lands.
 
 ### Local track (only if you pulled the 92 PEFT adapters — §10)
 
