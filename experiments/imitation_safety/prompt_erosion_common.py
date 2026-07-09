@@ -57,7 +57,7 @@ LOG_DIR = os.path.join(HERE, "logs")
 # data/ is symlinked -> /data; results land on the big disk (shared safety results dir).
 RESULTS = EC.RESULTS_SAFETY
 # Target B's chatbot_arena responses used to BUILD the disguise (prompt,model_response,model).
-# Off DATA_ROOT (env DEMENTOR_DATA_ROOT, default <repo>/data) so it follows the big-disk data root;
+# Off DATA_ROOT (env DEMENTOR_DATA, default <repo>/data) so it follows the big-disk data root;
 # override the whole path with DEMENTOR_DISGUISE_DATA on a machine with a different layout.
 DISGUISE_DATA = EC._env("DEMENTOR_DISGUISE_DATA",
                         os.path.join(EC.DATA_ROOT, "model-responses", "matrix_baselines", "chatbot_arena"))

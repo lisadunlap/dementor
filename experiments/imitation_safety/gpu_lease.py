@@ -59,7 +59,7 @@ import os, sys, json, time, shutil, errno
 def _default_lease_root():
     root = os.environ.get("DEMENTOR_IMITATION_ROOT")
     if not root:
-        data = os.environ.get("DEMENTOR_DATA_ROOT")
+        data = os.environ.get("DEMENTOR_DATA")
         if not data:
             repo = os.environ.get("DEMENTOR_REPO") or os.path.dirname(
                 os.path.dirname(os.path.abspath(__file__)))

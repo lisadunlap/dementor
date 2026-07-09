@@ -39,8 +39,9 @@ def _env(name, default):
 # Repo root (for `dementor` imports + repo-relative dataset paths). Default: two levels up from here.
 REPO = _env("DEMENTOR_REPO", os.path.dirname(os.path.dirname(_HERE)))
 
-# Big-disk data root (work dirs, subsamples, results). Default: <repo>/data (may be a symlink).
-DATA_ROOT = _env("DEMENTOR_DATA_ROOT", os.path.join(REPO, "data"))
+# Big-disk data/outputs root (work dirs, subsamples, results). Default: <repo>/data (our box: a
+# symlink to the big disk). Canonical shared env var DEMENTOR_DATA (matches the steering half).
+DATA_ROOT = _env("DEMENTOR_DATA", os.path.join(REPO, "data"))
 
 # Steering-side judge/grader helpers. These are now COMMITTED IN-REPO at experiments/steering/port/
 # (judge_all.py, rtl_judge.py, cone_eval.py, canonical_graders.py all live in that one port/ dir), so
@@ -99,8 +100,10 @@ SUBSAMPLES = os.path.join(WORK_ROOT, "subsamples")
 # Erosion result CSVs. Default under DATA_ROOT/results (may be symlinked to a big disk).
 RESULTS_SAFETY = _env("DEMENTOR_RESULTS_SAFETY", os.path.join(DATA_ROOT, "results", "safety"))
 
-# HF caches (env-first; standard HF defaults otherwise). Used to build subprocess envs below.
-HF_HOME = _env("HF_HOME", os.path.expanduser("~/.cache/huggingface"))
+# HF caches. Canonical shared env var DEMENTOR_HF_HOME (matches the steering half); we also honor a
+# plain HF_HOME if that's all that's set, and fall back to our-box default. Propagated into every
+# subprocess env below as HF_HOME so the HF libraries pick it up.
+HF_HOME = _env("DEMENTOR_HF_HOME", _env("HF_HOME", "/data/ethantsliu/huggingface"))
 HF_HUB_CACHE = _env("HF_HUB_CACHE", os.path.join(HF_HOME, "hub"))
 
 # Python interpreter for subprocess re-launches (runner / judge worker / judge_all). Default: the

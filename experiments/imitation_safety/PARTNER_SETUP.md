@@ -121,13 +121,13 @@ are optional except where noted.
 | Env var | Default | Set on your box? |
 |---------|---------|------------------|
 | `DEMENTOR_GPUS` | `5,6,7` (our box) | **Yes → `0,1,2,3`** |
-| `HF_HOME` | `~/.cache/huggingface` | Recommended → a big-disk path |
-| `DEMENTOR_DATA_ROOT` | `<repo>/data` | Recommended → big-disk path (holds `work/`, `subsamples/`, `results/`) |
+| `DEMENTOR_HF_HOME` | `/data/ethantsliu/huggingface` (our box) | Recommended → a big-disk path (exported as `HF_HOME`) |
+| `DEMENTOR_DATA` | `<repo>/data` | Recommended → big-disk path (holds `work/`, `subsamples/`, `results/`) |
 | `OPENAI_API_KEY` | — | **Prompt rung only** → set for `behavioral`/`contrastive` disguise methods (gpt-4.1-mini analyzer; §4) |
-| `DEMENTOR_DISGUISE_DATA` | `<DATA_ROOT>/model-responses/matrix_baselines/chatbot_arena` | No (prompt rung; follows `DATA_ROOT`) |
-| `DEMENTOR_IMITATION_ROOT` | `<DATA_ROOT>/imitation_safety` | Optional (scratch/work root; overrides `DATA_ROOT` for work dirs + GPU-lease dir) |
-| `DEMENTOR_RESULTS_SAFETY` | `<DATA_ROOT>/results/safety` | Optional |
-| `DEMENTOR_RESULTS_FIDELITY` | `<DATA_ROOT>/results/fidelity` | Optional |
+| `DEMENTOR_DISGUISE_DATA` | `<DEMENTOR_DATA>/model-responses/matrix_baselines/chatbot_arena` | No (prompt rung; follows `DEMENTOR_DATA`) |
+| `DEMENTOR_IMITATION_ROOT` | `<DEMENTOR_DATA>/imitation_safety` | Optional (scratch/work root; overrides `DEMENTOR_DATA` for work dirs + GPU-lease dir) |
+| `DEMENTOR_RESULTS_SAFETY` | `<DEMENTOR_DATA>/results/safety` | Optional |
+| `DEMENTOR_RESULTS_FIDELITY` | `<DEMENTOR_DATA>/results/fidelity` | Optional |
 | `DEMENTOR_PORT_DIR` | in-repo `experiments/steering/port` (auto; else our-box fallback) | No — judge modules are committed (§6) |
 | `DEMENTOR_JUDGE_ALL` | in-repo `experiments/steering/port/judge_all.py` (auto) | No (committed) |
 | `DEMENTOR_RTL_JUDGE_DIR` | in-repo `experiments/steering/port` (auto) | No (committed) |
@@ -143,8 +143,8 @@ Suggested `env.sh` to source before launching:
 
 ```bash
 export DEMENTOR_GPUS=0,1,2,3
-export HF_HOME=/big/disk/hf
-export DEMENTOR_DATA_ROOT=/big/disk/dementor_imitation
+export DEMENTOR_HF_HOME=/big/disk/hf   # exported as HF_HOME by run_partner.sh
+export DEMENTOR_DATA=/big/disk/dementor_imitation
 export TINKER_API_KEY=...   # ours
 export HF_TOKEN=...
 # No steering-helper vars needed — the judge modules are committed in-repo (§6).

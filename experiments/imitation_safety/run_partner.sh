@@ -21,10 +21,10 @@
 # Key env overrides (all optional except the credentials in §1):
 #   DEMENTOR_GPUS           GPU pool (default 0,1,2,3)
 #   DEMENTOR_PY             python interpreter (default: `python` on PATH)
-#   HF_HOME                 HF cache root (recommend a big-disk path)
-#   DEMENTOR_DATA_ROOT      big-disk data root (default <repo>/data)
+#   DEMENTOR_HF_HOME        HF cache root (recommend a big-disk path; exported as HF_HOME)
+#   DEMENTOR_DATA           big-disk data/outputs root (default <repo>/data)
 #   DEMENTOR_LOCAL_ADAPTERS where to materialize pulled PEFT adapters
-#                           (default <DATA_ROOT>/local_adapters)
+#                           (default <DEMENTOR_DATA>/local_adapters)
 # =============================================================================
 set -euo pipefail
 
@@ -97,6 +97,11 @@ if [ -f "$DEMENTOR_REPO/.env" ]; then
     if [ -z "$(printenv "$k" 2>/dev/null || true)" ]; then export "$k=$v"; fi
   done < "$DEMENTOR_REPO/.env"
 fi
+
+# Bridge the canonical DEMENTOR_HF_HOME to the standard HF_HOME that the `hf` CLI + HF libraries read,
+# so the prefetch step and the daemons agree on one cache root. (The daemons also read DEMENTOR_HF_HOME
+# directly.)  Runs AFTER .env load so a DEMENTOR_HF_HOME set there is honored.
+if [ -n "${DEMENTOR_HF_HOME:-}" ] && [ -z "${HF_HOME:-}" ]; then export HF_HOME="$DEMENTOR_HF_HOME"; fi
 
 missing=0
 for k in TINKER_API_KEY HF_TOKEN OPENAI_API_KEY; do
@@ -179,10 +184,9 @@ fi
 # --------------------------------------------------------------------------- #
 # 4. Pull current local chatbot_arena seed42 PEFT adapters + rewrite registry
 # --------------------------------------------------------------------------- #
-# Resolve manifest: prefer the committed in-repo copy, else our-box /data copy.
-MANIFEST="$PKG/current_adapters_hf_manifest.json"
-[ -f "$MANIFEST" ] || MANIFEST="/data/ethantsliu/exp_imitation_safety/current_adapters_hf_manifest.json"
-LOCAL_ADAPTERS_ROOT="${DEMENTOR_LOCAL_ADAPTERS:-${DEMENTOR_DATA_ROOT:-$DEMENTOR_REPO/data}/local_adapters}"
+# Resolve manifest: the committed in-repo copy (override with DEMENTOR_ADAPTER_MANIFEST).
+MANIFEST="${DEMENTOR_ADAPTER_MANIFEST:-$PKG/current_adapters_hf_manifest.json}"
+LOCAL_ADAPTERS_ROOT="${DEMENTOR_LOCAL_ADAPTERS:-${DEMENTOR_DATA:-$DEMENTOR_REPO/data}/local_adapters}"
 
 if [ "$SKIP_LOCAL_ADAPTERS" = 1 ]; then
   log "local adapters = SKIPPED (--skip-local-adapters); erosion_daemon will report 0 local items"
