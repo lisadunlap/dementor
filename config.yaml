@@ -12,39 +12,104 @@ paths:                            # relative paths anchor on the repo root; abso
   baselines: data/model-responses/matrix_baselines
   overleaf_img: /Users/EthanLiu/Documents/Programming/dementor-overleaf/img
 
-# PLANNED scale-up roster: 10 models, 4 providers. NOT all executed — see REPRODUCIBILITY below.
-#   backend: tinker -> trained via the Tinker API (7 models)
-#   backend: local  -> trained on a local GPU (3 google/gemma-4-* models; run-later)
+# PLANNED scale-up roster: 17 models, multiple providers. NOT all executed — see REPRODUCIBILITY below.
+#   backend: tinker -> trained via the Tinker API (remote, no local GPU)
+#   backend: local  -> trained on a local GPU (full bf16 LoRA, not QLoRA)
 # chat_template_kwargs disable thinking traces for cross-model comparability.
 # tier: launder | retain (DPO fingerprint-erasure behavior); unknown for new lineages.
+# imitation: core (the 12x12 imitation square — every core model imitates every other)
+#          | extended (scale-up models NOT part of the 12x12 square; slug/id resolution only)
+# arch: dense | moe | mamba-hybrid | vlm
 #
 # REPRODUCIBILITY (read before running the matrix): every committed result (results/,
 # README findings, docs) is computed on the 4-MODEL matrix ONLY —
 #   qwen3.6-27b, gpt-oss-20b, nemotron-nano-30b  (from `roster` below)
-#   + llama-3.1-8b  (from `roster_legacy`, retired from the Tinker catalog 2026-06-27).
-# The OTHER 7 models below (qwen3.5-4b, qwen3.6-35b-a3b, nemotron-super-120b, gpt-oss-120b,
-# and the 3 gemma-4-*) are a PLANNED scale-up: they have NO results yet and their
+#   + llama-3.1-8b  (below, backend: local — moved out of `roster_legacy` 2026-07-07;
+#     retired from the Tinker catalog 2026-06-27, now trained locally instead).
+# The 4 imitation: extended models below (nemotron-super-120b, gpt-oss-120b, and the 2
+# larger gemma-4-*) are a PLANNED scale-up: they have NO results yet and their
 # chat_template_kwargs are best-guess pending tokenizer verification. Running the matrix
 # over the full `roster` will dispatch on unvalidated cells that the paper does not cover.
 roster:
-  - {id: Qwen/Qwen3.5-4B,                                  slug: qwen3.5-4b,          provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "4B",        params_b: 4}
-  - {id: Qwen/Qwen3.6-27B,                                 slug: qwen3.6-27b,         provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "27B",       params_b: 27}
-  - {id: Qwen/Qwen3.6-35B-A3B,                             slug: qwen3.6-35b-a3b,     provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "35B-A3B",   params_b: 35}
-  - {id: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16,       slug: nemotron-nano-30b-a3b, provider: nvidia, backend: tinker, renderer: nemotron, chat_template_kwargs: {enable_thinking: false}, tier: retain, param_size: "30B-A3B", params_b: 30}
-  - {id: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16,    slug: nemotron-super-120b, provider: nvidia, backend: tinker, renderer: nemotron, chat_template_kwargs: {enable_thinking: false}, tier: retain,  param_size: "120B-A12B", params_b: 120}
-  - {id: openai/gpt-oss-20b,                               slug: gpt-oss-20b,         provider: openai, backend: tinker, renderer: gpt-oss,  chat_template_kwargs: {reasoning_effort: low},  tier: retain,  param_size: "20B",       params_b: 20}
-  - {id: openai/gpt-oss-120b,                              slug: gpt-oss-120b,        provider: openai, backend: tinker, renderer: gpt-oss,  chat_template_kwargs: {reasoning_effort: low},  tier: retain,  param_size: "120B",      params_b: 120}
-  - {id: google/gemma-4-E4B-it,                            slug: gemma-4-e4b,         provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "E4B",       params_b: 4}
-  - {id: google/gemma-4-31B-it,                            slug: gemma-4-31b,         provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "31B",       params_b: 31}
-  - {id: google/gemma-4-26B-A4B-it,                        slug: gemma-4-26b-a4b,     provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "26B-A4B",   params_b: 26}
+  - {id: Qwen/Qwen3.5-4B,                                  slug: qwen3.5-4b,          provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "4B",        params_b: 4, imitation: core, arch: mamba-hybrid}
+  - {id: Qwen/Qwen3.6-27B,                                 slug: qwen3.6-27b,         provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "27B",       params_b: 27, imitation: core, arch: mamba-hybrid}
+  - {id: Qwen/Qwen3.6-35B-A3B,                             slug: qwen3.6-35b-a3b,     provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "35B-A3B",   params_b: 35, imitation: core, arch: moe}
+  - {id: Qwen/Qwen3-8B,                                    slug: qwen3-8b,            provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "8B",        params_b: 8, imitation: extended, arch: dense}
+  - {id: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16,       slug: nemotron-nano-30b-a3b, provider: nvidia, backend: tinker, renderer: nemotron, chat_template_kwargs: {enable_thinking: false}, tier: retain, param_size: "30B-A3B", params_b: 30, imitation: core, arch: moe}
+  - {id: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16,    slug: nemotron-super-120b, provider: nvidia, backend: tinker, renderer: nemotron, chat_template_kwargs: {enable_thinking: false}, tier: retain,  param_size: "120B-A12B", params_b: 120, imitation: core, arch: moe}
+  - {id: openai/gpt-oss-20b,                               slug: gpt-oss-20b,         provider: openai, backend: tinker, renderer: gpt-oss,  chat_template_kwargs: {reasoning_effort: low},  tier: retain,  param_size: "20B",       params_b: 20, imitation: core, arch: moe}
+  - {id: openai/gpt-oss-120b,                              slug: gpt-oss-120b,        provider: openai, backend: tinker, renderer: gpt-oss,  chat_template_kwargs: {reasoning_effort: low},  tier: retain,  param_size: "120B",      params_b: 120, imitation: core, arch: moe}
+  - {id: google/gemma-4-E4B-it,                            slug: gemma-4-e4b,         provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "E4B",       params_b: 4, imitation: core, arch: vlm}
+  - {id: google/gemma-4-31B-it,                            slug: gemma-4-31b,         provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "31B",       params_b: 31, imitation: core, arch: vlm}
+  - {id: google/gemma-4-26B-A4B-it,                        slug: gemma-4-26b-a4b,     provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "26B-A4B",   params_b: 26, imitation: extended, arch: vlm}
+  - {id: meta-llama/Llama-3.1-8B-Instruct,                 slug: llama-3.1-8b,        provider: meta,   backend: local,  renderer: llama3,   chat_template_kwargs: {}, tier: launder, param_size: "8B",        params_b: 8, imitation: core, arch: dense}
+  - {id: adamo1139/aya-expanse-8b-ungated,                 slug: aya-expanse-8b,      provider: cohere, backend: local,  renderer: aya,      chat_template_kwargs: {}, tier: unknown, param_size: "8B",        params_b: 8, imitation: core, arch: dense}
+  - {id: allenai/OLMo-3-7B-Instruct,                       slug: olmo-3-7b,           provider: allenai, backend: local,  renderer: olmo,     chat_template_kwargs: {}, tier: unknown, param_size: "7B",        params_b: 7, imitation: core, arch: dense}
+  - {id: mistralai/Ministral-8B-Instruct-2410,             slug: ministral-8b,        provider: mistralai, backend: local, renderer: mistral, chat_template_kwargs: {}, tier: unknown, param_size: "8B",        params_b: 8, imitation: core, arch: dense}
+  - {id: microsoft/phi-4,                                  slug: phi-4,               provider: microsoft, backend: local, renderer: phi,     chat_template_kwargs: {}, tier: unknown, param_size: "14B",       params_b: 14, imitation: core, arch: dense}
+  - {id: ibm-granite/granite-4.0-h-small,                  slug: granite-4-h-small,   provider: ibm-granite, backend: local, renderer: generic, chat_template_kwargs: {}, tier: unknown, param_size: "32B-A9B",   params_b: 32, imitation: core, arch: mamba-hybrid}
+  # nemotron-super-120b (line above) promoted extended->core 2026-07-09: Tinker-backed, adapters exist
+  # (147 as-target live + 176 as-source restored from archive) — full imitation participation, no local train.
+  # llama-3.3-70b promoted legacy->core 2026-07-09: Tinker base is DEAD (unsamplable) -> backend:local, needs
+  # 70B weights + local MP training (like gemma-4-31b, 2-3 GPUs). Heavy: queued, does not block the campaign.
+  - {id: meta-llama/Llama-3.3-70B-Instruct,                slug: llama-3.3-70b,       provider: meta,   backend: local,  renderer: llama3,   chat_template_kwargs: {}, tier: launder, param_size: "70B",       params_b: 70, imitation: core, arch: dense}
+  # zamba2-7b (Zyphra) DROPPED 2026-07-07: transformers 5.5.x cannot load its shared-transformer
+  # blocks (errors with weight-tying; loads random garbage without). 3rd hybrid LAB is now
+  # granite-4-h-small (IBM Granite-4.0 32B-A9B, GraniteMoeHybrid: Mamba-2 + attention + MoE, the
+  # flagship Granite-4 hybrid at qwen3.6-35b-a3b / nemotron-nano scale) — verified to LOAD +
+  # GENERATE cleanly on transformers 5.5.4 (no cache_position bug; 2026-07-08). ~32B local:
+  # trains single-GPU bf16 w/ gradient_checkpointing (like gemma-4-31b), or model-parallel if OOM.
 
 # Retired/extra models referenced by existing adapters & analysis (slug<->id resolution
 # only; NOT part of the active matrix). All retired from the Tinker catalog as of 2026-06-27.
 roster_legacy:
-  - {id: meta-llama/Llama-3.1-8B-Instruct,  slug: llama-3.1-8b,  provider: meta, backend: tinker, renderer: llama3, chat_template_kwargs: {}, tier: launder, param_size: "8B",  params_b: 8}
   - {id: Qwen/Qwen3-4B-Instruct-2507,       slug: qwen3-4b,      provider: qwen, backend: tinker, renderer: qwen3,  chat_template_kwargs: {}, tier: launder, param_size: "4B",  params_b: 4}
-  - {id: meta-llama/Llama-3.3-70B-Instruct, slug: llama-3.3-70b, provider: meta, backend: tinker, renderer: llama3, chat_template_kwargs: {}, tier: launder, param_size: "70B", params_b: 70}
+  # llama-3.3-70b promoted to active roster: (imitation:core, backend:local) 2026-07-09.
   - {id: Qwen/Qwen3-32B,                    slug: qwen3-32b,     provider: qwen, backend: tinker, renderer: qwen3,  chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "32B", params_b: 32}
+
+
+# ============================================================================
+# STEERING ROSTER — single source of truth for the mechanism (identity ⊥ safety) study.
+# INVARIANT: every imitation:core model in `roster:` MUST appear in `refs` below
+# (imitation ⊆ steering). steer_status: clean | in_progress | todo.
+# `refs` = models already defined in roster:/roster_legacy (referenced by slug).
+# `breadth` = steering-only models (NOT trained in the imitation square).
+# ============================================================================
+steering_roster:
+  refs:
+    qwen3.5-4b: clean
+    qwen3.6-27b: clean
+    qwen3.6-35b-a3b: in_progress
+    nemotron-nano-30b-a3b: in_progress
+    gpt-oss-20b: clean
+    gpt-oss-120b: in_progress
+    gemma-4-e4b: in_progress
+    gemma-4-31b: todo
+    llama-3.1-8b: clean
+    aya-expanse-8b: clean
+    olmo-3-7b: clean
+    ministral-8b: todo
+    phi-4: clean
+    granite-4-h-small: todo    # 3rd hybrid LAB (IBM Granite-4.0 32B-A9B Mamba-hybrid); imitation:core
+    nemotron-super-120b: todo  # imitation:core (added 2026-07-09); 120B MP RDO cone
+    llama-3.3-70b: todo        # imitation:core (added 2026-07-09); dead-tinker->local; 70B MP RDO cone
+    qwen3-8b: clean            # imitation:extended, already steered
+  breadth:
+    - {id: Qwen/Qwen2.5-7B-Instruct,                 slug: qwen2.5-7b,      provider: qwen,        arch: dense, steer_status: clean}
+    - {id: Qwen/Qwen2.5-14B-Instruct,                slug: qwen2.5-14b,     provider: qwen,        arch: dense, steer_status: todo}
+    - {id: google/gemma-2-2b-it,                     slug: gemma-2-2b,      provider: google,      arch: dense, steer_status: clean}
+    - {id: google/gemma-2-9b-it,                     slug: gemma-2-9b,      provider: google,      arch: dense, steer_status: clean}
+    - {id: mistralai/Mistral-7B-Instruct-v0.3,       slug: mistral-7b,      provider: mistralai,   arch: dense, steer_status: todo}
+    - {id: meta-llama/Llama-3.2-3B-Instruct,         slug: llama-3.2-3b,    provider: meta,        arch: dense, steer_status: todo}
+    - {id: Qwen/Qwen3-14B,                           slug: qwen3-14b,       provider: qwen,        arch: dense, steer_status: clean}
+    - {id: allenai/OLMo-3.1-32B-Instruct,            slug: olmo-3.1-32b,    provider: allenai,     arch: dense, steer_status: clean}
+    - {id: ibm-granite/granite-3.3-8b-instruct,      slug: granite-3.3-8b,  provider: ibm-granite, arch: dense, steer_status: todo}
+    - {id: HuggingFaceTB/SmolLM3-3B,                 slug: smollm3-3b,      provider: huggingface, arch: dense, steer_status: todo}
+    - {id: internlm/internlm3-8b-instruct,           slug: internlm3-8b,    provider: internlm,    arch: dense, steer_status: todo}
+    - {id: deepseek-ai/DeepSeek-R1-Distill-Llama-8B, slug: deepseek-distill-8b, provider: deepseek, arch: dense, steer_status: todo}
+    - {id: mistralai/Mixtral-8x7B-Instruct-v0.1,     slug: mixtral-8x7b,    provider: mistralai,   arch: moe,   steer_status: todo}
+    - {id: allenai/OLMoE-1B-7B-0924-Instruct,        slug: olmoe-1b-7b,     provider: allenai,     arch: moe,   steer_status: todo}
+    - {id: Qwen/Qwen3-30B-A3B,                       slug: qwen3-30b-a3b,   provider: qwen,        arch: moe,   steer_status: todo}
 
 datasets:
   gsm8k:
