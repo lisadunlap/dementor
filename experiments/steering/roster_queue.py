@@ -36,6 +36,12 @@ MP = [
     "granite-4-h-small", # 32B GraniteMoeHybrid (weights local; verified loads+generates on tf 5.5.4)
     "gemma-4-31b",       # 31B Gemma4 VLM: loads as causal LM but same get_transformer_layers failure
                          # as gemma-4-e4b -> errors gracefully; needs the all-layer-ablation path. Last.
+    "llama-3.3-70b",     # 70B dense (2026-07-09): weights local (ungated unsloth mirror), load-verified
+                         # MP across 2 cards. Fits 2x80GB with headroom. Cone runs here post-campaign.
+    # NOTE: nemotron-super-120b is DELIBERATELY NOT here. Its 240GB weights need 4x80GB for the cone
+    # (3 cards = 0 activation headroom -> OOM; 4th card house-blocked). It runs its steering cone on the
+    # PARTNER's 4-card box instead (after that box's imitation eval frees the GPUs). Still in
+    # rdo_worklist.json as a valid steering model; only its cone TRAINING is offloaded to the 4-card box.
 ]
 BASE_ENV = dict(os.environ, **CFG.hf_env(offline=True))
 

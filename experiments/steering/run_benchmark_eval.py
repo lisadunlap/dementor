@@ -30,7 +30,11 @@ PY = CFG.PY
 # the OR-Bench family.
 STANDARD = ["advbench", "harmbench", "strongreject", "xstest", "sorrybench"]  # 5 standard, FIRST
 TAIL = ["orbench_hard", "orbench_toxic", "orbench_80k", "sgbench"]  # OR-Bench family + SG-Bench, LAST
-DEFAULT = STANDARD + TAIL
+# PHASE 1 (2026-07-09): standard-5 ONLY, so all 32 models clear the core refusal benchmarks before
+# any model spends a card on the slow OR-Bench grader (~48min/model). PHASE 2: restore
+# `DEFAULT = STANDARD + TAIL` and delete the per-model benchmarks_summary.json markers so the daemon
+# re-runs and cone_eval fills in the cached-skipping TAIL benchmarks.
+DEFAULT = STANDARD
 # CANONICAL native grader per benchmark -- 100% LOCAL in the default path (ZERO OpenAI calls).
 # The OpenAI cross-checks stay wired but DORMANT behind USE_OPENAI_GRADERS=1.
 #   advbench     -> refusal-substring ASR (canonical in cone_eval; no extra flag)
@@ -72,6 +76,15 @@ def main():
     for f in (cone, vml):
         if not os.path.exists(f):
             sys.exit(f"missing prerequisite {f} (run run_rdo_model.py {args.slug} first)")
+
+    # Adaptive generation batch: small dense models have ample VRAM headroom at 80GB, so a bigger
+    # batch saturates the card (single-model, single-card jobs otherwise sit ~50% util). Big/MoE
+    # models (full weights resident) and MP models are memory-bound -> keep the conservative 16.
+    # Only auto-tune when the caller left the default (an explicit --gen-batch still wins).
+    if args.gen_batch == 16 and not spec.get("needs_mp"):
+        pb = spec.get("params_b") or 8
+        args.gen_batch = 48 if pb <= 14 else (24 if pb <= 20 else 16)
+        print(f"[{args.slug}] adaptive gen-batch -> {args.gen_batch} (params_b={pb})", flush=True)
 
     env = dict(os.environ)
     env.update(CFG.hf_env(offline=False))  # HF_HOME/HF_HUB_CACHE/HF_HUB_DISABLE_XET/PYTHONPATH
