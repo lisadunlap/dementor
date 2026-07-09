@@ -24,7 +24,9 @@ PEFT dirs don't exist there.
 
 ## 1. Prerequisites
 
-- Linux, 4× H100 (80 GB), Python **3.11+**, `git`, `rsync`.
+- Linux, 4× H100 (80 GB), Python **3.11+**, `git`, **`git-lfs`** (the committed benchmark CSVs +
+  adapter registries + fidelity subsamples are LFS-tracked — without git-lfs you'll get pointer
+  stubs), `rsync`.
 - ~200–400 GB free disk for the HF model cache (judge/grader models + base tokenizers).
 - A **Tinker API key** with access to our adapters (see §4 — this is account-scoped, not solved by
   your own credits) and an **HF token** (for gated models like Llama-Guard-3).
@@ -32,13 +34,17 @@ PEFT dirs don't exist there.
 ## 2. Clone + branch
 
 ```bash
+git lfs install                       # once per machine — REQUIRED before clone/pull
 git clone git@github.com:lisadunlap/dementor.git
 cd dementor
 git checkout ethan
 git pull origin ethan
+git lfs pull                          # if any data file is still a pointer stub
 ```
 
-The package lives at `experiments/imitation_safety/`.
+The package lives at `experiments/imitation_safety/`. Verify the LFS data materialized:
+`head -1 experiments/imitation_safety/registry/tinker_adapters.json` should be JSON, not
+`version https://git-lfs...`.
 
 ## 3. Python environment
 
