@@ -5,7 +5,7 @@ import os, sys, json, glob
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import steer_config as CFG
 ROOT = CFG.WORK_ROOT   # per-model <slug>/eval/metrics.json + worklist (env DEMENTOR_STEER_WORK)
-WL = json.load(open(os.path.join(ROOT, "rdo_worklist.json")))
+WL = CFG.load_worklist(resolve=False)   # arch/slug only; no model-path resolution needed
 ARCH = {m["slug"]: m.get("arch", "dense") for m in WL["models"]}
 
 rows = []

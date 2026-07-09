@@ -54,7 +54,7 @@ gpu_lease = CFG.import_gpu_lease()   # SHARED lease from the imitation package (
 ROOT = CFG.WORK_ROOT   # worklist + per-model <slug>/ outputs + logs (env DEMENTOR_STEER_WORK)
 PY = CFG.PY
 RUNNER = os.path.join(HERE, "run_benchmark_eval.py")
-WORKLIST = os.path.join(ROOT, "rdo_worklist.json")
+WORKLIST = CFG.worklist_path()   # WORK_ROOT copy if present, else the committed repo copy
 GPUS = CFG.GPUS
 LEASE_HOLDER = "benchmark_eval_daemon"
 

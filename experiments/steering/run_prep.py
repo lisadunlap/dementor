@@ -34,7 +34,7 @@ def prep_one(spec):
 
 
 def main():
-    wl = json.load(open(os.path.join(ROOT, "rdo_worklist.json")))
+    wl = RRM.CFG.load_worklist()   # repo/scratch fallback + per-box model-path resolution
     by_slug = {m["slug"]: m for m in wl["models"]}
     slugs = sys.argv[1:] or wl["prep_order"]
     print(f"[prep] queue: {slugs}", flush=True)

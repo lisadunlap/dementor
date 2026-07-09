@@ -168,7 +168,7 @@ def stage_eval(spec, od):
 
 def main():
     slug = sys.argv[1]
-    wl = json.load(open(os.path.join(ROOT, "rdo_worklist.json")))
+    wl = CFG.load_worklist()   # repo/scratch fallback + per-box model-path resolution
     spec = next((m for m in wl["models"] if m["slug"] == slug), None)
     if spec is None:
         print(f"unknown slug {slug}"); sys.exit(2)

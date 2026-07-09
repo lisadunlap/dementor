@@ -66,7 +66,7 @@ def main():
     ap.add_argument("--gen-batch", type=int, default=16)
     args = ap.parse_args()
 
-    wl = json.load(open(os.path.join(ROOT, "rdo_worklist.json")))
+    wl = CFG.load_worklist()   # repo/scratch fallback + per-box model-path resolution
     spec = next((m for m in wl["models"] if m["slug"] == args.slug), None)
     if spec is None:
         sys.exit(f"unknown slug {args.slug}")
