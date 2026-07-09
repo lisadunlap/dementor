@@ -101,10 +101,10 @@ are optional except where noted.
 | `DEMENTOR_IMITATION_ROOT` | `<DATA_ROOT>/imitation_safety` | Optional (scratch/work root; overrides `DATA_ROOT` for work dirs + GPU-lease dir) |
 | `DEMENTOR_RESULTS_SAFETY` | `<DATA_ROOT>/results/safety` | Optional |
 | `DEMENTOR_RESULTS_FIDELITY` | `<DATA_ROOT>/results/fidelity` | Optional |
-| `DEMENTOR_STEER_ROOT` | `/data/ethantsliu/exp_steer_safety` | **Yes if judging** → rsync target (see §6) |
-| `DEMENTOR_PORT_DIR` | `<STEER_ROOT>/repl80_rdo/port` | Yes if judging (or inherits STEER_ROOT) |
-| `DEMENTOR_JUDGE_ALL` | `<STEER_ROOT>/judge_all.py` | Yes if judging (or inherits STEER_ROOT) |
-| `DEMENTOR_RTL_JUDGE_DIR` | `/data/ethantsliu/exp3_safety/leak_fix` | **Yes if judging** → rsync target |
+| `DEMENTOR_PORT_DIR` | in-repo `experiments/steering/port` (auto; else our-box fallback) | No — judge modules are committed (§6) |
+| `DEMENTOR_JUDGE_ALL` | in-repo `experiments/steering/port/judge_all.py` (auto) | No (committed) |
+| `DEMENTOR_RTL_JUDGE_DIR` | in-repo `experiments/steering/port` (auto) | No (committed) |
+| `DEMENTOR_STEER_ROOT` | `/data/ethantsliu/exp_steer_safety` (our-box fallback only) | No |
 | `DEMENTOR_REGISTRY` | in-package `registry/tinker_adapters.json` | No (committed) |
 | `DEMENTOR_BACKUP_REGISTRY` | in-package `registry/tinker_adapters.backup_*.json` | No (committed) |
 | `DEMENTOR_BENCH_DIR` | in-package `benchmarks/` | No (committed) |
@@ -118,38 +118,34 @@ Suggested `env.sh` to source before launching:
 export DEMENTOR_GPUS=0,1,2,3
 export HF_HOME=/big/disk/hf
 export DEMENTOR_DATA_ROOT=/big/disk/dementor_imitation
-export DEMENTOR_STEER_ROOT=/big/disk/steer_helpers          # where you rsync'd §6
-export DEMENTOR_RTL_JUDGE_DIR=/big/disk/steer_helpers/rtl_judge
 export TINKER_API_KEY=...   # ours
 export HF_TOKEN=...
+# No steering-helper vars needed — the judge modules are committed in-repo (§6).
 ```
 
-## 6. Steering judge/grader helpers — NOT in git (required for the JUDGE/GRADE phase)
+## 6. Steering judge/grader helpers — COMMITTED IN-REPO (no rsync)
 
-The imitation pipeline **reuses** four steering-side helper modules for judging/grading. They are
-**not** part of this package (they live in the steering experiment tree and were deliberately left
-untouched). **The remote SAMPLE / fidelity-embed steps do NOT need them; the JUDGE/GRADE step and the
-fidelity `judge` scorer DO.** They must be rsync'd from our box:
+The imitation pipeline **reuses** four steering-side helper modules for judging/grading. These are now
+**committed in the repo** at `experiments/steering/port/`, so a fresh clone resolves them
+**automatically with NO rsync**. `erosion_common.py` prefers the in-repo copy when present (and falls
+back to our-box `/data` paths only on our machine), so you don't set any env var for them.
 
-| Module | On our box | Points via env |
-|--------|-----------|----------------|
-| `judge_all.py` (RTL harm judge, Qwen3-8B) | `/data/ethantsliu/exp_steer_safety/judge_all.py` | `DEMENTOR_JUDGE_ALL` / `DEMENTOR_STEER_ROOT` |
-| `cone_eval.py` (HarmBench + StrongREJECT graders) | `/data/ethantsliu/exp_steer_safety/repl80_rdo/port/cone_eval.py` | `DEMENTOR_PORT_DIR` / `DEMENTOR_STEER_ROOT` |
-| `canonical_graders.py` (SORRY-Bench / SG-Bench / OR-Bench / XSTest graders) | `/data/ethantsliu/exp_steer_safety/repl80_rdo/port/canonical_graders.py` | `DEMENTOR_PORT_DIR` / `DEMENTOR_STEER_ROOT` |
-| `rtl_judge.py` (judge model loader, used by fidelity `judge` scorer) | `/data/ethantsliu/exp3_safety/leak_fix/rtl_judge.py` | `DEMENTOR_RTL_JUDGE_DIR` |
+| Module (in `experiments/steering/port/`) | Used by |
+|------------------------------------------|---------|
+| `judge_all.py` | RTL harm judge (Qwen3-8B) subprocess |
+| `cone_eval.py` | HarmBench + StrongREJECT graders |
+| `canonical_graders.py` | SORRY-Bench / SG-Bench / OR-Bench / XSTest graders |
+| `rtl_judge.py` | judge model loader (fidelity `judge` scorer) |
 
-Example rsync (adjust hosts/paths):
+**The remote SAMPLE / fidelity-embed steps don't touch these at all; the JUDGE/GRADE step and the
+fidelity `judge` scorer import them** — and after a clone they're already on disk. All four live in the
+single `port/` dir, which `erosion_common` puts on `sys.path` for you.
 
-```bash
-rsync -av OURBOX:/data/ethantsliu/exp_steer_safety/    /big/disk/steer_helpers/
-rsync -av OURBOX:/data/ethantsliu/exp3_safety/leak_fix/ /big/disk/steer_helpers/rtl_judge/
-# then set DEMENTOR_STEER_ROOT=/big/disk/steer_helpers  DEMENTOR_RTL_JUDGE_DIR=/big/disk/steer_helpers/rtl_judge
-```
-
-> **OPEN ITEM:** these steering helpers themselves may pull further steering-tree imports at judge time.
-> If a judge run raises `ModuleNotFoundError`, rsync the missing steering module and add its dir to
-> `PYTHONPATH`. If you only want to *sample* remotely and ship the raw generations back to us for
-> judging on our box, you can skip §6 entirely (run only the `sample` / `gen-tinker` phases).
+> **OPEN ITEM:** if a judge run raises `ModuleNotFoundError` for some deeper steering import, the
+> committed `experiments/steering/` tree should already carry it (it ships the full `port/` set); if
+> not, add the offending module's dir to `PYTHONPATH`. If you'd rather only *sample* remotely and ship
+> the raw generations back to us for judging on our box, you can ignore the judge phase entirely (run
+> only the `sample` / `gen-tinker` phases).
 
 ## 7. HF models to pre-download
 
@@ -196,9 +192,11 @@ fidelity `judge` scorer reuses the Qwen3-8B judge above.
 - Fidelity held-out subsamples (n=200, seed=42) + manifests → `fidelity_subsamples/`
 - All 9 pipeline scripts.
 
+Also committed in-repo (via the steering-consolidation work): the 4 judge/grader modules at
+`experiments/steering/port/` (§6) — resolved automatically, no rsync.
+
 **Not committed — you obtain separately:**
 - HF models (§7).
-- Steering judge/grader helpers (§6) — rsync from our box.
 - Model weights: the Tinker sources sample **remotely** (no weights). The ~92 local chatbot_arena PEFT
   adapters are **not** in git and are large — pull from HF only if you want the local track (§10).
 
@@ -212,7 +210,7 @@ fidelity `judge` scorer reuses the Qwen3-8B judge above.
 # A) SAMPLE remotely (no GPU) — writes work/<id>/<bench>/all_gens.csv
 python experiments/imitation_safety/tinker_erosion.py sample --seed all --sample-workers 64
 
-# B) JUDGE + grade on your GPUs (batched; needs §6 steering helpers)
+# B) JUDGE + grade on your GPUs (batched; uses the in-repo §6 judge modules — already present)
 python experiments/imitation_safety/tinker_erosion.py judge --seed all --gpus 0,1,2,3
 
 # ...or run both back-to-back:

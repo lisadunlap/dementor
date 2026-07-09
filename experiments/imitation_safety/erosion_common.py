@@ -42,14 +42,25 @@ REPO = _env("DEMENTOR_REPO", os.path.dirname(os.path.dirname(_HERE)))
 # Big-disk data root (work dirs, subsamples, results). Default: <repo>/data (may be a symlink).
 DATA_ROOT = _env("DEMENTOR_DATA_ROOT", os.path.join(REPO, "data"))
 
-# Steering-side helper roots. These modules (judge_all.py + cone_eval/canonical_graders in PORT +
-# rtl_judge.py in RTL_JUDGE_DIR) are NOT in git and live in the steering experiment tree on our box.
-# The SAMPLE/generation phases DON'T need them; the JUDGE/GRADE + fidelity `judge` scorer DO. A
-# partner must rsync them and point these env vars at the copies (see PARTNER_SETUP.md).
+# Steering-side judge/grader helpers. These are now COMMITTED IN-REPO at experiments/steering/port/
+# (judge_all.py, rtl_judge.py, cone_eval.py, canonical_graders.py all live in that one port/ dir), so
+# a fresh clone resolves them with NO rsync. We PREFER the in-repo copy when present and fall back to
+# the steering experiment tree on our box (kept for backward-compat). The SAMPLE/generation phases
+# DON'T need these; the JUDGE/GRADE + fidelity `judge` scorer DO. Env vars override everything.
+_INREPO_STEER_PORT = os.path.join(REPO, "experiments", "steering", "port")
+
+def _prefer(inrepo, fallback):
+    """Return the in-repo path if it exists, else the (our-box) fallback path."""
+    return inrepo if os.path.exists(inrepo) else fallback
+
 STEER_ROOT = _env("DEMENTOR_STEER_ROOT", "/data/ethantsliu/exp_steer_safety")
-PORT = _env("DEMENTOR_PORT_DIR", os.path.join(STEER_ROOT, "repl80_rdo", "port"))
-RTL_JUDGE_DIR = _env("DEMENTOR_RTL_JUDGE_DIR", "/data/ethantsliu/exp3_safety/leak_fix")
-JUDGE_ALL = _env("DEMENTOR_JUDGE_ALL", os.path.join(STEER_ROOT, "judge_all.py"))
+# PORT: dir holding cone_eval.py + canonical_graders.py (in-repo it also holds judge_all + rtl_judge).
+PORT = _env("DEMENTOR_PORT_DIR", _prefer(_INREPO_STEER_PORT, os.path.join(STEER_ROOT, "repl80_rdo", "port")))
+# rtl_judge.py lives in the in-repo port/ dir; on our box it was a separate exp3_safety/leak_fix dir.
+RTL_JUDGE_DIR = _env("DEMENTOR_RTL_JUDGE_DIR", _prefer(_INREPO_STEER_PORT, "/data/ethantsliu/exp3_safety/leak_fix"))
+# judge_all.py lives in the in-repo port/ dir; on our box it was at the STEER_ROOT root.
+JUDGE_ALL = _env("DEMENTOR_JUDGE_ALL", _prefer(os.path.join(_INREPO_STEER_PORT, "judge_all.py"),
+                                               os.path.join(STEER_ROOT, "judge_all.py")))
 
 # Benchmark CSVs: committed in-package by default (experiments/imitation_safety/benchmarks/).
 BENCH_DIR = _env("DEMENTOR_BENCH_DIR", os.path.join(_HERE, "benchmarks"))
