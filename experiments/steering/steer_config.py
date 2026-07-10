@@ -12,8 +12,13 @@ Canonical env vars (shared verbatim with the imitation package; see .env.example
   DEMENTOR_HF_HOME     HF cache root; default /data/ethantsliu/huggingface
   DEMENTOR_DATA        big-disk data/outputs root; default <repo>/data
   DEMENTOR_GPUS        comma list of usable GPU ids; default 5,6,7 (partner sets 0,1,2,3)
-Steering-specific roots (DEMENTOR_STEER_ROOT / DEMENTOR_STEER_WORK / DEMENTOR_SALADBENCH_SPLITS /
-DEMENTOR_RTL_JUDGE_DIR) are documented below and in README.md.
+Steering-specific roots are documented below and in README.md. The three that make a fresh clone
+self-contained for cone training default to the in-repo experiments/steering/data/ assets:
+  DEMENTOR_STEER_DATA        train_benign.csv / harmful300.csv / gen/*_benign.csv  (default: ./data)
+  DEMENTOR_REPL80            dir holding run_model.py + optional per-slug reuse   (default: this pkg)
+  DEMENTOR_SALADBENCH_SPLITS harmful/harmless train+val json                      (default: ./data/saladbench_splits)
+Other roots (DEMENTOR_STEER_ROOT / DEMENTOR_STEER_WORK / DEMENTOR_RTL_JUDGE_DIR / DEMENTOR_JUDGE_ALL /
+DEMENTOR_STEER_BENCH_DIR) point at the larger eval/benchmark tree and are documented below.
 """
 import os
 import sys
@@ -25,6 +30,23 @@ _HERE = os.path.dirname(os.path.abspath(__file__))   # experiments/steering
 def _env(name, default):
     v = os.environ.get(name)
     return v if v else default
+
+
+def _first(*cands):
+    """First candidate path that EXISTS, else the last one (so the value is always defined).
+    Lets a default prefer the in-repo shipped asset while falling back to our box's live tree."""
+    for c in cands:
+        if c and os.path.exists(c):
+            return c
+    return cands[-1]
+
+
+# In-repo shipped steering assets live next to this module under experiments/steering/data/
+# (train_benign.csv, harmful300.csv, gen/*_benign.csv, saladbench_splits/*.json). A fresh clone
+# reads them from here; our shared box's live campaign tree is only a fallback if the repo copy is
+# missing (e.g. `git lfs pull` not run). The live tree is READ-ONLY here -- never written.
+_REPO_DATA = os.path.join(_HERE, "data")
+_LIVE_STEER = "/data/ethantsliu/exp_steer_safety"
 
 
 # Repo root (for `dementor` imports). Default: two levels up from here (experiments/steering -> repo).
@@ -42,21 +64,39 @@ STEER_ROOT = _env("DEMENTOR_STEER_ROOT", "/data/ethantsliu/exp_steer_safety")
 # location on our box. A partner points DEMENTOR_STEER_WORK at their own scratch dir.
 WORK_ROOT = _env("DEMENTOR_STEER_WORK", os.path.join(STEER_ROOT, "repl80_rdo"))
 
-# repl80 fingerprint/benign artifacts reused by run_rdo_model (vectors_ml.pt / benign.csv).
-REPL80 = _env("DEMENTOR_REPL80", os.path.join(STEER_ROOT, "repl80"))
+# Steering INPUT DATA dir consumed by run_model.stage_benign/stage_derive (train_benign.csv,
+# gen/llama_benign.csv reference) + cone_eval's AdvBench read (harmful300.csv). Default: the in-repo
+# shipped data dir (so a fresh clone is self-contained), falling back to our box's live campaign tree
+# only if the repo copy is absent. Env DEMENTOR_STEER_DATA. Byte-identical to the live copy on our
+# box, so defaults reproduce our-box behaviour unchanged.
+STEER_DATA = _env("DEMENTOR_STEER_DATA", _first(_REPO_DATA, _LIVE_STEER))
+
+# Dir that holds run_model.py (imported by run_rdo_model for the benign+fingerprint DERIVE stages)
+# AND, optionally, per-slug benign.csv/vectors_ml.pt to REUSE. Default: this repo package dir, which
+# ships run_model.py. On a fresh box the per-slug reuse dirs (REPL80/<slug>/) are absent, so those
+# stages derive fresh -- correct for a new model like nemotron-super. Env DEMENTOR_REPL80 (our box
+# can point it at STEER_ROOT/repl80 to reuse the campaign's already-derived fingerprints).
+REPL80 = _env("DEMENTOR_REPL80", _HERE)
 
 # Per-slug local model-weights root. load_worklist() repoints a worklist entry to MODELS_DIR/<slug>
 # when its literal (our-box) path is absent, so a partner names each slug's snapshot there and points
 # DEMENTOR_MODELS_DIR at it. Default: our box's download dir (kept so behaviour is unchanged here).
 MODELS_DIR = _env("DEMENTOR_MODELS_DIR", "/data/ethantsliu/models_dl")
 
-# saladbench splits (harmful/harmless train+val json) used for cone training + dim selection.
+# saladbench splits (harmful/harmless train+val json) read by compute_dim (DIM selection), rdo_port
+# (cone training) and run_rdo_model/select_eval (cone-dim selection). Default: the in-repo shipped
+# splits dir, falling back to our box's live geometry-of-refusal tree. Env DEMENTOR_SALADBENCH_SPLITS.
 SPLITS_DIR = _env("DEMENTOR_SALADBENCH_SPLITS",
-                  "/data/ethantsliu/geometry-of-refusal/data/saladbench_splits")
+                  _first(os.path.join(_REPO_DATA, "saladbench_splits"),
+                         "/data/ethantsliu/geometry-of-refusal/data/saladbench_splits"))
 
 # RTL harm-judge infra dir (rtl_judge.py) + judge_all.py entrypoint (Qwen3-8B RTL judge subprocess).
 RTL_JUDGE_DIR = _env("DEMENTOR_RTL_JUDGE_DIR", "/data/ethantsliu/exp3_safety/leak_fix")
-JUDGE_ALL = _env("DEMENTOR_JUDGE_ALL", os.path.join(STEER_ROOT, "judge_all.py"))
+# judge_all.py that cone_eval/run_model spawn. Default: our box's live campaign copy if present, else
+# the in-repo shipped port/judge_all.py (path-portable) so a fresh clone's cone eval still judges.
+JUDGE_ALL = _env("DEMENTOR_JUDGE_ALL",
+                 _first(os.path.join(STEER_ROOT, "judge_all.py"),
+                        os.path.join(_HERE, "port", "judge_all.py")))
 
 # Benchmark CSV dir consumed by cone_eval.py (advbench harmful300, orbench_*, sgbench, ...).
 BENCH_DIR = _env("DEMENTOR_STEER_BENCH_DIR", os.path.join(STEER_ROOT, "benchmarks"))

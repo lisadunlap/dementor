@@ -24,8 +24,8 @@ sys.path.insert(0, CFG.REPO)  # repo root for `dementor` imports (env DEMENTOR_R
 from dementor.steering._common import load_causal_lm, get_transformer_layers, resolve_layer_index
 from dementor.steering.steering_rung import make_ablation_hook
 
-EXP = CFG.STEER_ROOT.rstrip("/") + "/"  # steering experiment root (env DEMENTOR_STEER_ROOT)
-BENCH_DIR = CFG.BENCH_DIR
+EXP = CFG.STEER_DATA.rstrip("/") + "/"  # AdvBench harmful300.csv data dir (env DEMENTOR_STEER_DATA)
+BENCH_DIR = CFG.BENCH_DIR               # other benchmark CSVs (env DEMENTOR_STEER_BENCH_DIR)
 JUDGE_MODEL = "Qwen/Qwen3-8B"
 HARMBENCH_CLS = "cais/HarmBench-Llama-2-13b-cls"  # optional native HarmBench grader
 ABLATE_LAYER = 14
