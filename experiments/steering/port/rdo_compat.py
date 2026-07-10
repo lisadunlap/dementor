@@ -14,6 +14,10 @@ Patches installed on import:
   3. NemotronH generation fix      -> fixes nemotron-nano generate(): the model's shipped
                                       prepare_inputs_for_generation indexes cache_position[-1]
                                       while transformers-5.5.4 leaves cache_position=None at prefill.
+  3b. offline hub-kernel shim      -> fixes granite-4-h-small (GraniteMoeHybrid): its Mamba-2 mixer
+                                      resolves fused kernels from the HF hub at load; offline mode
+                                      raises OfflineModeIsEnabled. Falls back to the native path.
+                                      (Also USE_HUB_KERNELS=NO / expandable_segments set at import.)
 
 Exports:
   clamp_layers(layers, n_layers)   -> depth-clamped, de-duped, sorted layer list
@@ -28,6 +32,17 @@ import only needs to happen before the first `from_pretrained(...)` call, not be
 import os
 import typing
 from typing import Optional
+
+# GraniteMoeHybrid (Mamba-2 mixer) resolves optional fused kernels (causal-conv1d / mamba-ssm) and
+# a hub RMSNorm kernel at load time. On this offline box the version lookup hits the HF hub and raises
+# OfflineModeIsEnabled, crashing the load before any weights stream. USE_HUB_KERNELS=NO disables the
+# decorator-based hub-kernel path (native RMSNorm/rotary fallback -- numerically equivalent); the
+# lazy_load_kernel shim below covers the Mamba fast-path lookups the env var does not gate. Set via
+# setdefault (before transformers imports) so it is read when transformers.integrations.hub_kernels
+# computes _kernels_enabled, and never overrides an explicit operator choice.
+os.environ.setdefault("USE_HUB_KERNELS", "NO")
+# Reduce allocator fragmentation on the model-parallel (2-card) runs.
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
 
 _HARMONY_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), "gptoss_harmony.jinja")
 
@@ -176,6 +191,46 @@ def _install_from_pretrained_patches():
         AutoModelForCausalLM.from_pretrained = staticmethod(model_fp)
 
 
+# --------------------------------------------------------------------------- 3b. offline kernel shim
+def _install_kernels_offline_shim():
+    """Wrap transformers.integrations.hub_kernels.lazy_load_kernel so an offline / unreachable hub
+    lookup returns None (native fallback) instead of raising. GraniteMoeHybrid's Mamba-2 mixer calls
+    lazy_load_kernel('causal-conv1d') / ('mamba-ssm') during __init__; the underlying kernels
+    get_kernel() hits the hub for version resolution and raises OfflineModeIsEnabled here, which
+    lazy_load_kernel does not catch (only FileNotFoundError/AssertionError). Returning None triggers
+    the model's documented naive PyTorch path -- same math, no network."""
+    try:
+        from transformers.integrations import hub_kernels
+    except Exception:
+        return
+    orig = getattr(hub_kernels, "lazy_load_kernel", None)
+    if orig is None or getattr(orig, "_rdo_patched", False):
+        return
+
+    def safe_lazy_load_kernel(*args, **kwargs):
+        try:
+            return orig(*args, **kwargs)
+        except Exception as exc:  # offline / network / version-resolution failure
+            try:
+                hub_kernels.logger.warning_once(
+                    f"rdo_compat: hub kernel unavailable ({type(exc).__name__}); using native fallback"
+                )
+            except Exception:
+                pass
+            return None
+
+    safe_lazy_load_kernel._rdo_patched = True
+    hub_kernels.lazy_load_kernel = safe_lazy_load_kernel
+    # Rebind the name in any modeling module that already imported it by value.
+    import sys as _sys
+    for mod in list(_sys.modules.values()):
+        try:
+            if getattr(mod, "lazy_load_kernel", None) is orig:
+                mod.lazy_load_kernel = safe_lazy_load_kernel
+        except Exception:
+            pass
+
+
 # --------------------------------------------------------------------------- 4. layer clamp helper
 def clamp_layers(layers, n_layers):
     """Clamp (and resolve negative) layer indices into [0, n_layers-1]; de-dup + sort.
@@ -194,4 +249,5 @@ def clamp_layers(layers, n_layers):
 
 # --------------------------------------------------------------------------- install on import
 _install_loss_kwargs_shim()
+_install_kernels_offline_shim()
 _install_from_pretrained_patches()

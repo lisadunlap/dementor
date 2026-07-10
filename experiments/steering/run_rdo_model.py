@@ -39,6 +39,7 @@ MIN_DIM = int(os.environ.get("RDO_MIN_DIM", "2"))
 MAX_DIM = int(os.environ.get("RDO_MAX_DIM", "4"))
 BETAS = os.environ.get("RDO_BETAS", "0.6,1.0,1.4")
 OUT_SUFFIX = os.environ.get("RDO_OUT_SUFFIX", "")
+MAX_TRAIN = int(os.environ.get("RDO_MAX_TRAIN", "0"))  # >0 caps rdo_port's filtered train set (0 = full/unchanged)
 
 
 def log(od, msg):
@@ -101,10 +102,13 @@ def stage_cone(spec, od):
     if os.path.exists(os.path.join(cones, f"cone_dim_{MAX_DIM}.pt")):
         log(od, "[4] cone cached"); return
     log(od, f"[4] training RDO cone (rdo_port.py) dims {MIN_DIM}..{MAX_DIM}")
-    run([PY, os.path.join(PORT, "rdo_port.py"), "--model", spec["path"],
-         "--dim-dir", os.path.join(od, "dim"), "--out-dir", od,
-         "--min-cone-dim", str(MIN_DIM), "--max-cone-dim", str(MAX_DIM),
-         "--family", spec.get("family", "auto")], logf=os.path.join(od, "rdo_run.log"))
+    cone_cmd = [PY, os.path.join(PORT, "rdo_port.py"), "--model", spec["path"],
+                "--dim-dir", os.path.join(od, "dim"), "--out-dir", od,
+                "--min-cone-dim", str(MIN_DIM), "--max-cone-dim", str(MAX_DIM),
+                "--family", spec.get("family", "auto")]
+    if MAX_TRAIN > 0:
+        cone_cmd += ["--max-train", str(MAX_TRAIN)]
+    run(cone_cmd, logf=os.path.join(od, "rdo_run.log"))
 
 
 def stage_select(spec, od):

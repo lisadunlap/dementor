@@ -28,12 +28,19 @@ from typing import Any
 # Architecture-agnostic decoder-layer discovery + index resolution.
 # ---------------------------------------------------------------------------
 def _candidate_layer_containers(model: Any) -> list[Any]:
+    # Ordered walk of the common decoder-block locations; first non-empty match wins. Order matters:
+    # standard decoder-only LMs (Llama/Qwen/Mistral/GraniteMoeHybrid) keep blocks at model.model.layers,
+    # while multimodal / conditional-generation checkpoints (Gemma4 VLM) expose the text tower one or
+    # two attributes deeper (model.language_model.layers or model.model.language_model.layers).
     candidates = [
-        ("model", "layers"),
-        ("transformer", "h"),
+        ("model", "layers"),                     # Llama/Qwen/Mistral/Granite decoder-only LMs
+        ("language_model", "layers"),            # Gemma4 VLM text tower exposed directly
+        ("model", "language_model", "layers"),   # *ForConditionalGeneration (text tower under .model)
+        ("language_model", "model", "layers"),   # VLMs nesting a full text sub-model
+        ("transformer", "h"),                    # GPT-2 / Falcon style
         ("gpt_neox", "layers"),
-        ("backbone", "layers"),
-        ("language_model", "model", "layers"),
+        ("model", "decoder", "layers"),          # OPT / encoder-decoder decoders
+        ("backbone", "layers"),                  # Mamba-style backbones
     ]
     out = []
     for path in candidates:
@@ -47,10 +54,36 @@ def _candidate_layer_containers(model: Any) -> list[Any]:
     return out
 
 
+def _looks_like_decoder_block(module: Any) -> bool:
+    """True if `module` has the hallmarks of a residual-stream decoder block (attention, MLP/MoE, or
+    a Mamba mixer + a layernorm) -- distinguishes the decoder stack from other ModuleLists such as an
+    MoE expert list (128 experts on gpt-oss) which has none of these markers."""
+    markers = ("self_attn", "self_attention", "attn", "mlp", "feed_forward",
+               "block_sparse_moe", "mamba", "input_layernorm", "post_attention_layernorm")
+    return any(hasattr(module, m) for m in markers)
+
+
+def _recursive_find_layers(model: Any) -> Any:
+    """Last-resort architecture-agnostic fallback: scan every submodule for the longest nn.ModuleList
+    whose first element looks like a decoder block. Handles arbitrarily-nested towers (future VLMs)
+    without a hardcoded path, while the decoder-block filter avoids grabbing an expert ModuleList."""
+    import torch.nn as nn
+
+    best = None
+    for _name, module in model.named_modules():
+        if isinstance(module, nn.ModuleList) and len(module) > 0 and _looks_like_decoder_block(module[0]):
+            if best is None or len(module) > len(best):
+                best = module
+    return best
+
+
 def get_transformer_layers(model: Any) -> Any:
     for layers in _candidate_layer_containers(model):
         if len(layers) > 0:
             return layers
+    fallback = _recursive_find_layers(model)
+    if fallback is not None:
+        return fallback
     raise ValueError("Could not locate transformer block list on this model.")
 
 
@@ -94,10 +127,17 @@ def load_causal_lm(
         tokenizer: reuse an already-loaded tokenizer instead of loading a fresh one;
             it is still pad-token / padding-side normalized. Loaded when ``None``.
     """
+    import os
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
     resolved_device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+    # Model-parallel: when DEMENTOR_MP=1 (paired with CUDA_VISIBLE_DEVICES=a,b), shard the weights
+    # across the visible GPUs with accelerate's device_map="auto" so a model too large for one card
+    # fits. We must NOT call model.to() afterwards (it breaks accelerate's per-shard dispatch). The
+    # per-layer feature hooks / ablation ops already co-locate their tensors onto each block's own
+    # shard; inputs go to the input-embedding shard, returned as resolved_device.
+    mp = bool(os.environ.get("DEMENTOR_MP"))
 
     if tokenizer is None:
         tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
@@ -105,16 +145,23 @@ def load_causal_lm(
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = padding_side
 
-    model_kwargs: dict[str, Any] = {"trust_remote_code": True}
-    if dtype not in ("auto", "default"):
-        model_kwargs["torch_dtype"] = getattr(torch, dtype)
-    elif strict_auto:
-        if dtype == "auto" and resolved_device == "cuda":
+    if mp:
+        # dtype="auto" respects a checkpoint's quantization_config (e.g. gpt-oss MXFP4 stays 4-bit
+        # rather than dequantizing to bf16) and otherwise picks the native dtype (bf16 for Mixtral).
+        model = AutoModelForCausalLM.from_pretrained(
+            model_name, trust_remote_code=True, dtype="auto", device_map="auto"
+        )
+    else:
+        model_kwargs: dict[str, Any] = {"trust_remote_code": True}
+        if dtype not in ("auto", "default"):
+            model_kwargs["torch_dtype"] = getattr(torch, dtype)
+        elif strict_auto:
+            if dtype == "auto" and resolved_device == "cuda":
+                model_kwargs["torch_dtype"] = torch.bfloat16
+        elif resolved_device.startswith("cuda"):
             model_kwargs["torch_dtype"] = torch.bfloat16
-    elif resolved_device.startswith("cuda"):
-        model_kwargs["torch_dtype"] = torch.bfloat16
+        model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
 
-    model = AutoModelForCausalLM.from_pretrained(model_name, **model_kwargs)
     if peft_adapter_path is not None:
         try:
             from peft import PeftModel
@@ -124,5 +171,9 @@ def load_causal_lm(
             ) from exc
         model = PeftModel.from_pretrained(model, str(peft_adapter_path))
 
-    model.to(resolved_device).eval()
+    if mp:
+        model.eval()
+        resolved_device = model.get_input_embeddings().weight.device
+    else:
+        model.to(resolved_device).eval()
     return tokenizer, model, resolved_device
