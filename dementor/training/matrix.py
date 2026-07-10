@@ -464,7 +464,7 @@ def self_sft_data_path(cell: Cell) -> Path:
     return SELF_SFT_DATA_DIR / cell.dataset / f"{MODEL_SLUG[cell.source]}_self_train.csv"
 
 
-def build_sft_data(*, dry_run: bool = False) -> int:
+def build_sft_data(*, dry_run: bool = False, datasets: list[str] | None = None) -> int:
     """For each (source, target, dataset) cell, build the SFT training CSV.
 
     SFT input = train prompt
@@ -474,10 +474,15 @@ def build_sft_data(*, dry_run: bool = False) -> int:
     fine-tuned, not what the training data contains). So we de-dup across seeds
     and sources: per (target, dataset) we just slice the cache. Cell-level CSVs
     point to that shared cache for clarity.
+
+    ``datasets`` optionally restricts building to a subset of dataset names (e.g.
+    ``["chatbot_arena"]``) so callers that only need one dataset don't rebuild the rest.
     """
     n_built = 0
     seen: set[tuple[str, str]] = set()
     for cell in iter_cells():
+        if datasets is not None and cell.dataset not in datasets:
+            continue
         if cell.seed != SEEDS[0]:
             continue  # SFT data is the same across seeds for the same (S,T,D)
         if (cell.source, cell.target, cell.dataset) in seen:
@@ -537,17 +542,21 @@ def dpo_data_path(cell: Cell) -> Path:
     return DPO_DATA_DIR / cell.dataset / f"{MODEL_SLUG[cell.source]}_as_{MODEL_SLUG[cell.target]}_pairs.csv"
 
 
-def build_dpo_data(*, dry_run: bool = False) -> int:
+def build_dpo_data(*, dry_run: bool = False, datasets: list[str] | None = None) -> int:
     """For each (source, target, dataset) cell, build a DPO preference CSV.
 
     Schema: (prompt, chosen_response, rejected_response).
     chosen = TARGET's response to train prompt
     rejected = SOURCE's response to the SAME train prompt
     Both sides come from data/model-responses/matrix_baselines/{dataset}/{model_slug}_train.csv.
+
+    ``datasets`` optionally restricts building to a subset of dataset names.
     """
     n_built = 0
     seen: set[tuple[str, str, str]] = set()
     for cell in iter_cells():
+        if datasets is not None and cell.dataset not in datasets:
+            continue
         if cell.seed != SEEDS[0]:
             continue  # DPO data is the same across seeds for the same (S,T,D)
         key = (cell.source, cell.target, cell.dataset)
@@ -2023,14 +2032,30 @@ def launch_local_cell(
         else:
             _wait_for_prepared(ready_flag, token)
         eval_arg = eval_jsonl if (eval_jsonl.exists() and eval_jsonl.stat().st_size > 0) else None
+        # Single-GPU local DPO materializes fp32 logits over the FULL vocab; large-vocab
+        # towers (gemma ~256K, plus gemma's final_logit_softcapping) OOM one 80 GB card at
+        # the config batch(16)/length(4096) -- those config values target Tinker's SHARDED
+        # backend, not a single card. Mirror _build_dpo_cfg's proven local length caps and
+        # additionally shrink the per-device batch: the concatenated chosen+rejected forward
+        # is the memory bottleneck (~batch*2 * seq * vocab * 4 bytes). Preserve the effective
+        # batch via gradient accumulation. An explicit --per-device-batch-size / --grad-accum
+        # still wins, so the accelerate multi-GPU path is unaffected.
+        local_dpo_max_length = min(dpo_hp["max_length"], 1536)
+        if "31b" in cell.source.lower():  # 62 GB text tower leaves almost no headroom
+            local_dpo_max_length = min(local_dpo_max_length, 1024)
+        local_dpo_batch = per_device_batch_size or min(dpo_hp["batch_size"], 2)
+        local_dpo_accum = grad_accum
+        if (local_dpo_accum is None and not per_device_batch_size
+                and dpo_hp["batch_size"] > local_dpo_batch):
+            local_dpo_accum = max(1, dpo_hp["batch_size"] // local_dpo_batch)
         params = LocalDPOParams(
             model_name=cell.source, load_checkpoint_path=str(sft_out_dir),
             weights_name=f"dpo_{cell.slug}", registry_path=config.registry_path(),
             learning_rate=dpo_hp["learning_rate"], dpo_beta=dpo_hp["dpo_beta"],
             num_epochs=dpo_hp["num_epochs"],
-            batch_size=per_device_batch_size or dpo_hp["batch_size"],
-            max_length=dpo_hp["max_length"], lora_rank=dpo_hp["lora_rank"],
-            seed=cell.seed, gradient_accumulation_steps=grad_accum,
+            batch_size=local_dpo_batch,
+            max_length=local_dpo_max_length, lora_rank=dpo_hp["lora_rank"],
+            seed=cell.seed, gradient_accumulation_steps=local_dpo_accum,
         )
         run_local_dpo_job(train_jsonl=train_jsonl, eval_jsonl=eval_arg, params=params, output_dir=dpo_out_dir)
         summary["dpo_output_dir"] = str(dpo_out_dir)

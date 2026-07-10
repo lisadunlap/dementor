@@ -76,15 +76,58 @@ def _resolve_device(device: Optional[str]) -> str:
     return "cpu"
 
 
-def _lora_config(lora_kwargs: Optional[dict]):
+# GraniteMoeHybrid (IBM Granite-4.0 32B-A9B: 40 blocks = 36 Mamba-2 mixers + 4 attention
+# layers, each block also carrying a 72-expert/top-10 block-sparse MoE plus an always-on
+# shared expert) curated LoRA targets. Every entry resolves to nn.Linear on the real model
+# (verified via PEFT on transformers 5.5.4; 168 modules, ~58M trainable params = 0.18% of 32.7B):
+#   self_attn.{q,k,v,o}_proj          -- the 4 attention layers' projections (canonical LoRA)
+#   mamba.{in,out}_proj               -- the 36 Mamba-2 mixers' input/output projections
+#   shared_mlp.{input,output}_linear  -- the shared-expert MLP present in all 40 blocks
+# DELIBERATELY EXCLUDED (PEFT can't wrap them cleanly and/or LoRA is unsafe there):
+#   block_sparse_moe.{input,output}_linear -> GraniteMoeHybridParallelExperts (3D bmm weight
+#       tensors, NOT nn.Linear); mamba.conv1d -> depthwise Conv1d; block_sparse_moe.router.layer
+#       -> the 72-way top-k gate (tuning it can destabilize expert routing, so we keep it frozen);
+#       the tied lm_head (shares the input embedding). NOTE the qualified "shared_mlp.*_linear"
+#   suffixes are REQUIRED: a bare "input_linear"/"output_linear" would ALSO match the identically
+#   -named block_sparse_moe ParallelExperts and make PEFT choke on an unsupported module type.
+# This is exactly PEFT's "all-linear" set MINUS the router; "all-linear" also trains the router.
+GRANITE_MOE_HYBRID_LORA_TARGETS = [
+    "q_proj", "k_proj", "v_proj", "o_proj",
+    "mamba.in_proj", "mamba.out_proj",
+    "shared_mlp.input_linear", "shared_mlp.output_linear",
+]
+
+
+def _is_granite_moe_hybrid(model) -> bool:
+    """True iff ``model`` is an IBM GraniteMoeHybrid checkpoint (Mamba-2 + attn + MoE hybrid)."""
+    if model is None:
+        return False
+    try:
+        if getattr(model.config, "model_type", None) == "granitemoehybrid":
+            return True
+    except Exception:
+        pass
+    return "GraniteMoeHybrid" in type(model).__name__
+
+
+def _lora_config(lora_kwargs: Optional[dict], model=None):
+    """Build the LoRA config. A caller-supplied ``target_modules`` always wins; only when it is
+    absent / the generic ``"all-linear"`` default AND the base model is a GraniteMoeHybrid do we
+    swap in the curated, router-free target list (:data:`GRANITE_MOE_HYBRID_LORA_TARGETS`). The
+    matrix passes ``config.lora()`` (``target_modules: all-linear``) for local cells, so this is
+    what auto-selects sane granite-4 targets; every other architecture and any explicit
+    ``target_modules`` are untouched."""
     from peft import LoraConfig
 
     kw = dict(lora_kwargs or {})
+    target_modules = kw.get("target_modules", "all-linear")
+    if target_modules in (None, "all-linear") and _is_granite_moe_hybrid(model):
+        target_modules = list(GRANITE_MOE_HYBRID_LORA_TARGETS)
     return LoraConfig(
         r=kw.get("rank", kw.get("r", 32)),
         lora_alpha=kw.get("alpha", 64),
         lora_dropout=kw.get("dropout", 0.0),
-        target_modules=kw.get("target_modules", "all-linear"),
+        target_modules=target_modules,
         task_type="CAUSAL_LM",
     )
 
@@ -121,6 +164,8 @@ def _guard_no_dataparallel(use_cuda: bool) -> None:
 
     if any(os.environ.get(k) for k in ("WORLD_SIZE", "LOCAL_RANK", "RANK")):
         return  # launched under accelerate/torchrun -> DDP, the Trainer won't use DataParallel
+    if os.environ.get("DEMENTOR_MP"):
+        return  # device_map='auto' model-parallel (pipeline), NOT nn.DataParallel -- safe with PEFT
     import torch
 
     if torch.cuda.device_count() > 1:
@@ -133,6 +178,47 @@ def _guard_no_dataparallel(use_cuda: bool) -> None:
         )
 
 
+def _maybe_patch_trl_model_parallel() -> None:
+    """device_map-sharded training (DEMENTOR_MP): TRL's chunked-CE loss indexes `hidden` (on the
+    last shard's device) with `labels`/`shift_labels` (on the input device) -> cross-device index
+    error. Co-locate the label tensors onto `hidden`'s device. Idempotent; no-op unless DEMENTOR_MP."""
+    import os
+    if not os.environ.get("DEMENTOR_MP"):
+        return
+    try:
+        import trl.trainer.sft_trainer as _sft
+    except Exception:
+        return
+    if getattr(_sft, "_dementor_mp_patched", False):
+        return
+    _orig = _sft._chunked_cross_entropy_loss
+
+    def _wrapped(hidden_states, *args, **kwargs):
+        # TRL's chunked path does raw tensor ops (hidden[valid], h @ lm_head_w.t()) that bypass
+        # accelerate's device hooks, so with a device_map-sharded model the lm_head_weight,
+        # lm_head_bias, labels and shift_labels can each sit on a different shard than `hidden`.
+        # (1) Co-locate every tensor input on hidden's device for the matmuls; (2) return the loss
+        # scalar on the ORIGINAL (label/input) device -- HF Trainer asserts loss.device == input device.
+        comp = hidden_states.device
+        orig = comp
+        for k in ("labels", "shift_labels"):
+            v = kwargs.get(k)
+            if v is not None and hasattr(v, "device"):
+                orig = v.device
+                break
+        def _mv(x, d):
+            return x.to(d) if hasattr(x, "device") and x.device != d else x
+        args = tuple(_mv(a, comp) for a in args)
+        kwargs = {k: _mv(v, comp) for k, v in kwargs.items()}
+        out = _orig(hidden_states, *args, **kwargs)
+        if isinstance(out, tuple):
+            return tuple(_mv(o, orig) for o in out)
+        return _mv(out, orig) if hasattr(out, "device") else out
+
+    _sft._chunked_cross_entropy_loss = _wrapped
+    _sft._dementor_mp_patched = True
+
+
 def _load_causal_lm(model_name: str, *, use_cuda: bool):
     """Load a causal-LM for training/generation.
 
@@ -141,11 +227,16 @@ def _load_causal_lm(model_name: str, *, use_cuda: bool):
     (``.language_model``); plain CausalLM checkpoints are unchanged and network/OS errors propagate.
     Multimodal caveat: the fallback tunes only the text decoder (images ignored), so it is not a true multimodal training path.
     """
+    import os
     import torch
     from transformers import AutoModelForCausalLM
 
     # transformers 5.x renamed `torch_dtype` -> `dtype` (torch_dtype now warns + maps to it).
     load_kwargs = {"dtype": torch.bfloat16} if use_cuda else {}
+    if use_cuda and os.environ.get("DEMENTOR_MP"):
+        # student too big for one 80GB card (e.g. gemma-4-31b VLM) -> shard weights across
+        # all visible GPUs (device_map pipeline-parallel; the daemon pins exactly 2 via CUDA_VISIBLE_DEVICES).
+        load_kwargs["device_map"] = "auto"
     try:
         model = AutoModelForCausalLM.from_pretrained(model_name, **load_kwargs)
     except (ValueError, KeyError) as exc:
@@ -157,6 +248,9 @@ def _load_causal_lm(model_name: str, *, use_cuda: bool):
             raise exc
         text_model = getattr(multimodal, "language_model", None)
         if text_model is not None and hasattr(text_model, "get_input_embeddings"):
+            dm = getattr(multimodal, "hf_device_map", None)
+            if dm is not None:
+                text_model.hf_device_map = dm  # keep model-parallel dispatch
             return text_model
         raise exc
     return _maybe_extract_vision_text_tower(model)
@@ -193,6 +287,9 @@ def _maybe_extract_vision_text_tower(model):
         causal.model = text_decoder
         causal.lm_head = lm_head
         causal.config = text_cfg
+        dm = getattr(model, "hf_device_map", None)
+        if dm is not None:
+            causal.hf_device_map = dm  # keep model-parallel dispatch after the text-tower transplant
         return causal
     except Exception:
         return model
@@ -407,6 +504,7 @@ def run_local_sft_job(
     dev = _resolve_device(device)
     use_cuda = dev.startswith("cuda")
     _guard_no_dataparallel(use_cuda)
+    _maybe_patch_trl_model_parallel()
     grad_accum = _resolve_grad_accum(gradient_accumulation_steps)
 
     train_examples, _eval = prepare_sft_examples(dataset_config)
@@ -429,6 +527,18 @@ def run_local_sft_job(
         model.config.use_cache = False  # incompatible with gradient checkpointing
         model.enable_input_require_grads()  # let grad-ckpt reach LoRA params over a frozen base
 
+    extra_sft_kwargs: dict = {}
+    if _is_granite_moe_hybrid(model):
+        # TRL's default chunked-CE loss adds a MoE router load-balancing aux term (coef
+        # 0.001) that reads ``config.num_experts`` -- but GraniteMoeHybrid names that field
+        # ``num_local_experts``, so the aux path raises ``AttributeError: 'GraniteMoeHybridConfig'
+        # object has no attribute 'num_experts'`` on the very first training step. Our LoRA never
+        # tunes the router or the experts (see GRANITE_MOE_HYBRID_LORA_TARGETS -- attention /
+        # Mamba / shared-MLP only), so the load-balancing aux loss is meaningless here; disabling
+        # it (coef 0.0) both fixes the crash and is the semantically correct choice. Gated on the
+        # arch so every other (working) local model keeps TRL's default behavior untouched.
+        extra_sft_kwargs["router_aux_loss_coef"] = 0.0
+
     sft_config = SFTConfig(
         output_dir=str(output_dir / "_trainer"),
         per_device_train_batch_size=batch_size,
@@ -445,12 +555,13 @@ def run_local_sft_job(
         bf16=use_cuda,
         gradient_checkpointing=use_cuda,
         gradient_checkpointing_kwargs={"use_reentrant": False} if use_cuda else None,
+        **extra_sft_kwargs,
     )
     trainer = SFTTrainer(
         model=model,
         args=sft_config,
         train_dataset=train_ds,
-        peft_config=_lora_config(lora_kwargs),
+        peft_config=_lora_config(lora_kwargs, model),
         processing_class=tokenizer,
     )
     result = trainer.train()
@@ -496,6 +607,7 @@ def run_local_dpo_job(*, train_jsonl: Path, eval_jsonl: Optional[Path], params: 
     dev = _resolve_device(params.device)
     use_cuda = dev.startswith("cuda")
     _guard_no_dataparallel(use_cuda)
+    _maybe_patch_trl_model_parallel()
     grad_accum = _resolve_grad_accum(params.gradient_accumulation_steps)
 
     tokenizer = AutoTokenizer.from_pretrained(params.model_name)
@@ -561,7 +673,7 @@ def run_local_dpo_job(*, train_jsonl: Path, eval_jsonl: Optional[Path], params: 
         train_dataset=ds["train"],
         eval_dataset=ds.get("test"),
         processing_class=tokenizer,
-        peft_config=_lora_config({"rank": params.lora_rank}),
+        peft_config=_lora_config({"rank": params.lora_rank}, model),
     )
     trainer.train()
     # FSDP-aware adapter save (collective gather on all ranks; rank0 writes); then rank0
