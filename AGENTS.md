@@ -7,7 +7,7 @@ Guidance for AI agents working in this repository.
 Dementor measures **behavioral-fingerprint persistence** in LLMs under disguise: techniques that
 make one model imitate another (naming → few-shot/style prompting → SFT → DPO → activation
 steering), plus analyses of which behavioral axes survive each intervention. The canonical metric
-definitions live in `docs/evaluation_framework.md` — treat it as the source of truth for the
+definitions live in `METHODS.md` — treat it as the source of truth for the
 persistence metric, manifest shape, and evaluator usage.
 
 ## Repository layout

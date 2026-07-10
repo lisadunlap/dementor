@@ -1,44 +1,35 @@
 # Results
 
-Curated, paper-relevant result artifacts (small CSVs + figures). The heavy raw
-generations (per-cell source/target/disguised text, 36 cells × rungs × seeds) live on
-the HuggingFace dataset `dementor-research/dementor-matrix-responses`, not here.
-Reproduce any of these from the cached text with the scripts under `experiments/`.
+Curated, paper-relevant result artifacts (small CSVs + figures). The heavy raw generations (per-cell
+source/target/disguised text) live on the HuggingFace dataset
+`dementor-research/dementor-matrix-responses`, not here. Reproduce any of these from the cached text
+with the scripts under `experiments/`.
+
+> **Numbers pending.** Specific effect sizes / statistics are being finalized against the completed
+> runs and are omitted from these descriptions rather than shipped stale — each CSV still stores its
+> computed values, and `docs/RESULTS.md` / `METHODS.md` carry the authoritative framing.
 
 ## The disguise ladder (the experimental scaffold)
-- `matrix_ladder/<dataset>_matrix_ladder.{csv,png}` — per-rung persistence across all
-  12 source→target pairs, per dataset. Monotone collapse: naming 0.92 → prompting
-  ~0.45 → SFT 0.37 → DPO 0.15.
+- `matrix_ladder/<dataset>_matrix_ladder.{csv,png}` — per-rung persistence across all source→target
+  pairs, per dataset. Shows the monotone collapse: naming → prompting → SFT → DPO.
 
 ## The headline result — model-dependent DPO erasure
-- `d2_multiseed_ci.csv` — **D2**: per-cell persistence, mean ± 95% CI over 3 adapter
-  seeds (de-confounded). Seed-sd median 0.018. The two-tier source split: nemotron
-  0.211 / gpt-oss 0.190 **retain**, qwen 0.077 / llama 0.012 **launder**. Survivors,
-  pinned to one definition: **7** by point estimate (mean>0.3; gpt-oss×4, nemotron×3,
-  qwen/llama×0; cell-level Fisher p=0.0076 — but lead with the source-level p≈0.33, effective n=4)
-  / **3** by the corrected Student-t 95%-CI lower bound (mean − t(df=2)·sd/√n > 0.3; the old 1.96
-  multiplier over-reported 6), all gpt-oss/nemotron-sourced. (Note: this CSV's `ci95` column predates
-  the Student-t fix and still stores 1.96·sd/√n; recompute via `experiments.analysis.decontaminate`.)
+- `d2_multiseed_ci.csv` — **D2**: per-cell persistence, mean ± 95% CI over adapter seeds
+  (de-confounded); the two-tier **retain** vs **launder** source split.
 - `fig1_source_fingerprint.png` — DPO persistence per source model (two-tier split).
 
 ## Robustness / corrections
-- `d1_decontam_before_after.csv` — **D1**: before/after the gpt-oss chat-template
-  CoT-leak fix. corr(leak-rate, Δpersistence) = −0.99; clean cells untouched
-  (mean|Δ|=0.002). The leak inflated the raw arena survivors (0.84 → ~0.46).
-- `d3_encoder_swap_bge.csv` — **D3**: persistence re-scored under a different encoder
-  (bge-small). Rung ordering replicates (Spearman ~0.80 vs MiniLM; DPO floor 0.116 vs 0.119).
-- `source_distinctiveness.csv` — baseline distinctiveness of each model under 4
-  measures (MiniLM, bge, mpnet, 32 structural features) vs DPO persistence.
-  **Caveat:** the distinctiveness↔persistence link is *encoder-sensitive* — it holds
-  under MiniLM and bge (ρ=1.0) but NOT under mpnet (ρ=−0.2) or structural features
-  (ρ=−0.3). So "distinctive models resist DPO" is suggestive, not the load-bearing
-  mechanism; the two-tier result itself is robust.
+- `d1_decontam_before_after.csv` — **D1**: before/after the gpt-oss chat-template CoT-leak fix.
+- `d3_encoder_swap_bge.csv` — **D3**: persistence re-scored under a different encoder (bge-small);
+  the rung ordering replicates.
+- `source_distinctiveness.csv` — baseline distinctiveness per model under several encoders vs DPO
+  persistence. **Caveat:** the distinctiveness↔persistence link is *encoder-sensitive* (holds under
+  MiniLM/bge, not under mpnet/structural), so "distinctive models resist DPO" is suggestive, not the
+  load-bearing mechanism; the two-tier result itself is robust.
 
 ## Which behavioural directions carry the fingerprint
-- `style_directions.csv` / `big5_personality_directions.csv` — gpt-4.1-mini logprob
-  projection onto named style vs Big-Five axes. Big-Five personality barely separates
-  the models (|d| 0.12–0.17); **style axes verbosity (0.26) and structure (0.21)**
-  separate most. Fingerprint is structural-style, not personality.
+- `style_directions.csv` / `big5_personality_directions.csv` — style-axis vs Big-Five projections.
+  Big-Five barely separates the models; style axes (verbosity, structure) separate most — the
+  fingerprint is structural-style, not personality.
 
-See `docs/strategy.md` for the authoritative framing and `docs/evaluation_framework.md`
-for the metric definition.
+See `docs/RESULTS.md` for the authoritative framing and `METHODS.md` for the metric definition.
