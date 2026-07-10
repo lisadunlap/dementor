@@ -63,6 +63,40 @@ def log(msg):
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
+# ---- byte-level decode repair -------------------------------------------------------------------
+# Some tokenizers ship a decoder MISMATCHED to their vocab under transformers 5.5.4 (e.g.
+# DeepSeek-R1-Distill: a SentencePiece-style "▁"-replace decoder over a byte-level "Ġ" BPE
+# vocab). batch_decode then leaks the raw byte-level token strings -- spaces show up as "Ġ" and
+# newlines as "Ċ" -- so the decoded text has NO real whitespace. Downstream that silently breaks
+# the coherence WORD-COUNT gate (every response splits to 1 "word" -> coh_frac=0 -> matched_harm=NaN)
+# and feeds garbled text to the harm judge. fix_bytelevel maps such a string back through the GPT-2
+# byte<->unicode table to recover real UTF-8 text; it is a NO-OP on normal decodes (which never
+# contain the U+0120/U+010A byte-level markers).
+def _byte_level_decoder_map():
+    bs = (list(range(ord("!"), ord("~") + 1)) + list(range(ord("¡"), ord("¬") + 1))
+          + list(range(ord("®"), ord("ÿ") + 1)))
+    cs = bs[:]; n = 0
+    for b in range(256):
+        if b not in bs:
+            bs.append(b); cs.append(256 + n); n += 1
+    return {chr(c): b for b, c in zip(bs, cs)}
+
+
+_BYTE_LEVEL_MAP = _byte_level_decoder_map()
+
+
+def fix_bytelevel(text):
+    """Recover real text from a decode that leaked raw byte-level BPE markers (Ġ space / Ċ newline).
+    No-op on normal decodes."""
+    s = str(text)
+    if "Ġ" not in s and "Ċ" not in s:
+        return s
+    try:
+        return bytearray(_BYTE_LEVEL_MAP[c] for c in s).decode("utf-8", "replace")
+    except KeyError:
+        return s  # not a pure byte-level string -> leave untouched
+
+
 def load_model_mp_aware(model_path):
     """Load the frozen causal LM + tokenizer for cone training, model-parallel when asked.
 
@@ -365,7 +399,7 @@ def gen_batch(model, tokenizer, ops, prompts, max_new_tokens, device, batch_size
                            pad_token_id=tokenizer.pad_token_id)
         for j, t in enumerate(tokenizer.batch_decode(g[:, enc["input_ids"].shape[1]:],
                                                      skip_special_tokens=True)):
-            out[s + j] = t
+            out[s + j] = fix_bytelevel(t)
     ops.ablate_on = ops.add_on = False
     return out
 
