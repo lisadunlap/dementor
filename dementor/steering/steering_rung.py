@@ -367,7 +367,8 @@ def generate_steered_responses(
             for start in range(0, len(prompts), batch_size):
                 batch = rendered[start : start + batch_size]
                 enc = tokenizer(batch, return_tensors="pt", padding=True, add_special_tokens=False).to(resolved_device)
-                gen_kwargs = dict(max_new_tokens=max_new_tokens, do_sample=do_sample, pad_token_id=tokenizer.pad_token_id)
+                gen_kwargs = dict(max_new_tokens=max_new_tokens, do_sample=do_sample, use_cache=False,
+                                  pad_token_id=tokenizer.pad_token_id)
                 if do_sample:
                     gen_kwargs.update(temperature=temperature, top_p=top_p)
                 out = model.generate(**enc, **gen_kwargs)

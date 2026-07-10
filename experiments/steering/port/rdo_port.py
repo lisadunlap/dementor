@@ -396,7 +396,7 @@ def gen_batch(model, tokenizer, ops, prompts, max_new_tokens, device, batch_size
         batch = prompts[s:s + batch_size]
         enc = tokenizer(batch, return_tensors="pt", padding=True, add_special_tokens=True).to(device)
         g = model.generate(**enc, max_new_tokens=max_new_tokens, do_sample=False,
-                           pad_token_id=tokenizer.pad_token_id)
+                           use_cache=False, pad_token_id=tokenizer.pad_token_id)
         for j, t in enumerate(tokenizer.batch_decode(g[:, enc["input_ids"].shape[1]:],
                                                      skip_special_tokens=True)):
             out[s + j] = fix_bytelevel(t)

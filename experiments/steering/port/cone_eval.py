@@ -208,7 +208,8 @@ def stage_generate(args, od):
             resps = [""] * len(prompts)
             for s in range(0, len(rendered), bs):
                 enc = tok(rendered[s:s + bs], return_tensors="pt", padding=True, add_special_tokens=False).to(dev)
-                g = model.generate(**enc, max_new_tokens=MAXNEW, do_sample=False, pad_token_id=tok.pad_token_id)
+                g = model.generate(**enc, max_new_tokens=MAXNEW, do_sample=False, use_cache=False,
+                                   pad_token_id=tok.pad_token_id)
                 for j, t in enumerate(tok.batch_decode(g[:, enc["input_ids"].shape[1]:], skip_special_tokens=True)):
                     resps[s + j] = RP.fix_bytelevel(t).strip()  # repair byte-level (Ġ/Ċ) decode leaks
             return resps

@@ -137,7 +137,7 @@ def load_causal_lm(
     # fits. We must NOT call model.to() afterwards (it breaks accelerate's per-shard dispatch). The
     # per-layer feature hooks / ablation ops already co-locate their tensors onto each block's own
     # shard; inputs go to the input-embedding shard, returned as resolved_device.
-    mp = bool(os.environ.get("DEMENTOR_MP"))
+    mp = bool(os.environ.get("DEMENTOR_MP")) and resolved_device.startswith("cuda")
 
     if tokenizer is None:
         tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
@@ -149,7 +149,11 @@ def load_causal_lm(
         # dtype="auto" respects a checkpoint's quantization_config (e.g. gpt-oss MXFP4 stays 4-bit
         # rather than dequantizing to bf16) and otherwise picks the native dtype (bf16 for Mixtral).
         model = AutoModelForCausalLM.from_pretrained(
-            model_name, trust_remote_code=True, dtype="auto", device_map="auto"
+            model_name,
+            trust_remote_code=True,
+            dtype="auto",
+            device_map="auto",
+            max_memory={i: "75GiB" for i in range(torch.cuda.device_count())},
         )
     else:
         model_kwargs: dict[str, Any] = {"trust_remote_code": True}
@@ -172,6 +176,14 @@ def load_causal_lm(
         model = PeftModel.from_pretrained(model, str(peft_adapter_path))
 
     if mp:
+        try:
+            model.config.use_cache = False
+        except Exception:
+            pass
+        try:
+            model.generation_config.use_cache = False
+        except Exception:
+            pass
         model.eval()
         resolved_device = model.get_input_embeddings().weight.device
     else:
