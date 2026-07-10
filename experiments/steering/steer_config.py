@@ -98,8 +98,14 @@ JUDGE_ALL = _env("DEMENTOR_JUDGE_ALL",
                  _first(os.path.join(STEER_ROOT, "judge_all.py"),
                         os.path.join(_HERE, "port", "judge_all.py")))
 
-# Benchmark CSV dir consumed by cone_eval.py (advbench harmful300, orbench_*, sgbench, ...).
-BENCH_DIR = _env("DEMENTOR_STEER_BENCH_DIR", os.path.join(STEER_ROOT, "benchmarks"))
+# Benchmark CSV dir consumed by cone_eval.py. The in-repo data/benchmarks/ ships ONLY the 5 STANDARD
+# prompts (harmbench/strongreject/xstest/sorrybench; advbench rides on harmful300.csv in STEER_DATA) --
+# the SG-Bench/OR-Bench TAIL is large and deliberately not shipped. So prefer our box's COMPLETE live
+# tree first, and fall back to the repo's 5-standard copy only on a fresh box with no live tree (a
+# partner running the standard-5 eval). Env DEMENTOR_STEER_BENCH_DIR overrides.
+BENCH_DIR = _env("DEMENTOR_STEER_BENCH_DIR",
+                 _first(os.path.join(STEER_ROOT, "benchmarks"),
+                        os.path.join(_REPO_DATA, "benchmarks")))
 
 # Pre-fetched Llama-Guard-3-8B snapshot for the SG-Bench grader (auto-preferred if present).
 SGBENCH_GUARD_LOCAL = _env("DEMENTOR_LLAMAGUARD_LOCAL",
