@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.dirname(HERE))     # steering package dir (steer_conf
 import steer_config as CFG
 sys.path.insert(0, CFG.REPO)  # repo root for `dementor` imports (env DEMENTOR_REPO)
 import rdo_port as RP
-from dementor.steering._common import load_causal_lm, get_transformer_layers
+from dementor.steering._common import load_causal_lm
 from cone_eval import register_cone
 PY = sys.executable
 

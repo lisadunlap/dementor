@@ -25,7 +25,7 @@ CLI:  rdo_port.py --model <path> --dim-dir <dir with direction.pt+metadata> --ou
                   --min-cone-dim 2 --max-cone-dim 4 [--family qwen2.5|gemma|llama3|auto]
                   [--splits-dir <saladbench_splits>] [--max-train N] [--reuse-targets <json dir>]
 """
-import os, sys, json, time, math, argparse, random
+import os, sys, json, time, argparse, random
 import torch
 import torch.nn.functional as F
 
@@ -35,7 +35,7 @@ sys.path.insert(0, os.path.dirname(_PORT))    # steering package dir (steer_conf
 import steer_config as CFG
 import rdo_compat  # transformers-5.5.4 compat shims (LossKwargs / chat_template / nemotron gen)
 sys.path.insert(0, CFG.REPO)  # repo root for `dementor` imports (env DEMENTOR_REPO)
-from dementor.steering._common import load_causal_lm, get_transformer_layers, resolve_layer_index
+from dementor.steering._common import load_causal_lm, get_transformer_layers
 
 # ----------------------------------------------------------------------------- config (rdo defaults)
 LR = 1e-2

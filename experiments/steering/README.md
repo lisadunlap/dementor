@@ -16,8 +16,10 @@ path-portable copy so the work is versioned and a partner can pick it up.
 
 ```
 experiments/steering/
+  run_steering.sh          # one-command launcher for a single roster slug (run_rdo_model + benchmarks)
   steer_config.py          # central env-overridable path/config (mirrors imitation/erosion_common)
   run_prep.py              # stage 1-3 prep (benign + fingerprint + DIM) over the worklist
+  run_model.py             # benign-gen + fingerprint-derive stages reused by run_rdo_model (stages 1-2)
   roster_queue.py          # race-free GPU scheduler for the roster -> run_rdo_model.py per model
   run_rdo_model.py         # per-model 6-stage cone driver (benign->fingerprint->dim->cone->select->eval)
   run_benchmark_eval.py    # per-model 9-benchmark dissociation eval driver -> cone_eval.py per bench
@@ -25,8 +27,7 @@ experiments/steering/
   retry_pc_fails.py        # low-priority poller: re-run PC_FAILS models with a stronger cone
   collect_rdo.py           # aggregate <slug>/eval/metrics.json -> FINAL_RDO_TABLE.{txt,json}
   port/
-    rdo_port.py            # RDO cone trainer (DEFAULT; the 3.1x batched fix). Roster uses this.
-    rdo_port_v2.py         # optional ~1.8x-faster variant of rdo_port (inert; see caveat below)
+    rdo_port.py            # RDO cone trainer (the batched-forward fix; roster stage 4 uses this)
     compute_dim.py         # model-agnostic diff-of-means refusal DIM (stage 3)
     cone_eval.py           # erosion evaluator (cone vs fingerprint vs random) + native graders
     canonical_graders.py   # per-benchmark local graders (SORRY-Bench/SG-Bench/OR-Bench/XSTest/SR)
@@ -157,32 +158,18 @@ python port/validate_orchestrator.py         # their-rdo vs port-rdo subspace + 
 
 ---
 
-## rdo_port: the 3.1x fix, and the optional rdo_port_v2 ~1.8x variant
+## rdo_port: the batched-forward fix
 
 RDO cone training (`cone_dim>1`) optimizes `n_sample` hypersphere-sampled directions **plus** the
 `cone_dim` basis vectors, across three loss terms (ablation-CE, addition-CE, retain-KL). The original
 reference ran each direction as a separate batch-1 forward, which is CPU/launch-bound.
 
-- **`rdo_port.py` (the 3.1x fix, DEFAULT — the roster uses this).** For each loss term it runs the
-  `n_sample` sampled directions as one batched forward and the `cone_dim` basis vectors as one batched
-  forward, applying a **per-row** ablation direction. Rows are independent (no cross-row attention), so
-  the batched logits equal the batch-1 logits and one backward on the summed loss equals the sum of the
-  separate backwards. Collapsing many batch-1 forwards into batched GEMMs is ~**3.1x** faster with the
-  same numerics. This is what `run_rdo_model.py` stage 4 calls.
-
-- **`rdo_port_v2.py` (optional, ~1.8x MORE, currently inert).** Goes one step further: because the
-  sampled block and the basis block share the **same prompt and same ablate/add mode**, it merges them
-  into a **single** forward of `K = n_sample + cone_dim` per-row directions per loss term (instead of
-  two), and drops one redundant retain baseline. `logits[:n_sample]` / `logits[n_sample:]` recover the
-  two blocks; grad is linear so the summed-loss backward equals the two separate backwards. This is
-  ~**1.8x** on top of `rdo_port.py`. `cone_dim==1` has nothing to merge and falls back to the unchanged
-  basis-only path.
-  - **Equivalence caveat:** v2 is numerically equivalent to `rdo_port.py` **up to bf16 kernel-tiling /
-    floating-point reduction-order differences** — loss values and AdamW grads match in exact
-    arithmetic but are not bit-identical, because the larger merged GEMM tiles differently. It is
-    **inert** (not wired into the live roster); to use it, point `run_rdo_model.py` stage 4 at
-    `rdo_port_v2.py` instead of `rdo_port.py`. Prefer `rdo_port.py` when exact reproduction of the
-    published cones matters.
+`rdo_port.py` runs, for each loss term, the `n_sample` sampled directions as one batched forward and
+the `cone_dim` basis vectors as one batched forward, applying a **per-row** ablation direction. Rows
+are independent (no cross-row attention), so the batched logits equal the batch-1 logits and one
+backward on the summed loss equals the sum of the separate backwards. Collapsing many batch-1 forwards
+into batched GEMMs is ~**3.1x** faster with the same numerics. This is what `run_rdo_model.py` stage 4
+calls.
 
 ---
 

@@ -121,7 +121,7 @@ def stage_select(spec, od):
     log(od, "[5] selecting cone dim (harmful-val ablation bypass)")
     sys.path.insert(0, PORT)
     import rdo_port as RP
-    from dementor.steering._common import load_causal_lm, get_transformer_layers
+    from dementor.steering._common import load_causal_lm
     import json as _json
     splits = CFG.SPLITS_DIR
     hv = [d["instruction"] for d in _json.load(open(os.path.join(splits, "harmful_val.json")))][:64]
