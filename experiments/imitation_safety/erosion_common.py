@@ -23,7 +23,7 @@ This module is IMPORT-ONLY infra (registry parsing, deterministic subsampling, g
 gen->judge->grade->metrics stages, and metric extraction).  It never touches sequencer.py,
 local_backend.py, or the steering roster files -- it only *imports* read-only helpers from them.
 """
-import os, sys, json, re, time, hashlib, glob, shutil, tempfile
+import os, sys, json, re, time, hashlib, tempfile
 
 # ------------------------------------------------------------------ paths / reused code roots
 # All roots are ENV-OVERRIDABLE with sensible, path-portable defaults so the pipeline runs on a

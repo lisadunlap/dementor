@@ -36,7 +36,7 @@ Usage:
 Shared knobs (must match the local track for comparability): --seed seed42 --benchmarks <7>
   --max-prompts 300 --subsample-seed 42.
 """
-import os, sys, json, time, argparse, subprocess, glob, shutil
+import os, sys, json, time, argparse, subprocess, shutil
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)

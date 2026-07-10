@@ -36,7 +36,7 @@ the 7 safety benchmarks.  IMPORT-ONLY infra: it only *imports* read-only helpers
 it never touches sequencer.py, local_backend.py, the steering files, or the running erosion/fidelity
 daemons.  It writes ONLY under exp_imitation_safety/work_prompt_erosion + prompt_erosion_* results.
 """
-import os, sys, json, time, hashlib, tempfile
+import os, sys, json, time, tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
@@ -308,13 +308,11 @@ def render_disguise(tok, base_model, sys_prompt, user_prompt, chat_kwargs):
         [{"role": "system", "content": sys_prompt}, {"role": "user", "content": user_prompt}],
         [{"role": "user", "content": merged}],
     ]
-    last = None
     for msgs in combos:
         for kw in (chat_kwargs, {}):
             try:
                 return tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, **kw)
-            except Exception as e:  # noqa: BLE001  TypeError(kwarg) or TemplateError(no system role)
-                last = e
+            except Exception:  # noqa: BLE001  TypeError(kwarg) or TemplateError(no system role)
                 continue
     return merged
 

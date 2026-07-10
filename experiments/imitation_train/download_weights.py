@@ -1,3 +1,12 @@
+"""One-shot helper to pre-download the small local-backend student weights for the imitation
+square into the HF cache, so the sequencer's local track can train them offline.
+
+Fetches the current local-backend imitation students that download cleanly via snapshot_download
+(Llama-3.1-8B, OLMo-3-7B, aya-expanse-8b, phi-4), disabling the HF Xet backend (which hangs on this
+box) and falling back to an ungated mirror for gated repos. Run by hand once per box:
+
+    DEMENTOR_HF_HOME=/big/disk/hf python experiments/imitation_train/download_weights.py
+"""
 import os, sys, time
 from pathlib import Path
 

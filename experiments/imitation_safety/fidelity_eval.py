@@ -38,12 +38,11 @@ Usage:
   fidelity_eval.py build-csv  [--seed all|seed42] [--scorer embed|judge]
   fidelity_eval.py status | smoke [--items ID,ID] [--max-prompts 4]
 """
-import os, sys, json, time, argparse, traceback
+import os, sys, json, argparse, traceback
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import fidelity_common as FC       # noqa: E402
-import erosion_common as EC        # noqa: E402
 import gpu_lease                   # noqa: E402
 
 

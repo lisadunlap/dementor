@@ -19,7 +19,7 @@ Usage:
   erosion_daemon.py [--max-prompts N] [--benchmarks a,b] [--once] [--include-baselines-only]
                     [--util-max U] [--mem-max M] [--sustained-polls P] [--interval S]
 """
-import os, sys, time, json, argparse, subprocess
+import os, sys, time, argparse, subprocess
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import erosion_common as EC

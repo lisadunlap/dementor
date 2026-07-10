@@ -29,7 +29,7 @@ Usage:
                      [--once] [--dry-run]
 Launch detached (setsid) -- see the __main__ hint / the launch command in the task report.
 """
-import os, sys, time, json, argparse, subprocess
+import os, sys, time, argparse, subprocess
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
