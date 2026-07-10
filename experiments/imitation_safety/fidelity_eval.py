@@ -172,6 +172,9 @@ def phase_gen_local(args, worklist):
 
 # ==================================================================== score
 def phase_score(args, worklist):
+    dev = args.device or ("cpu" if args.scorer == "embed" else ("cuda" if FC._cuda() else "cpu"))
+    if args.scorer == "embed" and dev == "cpu":
+        os.environ["CUDA_VISIBLE_DEVICES"] = ""
     if args.items:
         keep = _keep_set(args.items)
         worklist = [it for it in worklist if it["id"] in keep]
@@ -184,7 +187,6 @@ def phase_score(args, worklist):
     if not ready:
         return 0
     embedder = tok = mdl = None
-    dev = args.device or ("cuda" if FC._cuda() else "cpu")
     if args.scorer == "embed":
         embedder = FC.load_embedder(dev)
     elif args.scorer == "judge":

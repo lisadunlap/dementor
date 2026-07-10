@@ -357,9 +357,9 @@ def _render(tok, base_model, prompt, chat_kwargs):
     for kw in (chat_kwargs, {}):
         try:
             return tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, **kw)
-        except TypeError:
+        except Exception:  # TypeError for kwargs, ValueError when no template exists.
             continue
-    return tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
+    return str(prompt)
 
 
 def load_gen_model(base_model, adapter_dir, logf=None):

@@ -310,9 +310,12 @@ def generate_tinker(base_model, sampler_path, is_baseline, prompts,
         for kw in (ck, {}):
             try:
                 return tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, **kw)
-            except TypeError:
+            except Exception:
                 continue
-        return tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
+        return str(p)
+
+    if not getattr(tok, "chat_template", None):
+        log(f"[tinker] no chat template for {base_model}; raw prompt fallback enabled", logf)
 
     def sample_one(enc):
         for attempt in range(5):

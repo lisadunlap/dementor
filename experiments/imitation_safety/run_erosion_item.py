@@ -60,7 +60,8 @@ def main():
         enabled -= HEAVY_GRADERS
     EC.log(f"=== START {args.item_id} kind={it['kind']} base={it['base_model']} mp={it['needs_mp']} "
            f"CUDA={os.environ.get('CUDA_VISIBLE_DEVICES')} benchmarks={benchmarks} "
-           f"max_prompts={args.max_prompts} graders={sorted(enabled)} ===", logf)
+           f"max_prompts={args.max_prompts} gen_batch={args.gen_batch} "
+           f"graders={sorted(enabled)} ===", logf)
     t0 = time.time()
 
     try:

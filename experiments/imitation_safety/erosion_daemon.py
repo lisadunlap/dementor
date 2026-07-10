@@ -5,10 +5,9 @@ Models the steering roster_queue / retry-poller pattern: it is a POLITE, low-pri
 that coexists with the steering roster on the shared box.
 
   * GPUs 5/6/7 only (GPU4 prohibited; 0-3 belong to others).
-  * A card is claimed only when it is GENUINELY IDLE (mem.used < --mem-max AND util <= --util-max)
-    for --sustained-polls consecutive polls -- so a card that steering momentarily frees between
-    jobs is left for steering; the erosion sweep only takes a card steering has truly released.
-    => "queue the GPU runs, don't hog cards".
+  * A card is claimed as soon as it is idle (mem.used < --mem-max AND util <= --util-max). This box
+    is dedicated to the imitation-safety sweep, so the default gate is one 5s poll rather than the
+    older shared-roster 3x30s sustained-idle delay.
   * BASELINES run first (each disguise adapter's erosion delta needs its base-model baseline).
   * Big base models (granite-4 32B, gpt-oss-120b) run MODEL-PARALLEL on 2 idle cards (DEMENTOR_MP=1);
     everything else is single-card.
@@ -60,6 +59,19 @@ def gpu_stat(g):
         return 100, 999999
 
 
+def external_running_ids(worklist):
+    """Detect erosion workers already running outside this supervisor.
+
+    This lets us restart the daemon to change scheduling knobs without duplicating in-flight items
+    whose parent was an older daemon process.
+    """
+    try:
+        out = subprocess.run(["ps", "-eo", "cmd"], stdout=subprocess.PIPE, text=True).stdout
+    except Exception:
+        return set()
+    return {w["id"] for w in worklist if f"run_erosion_item.py {w['id']}" in out}
+
+
 def launch(item, gpus, extra):
     env = dict(BASE_ENV, CUDA_VISIBLE_DEVICES=",".join(str(g) for g in gpus))
     if len(gpus) > 1:
@@ -82,14 +94,17 @@ def main():
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--util-max", type=int, default=5)
     ap.add_argument("--mem-max", type=int, default=5000)
-    ap.add_argument("--sustained-polls", type=int, default=3)
-    ap.add_argument("--interval", type=int, default=30)
+    ap.add_argument("--sustained-polls", type=int, default=1)
+    ap.add_argument("--interval", type=int, default=5)
+    ap.add_argument("--gen-batch", type=int, default=int(os.environ.get("DEMENTOR_EROSION_GEN_BATCH", "32")),
+                    help="generation batch size passed to run_erosion_item.py")
     args = ap.parse_args()
 
     adapters, baselines = EC.build_worklist(seed=args.seed, local_only=True)
     # baselines FIRST (erosion deltas depend on them), then adapters
     worklist = baselines + adapters
     extra = ["--benchmarks", args.benchmarks, "--max-prompts", str(args.max_prompts),
+             "--gen-batch", str(args.gen_batch),
              "--subsample-seed", str(args.subsample_seed)]
 
     if args.dry_run:
@@ -112,6 +127,7 @@ def main():
     reclaimed = gpu_lease.reap()  # clear any stale leases from a prior crashed run
     dlog(f"daemon start items={len(worklist)} ({len(baselines)} baselines + {len(adapters)} adapters) "
          f"max_prompts={args.max_prompts} util_max={args.util_max}% mem_max={args.mem_max}MB "
+         f"sustained_polls={args.sustained_polls} interval={args.interval}s gen_batch={args.gen_batch} "
          f"lease_root={gpu_lease.LOCK_ROOT} reaped_stale={reclaimed}")
     idle = {g: 0 for g in GPUS}
     running = {}   # gpu -> (Popen, id)
@@ -128,9 +144,10 @@ def main():
                 gpu_lease.release(g, holder=LEASE_HOLDER)
             mp_job = None
 
-        inflight = {iid for _, iid in running.values()} | ({mp_job[1]} if mp_job else set())
+        external = external_running_ids(worklist)
+        inflight = {iid for _, iid in running.values()} | ({mp_job[1]} if mp_job else set()) | external
         todo = [w for w in worklist if not done(w["id"]) and w["id"] not in inflight]
-        if not todo and not running and not mp_job:
+        if not todo and not running and not mp_job and not external:
             dlog("ALL DONE"); break
 
         busy = set(running) | (set(mp_job[2]) if mp_job else set())

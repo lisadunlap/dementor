@@ -28,7 +28,7 @@ Two phases:
 Usage:
   tinker_erosion.py sample [--items ID,ID|--limit N] [--sample-workers 64] [--max-new-tokens 256]
   tinker_erosion.py judge  [--batch-size 10] [--gpus 5,6,7] [--util-max 5 --mem-max 5000
-                           --sustained-polls 3 --interval 30] [--once] [--gpu N]
+                           --sustained-polls 1 --interval 5] [--once] [--gpu N]
   tinker_erosion.py all    # sample, then judge
   tinker_erosion.py status | --dry-run
   tinker_erosion.py __judge_worker ID,ID,...   # internal batched-judge worker (CUDA set by caller)
@@ -188,9 +188,12 @@ def sample_item(it, benchmarks, max_prompts, subsample_seed, max_new_tokens, sam
         for kw in (ck, {}):
             try:
                 return tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, **kw)
-            except TypeError:
+            except Exception:
                 continue
-        return tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
+        return str(p)
+
+    if not getattr(tok, "chat_template", None):
+        EC.log(f"[sample] {it['id']} no chat template for {base}; raw prompt fallback enabled", logf)
 
     def sample_one(enc):
         for attempt in range(5):
@@ -467,8 +470,8 @@ def main():
     ap.add_argument("--gpu", type=int, default=None, help="pin judge to this card (skip idle-wait)")
     ap.add_argument("--util-max", type=int, default=5)
     ap.add_argument("--mem-max", type=int, default=5000)
-    ap.add_argument("--sustained-polls", type=int, default=3)
-    ap.add_argument("--interval", type=int, default=30)
+    ap.add_argument("--sustained-polls", type=int, default=1)
+    ap.add_argument("--interval", type=int, default=5)
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()

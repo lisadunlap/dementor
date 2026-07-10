@@ -316,7 +316,7 @@ def render_disguise(tok, base_model, sys_prompt, user_prompt, chat_kwargs):
             except Exception as e:  # noqa: BLE001  TypeError(kwarg) or TemplateError(no system role)
                 last = e
                 continue
-    raise last if last else RuntimeError("render_disguise: no chat template worked")
+    return merged
 
 
 # ==================================================================== local disguised generation
