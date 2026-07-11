@@ -34,7 +34,7 @@ intervention gets stronger?
 
 ## Training matrix
 
-`dementor/training/matrix.py` (subcommand dispatcher: `make-splits`, `generate-target-responses`,
+`dementor/training/matrix/` (package; subcommand dispatcher via `python -m dementor.training.matrix`: `make-splits`, `generate-target-responses`,
 `build-sft-data`, `launch-sft`, `build-dpo-data`, `launch-dpo`, `push-to-hf`). Seeds **42/43/44**;
 LoRA **rank 32**, alpha 64, target_modules=all-linear.
 
