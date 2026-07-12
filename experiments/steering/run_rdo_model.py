@@ -55,12 +55,25 @@ def run(cmd, env=None, logf=None):
              HF_HUB_DISABLE_XET="1", HF_HUB_OFFLINE="1")
     if env:
         e.update(env)
-    r = subprocess.run(cmd, env=e, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
-    if logf:
-        open(logf, "a").write(r.stdout or "")
-    if r.returncode != 0:
-        raise RuntimeError(f"cmd failed rc={r.returncode}: {' '.join(cmd)}\n--- tail ---\n{(r.stdout or '')[-2500:]}")
-    return r.stdout
+    proc = subprocess.Popen(cmd, env=e, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)
+    lines = []
+    log_handle = open(logf, "a") if logf else None
+    try:
+        assert proc.stdout is not None
+        for line in proc.stdout:
+            lines.append(line)
+            print(line, end="", flush=True)
+            if log_handle:
+                log_handle.write(line)
+                log_handle.flush()
+        rc = proc.wait()
+    finally:
+        if log_handle:
+            log_handle.close()
+    out = "".join(lines)
+    if rc != 0:
+        raise RuntimeError(f"cmd failed rc={rc}: {' '.join(cmd)}\n--- tail ---\n{out[-2500:]}")
+    return out
 
 
 def stage_benign_fingerprint(spec, od):

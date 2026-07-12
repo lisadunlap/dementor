@@ -61,7 +61,9 @@ SAMPLE_ENV = dict(HF_HOME=EC.HF_HOME, HF_HUB_CACHE=SAMPLE_HF_HUB_CACHE,
 
 # GPU-politeness env for the batched-judge worker subprocess (mirror erosion_daemon.BASE_ENV).
 JUDGE_ENV = dict(HF_HOME=EC.HF_HOME, HF_HUB_CACHE=EC.HF_HUB_CACHE,
-                 HF_HUB_DISABLE_XET="1", HF_HUB_OFFLINE="1", PYTHONPATH=EC.REPO)
+                 HF_HUB_DISABLE_XET="1", HF_HUB_OFFLINE="1", PYTHONPATH=EC.REPO,
+                 RTL_JUDGE_BATCH_SIZE=os.environ.get("RTL_JUDGE_BATCH_SIZE", "96"),
+                 RTL_JUDGE_MAX_RESP_CHARS=os.environ.get("RTL_JUDGE_MAX_RESP_CHARS", "1800"))
 
 GPUS_DEFAULT = EC.GPUS   # env DEMENTOR_GPUS (default 5,6,7; partner 4xH100 box: DEMENTOR_GPUS=0,1,2,3)
 LEASE_HOLDER = "tinker_judge"   # gpu_lease holder label for the judge daemon (mirrors erosion_daemon)

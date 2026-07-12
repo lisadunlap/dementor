@@ -122,8 +122,13 @@ def ensure_chat_template(tokenizer, name=None):
 
 # --------------------------------------------------------------------------- 3. NemotronH gen fix
 def patch_generation_cache(model):
-    """Fix NemotronH.prepare_inputs_for_generation: synthesize cache_position when None (5.5.4
-    stops passing it at prefill, but the shipped method indexes cache_position[-1])."""
+    """Fix NemotronH generation under the local Transformers version.
+
+    The shipped NemotronH code needs its own hybrid cache because the Mamba layers read
+    `conv_states` / `ssm_states`. Transformers 5.5 may hand `prepare_inputs_for_generation` a
+    generic DynamicCache instead, which crashes as soon as cached generation reaches a Mamba layer.
+    Also synthesize cache_position when it is omitted at prefill.
+    """
     try:
         cls_name = type(model).__name__
     except Exception:
@@ -135,9 +140,36 @@ def patch_generation_cache(model):
     import torch
 
     orig = model.prepare_inputs_for_generation  # bound method
+    orig_forward = model.forward                # bound method
+    try:
+        orig_globals = orig.__func__.__globals__
+    except Exception:
+        orig_globals = {}
+    hybrid_cache_cls = orig_globals.get("NemotronHHybridDynamicCache")
+
+    def _hybrid_cache(input_ids, past_key_values):
+        if hybrid_cache_cls is None or hasattr(past_key_values, "conv_states"):
+            return past_key_values
+        try:
+            past_key_values = hybrid_cache_cls(
+                model.config,
+                input_ids.shape[0],
+                dtype=getattr(model, "dtype", torch.float16),
+                device=getattr(model, "device", input_ids.device),
+            )
+        except Exception:
+            pass
+        return past_key_values
 
     def patched(input_ids, past_key_values=None, attention_mask=None, inputs_embeds=None,
                 cache_position=None, position_ids=None, use_cache=True, **kwargs):
+        # GenerationMixin may pass a generic DynamicCache even when use_cache=False.
+        # Nemotron-H Mamba layers treat any non-None cache as their hybrid cache and
+        # read conv_states/ssm_states, so drop generic caches on uncached generation.
+        if not use_cache and past_key_values is not None and not hasattr(past_key_values, "conv_states"):
+            past_key_values = None
+        if use_cache:
+            past_key_values = _hybrid_cache(input_ids, past_key_values)
         if cache_position is None:
             past_len = 0
             if past_key_values is not None:
@@ -150,7 +182,20 @@ def patch_generation_cache(model):
                     inputs_embeds=inputs_embeds, cache_position=cache_position,
                     position_ids=position_ids, use_cache=use_cache, **kwargs)
 
+    def forward_patched(*args, **kwargs):
+        use_cache = kwargs.get("use_cache")
+        past_key_values = kwargs.get("past_key_values")
+        input_ids = kwargs.get("input_ids")
+        if input_ids is None and args:
+            input_ids = args[0]
+        if use_cache is False and past_key_values is not None and not hasattr(past_key_values, "conv_states"):
+            kwargs["past_key_values"] = None
+        elif use_cache and past_key_values is not None and not hasattr(past_key_values, "conv_states") and input_ids is not None:
+            kwargs["past_key_values"] = _hybrid_cache(input_ids, past_key_values)
+        return orig_forward(*args, **kwargs)
+
     model.prepare_inputs_for_generation = patched
+    model.forward = forward_patched
     model._rdo_cache_pos_patched = True
 
 

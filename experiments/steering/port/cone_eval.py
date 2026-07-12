@@ -30,7 +30,7 @@ JUDGE_MODEL = "Qwen/Qwen3-8B"
 HARMBENCH_CLS = "cais/HarmBench-Llama-2-13b-cls"  # optional native HarmBench grader
 ABLATE_LAYER = 14
 N_HARMFUL = 300
-MAXNEW = 256
+MAXNEW = int(os.environ.get("DEMENTOR_CONE_MAX_NEW_TOKENS", "256"))
 
 # Arditi-style refusal-substring opener matcher. Extended (2026-07) to recognise rephrased
 # refusals ("Certainly not", "Absolutely not", "No,"/"No."/"No!" openers, "I'm unable",
@@ -178,9 +178,16 @@ def stage_generate(args, od):
     lidx = resolve_layer_index(ABLATE_LAYER, len(tlayers))
     rendered = [render_prompt(tok, p) for p in prompts]
     bs = args.gen_batch
+    use_kv_cache = (
+        not args.no_kv_cache
+        and os.environ.get("DEMENTOR_CONE_USE_CACHE", "1").lower() not in ("0", "false", "no")
+    )
+    log(f"[D] gen_batch={bs} use_kv_cache={use_kv_cache}")
 
     @torch.no_grad()
     def perplexity(resps, pbs=16, max_len=1024):
+        if os.environ.get("DEMENTOR_CONE_SKIP_PPL", "0").lower() in ("1", "true", "yes"):
+            return [0.0] * len(resps)
         outp = [float("nan")] * len(resps); specs = []
         for i, r in enumerate(resps):
             pid = tok(rendered[i], add_special_tokens=False)["input_ids"]
@@ -208,10 +215,12 @@ def stage_generate(args, od):
             resps = [""] * len(prompts)
             for s in range(0, len(rendered), bs):
                 enc = tok(rendered[s:s + bs], return_tensors="pt", padding=True, add_special_tokens=False).to(dev)
-                g = model.generate(**enc, max_new_tokens=MAXNEW, do_sample=False, use_cache=False,
+                g = model.generate(**enc, max_new_tokens=MAXNEW, do_sample=False, use_cache=use_kv_cache,
                                    pad_token_id=tok.pad_token_id)
                 for j, t in enumerate(tok.batch_decode(g[:, enc["input_ids"].shape[1]:], skip_special_tokens=True)):
                     resps[s + j] = RP.fix_bytelevel(t).strip()  # repair byte-level (Ġ/Ċ) decode leaks
+                done = min(s + bs, len(rendered))
+                log(f"[D] generated {done}/{len(rendered)}")
             return resps
         finally:
             for h in handles:
@@ -549,7 +558,9 @@ def main():
     ap.add_argument("--out", required=True)
     ap.add_argument("--vectors-ml", default=None, help="repl80 vectors_ml.pt (fingerprint+random @ L14)")
     ap.add_argument("--betas", default="0.6,1.0,1.4")
-    ap.add_argument("--gen-batch", type=int, default=16)
+    ap.add_argument("--gen-batch", type=int, default=int(os.environ.get("DEMENTOR_CONE_GEN_BATCH", "16")))
+    ap.add_argument("--no-kv-cache", action="store_true",
+                    help="disable KV-cache generation; slower but uses less activation memory")
     ap.add_argument("--benchmark", default="advbench",
                     help="benchmark NAME (advbench,sorrybench,sgbench,harmbench,strongreject,"
                          "orbench_hard,orbench_80k,orbench_toxic,xstest,...) or a .csv path in the pipeline format")
