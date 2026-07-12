@@ -13,6 +13,7 @@ instead of a ``tinker://`` URI, so SFT->DPO chaining and HF upload work uniforml
 """
 from __future__ import annotations
 
+import os
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
@@ -507,6 +508,14 @@ def run_local_sft_job(
     _maybe_patch_trl_model_parallel()
     grad_accum = _resolve_grad_accum(gradient_accumulation_steps)
 
+    # 70B/31B model-parallel cells (DEMENTOR_MP): the frozen bf16 base already fills ~70GB/card on a
+    # 2-card device_map, so batch>1 or long sequences OOM even with gradient checkpointing. Drop to
+    # batch 1 + a shorter cap (grad-ckpt is already on below). Gated on MP so single-card models are
+    # untouched. Effective throughput is fine for LoRA imitation.
+    if use_cuda and os.environ.get("DEMENTOR_MP"):
+        batch_size = 1
+        max_length = min(max_length, 2048)
+
     train_examples, _eval = prepare_sft_examples(dataset_config)
     # Keep prompt/completion in separate fields (not concatenated into one "text" field)
     # so TRL masks the prompt and trains on completion tokens only (completion_only_loss),
@@ -610,6 +619,15 @@ def run_local_dpo_job(*, train_jsonl: Path, eval_jsonl: Optional[Path], params: 
     _maybe_patch_trl_model_parallel()
     grad_accum = _resolve_grad_accum(params.gradient_accumulation_steps)
 
+    # 70B/31B model-parallel DPO (DEMENTOR_MP): DPO runs chosen+rejected (2x) through the ~70GB/card
+    # frozen base on a 2-card device_map; batch 16 @ max_length 4096 OOMs. Clamp to batch 1 + shorter
+    # seq (grad-ckpt already on). Gated on MP -> single-card models untouched.
+    dpo_batch_size = params.batch_size
+    dpo_max_length = params.max_length
+    if use_cuda and os.environ.get("DEMENTOR_MP"):
+        dpo_batch_size = 1
+        dpo_max_length = min(dpo_max_length, 2048)
+
     tokenizer = AutoTokenizer.from_pretrained(params.model_name)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -639,12 +657,12 @@ def run_local_dpo_job(*, train_jsonl: Path, eval_jsonl: Optional[Path], params: 
 
     dpo_config = DPOConfig(
         output_dir=str(out_dir / "_trainer"),
-        per_device_train_batch_size=params.batch_size,
+        per_device_train_batch_size=dpo_batch_size,
         gradient_accumulation_steps=grad_accum,
         num_train_epochs=params.num_epochs,
         learning_rate=params.learning_rate,
         beta=params.dpo_beta,
-        max_length=params.max_length,
+        max_length=dpo_max_length,
         seed=params.seed,
         logging_steps=1,
         report_to=[],

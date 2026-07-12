@@ -152,6 +152,22 @@ def launch_local_cell(
         )
         summary["sft_output_dir"] = str(sft_out_dir)
 
+        # ``phase=all`` loads a second full base model for DPO in this same process. Trainer,
+        # Accelerator, and PEFT form reference cycles, so returning from run_local_sft_job does
+        # not promptly release the first model. On a 2-card 70B device_map this leaves both cards
+        # nearly full; the DPO loader then offloads embeddings to CPU and the first CUDA batch
+        # fails cross-device. Collect those dead cycles and return cached blocks before DPO loads.
+        import gc
+
+        gc.collect()
+        try:
+            import torch
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        except ImportError:  # CPU/minimal installs keep the local launcher importable
+            pass
+
     if phase in ("dpo", "all"):
         from dementor.training.dpo import (
             PreferenceDatasetConfig,
