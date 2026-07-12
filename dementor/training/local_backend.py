@@ -615,18 +615,30 @@ def run_local_dpo_job(*, train_jsonl: Path, eval_jsonl: Optional[Path], params: 
 
     dev = _resolve_device(params.device)
     use_cuda = dev.startswith("cuda")
+    if use_cuda and os.environ.get("DEMENTOR_MP"):
+        import torch
+
+        # Set before the model's first CUDA allocation. Large sharded DPO runs otherwise leave
+        # enough reserved-but-fragmented memory to fail a late ~1 GiB allocation despite nominal
+        # free capacity (the allocator's own OOM diagnostic recommends expandable segments).
+        os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+        # Torch 2.12/cu130's cuDNN SDPA backend can fail late in checkpoint recomputation with
+        # `mha_graph.execute(...).is_good() == false` on variable-length 70B DPO batches. Keep
+        # flash and memory-efficient SDPA enabled, but exclude that unstable backend.
+        torch.backends.cuda.enable_cudnn_sdp(False)
     _guard_no_dataparallel(use_cuda)
     _maybe_patch_trl_model_parallel()
     grad_accum = _resolve_grad_accum(params.gradient_accumulation_steps)
 
     # 70B/31B model-parallel DPO (DEMENTOR_MP): DPO runs chosen+rejected (2x) through the ~70GB/card
     # frozen base on a 2-card device_map; batch 16 @ max_length 4096 OOMs. Clamp to batch 1 + shorter
-    # seq (grad-ckpt already on). Gated on MP -> single-card models untouched.
+    # seq (grad-ckpt already on). Caps of 2048 and 1536 still exhausted workspace on late long
+    # examples, so retain explicit headroom at 1024. Gated on MP -> single-card models untouched.
     dpo_batch_size = params.batch_size
     dpo_max_length = params.max_length
     if use_cuda and os.environ.get("DEMENTOR_MP"):
         dpo_batch_size = 1
-        dpo_max_length = min(dpo_max_length, 2048)
+        dpo_max_length = min(dpo_max_length, 1024)
 
     tokenizer = AutoTokenizer.from_pretrained(params.model_name)
     if tokenizer.pad_token is None:
