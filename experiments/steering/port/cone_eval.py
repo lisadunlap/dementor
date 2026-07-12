@@ -265,6 +265,12 @@ def stage_judge(od):
     IN = os.path.join(od, "all_gens.csv"); OUT = os.path.join(od, "all_judged.csv")
     if os.path.exists(OUT):
         log(f"[E] cached {OUT}"); return
+    # Release any VRAM the parent still holds so the judge subprocess (Qwen3-8B) can allocate on the
+    # same GPU. stage_generate already dels the generation model; this is an explicit belt-and-braces
+    # release (and a no-op when generation was cached and no model was ever loaded).
+    import gc as _gc; _gc.collect()
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
     env = dict(os.environ)
     env.update(CFG.hf_env(offline=False))  # HF_HOME/HF_HUB_CACHE/HF_HUB_DISABLE_XET/PYTHONPATH
     env.update(RTL_JUDGE_MODEL=JUDGE_MODEL, IN_CSV=IN, OUT_CSV=OUT)
