@@ -307,10 +307,12 @@ def generate_tinker(base_model, sampler_path, is_baseline, prompts,
 
     def render(p):
         msgs = [{"role": "user", "content": str(p)}]
+        last = None
         for kw in (ck, {}):
             try:
                 return tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, **kw)
-            except Exception:
+            except Exception as e:
+                last = e
                 continue
         return str(p)
 

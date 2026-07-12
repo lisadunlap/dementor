@@ -354,10 +354,12 @@ def get_subsample(benchmark, max_prompts=DEFAULT_MAX_PROMPTS, seed=DEFAULT_SUBSA
 # ==================================================================== generation (MP-aware)
 def _render(tok, base_model, prompt, chat_kwargs):
     msgs = [{"role": "user", "content": str(prompt)}]
+    last = None
     for kw in (chat_kwargs, {}):
         try:
             return tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, **kw)
-        except Exception:  # TypeError for kwargs, ValueError when no template exists.
+        except Exception as e:  # TypeError for kwargs, ValueError when no template exists.
+            last = e
             continue
     return str(prompt)
 

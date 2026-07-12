@@ -187,10 +187,12 @@ def sample_item(it, benchmarks, max_prompts, subsample_seed, max_new_tokens, sam
 
     def render(p):
         msgs = [{"role": "user", "content": str(p)}]
+        last = None
         for kw in (ck, {}):
             try:
                 return tok.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, **kw)
-            except Exception:
+            except Exception as e:
+                last = e
                 continue
         return str(p)
 
