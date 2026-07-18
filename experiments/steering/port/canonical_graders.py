@@ -657,6 +657,15 @@ def _parse_overref_local(text):
     return "direct_answer"
 
 
+# Process-local cache for the local RTL-judge classifier.  grade_orbench AND grade_xstest both
+# call _load_rtl_judge -> without caching the same Qwen3-8B is loaded (and torn down) twice per
+# item.  Gated behind DEMENTOR_JUDGE_CACHE=1 so steering's cone_eval (which may want the 16GB
+# freed between grader calls) is byte-identical unless a caller opts in; the erosion runner sets
+# it.  Each erosion item is its own process, so the cache dies with the process (no cross-item
+# leak).  A caller's later `del mdl; _cuda_clear()` is harmless: the dict keeps the model alive.
+_RTL_JUDGE_CACHE = {}
+
+
 def _load_rtl_judge(log):
     """Load the RTL-judge model (Qwen3-8B) exactly as the harm judge does, device-agnostic.
     Reuses /data/.../leak_fix/rtl_judge.py's loader.  Returns (tok, mdl, dev) or None."""
@@ -666,6 +675,10 @@ def _load_rtl_judge(log):
         sys.path.insert(0, RTL_JUDGE_DIR)
     mid = os.getenv("OVERREFUSAL_JUDGE_MODEL") or os.getenv("RTL_JUDGE_MODEL") or DEFAULT_JUDGE_MODEL
     dev = "cuda" if torch.cuda.is_available() else "cpu"
+    _cache_on = os.getenv("DEMENTOR_JUDGE_CACHE") == "1"
+    if _cache_on and mid in _RTL_JUDGE_CACHE:
+        log(f"[LOC] reusing cached RTL-judge classifier {mid} on {dev}")
+        return _RTL_JUDGE_CACHE[mid]
     try:
         from transformers import AutoModelForCausalLM, AutoTokenizer
         tok = AutoTokenizer.from_pretrained(mid, token=os.getenv("HF_TOKEN"))
@@ -675,6 +688,8 @@ def _load_rtl_judge(log):
         dtype = torch.bfloat16 if dev == "cuda" else torch.float32
         mdl = AutoModelForCausalLM.from_pretrained(mid, token=os.getenv("HF_TOKEN"), dtype=dtype).to(dev).eval()
         log(f"[LOC] loaded local RTL-judge classifier {mid} on {dev}")
+        if _cache_on:
+            _RTL_JUDGE_CACHE[mid] = (tok, mdl, dev)
         return tok, mdl, dev
     except Exception as e:
         log(f"[LOC] could not load local RTL-judge model {mid}: {type(e).__name__} {str(e)[:160]}")

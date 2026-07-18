@@ -20,6 +20,11 @@ Usage:
 import os, sys, json, time, argparse
 import pandas as pd
 
+# Each item is its own process; the over-refusal graders (orbench + xstest) both load the local
+# Qwen3-8B classifier, so opt into canonical_graders' process-local cache to load it ONCE instead
+# of twice per item.  setdefault so an explicit outer override still wins.
+os.environ.setdefault("DEMENTOR_JUDGE_CACHE", "1")
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import erosion_common as EC
 

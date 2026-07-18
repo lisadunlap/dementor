@@ -117,20 +117,38 @@ def record_adapter_mapping(
     Thread-safe: registry read-modify-write is serialized via _REGISTRY_LOCK
     so concurrent SFT workers don't clobber each other's entries.
     """
-    with _REGISTRY_LOCK:
+    import fcntl
+    import os as _os
+    import time as _time
+
+    with _REGISTRY_LOCK:  # in-process guard
         registry_path.parent.mkdir(parents=True, exist_ok=True)
-        if registry_path.exists():
-            try:
-                with registry_path.open("r", encoding="utf-8") as fh:
-                    registry = json.load(fh)
-            except Exception:
-                registry = {}
-        else:
-            registry = {}
-        entry: dict[str, object] = {"path": sampler_path}
-        if metadata:
-            entry.update(metadata)
-        registry[weights_name] = entry
-        with registry_path.open("w", encoding="utf-8") as fh:
-            json.dump(registry, fh, indent=2, sort_keys=True)
+        lock_path = registry_path.with_suffix(registry_path.suffix + ".lock")
+        with open(lock_path, "w", encoding="utf-8") as _lk:
+            fcntl.flock(_lk.fileno(), fcntl.LOCK_EX)  # cross-PROCESS mutual exclusion
+            registry: dict = {}
+            if registry_path.exists() and registry_path.stat().st_size > 0:
+                parsed = None
+                for _ in range(5):
+                    try:
+                        with registry_path.open("r", encoding="utf-8") as fh:
+                            parsed = json.load(fh)
+                        break
+                    except Exception:
+                        _time.sleep(0.2)
+                if parsed is None:
+                    # A non-empty registry that will not parse means corruption, NOT "start fresh".
+                    # Refuse to overwrite it with {} (the bug that truncated 1554 entries -> 16).
+                    raise RuntimeError(
+                        f"registry {registry_path} exists ({registry_path.stat().st_size} bytes) "
+                        "but could not be parsed; refusing to overwrite")
+                registry = parsed
+            entry: dict[str, object] = {"path": sampler_path}
+            if metadata:
+                entry.update(metadata)
+            registry[weights_name] = entry
+            tmp = registry_path.with_suffix(registry_path.suffix + ".tmp")
+            with tmp.open("w", encoding="utf-8") as fh:
+                json.dump(registry, fh, indent=2, sort_keys=True)
+            _os.replace(tmp, registry_path)  # atomic swap; readers never see a partial file
         print(f"Recorded adapter mapping in {registry_path}: {weights_name} -> {sampler_path}")

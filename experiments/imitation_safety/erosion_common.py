@@ -24,6 +24,7 @@ gen->judge->grade->metrics stages, and metric extraction).  It never touches seq
 local_backend.py, or the steering roster files -- it only *imports* read-only helpers from them.
 """
 import os, sys, json, re, time, hashlib, tempfile
+from types import ModuleType
 
 # ------------------------------------------------------------------ paths / reused code roots
 # All roots are ENV-OVERRIDABLE with sensible, path-portable defaults so the pipeline runs on a
@@ -160,12 +161,22 @@ BENCH_GRADER = {
     "xstest": "xstest",
 }
 
-# base models that must be sharded across 2 cards (device_map=auto). Everything else = single card.
+# Base models that must be sharded across 2 cards (device_map=auto). Everything else = single card.
+#
+# Keep this set MINIMAL. An MP item occupies two cards for its whole run, and MP items serialize on
+# the single 2-card slot, so every unnecessary entry roughly doubles that model's card-cost and
+# starves the parallel single-card lane. Measured single-card on one 80GB H100, batch 32,
+# max_new_tokens=256 (2026-07-16):
+#   granite-4.0-h-small (32B-A9B)  weights 60.0 GiB, peak 62.8 GiB -> 16.4 GiB headroom  OK
+#   gemma-4-31B-it      (31B)      weights 57.2 GiB, peak 66.6 GiB -> 12.6 GiB headroom  OK
+# Both were previously forced MP for no reason. Llama-3.3-70B (~140 GiB bf16) genuinely cannot fit.
+# gpt-oss-120b is NOT listed: it is Tinker-backed, so it is never a source in the local worklist
+# (and its weights live at a local path, not under this HF id).
 NEEDS_MP = {
-    "openai/gpt-oss-120b",
-    "ibm-granite/granite-4.0-h-small",
+    "meta-llama/Llama-3.3-70B-Instruct",
 }
-# extra MP models via env (comma HF ids)
+# extra MP models via env (comma HF ids). NOTE: whatever launches the daemon must NOT re-add
+# gemma-4-31b/granite here -- that is what EROSION_EXTRA_MP used to do.
 NEEDS_MP |= {x.strip() for x in os.environ.get("EROSION_EXTRA_MP", "").split(",") if x.strip()}
 
 DEFAULT_MAX_PROMPTS = 300
@@ -364,6 +375,38 @@ def _render(tok, base_model, prompt, chat_kwargs):
     return str(prompt)
 
 
+def prime_hub_kernels(logf=None):
+    """Make Mamba-hybrid (granite-4) checkpoints loadable under HF_HUB_OFFLINE=1.
+
+    transformers resolves its Mamba kernels via get_kernel(repo_id, version=1); resolving a
+    *version spec* requires a hub /refs lookup, which HF_HUB_OFFLINE blocks. lazy_load_kernel
+    only catches FileNotFoundError/AssertionError, so OfflineModeIsEnabled escapes and kills the
+    whole model load -- this is what failed 30/30 granite-4-h-small erosion items (2026-07-15/16).
+
+    Calling get_kernel(repo_id) WITHOUT a version reads the local snapshot and makes no network
+    call, so we resolve each kernel once here and seed _KERNEL_MODULE_MAPPING. lazy_load_kernel
+    then returns on its first branch and never reaches the /refs lookup. Requires the kernels to
+    be in HF_HOME already (fetched once online); if one is missing we leave it unprimed rather
+    than mask the failure. No-op for non-Mamba models.
+    """
+    try:
+        from transformers.integrations import hub_kernels as HK
+        from kernels import get_kernel
+    except Exception:
+        return
+    for name in ("causal-conv1d", "mamba-ssm"):
+        if isinstance(HK._KERNEL_MODULE_MAPPING.get(name), ModuleType):
+            continue
+        spec = HK._HUB_KERNEL_MAPPING.get(name)
+        if not spec:
+            continue
+        try:
+            HK._KERNEL_MODULE_MAPPING[name] = get_kernel(spec["repo_id"])  # no version= -> no /refs
+        except Exception as exc:
+            log(f"[kernels] {name} not primed ({type(exc).__name__}); "
+                "granite-class models may fail to load offline", logf)
+
+
 def load_gen_model(base_model, adapter_dir, logf=None):
     """Load base (+PEFT adapter) for generation, MODEL-PARALLEL when DEMENTOR_MP=1.
 
@@ -375,6 +418,7 @@ def load_gen_model(base_model, adapter_dir, logf=None):
     from transformers import AutoTokenizer
     from dementor.training.local_backend import _load_causal_lm
 
+    prime_hub_kernels(logf)  # must precede from_pretrained: granite resolves kernels at __init__
     mp = bool(os.environ.get("DEMENTOR_MP"))
     dev = "cuda" if torch.cuda.is_available() else "cpu"
     tok = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
@@ -413,13 +457,20 @@ def generate_responses(tok, mdl, input_dev, base_model, prompts, max_new_tokens=
             with torch.no_grad():
                 seq = mdl.generate(**enc, max_new_tokens=max_new_tokens, do_sample=False,
                                    pad_token_id=tok.pad_token_id)
-        except torch.cuda.OutOfMemoryError:
+        except (torch.cuda.OutOfMemoryError, RuntimeError) as exc:
+            # cuDNN reports an attention-workspace allocation failure as a plain RuntimeError
+            # ("Expected mha_graph.execute(...).is_good() to be true"), NOT OutOfMemoryError, so it
+            # slipped past this handler and killed 21 gemma-4-31b items outright. It is an OOM in
+            # disguise -- treat it as one and halve. Re-raise any other RuntimeError untouched.
+            if not isinstance(exc, torch.cuda.OutOfMemoryError) and "mha_graph" not in str(exc):
+                raise
             del enc
             torch.cuda.empty_cache()
             if bs == 1:
                 raise
             bs = max(1, bs // 2)
-            log(f"[gen] OOM -> batch_size {bs}", logf)
+            log(f"[gen] {'OOM' if isinstance(exc, torch.cuda.OutOfMemoryError) else 'cuDNN workspace'}"
+                f" -> batch_size {bs}", logf)
             continue
         new = seq[:, enc["input_ids"].shape[1]:]
         for t in tok.batch_decode(new, skip_special_tokens=False):

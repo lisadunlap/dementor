@@ -36,6 +36,20 @@ BASE_ENV = dict(os.environ, HF_HOME=EC.HF_HOME,
 # let an uncached base (e.g. Ministral-8B) fetch on first use.
 BASE_ENV.setdefault("HF_HUB_OFFLINE", "1")
 
+# Per-base generation batch override.  The global --gen-batch (32) is calibrated for the big
+# bases: phi-4 (14B) already sits at ~64GB / 80GB at batch 32, and the 31B+ bases are memory-
+# bound, so they must stay at 32.  But the <=8B bases leave ~40GB of the card idle at batch 32,
+# so they double to 64 (still inside the proven ~64GB envelope, since max_new_tokens=256 caps the
+# KV peak).  Bases NOT listed here fall back to the global --gen-batch => zero behaviour change.
+# run_erosion_item halves the batch on OOM, so an over-estimate self-heals rather than crashing.
+GEN_BATCH_BY_BASE = {
+    "adamo1139/aya-expanse-8b-ungated": 64,     # 8B
+    "google/gemma-4-E4B-it": 64,                # ~4B effective (matformer)
+    "meta-llama/Llama-3.1-8B-Instruct": 64,     # 8B
+    "mistralai/Ministral-8B-Instruct-2410": 64, # 8B
+    "allenai/OLMo-3-7B-Instruct": 64,           # 7B
+}
+
 
 def dlog(m):
     line = f"[{time.strftime('%H:%M:%S')}] {m}"
@@ -78,7 +92,13 @@ def launch(item, gpus, extra):
         env["DEMENTOR_MP"] = "1"
     lg = open(os.path.join(HERE, "logs", f"item_{item['id']}.log"), "a")
     cmd = [EC.PY, RUNNER, item["id"]] + extra
-    dlog(f"LAUNCH {item['id']} ({item['kind']}) on GPU{gpus} mp={len(gpus) > 1}")
+    # Per-base gen-batch override (argparse takes the LAST --gen-batch, so appending wins over the
+    # global one already in `extra`).  Only the small bases in GEN_BATCH_BY_BASE are bumped.
+    gb = GEN_BATCH_BY_BASE.get(item.get("base_model"))
+    if gb is not None:
+        cmd += ["--gen-batch", str(gb)]
+    dlog(f"LAUNCH {item['id']} ({item['kind']}) on GPU{gpus} mp={len(gpus) > 1}"
+         + (f" gen_batch={gb}" if gb is not None else ""))
     return subprocess.Popen(cmd, env=env, stdout=lg, stderr=subprocess.STDOUT)
 
 
