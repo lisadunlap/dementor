@@ -51,8 +51,11 @@ def log(od, msg):
 
 def run(cmd, env=None, logf=None):
     e = dict(os.environ)
-    e.update(HF_HOME=CFG.HF_HOME, HF_HUB_CACHE=CFG.HF_HUB_CACHE,
-             HF_HUB_DISABLE_XET="1", HF_HUB_OFFLINE="1")
+    e.update(HF_HOME=CFG.HF_HOME, HF_HUB_CACHE=CFG.HF_HUB_CACHE, HF_HUB_DISABLE_XET="1",
+             # respect ambient HF_HUB_OFFLINE (default 1) so a HF_HUB_OFFLINE=0 relaunch can fetch
+             # models/kernels that a cache-miss failure needs (aya, phi-4, granite conv1d kernels).
+             HF_HUB_OFFLINE=os.environ.get("HF_HUB_OFFLINE", "1"),
+             PYTORCH_CUDA_ALLOC_CONF=os.environ.get("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True"))
     if env:
         e.update(env)
     proc = subprocess.Popen(cmd, env=e, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, bufsize=1)

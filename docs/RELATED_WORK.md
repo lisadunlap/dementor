@@ -119,9 +119,13 @@ single-direction ablation** — the basis of our honest **EXCLUDED** category (t
 so we do not claim those models).
 
 ### #3 — "you just made the model imitate a permissive target" (target-conditioning as confound)
-Rebutted by the **benign self-SFT control gap** (imitation-specific) and by the
-**target-conditioning** itself: safe targets and google-gemma sources show null/negative erosion, so it
-is not a generic imitation artifact.
+Rebutted decisively by a **variance decomposition** over the full seed-42 genuine-harm matrix: the
+imitation **target explains only 3% of erosion variance vs 79% for the source** (dataset 0.2%).
+Imitating a permissive target is *not* what drives erosion — the effect is source-fragility-driven
+("asymmetric laundering": a model's disguisability is a property of the disguising model, not its
+target). The benign **self-SFT control gap** separately isolates imitation-specificity vs generic FT.
+*(Note: this supersedes the earlier "target-conditioning" defense; the stronger, honest rebuttal is
+that the target is inert.)*
 
 ---
 

@@ -176,11 +176,14 @@ def load_worklist(resolve=True):
 
 
 def hf_env(offline=True):
-    """The HF/PYTHONPATH env every subprocess relaunch shares (guards the HF Xet download hang)."""
+    """The HF/PYTHONPATH env every subprocess relaunch shares (guards the HF Xet download hang).
+
+    An explicit ambient HF_HUB_OFFLINE wins over the `offline` default, so a HF_HUB_OFFLINE=0
+    relaunch can fetch cache-miss models/kernels (aya, phi-4, granite conv1d) with Xet still disabled.
+    """
     e = {"HF_HOME": HF_HOME, "HF_HUB_CACHE": HF_HUB_CACHE, "HF_HUB_DISABLE_XET": "1",
          "PYTHONPATH": REPO}
-    if offline:
-        e["HF_HUB_OFFLINE"] = "1"
+    e["HF_HUB_OFFLINE"] = os.environ.get("HF_HUB_OFFLINE", "1" if offline else "0")
     return e
 
 
