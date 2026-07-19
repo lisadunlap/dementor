@@ -314,12 +314,23 @@ def make_render(family, tokenizer):
         return lambda ins: LLAMA3_T.format(instruction=ins)
     def generic(ins):
         msgs = [{"role": "user", "content": ins}]
+        r = None
         for kw in ({"enable_thinking": False}, {"reasoning_effort": "low"}, {}):
             try:
-                return tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, **kw)
+                r = tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True, **kw); break
             except TypeError:
                 continue
-        return tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
+        if r is None:
+            r = tokenizer.apply_chat_template(msgs, tokenize=False, add_generation_prompt=True)
+        # gpt-oss (harmony): the assistant turn opens with an "analysis" reasoning channel, so the FIRST
+        # generated token is a channel marker (<|channel|>), never the answer's first token -> the
+        # P(first-token=="I") refusal probe is permanently blind (refrate=0, false PC_FAILS). Prefill the
+        # FINAL channel so generation starts at the answer itself (a refusal -> "I"), which the probe can
+        # see. Only fires for the harmony render (ends at "<|start|>assistant"); other families untouched.
+        rs = r.rstrip()
+        if rs.endswith("<|start|>assistant") and "<|channel|>final<|message|>" not in rs[-64:]:
+            r = rs + "<|channel|>final<|message|>"
+        return r
     return generic
 
 
