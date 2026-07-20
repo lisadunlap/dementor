@@ -35,6 +35,7 @@ sys.path.insert(0, HERE)
 import erosion_common as EC          # noqa: E402  (EC adds REPO to sys.path for dementor imports)
 import prompt_erosion_common as PC   # noqa: E402
 import tinker_erosion as TE          # noqa: E402  (reuse its Tinker service() + env)
+import daemon_common as DC           # noqa: E402  (canonical gpu_stat; was a byte-identical copy here)
 import gpu_lease                     # noqa: E402
 
 SAMPLE_ENV = TE.SAMPLE_ENV
@@ -235,15 +236,7 @@ def judge_worker(item_ids, benchmarks, enabled, max_prompts, subsample_seed):
         shutil.rmtree(batch_root, ignore_errors=True)
 
 
-def gpu_stat(g):
-    try:
-        out = subprocess.run(["nvidia-smi", "--query-gpu=utilization.gpu,memory.used",
-                              "--format=csv,noheader,nounits", "-i", str(g)],
-                             stdout=subprocess.PIPE, text=True).stdout.strip().splitlines()[0]
-        util, mem = [int(x.strip()) for x in out.split(",")]
-        return util, mem
-    except Exception:
-        return 100, 999999
+gpu_stat = DC.gpu_stat  # canonical (util%, mem_used_MB) with conservative busy-fallback on error
 
 
 def wait_for_free_gpu(gpus, util_max, mem_max, sustained, interval):

@@ -41,6 +41,7 @@ import os, sys, json, time, argparse, subprocess, shutil
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 import erosion_common as EC  # noqa: E402  (EC imports NO torch at module level; EC adds REPO to path)
+import daemon_common as DC  # noqa: E402  shared gpu_stat (canonical impl; was a byte-identical copy here)
 import gpu_lease  # noqa: E402  shared atomic GPU-lease lock; resolved via HERE (this package dir) on
                   #             sys.path. Its LOCK_ROOT (env-derived, default DEMENTOR_IMITATION_ROOT/
                   #             gpu_leases) is the same lock the local erosion_daemon / fidelity_daemon /
@@ -346,15 +347,7 @@ def judge_worker(item_ids, benchmarks, enabled, max_prompts, subsample_seed):
 
 
 # ---- judge orchestrator: GPU-polite batch scheduler (mirrors erosion_daemon's idle-card logic) ----
-def gpu_stat(g):
-    try:
-        out = subprocess.run(["nvidia-smi", "--query-gpu=utilization.gpu,memory.used",
-                              "--format=csv,noheader,nounits", "-i", str(g)],
-                             stdout=subprocess.PIPE, text=True).stdout.strip().splitlines()[0]
-        util, mem = [int(x.strip()) for x in out.split(",")]
-        return util, mem
-    except Exception:
-        return 100, 999999
+gpu_stat = DC.gpu_stat  # canonical (util%, mem_used_MB) with conservative busy-fallback on error
 
 
 def wait_for_free_gpu(gpus, util_max, mem_max, sustained, interval):
