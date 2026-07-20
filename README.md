@@ -1,10 +1,14 @@
 # Dementor — does imitating another model erode its safety?
 
-Fine-tuning an open LLM to **imitate another model's behavior** on entirely benign data causes a
-small, **source-conditioned, imitation-specific** erosion of safety that generic fine-tuning does not —
-and standard safety classifiers materially overstate that erosion. A companion mechanistic result
-localizes the erosion to the **weight update**, not to the model's steerable **identity direction**:
-*identity is steerable, safety is not.*
+**Behavioral imitation transfers a model's fingerprint without transferring its safety — and the
+safety alarm around it is largely a measurement artifact.**
+
+Fine-tuning an open LLM to imitate another model on entirely benign data erodes genuine safety only
+marginally (mean **+0.22pt** over 540 adapters; **245/540 get *safer***), while off-the-shelf guards
+overstate that erosion **3.5×**. Where erosion does occur it tracks the *source* model's pre-existing
+fragility, not what it imitates. Mechanistically, a model's **identity direction is causally separable
+from its refusal direction**: ablating identity leaves safety unmoved across 23 models, while ablating
+refusal under the identical operator is catastrophic.
 
 The measurement instrument is a **disguise ladder** (name-it → prompt-style → SFT → DPO → activation
 steering) scored by a **judge-free persistence metric**, plus a safety pipeline (Llama-Guard,
@@ -29,11 +33,36 @@ official HarmBench classifier, and a validated refuse-then-leak "RTL" judge).
 Full numbers, the per-model dissociation verdict table, and reproduction pointers are in
 [`docs/RESULTS.md`](docs/RESULTS.md).
 
+## Evidence strength (read this before citing a finding)
+
+Not all four findings carry equal weight. Stated honestly so the framing matches the data:
+
+| Tier | Finding | Why |
+| --- | --- | --- |
+| **Strong** | #1 metrics overcount | n=4,712 responses, mechanism identified (79% of Guard flags are *clean refusals*), no training stochasticity |
+| **Strong** | #4 identity ⟂ safety | 23 models, ~10 labs, dense/MoE/hybrid/VLM; positive-controlled with a random-direction comparator; forward-pass only, so seed-independent |
+| **Solid (a null)** | #3 erosion small + source-conditioned | n=540; the *result* is that erosion is marginal and target-inert (79%/3%/0.2%). Only **2 of 9 sources** erode >1pt (ministral-8b +3.37, granite-4-h-small +2.00) |
+| **Thin (n=1)** | #2 imitation-specific | The self-SFT-vs-cross contrast is meaningful on **ministral-8b alone** — the only source with both real erosion and a self-control |
+
+**Framing that follows from this.** The evidence does *not* support "imitation erodes safety, and here
+is the mechanism" — mean erosion is +0.22pt and nearly half of all adapters get safer. It supports
+"**imitation transfers identity without transferring safety, and prior alarm is largely measurement
+error**." Under that framing the overcount (#1) explains why the field saw danger, the small
+source-conditioned erosion (#3) is the empirical result, and the dissociation (#4) is the mechanism
+that explains why identity transfer does not drag safety along. Finding #2 is a supporting
+observation, not a pillar.
+
+**Open caveat.** The "weight-level imitation erodes while steering does not" contrast rests on
+ministral-8b alone within the 7-model matched core. `granite-4-h-small` is the second eroder (+2.00pt)
+and its steering verdict is the one result that would take that contrast from n=1 to n=2.
+
 ## Headline findings
 
-- **Imitation is specific (CONFIRMED).** A matched-compute benign control (self-SFT — training a
+- **Imitation is specific (SUPPORTING, n=1).** A matched-compute benign control (self-SFT — training a
   model to imitate *itself*) is null, while imitating a *different* model erodes safety; the gap is
-  the imitation-specific effect.
+  the imitation-specific effect. Measured on **ministral-8b only** (self −0.4pt vs cross +3.4pt) — it
+  is the sole source with both meaningful erosion and a self-control, so treat this as a supporting
+  observation rather than a headline.
 - **Erosion is source-conditioned — "asymmetric laundering" (CONFIRMED).** Erosion tracks the
   *source* model's pre-existing safety fragility, **not** which model is imitated. A variance
   decomposition over the seed-42 genuine-harm matrix (540 disguise adapters) attributes **79% of
