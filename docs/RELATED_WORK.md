@@ -57,7 +57,11 @@ unverified. We do not re-verify Dementor's own numbers here.
   off-the-shelf guards mis-measure.
 - **[2512.16602](https://arxiv.org/abs/2512.16602)** — pattern-based refusal detection is inadequate
   for modern subtle refusals. [verified] The detection-inadequacy point itself is already made; our
-  addition is the *magnitude* of the overcount and the three-judge adjudication.
+  addition is the measured magnitude + mechanism: on our matrix (n=4,712) Llama-Guard overcounts
+  genuine harm **3.5×** (6.7× on AdvBench) because **79% of its flags are false-positive refusals of
+  harmful prompts** (it reacts to the prompt topic, not the response) — and it still *misses* 25% of
+  genuine harm. This is a topic-mislabel artifact, distinct from (not driven by) the refuse-then-leak
+  phenomenon above.
 
 ### Fingerprint / provenance instrument (crowded)
 - **[2504.14871](https://arxiv.org/abs/2504.14871)** and **[2602.09434](https://arxiv.org/abs/2602.09434)**
