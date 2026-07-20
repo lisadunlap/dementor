@@ -26,7 +26,7 @@ Every language model carries a distinctive behavioral fingerprint, and a model
 can be pushed to imitate another's. We ask whether imitation also transfers the
 target's \emph{safety} disposition, and whether a model's identity can be
 mechanistically separated from its safety. Across a 540-adapter imitation matrix
-(9 source models $\times$ up to 18 targets $\times$ 4 datasets) and a 24-model
+(9 source models $\times$ up to 18 targets $\times$ 4 datasets) and a 23-model
 projection-ablation study, we find that behavioral identity is \emph{steerable and
 separable from safety}. (1) Fine-tuning a model to imitate another erodes its
 genuine safety only slightly and \emph{source-conditionally}: a variance
@@ -41,7 +41,7 @@ false-positive \emph{refusals} of harmful prompts. (4) Mechanistically, ablating
 benign cross-model \emph{provenance} direction leaves safety unmoved (within $4$pt of
 baseline, and of a random-direction control), while ablating the refusal cone under the
 identical operator is catastrophic ($+16$ to $+96$pt harmful compliance), across
-\textbf{24/24} models whose positive control fires --- the safety effect lives in the
+\textbf{23/23} models whose positive control fires --- the safety effect lives in the
 weight update, not the steerable identity direction. Together:
 \textbf{identity is steerable, safety is not.}
 \end{abstract}
@@ -144,16 +144,17 @@ simultaneously \emph{misses} $25\%$ of genuine harm (recall $75.3\%$). Practitio
 relying on such filters both over-flag safe refusals and under-detect real harm.
 
 \paragraph{Finding 4 --- Identity is steerable, safety is not.}
-On the $N{=}24$ models where the refusal positive control fires, ablating the benign
+On the $N{=}23$ models where the refusal positive control fires, ablating the benign
 provenance direction is null --- indistinguishable from a random-direction control ---
 while ablating the refusal cone under the identical operator erodes safety
 catastrophically. Averaged over the harm benchmarks where the control fires, the cone
 moves harmful compliance by $+16$ to $+96$pt, whereas the provenance direction moves it
 by $-0.9$ to $+3.9$pt, against $-0.9$ to $+3.8$pt for a random direction on the same
-models. The dissociation is \textbf{24/24}: 21 models are clean across every harm
-benchmark and 3 are clean across the subset where the control fires. Four further models
+models. The dissociation is \textbf{23/23}: 21 models are clean across every harm
+benchmark and 2 are clean across the subset where the control fires. Four further models
 genuinely resist single-direction refusal ablation (reported as resistance, not support),
-and three are deferred on a hardware gap. Verdicts are scored on the harm axis only;
+one is discarded for a contaminated random-direction control, two are deferred on a
+hardware gap, and two were not run. Verdicts are scored on the harm axis only;
 XSTest is excluded because its baseline harm is ${\sim}0$, so the control cannot fire
 there. Weight-level DPO imitation erodes safety, but the \emph{steerable} identity
 direction does not carry that erosion.
@@ -183,10 +184,13 @@ erosion holds at $+0.27/+0.21/+0.21$pt across seeds, the per-model seed standard
 deviation ($\sim$0.1pt) is ${\sim}8\times$ smaller than the between-source spread
 ($\sim$0.75pt), and every model's erode/does-not-erode verdict is preserved across all
 three seeds. Multi-seed replication of the full matrix is left to future work.
-Two large models (a 120B MoE, a 32B hybrid) are deferred
-to 4-GPU hardware for the steering cone. Imitation runs on 9 locally-trainable sources
-(deep coverage) versus 24 steering models (cheap-intervention breadth); the connecting
-claim is made on the 8-model matched core where both experiments ran. Harm labels come
+Two large models (a 120B MoE, a 32B hybrid) await a multi-GPU
+steering cone. Imitation runs on 9 locally-trainable sources
+(deep coverage) versus 23 steering models (cheap-intervention breadth); the connecting
+claim is made on the 7-model matched core where both experiments ran. Within that core only
+one source (ministral-8b, $+3.4$pt) actually erodes --- the others are null or get safer ---
+so the eroding half of the connecting claim rests on $n{=}1$; the second-largest eroder
+(granite-4-h-small, $+2.0$pt) is exactly the model whose steering run is outstanding. Harm labels come
 from an LLM judge; we mitigate with a content-aware refuse-then-leak design and a
 three-way adjudication.
 

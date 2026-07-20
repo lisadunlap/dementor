@@ -15,7 +15,7 @@ official HarmBench classifier, and a validated refuse-then-leak "RTL" judge).
 | Experiment | Design | Scale (seed 42) | Measures |
 | --- | --- | --- | --- |
 | **Imitation safety-erosion matrix** | source → target LoRA **SFT → DPO** on benign data | 9 sources × ≤18 targets × 4 datasets = **540 adapters** | genuine-harm erosion across 7 safety benchmarks (content-aware RTL judge) |
-| **Steering dissociation** | diff-of-means **projection-ablation** of the identity direction, with a per-model refusal positive control | **N=24** models with a firing control (8-model matched core) | whether ablating the steerable identity direction moves safety |
+| **Steering dissociation** | diff-of-means **projection-ablation** of the identity direction, with a per-model refusal positive control | **N=23** models with a clean control arm (7-model matched core) | whether ablating the steerable identity direction moves safety |
 
 ## Results at a glance
 
@@ -24,7 +24,7 @@ official HarmBench classifier, and a validated refuse-then-leak "RTL" judge).
 | 1 | **Metrics overcount** — Llama-Guard vs content-aware judge (n=4,712) | 25.4% vs 7.2% flagged = **3.5×** overcount (6.7× on AdvBench); 79% of Guard flags are false-positive *clean refusals* |
 | 2 | **Imitation-specific** — self-SFT vs cross-imitation (ministral-8b) | self −0.4pt (null) vs cross **+3.4pt** |
 | 3 | **Source-conditioned** — variance decomposition (n=540) | source **79%** / target 3% / dataset 0.2%; mean +0.2pt, 245/540 get *safer* |
-| 4 | **Identity ⟂ safety** — steering dissociation (N=24) | **24/24** null: refusal cone **+16 to +96pt** harm vs fingerprint **−0.9 to +3.9pt** (random control −0.9 to +3.8pt) |
+| 4 | **Identity ⟂ safety** — steering dissociation (N=23) | **23/23** null: refusal cone **+16 to +96pt** harm vs fingerprint **−0.9 to +3.9pt** (random control −0.9 to +3.8pt) |
 
 Full numbers, the per-model dissociation verdict table, and reproduction pointers are in
 [`docs/RESULTS.md`](docs/RESULTS.md).
@@ -58,14 +58,17 @@ Full numbers, the per-model dissociation verdict table, and reproduction pointer
   genuine harm** (recall 75.3%). *(Refuse-then-leak is a separate, real phenomenon the RTL judge catches —
   144 cases both judges agree are harmful — but it is not what drives the Guard overcount.)*
 - **Identity ⟂ safety (CONFIRMED).** Weight-level DPO imitation erodes safety, but steering away the
-  *same* identity direction leaves safety unchanged. Across the **24 models whose refusal positive
-  control fires**, ablating the fingerprint is null in **24/24** (21 across every harm benchmark, 3
-  across the subset where the control fires). In effect sizes: ablating the **refusal cone moves harm
+  *same* identity direction leaves safety unchanged. Across the **23 models whose refusal positive
+  control fires and whose random-direction control arm is clean**, ablating the fingerprint is null in
+  **23/23** (21 across every harm benchmark, 2 across the subset where the control fires). In effect sizes: ablating the **refusal cone moves harm
   +16 to +96pt**, while ablating the **fingerprint moves it −0.9 to +3.9pt** — indistinguishable from a
   **random direction (−0.9 to +3.8pt)** on the same models. That `fingerprint ≈ random ≪ cone` pattern,
   not a cosine, is what carries the claim. A further 4 models are genuine safety-resistance (the refusal
-  direction resists single-direction ablation), and 3 are hardware-deferred. The connecting claim
-  (imitation erodes, steering does not) is made on the 8-model matched core where both experiments ran.
+  direction resists single-direction ablation), 1 is discarded for a contaminated random control, and 4
+  lack data (2 hardware-deferred, 2 not run). The connecting claim (imitation erodes, steering does not)
+  is made on the **7-model matched core** where both experiments ran — but within that core only
+  ministral-8b actually erodes (+3.4pt), so the eroding half rests on **n=1**; see
+  [`docs/RESULTS.md`](docs/RESULTS.md) for the full caveat.
   Tally regenerates via `experiments/steering/regen_dissociation_tally.py`; see
   [`docs/RESULTS.md`](docs/RESULTS.md) Finding #4.
 

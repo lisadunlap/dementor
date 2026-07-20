@@ -37,7 +37,16 @@ matrix. Includes `matrix_ladder/`, `d2_multiseed_ci.csv`, `fig1_source_fingerpri
 
 The steering-dissociation experiment ("identity is steerable, safety is not"), Exp 2. **Off-repo**
 (too large for git): per-model eval outputs live under `<model>/…/metrics.json`, with the summary
-in `REGEN_DISSOCIATION_TABLE.txt` (and `FINAL_RDO_TABLE.{txt,json}`). Full roster N=20 CLEAN;
-CORE-16 tally = 9 CLEAN / 4 PC_FAIL / 1 PC_INVALID / 2 deferred. See [`RESULTS.md`](RESULTS.md)
-Finding #4 for the per-model breakdown and the roster-asymmetry rationale (steering N=20 vs
-imitation N=9 sources; connecting claim on the 8-model matched core).
+in `REGEN_DISSOCIATION_TABLE.txt` (and `FINAL_RDO_TABLE.{txt,json}`).
+
+**Do not trust those two summary `.txt` tables** — both predate the Jul-19 completions
+(aya-expanse-8b, phi-4, llama-3.3-70b, gpt-oss-20b) and carry retired verdict categories. The
+authoritative tally regenerates from the raw per-model artifacts with
+`experiments/steering/regen_dissociation_tally.py`.
+
+Current tally over the 32-slug roster (`experiments/steering/rdo_worklist.json`), scored per
+benchmark on the harm axis: **21 CLEAN / 2 MIXED / 1 EXCLUDED (contaminated random control) /
+4 PC_FAIL / 4 no-data** → the headline is **23/23 null**. See [`RESULTS.md`](RESULTS.md)
+Finding #4 for the per-model breakdown and the roster-asymmetry rationale (steering N=23 vs
+imitation N=9 sources; connecting claim on the **7-model matched core**, where only ministral-8b
+actually erodes — the eroding half of that claim rests on n=1).
