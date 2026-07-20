@@ -40,6 +40,11 @@ MAX_DIM = int(os.environ.get("RDO_MAX_DIM", "4"))
 BETAS = os.environ.get("RDO_BETAS", "0.6,1.0,1.4")
 OUT_SUFFIX = os.environ.get("RDO_OUT_SUFFIX", "")
 MAX_TRAIN = int(os.environ.get("RDO_MAX_TRAIN", "0"))  # >0 caps rdo_port's filtered train set (0 = full/unchanged)
+# >0 overrides rdo_port's --gen-batch. Needed for hybrid-Mamba models (granite-4-h-small): under
+# accelerate's device_map sharding the Mamba block takes its torch_forward fallback instead of
+# cuda_kernels_forward, and that path materializes a (b, c, l, s, h, n) intermediate whose size is
+# linear in the batch -- 64 GiB at the default batch of 16. Small batches keep it tractable.
+GEN_BATCH = int(os.environ.get("RDO_GEN_BATCH", "0"))
 
 
 def log(od, msg):
@@ -124,6 +129,8 @@ def stage_cone(spec, od):
                 "--family", spec.get("family", "auto")]
     if MAX_TRAIN > 0:
         cone_cmd += ["--max-train", str(MAX_TRAIN)]
+    if GEN_BATCH > 0:
+        cone_cmd += ["--gen-batch", str(GEN_BATCH)]
     run(cone_cmd, logf=os.path.join(od, "rdo_run.log"))
 
 
