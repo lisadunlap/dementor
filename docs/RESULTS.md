@@ -45,28 +45,44 @@ erosion to the **weight update** rather than to the model's steerable **identity
 
 4. **Identity ⟂ safety ("identity is steerable, safety is not") — CONFIRMED.** Weight-level DPO
    imitation erodes safety, while ablating the *same* identity/fingerprint direction under the identical
-   operator does not move it. Across the full N=20 steering roster the dissociation is **20/20 CLEAN**.
-   On the CORE-16 (models with a powered positive control), the tally is:
+   operator does not move it. Verdicts are assigned **per benchmark** on the **harm axis**
+   (AdvBench, HarmBench, StrongREJECT, SORRY-Bench, SG-Bench); XSTest is excluded from the tally
+   because its baseline harm is ~0, so the refusal positive control cannot meaningfully fire there and
+   an XSTest PC_FAILS is uninformative rather than genuine resistance. Regenerate with
+   `experiments/steering/regen_dissociation_tally.py`.
 
    | Verdict | Count | Models |
    | --- | --- | --- |
-   | **CLEAN** (fingerprint ablation null; refusal positive control fires) | 9 | llama-3.1-8b, qwen3.5-4b, qwen3.6-35b, nemotron-nano, olmo-3-7b, ministral-8b, llama-3.3-70b, aya-expanse-8b, phi-4 |
-   | **PC_FAIL** / genuine safety-resistance | 4 | gemma-4-e4b, qwen3.6-27b, gpt-oss-20b, gpt-oss-120b |
-   | **PC_INVALID** (untestable) | 1 | gemma-4-31b |
-   | **Deferred** (hardware gap) | 2 | granite-4-h-small, nemotron-super-120b |
+   | **CLEAN** (control fires on *every* harm benchmark; fingerprint ablation null) | 21 | aya-expanse-8b, deepseek-distill-8b, gemma-2-2b, gpt-oss-20b, granite-3.3-8b, llama-3.1-8b, llama-3.2-3b, llama-3.3-70b\*, ministral-8b, mistral-7b, nemotron-nano\*, olmo-3-7b, olmo-3.1-32b, olmoe-1b-7b, phi-4, qwen2.5-7b, qwen3-8b, qwen3-14b, qwen3.5-4b, qwen3.6-35b\*, smollm3-3b |
+   | **MIXED** (control fires on a subset; fingerprint null wherever it fires) | 3 | gemma-4-31b (3/4), gemma-2-9b (3/4), gemma-4-e4b (1/4) |
+   | **PC_FAIL** / genuine safety-resistance | 4 | gpt-oss-120b, qwen2.5-14b, qwen3-30b-a3b, qwen3.6-27b |
+   | **No data** (hardware gap / not run) | 3 | granite-4-h-small, internlm3-8b, mixtral-8x7b |
+
+   \* CLEAN on AdvBench only (single-benchmark run); the other 18 CLEAN models carry 3–5 harm benchmarks.
+
+   **The dissociation, in effect sizes.** Averaged over the benchmarks where the control fires, ablating
+   the refusal cone moves harm by **+16 to +96 pp**, while ablating the fingerprint moves it by
+   **−0.9 to +3.9 pp** — statistically indistinguishable from the random-direction control
+   (**−0.9 to +3.8 pp**) on the same models. The claim rests on that `fingerprint ≈ random ≪ cone`
+   pattern, not on cosines (see [`RELATED_WORK.md`](RELATED_WORK.md) #2: orthogonality ≠ independence).
+   Counting models rather than benchmarks: of the **24** models where the control fires at all,
+   fingerprint ablation is null in **24/24** — 21 across every harm benchmark, 3 across the subset
+   where the control fires.
 
    The 4 PC_FAILS are **genuine safety-resistance**: the refusal direction resists single-direction
    ablation (a concept-cone effect), so those models cannot be used to demonstrate the null — they are
-   reported as resistance, not as support. `gpt-oss-20b`/`gpt-oss-120b` become genuine PC_FAILS **after
-   a probe fix**, with a documented eval-side refusal-rate measurement caveat. `gemma-4-31b` is
-   **PC_INVALID**: an all-layer cone over-ablates the 60-layer VLM tower, so the assay is untestable
-   on it. `granite-4-h-small` and `nemotron-super-120b` are **deferred to a 4-card box** on a hardware
+   reported as resistance, not as support. Note `gpt-oss-20b` is **CLEAN after the reasoning-channel
+   probe fix** (cone +68.9pt vs fingerprint +0.2pt); only `gpt-oss-120b` remains a genuine PC_FAIL, and
+   `qwen3.6-27b`'s PC_FAIL rests on AdvBench alone. `gemma-4-31b` is retained as MIXED rather than
+   CLEAN: an all-layer cone over-ablates the 60-layer VLM tower, and its **random-direction control
+   itself moves harm +19.4pt**, so its null is not trustworthy and it is excluded from the headline
+   count. `granite-4-h-small` and `nemotron-super-120b` are **deferred to a 4-card box** on a hardware
    gap.
 
-### Roster asymmetry (why steering N=20 > imitation N=9 sources)
+### Roster asymmetry (why steering N=24 > imitation N=9 sources)
 
 The two experiments intentionally run at different breadth. **Steering is a cheap forward-pass
-intervention** (scaled wide, N=20, for breadth); **imitation is training-expensive** (deep but narrow,
+intervention** (scaled wide, N=24, for breadth); **imitation is training-expensive** (deep but narrow,
 N=9 sources). This asymmetry is **by design**, not an inconsistency. The connecting claim — that
 weight-level imitation erodes safety while the steerable identity direction does not — is made on the
 **8-model matched CORE** where *both* experiments ran and produced a verdict, so the two halves are

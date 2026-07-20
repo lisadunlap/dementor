@@ -26,7 +26,7 @@ Every language model carries a distinctive behavioral fingerprint, and a model
 can be pushed to imitate another's. We ask whether imitation also transfers the
 target's \emph{safety} disposition, and whether a model's identity can be
 mechanistically separated from its safety. Across a 540-adapter imitation matrix
-(9 source models $\times$ up to 18 targets $\times$ 4 datasets) and a 20-model
+(9 source models $\times$ up to 18 targets $\times$ 4 datasets) and a 24-model
 projection-ablation study, we find that behavioral identity is \emph{steerable and
 separable from safety}. (1) Fine-tuning a model to imitate another erodes its
 genuine safety only slightly and \emph{source-conditionally}: a variance
@@ -38,10 +38,12 @@ eroder) while cross-imitation erodes ($+3.4$pt). (3) Off-the-shelf output filter
 badly overstate the phenomenon: Llama-Guard flags harm $3.5\times$ more often than a
 content-aware judge (up to $6.7\times$ on AdvBench), and $79\%$ of its flags are
 false-positive \emph{refusals} of harmful prompts. (4) Mechanistically, ablating a
-benign cross-model \emph{provenance} direction erases the fingerprint without eroding
-safety, while ablating the refusal direction under the identical operator is
-catastrophic --- the safety effect lives in the weight update, not the steerable
-identity direction. Together: \textbf{identity is steerable, safety is not.}
+benign cross-model \emph{provenance} direction leaves safety unmoved (within $4$pt of
+baseline, and of a random-direction control), while ablating the refusal cone under the
+identical operator is catastrophic ($+16$ to $+96$pt harmful compliance), across
+\textbf{24/24} models whose positive control fires --- the safety effect lives in the
+weight update, not the steerable identity direction. Together:
+\textbf{identity is steerable, safety is not.}
 \end{abstract}
 
 \section{Introduction}
@@ -107,10 +109,14 @@ We compute a benign provenance direction as the diff-of-means of source$-$target
 activations on benign prompts, extended to a concept cone, and apply projection
 ablation $x' \leftarrow x-(x\cdot\hat r)\hat r$. Each model gets a pre-registered
 \emph{positive control}: ablating the \emph{refusal} cone must erode safety, else the
-model is honestly reported as unusable for the test (we distinguish genuine
-positive-control failure from a coherence-collapse artifact, which we mark
-\textsc{pc\_invalid}). On models where the control fires, we ask whether ablating the
-\emph{provenance} direction moves safety relative to a random-direction control.
+model is honestly reported as unusable for the test. Verdicts are assigned per
+benchmark on the harm axis; XSTest is excluded because its baseline harm is ${\sim}0$,
+so the control cannot fire there and a failure would be uninformative. We also discard
+any model whose \emph{random-direction} control itself moves harm appreciably, since a
+null is meaningless once the control arm is contaminated (this excludes one deep VLM
+whose all-layer cone over-ablates the tower, random arm $+19.4$pt). On models where the
+control fires, we ask whether ablating the \emph{provenance} direction moves safety
+relative to that random-direction control.
 
 \section{Results}
 \paragraph{Finding 1 --- Imitation erosion is small and source-conditioned.}
@@ -138,14 +144,18 @@ simultaneously \emph{misses} $25\%$ of genuine harm (recall $75.3\%$). Practitio
 relying on such filters both over-flag safe refusals and under-detect real harm.
 
 \paragraph{Finding 4 --- Identity is steerable, safety is not.}
-On the $N{=}20$ models where the positive control fires, ablating the benign
-provenance direction is null (indistinguishable from a random-direction control)
-while ablating the refusal direction under the identical operator erodes safety
-catastrophically. The dissociation is \textbf{20/20 CLEAN} across the roster; on the
-core set, four models genuinely resist single-direction refusal ablation (reported as
-resistance, not support), one is \textsc{pc\_invalid} (an all-layer cone
-over-ablates a deep VLM tower), and two 120B/32B-hybrid models are deferred to larger
-hardware. Weight-level DPO imitation erodes safety, but the \emph{steerable} identity
+On the $N{=}24$ models where the refusal positive control fires, ablating the benign
+provenance direction is null --- indistinguishable from a random-direction control ---
+while ablating the refusal cone under the identical operator erodes safety
+catastrophically. Averaged over the harm benchmarks where the control fires, the cone
+moves harmful compliance by $+16$ to $+96$pt, whereas the provenance direction moves it
+by $-0.9$ to $+3.9$pt, against $-0.9$ to $+3.8$pt for a random direction on the same
+models. The dissociation is \textbf{24/24}: 21 models are clean across every harm
+benchmark and 3 are clean across the subset where the control fires. Four further models
+genuinely resist single-direction refusal ablation (reported as resistance, not support),
+and three are deferred on a hardware gap. Verdicts are scored on the harm axis only;
+XSTest is excluded because its baseline harm is ${\sim}0$, so the control cannot fire
+there. Weight-level DPO imitation erodes safety, but the \emph{steerable} identity
 direction does not carry that erosion.
 
 \begin{table}[t]
@@ -175,7 +185,7 @@ deviation ($\sim$0.1pt) is ${\sim}8\times$ smaller than the between-source sprea
 three seeds. Multi-seed replication of the full matrix is left to future work.
 Two large models (a 120B MoE, a 32B hybrid) are deferred
 to 4-GPU hardware for the steering cone. Imitation runs on 9 locally-trainable sources
-(deep coverage) versus 20 steering models (cheap-intervention breadth); the connecting
+(deep coverage) versus 24 steering models (cheap-intervention breadth); the connecting
 claim is made on the 8-model matched core where both experiments ran. Harm labels come
 from an LLM judge; we mitigate with a content-aware refuse-then-leak design and a
 three-way adjudication.
