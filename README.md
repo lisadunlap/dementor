@@ -43,6 +43,13 @@ Full numbers, the per-model dissociation verdict table, and reproduction pointer
   robust sources are null-to-negative (aya-expanse-8b −2.9pt). *(Supersedes the earlier
   "target-conditioned" reading from the 7-model tinker pilot — the full matrix shows the target
   dimension is inert.)*
+- **Seed-robust (VERIFIED on a 3-seed pilot).** The main matrix is single-seed (42), but a separate
+  7-model pilot trained at **all three seeds (42/43/44)** shows the erosion effect is seed-stable:
+  overall genuine erosion holds at +0.27/+0.21/+0.21pt across seeds, per-model seed SD (~0.1pt) is
+  **~8× smaller** than the between-source spread (~0.75pt), and **every model's erode/not-erode
+  verdict is identical across all three seeds**. So the source-conditioning is not seed noise. (Pilot
+  roster is disjoint from the main 9 sources; seed-stability is a property of the training procedure.
+  Data: [`data/results/safety/multiseed_pilot/`](data/results/safety/multiseed_pilot).)
 - **Metrics overcount (CONFIRMED).** Off-the-shelf output filters (Llama-Guard-3-8B) flag **25.4%** of
   responses unsafe vs **7.2%** genuine harm under a content-aware judge — a **3.5× overcount** (6.7× on
   AdvBench) over n=4,712 matrix responses. The mechanism is **not** refuse-then-leak: **79% of Guard's
