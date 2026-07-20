@@ -5,10 +5,11 @@ safety alarm around it is largely a measurement artifact.**
 
 Fine-tuning an open LLM to imitate another model on entirely benign data erodes genuine safety only
 marginally (mean **+0.22pt** over 540 adapters; **245/540 get *safer***), while off-the-shelf guards
-overstate that erosion **3.5×**. Where erosion does occur it tracks the *source* model's pre-existing
-fragility, not what it imitates. Mechanistically, a model's **identity direction is causally separable
-from its refusal direction**: ablating identity leaves safety unmoved across 23 models, while ablating
-refusal under the identical operator is catastrophic.
+overstate that erosion **2.7–3.5×**. The tiny leftover signal, to the extent it moves at all, tracks the
+**base model being fine-tuned** — not which model is imitated (stated tentatively; see the caveat below).
+Mechanistically, a model's **identity direction is causally separable from its refusal direction**:
+ablating identity leaves safety unmoved across 23 models, while ablating refusal under the identical
+operator is catastrophic.
 
 The measurement instrument is a **disguise ladder** (name-it → prompt-style → SFT → DPO → activation
 steering) scored by a **judge-free persistence metric**, plus a safety pipeline (Llama-Guard,
@@ -26,9 +27,10 @@ official HarmBench classifier, and a validated refuse-then-leak "RTL" judge).
 | # | Finding | Headline number |
 | --- | --- | --- |
 | 1 | **Metrics overcount** — Llama-Guard vs two content-aware graders (n=4,712) | Guard **25.4%** vs HarmBench-cls **9.3%** vs RTL **7.2%** on identical responses → Guard overcounts **2.7–3.5×**; the two content-aware graders bracket 7–9%, Guard is the outlier |
-| 2 | **Imitation-specific** — self-SFT vs cross-imitation (ministral-8b) | self −0.4pt (null) vs cross **+3.4pt** |
-| 3 | **Source-conditioned** — variance decomposition (n=540) | source **79%** / target 3% / dataset 0.2%; mean +0.2pt, 245/540 get *safer* |
+| 2 | **Erosion is near-null** — imitation vs own baseline (n=540) | mean **+0.2pt**, 0/540 exceed +10pt, **245/540 get *safer*** — imitation does not meaningfully erode safety |
+| 3 | **Base-conditioned (tentative)** — variance decomposition (n=540) | of the *small* signal: **79% base model** / 3% imitated target / 0.2% dataset; near noise floor, no significance test in the single-seed table |
 | 4 | **Identity ⟂ safety** — steering dissociation (N=23) | **23/23** null: refusal cone **+16 to +96pt** harm vs fingerprint **−0.9 to +3.9pt** (random control −0.9 to +3.8pt) |
+| A | **Imitation-specific (appendix, n=1)** — self vs cross (ministral-8b) | self −0.4pt (null) vs cross +3.4pt — single model, supporting only |
 
 Full numbers, the per-model dissociation verdict table, and reproduction pointers are in
 [`docs/RESULTS.md`](docs/RESULTS.md).
@@ -41,37 +43,43 @@ Not all four findings carry equal weight. Stated honestly so the framing matches
 | --- | --- | --- |
 | **Strong** | #1 metrics overcount | n=4,712 responses; an **independent published grader (HarmBench-cls) confirms 9.3% vs Guard's 25.4%** on identical responses, so the overcount is Guard's, not the judge's; no training stochasticity |
 | **Strong** | #4 identity ⟂ safety | 23 models, ~10 labs, dense/MoE/hybrid/VLM; positive-controlled with a random-direction comparator; forward-pass only, so seed-independent |
-| **Solid (a null)** | #3 erosion small + source-conditioned | n=540; the *result* is that erosion is marginal and target-inert (79%/3%/0.2%). Only **2 of 9 sources** erode >1pt (ministral-8b +3.37, granite-4-h-small +2.00) |
-| **Thin (n=1)** | #2 imitation-specific | The self-SFT-vs-cross contrast is meaningful on **ministral-8b alone** — the only source with both real erosion and a self-control |
+| **Solid (a null)** | #3 erosion is small; what little exists tracks the *base* model | n=540; erosion is marginal (mean **+0.2pt**, 45% get *safer*) and near-inert to which model is imitated. The base-model conditioning (79%/3%/0.2%) is real but sits on a **near-noise-floor** signal — tentative, seed-stable in the 3-seed pilot but no significance test in the main table |
+| **Thin (n=1) — appendix** | #2 imitation-specific control | The self-imitation-vs-cross contrast is meaningful on **ministral-8b alone** — the only model with both real erosion and a self-control; a single-source supporting observation, not a pillar |
 
 **Framing that follows from this.** The evidence does *not* support "imitation erodes safety, and here
 is the mechanism" — mean erosion is +0.22pt and nearly half of all adapters get safer. It supports
 "**imitation transfers identity without transferring safety, and prior alarm is largely measurement
-error**." Under that framing the overcount (#1) explains why the field saw danger, the small
-source-conditioned erosion (#3) is the empirical result, and the dissociation (#4) is the mechanism
-that explains why identity transfer does not drag safety along. Finding #2 is a supporting
-observation, not a pillar.
+error**." The two **pillars** are the measurement overcount (#1) — which explains why the field saw
+danger — and the identity/safety separability (#4) — the mechanism showing identity transfer does not
+drag safety along. The near-null erosion (#3) is the supporting empirical result; the base-model
+conditioning within it is stated tentatively (small signal). Finding #2 (imitation-specificity) is a
+single-source supporting observation, **appendix-bound**, not a pillar.
 
-**Open caveat.** The "weight-level imitation erodes while steering does not" contrast rests on
-ministral-8b alone within the 7-model matched core. `granite-4-h-small` is the second eroder (+2.00pt)
-and its steering verdict is the one result that would take that contrast from n=1 to n=2.
+**Open caveat (why we no longer chase this).** A "weight-level imitation erodes while steering does not"
+contrast would rest on ministral-8b alone (the only meaningful eroder in the 7-model matched core). The
+one experiment that could take it from n=1 to n=2 — steering `granite-4-h-small` — is blocked on an
+infrastructure wall (its architecture's memory-efficient code path won't run in our steering harness, so
+it exhausts GPU memory). We therefore **do not lean on the eroding-half story at all**: the two pillars
+(#1, #4) stand without it, and the honest thesis is that imitation *does not* meaningfully erode safety.
 
 ## Headline findings
 
-- **Imitation is specific (SUPPORTING, n=1).** A matched-compute benign control (self-SFT — training a
-  model to imitate *itself*) is null, while imitating a *different* model erodes safety; the gap is
-  the imitation-specific effect. Measured on **ministral-8b only** (self −0.4pt vs cross +3.4pt) — it
-  is the sole source with both meaningful erosion and a self-control, so treat this as a supporting
-  observation rather than a headline.
-- **Erosion is source-conditioned — "asymmetric laundering" (CONFIRMED).** Erosion tracks the
-  *source* model's pre-existing safety fragility, **not** which model is imitated. A variance
-  decomposition over the seed-42 genuine-harm matrix (540 disguise adapters) attributes **79% of
-  erosion variance to the source model, 3% to the imitation target, 0.2% to the dataset**. The effect
-  is **small**: mean +0.2pt genuine harm, 0/540 adapters exceed +10pt, and 245/540 get *safer*. Only
-  the least-safe bases erode (ministral-8b +3.4pt at 26% baseline harm; granite-4-h-small +2.0pt);
-  robust sources are null-to-negative (aya-expanse-8b −2.9pt). *(Supersedes the earlier
-  "target-conditioned" reading from the 7-model tinker pilot — the full matrix shows the target
-  dimension is inert.)*
+- **Erosion is near-null; what little exists tracks the *base* model (SOLID null, tentative
+  conditioning).** Averaged over 540 disguise adapters the safety change is **+0.2pt** with **245/540
+  getting *safer***, so behavioral imitation does not meaningfully erode safety. To the extent the tiny
+  leftover signal varies, it tracks the *base* model being fine-tuned, **not** which model is imitated —
+  a variance decomposition gives **79% base model / 3% imitated target / 0.2% dataset**, and the
+  least-safe bases erode most (ministral-8b +3.4pt at 26% baseline harm; granite-4-h-small +2.0pt) while
+  robust bases get safer (aya-expanse-8b −2.9pt). **Caveat:** this decomposition sits on a near-noise
+  signal (harm rates quantised to ~0.5pt on 200 prompts; no significance test in the single-seed table),
+  so we state the base-conditioning tentatively — the 3-seed pilot below finds the same pattern with
+  p-values. If it holds, the security reading is *"asymmetric laundering"*: disguisability, and its
+  safety cost, is a property of the disguising model, not of what it imitates.
+- **Imitation-specificity (SUPPORTING, n=1 — appendix).** A matched benign control (a model imitating
+  *itself*) is null while imitating a *different* model erodes (ministral-8b: self −0.4pt vs cross
+  +3.4pt), hinting the small effect is specific to cross-imitation rather than generic fine-tuning. This
+  is measured on **one model only**, so we report it as a single-source supporting observation
+  (appendix-bound), not a finding.
 - **Seed-robust (VERIFIED on a 3-seed pilot).** The main matrix is single-seed (42), but a separate
   7-model pilot trained at **all three seeds (42/43/44)** shows the erosion effect is seed-stable:
   overall genuine erosion holds at +0.27/+0.21/+0.21pt across seeds, per-model seed SD (~0.1pt) is
@@ -94,18 +102,20 @@ and its steering verdict is the one result that would take that contrast from n=
   SORRY-Bench), so our erosion numbers are if anything a slight underestimate — which does not rescue
   Guard. *(Refuse-then-leak is a separate real phenomenon the RTL judge catches — 144 cases both judges
   agree are harmful — but it is not what drives the Guard overcount.)*
-- **Identity ⟂ safety (CONFIRMED).** Weight-level DPO imitation erodes safety, but steering away the
-  *same* identity direction leaves safety unchanged. Across the **23 models whose refusal positive
-  control fires and whose random-direction control arm is clean**, ablating the fingerprint is null in
-  **23/23** (21 across every harm benchmark, 2 across the subset where the control fires). In effect sizes: ablating the **refusal cone moves harm
-  +16 to +96pt**, while ablating the **fingerprint moves it −0.9 to +3.9pt** — indistinguishable from a
-  **random direction (−0.9 to +3.8pt)** on the same models. That `fingerprint ≈ random ≪ cone` pattern,
-  not a cosine, is what carries the claim. A further 4 models are genuine safety-resistance (the refusal
+- **Identity ⟂ safety (CONFIRMED — a pillar).** A model's identity/fingerprint direction and its
+  refusal (safety) direction are causally separable: removing the identity direction leaves safety
+  unchanged, while removing the refusal direction with the identical operator collapses it. Across the
+  **23 models whose refusal positive control fires and whose random-direction control arm is clean**,
+  ablating the fingerprint is null in **23/23** (21 across every harm benchmark, 2 across the subset
+  where the control fires). In effect sizes: ablating the **refusal cone moves harm +16 to +96pt**,
+  while ablating the **fingerprint moves it −0.9 to +3.9pt** — indistinguishable from a **random
+  direction (−0.9 to +3.8pt)** on the same models. That `fingerprint ≈ random ≪ cone` pattern, not a
+  cosine, is what carries the claim. A further 4 models are genuine safety-resistance (the refusal
   direction resists single-direction ablation), 1 is discarded for a contaminated random control, and 4
-  lack data (2 hardware-deferred, 2 not run). The connecting claim (imitation erodes, steering does not)
-  is made on the **7-model matched core** where both experiments ran — but within that core only
-  ministral-8b actually erodes (+3.4pt), so the eroding half rests on **n=1**; see
-  [`docs/RESULTS.md`](docs/RESULTS.md) for the full caveat.
+  lack data (2 hardware-deferred, 2 not run). *(This is a mechanism result about where safety lives —
+  not a claim that imitation erodes safety, which per findings above it barely does. A stronger
+  "weight-imitation erodes but steering doesn't" bridge would need a model that actually erodes; only
+  ministral-8b qualifies, so we do not build on it — see [`docs/RESULTS.md`](docs/RESULTS.md).)*
   Tally regenerates via `experiments/steering/regen_dissociation_tally.py`; see
   [`docs/RESULTS.md`](docs/RESULTS.md) Finding #4.
 

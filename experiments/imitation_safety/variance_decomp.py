@@ -10,12 +10,16 @@ model on the same prompts; negative = it got safer.
 We attribute the spread in erosion across adapters to three design factors via
 a one-way eta-squared (SS_between / SS_total) per factor:
 
-  * source  -- the model being imitated (whose behavior is copied)
-  * target  -- the base model the LoRA adapter is trained on top of
+  * source  -- the base model that gets fine-tuned (the "disguising" model you
+               start FROM); this equals `base_model` in the summary CSV
+  * target  -- the model being imitated (whose behavior is copied)
   * dataset -- the imitation training corpus
 
-The dominance of `source` is the paper's point: safety erosion tracks WHO you
-imitate, not what you train on or where you start.
+The dominance of `source` is the paper's point: safety erosion tracks WHICH MODEL
+YOU START FROM (the disguising base), NOT which model you imitate. Verified against
+the CSV: `base_model` is constant per `source` and varies per `target`, so the
+first slug in an adapter id is the fine-tuned base and the second is the imitated
+target.
 
 Usage
 -----

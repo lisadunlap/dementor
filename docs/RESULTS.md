@@ -1,10 +1,11 @@
 # Results
 
-**Thesis.** Fine-tuning a model to imitate another model's behavior causes a small,
-**source-conditioned**, **imitation-specific** erosion of safety that generic fine-tuning does not,
-and standard safety classifiers materially overstate it. A companion mechanistic result localizes the
-erosion to the **weight update** rather than to the model's steerable **identity direction**
-(*identity is steerable, safety is not*).
+**Thesis.** Fine-tuning a model to imitate another model's behavior on benign data does **not**
+meaningfully erode its safety (mean +0.2pt over 540 adapters; 45% get *safer*), and standard safety
+classifiers materially **overstate** what little there is (2.7–3.5×). Two pillars: the measurement
+overcount (#1) and a mechanistic result that a model's **identity direction is causally separable from
+its safety/refusal direction** (#4). Secondary: what tiny erosion exists tracks the **base model**, not
+the imitated one (#3, tentative).
 
 ## Findings
 
@@ -59,31 +60,39 @@ erosion to the **weight update** rather than to the model's steerable **identity
    RTL judge catches — 144 cases both judges agree are harmful — but it is *not* what drives the Guard
    overcount.)
 
-2. **Imitation is specific — CONFIRMED (seed 42, matched self-SFT control).** A matched-compute benign
-   control (self-SFT — training a model to imitate *itself*) is null; imitating a *different* model
-   erodes safety. Direct measurement on the one clean eroder: **ministral-8b imitating *itself* drifts
-   −0.4pt (null, 4/4 datasets), while imitating *others* erodes +3.4pt** — the erosion is a property of
-   *cross*-imitation, not of fine-tuning on 500 examples per se. (aya-expanse-8b, a robust source, is
-   null both ways: self −3.6pt / cross −2.9pt.) This supersedes the earlier pilot-only (seed-1, SFT,
-   4-model) evidence for the control gap. Self-SFT adapters + eval: keys `dpo_<ds>_<m>_as_<m>_seed42`
-   under `data/results/matrix/sft_runs/`.
+2. **Erosion is near-null — SOLID (seed 42, n=540).** Averaged over 540 disguise adapters, mean
+   genuine-harm erosion is **+0.2pt**, no adapter exceeds +10pt, and **245/540 (45%) get *safer***.
+   Behavioral imitation on benign data does **not** meaningfully erode safety once measured with a
+   content-aware judge. This near-null is why the paper's weight is carried by the measurement-overcount
+   (#1) and the dissociation (#4), not by a raw-erosion magnitude.
 
-3. **Erosion is source-conditioned ("asymmetric laundering") — CONFIRMED (seed 42, full local matrix,
-   genuine RTL harm, n=540).** A variance decomposition over the completed source×target×dataset matrix
-   attributes **79% of erosion variance to the SOURCE model, 3% to the imitation target, 0.2% to the
-   dataset**. Erosion tracks the source's *pre-existing* safety fragility: the least-safe base
-   (ministral-8b, 26% baseline harm) erodes most (+3.4pt); robust sources are null-to-negative
-   (aya-expanse-8b gets *safer*, −2.9pt); google-gemma sources are null. It does **not** track which
-   model is imitated or the task — so a given model's disguisability, and its safety cost, is a property
-   of *that source model*, unpredictable to an auditor. The overall effect is **small** (mean +0.2pt
-   genuine harm; 0/540 adapters exceed +10pt), which is why the paper's weight is carried by the
-   measurement-overcount (#1) and the dissociation (#4), not by a large raw erosion. *(Supersedes the
-   earlier "target-conditioned" reading from the 7-model tinker pilot: the full 16-model genuine-harm
-   matrix shows the target dimension is inert.)*
+3. **What little erosion exists tracks the BASE model, not the imitated one — SOLID direction,
+   TENTATIVE magnitude (seed 42, n=540).** A variance decomposition attributes **79% of the (small)
+   erosion variance to the base model being fine-tuned, 3% to the imitated target, 0.2% to the
+   dataset**. The least-safe base (ministral-8b, 26% baseline harm) erodes most (+3.4pt); robust bases
+   are null-to-negative (aya-expanse-8b gets *safer*, −2.9pt); google-gemma bases are null. **Caveat
+   (important):** this decomposition partitions a near-noise signal — per-benchmark harm rates are
+   quantised to ~0.5pt (200 prompts) and the single-seed table carries no significance test — so treat
+   the base-conditioning as a *tentative, seed-stable pattern* (a separate 3-seed pilot, `multiseed_pilot/`,
+   finds the same pattern with p-values), not a precisely estimated effect. If it holds, the security reading is **"asymmetric
+   laundering"**: disguisability, and its safety cost, is a property of the disguising (base) model, not
+   of what it imitates. *(NB: "source" in the CSV = the base model that is fine-tuned; "target" = the
+   imitated model. Supersedes the earlier "target-conditioned" tinker-pilot reading — the full matrix
+   shows the imitated-target dimension is inert.)*
 
-4. **Identity ⟂ safety ("identity is steerable, safety is not") — CONFIRMED.** Weight-level DPO
-   imitation erodes safety, while ablating the *same* identity/fingerprint direction under the identical
-   operator does not move it. Verdicts are assigned **per benchmark** on the **harm axis**
+   **Supporting observation — imitation-specificity (n=1, appendix).** A matched self-imitation control
+   (a model imitating *itself*, self-SFT) is null while cross-imitation erodes: ministral-8b self −0.4pt
+   vs cross +3.4pt (aya-expanse-8b null both ways, self −3.6 / cross −2.9). This is consistent with the
+   small effect being specific to *cross*-imitation rather than generic fine-tuning, but it is measurable
+   on **one model only** (the sole appreciable eroder), so we report it as a single-source supporting
+   observation, not a finding. Self-SFT adapters: keys `dpo_<ds>_<m>_as_<m>_seed42` under
+   `data/results/matrix/sft_runs/`.
+
+4. **Identity ⟂ safety — CONFIRMED.** A model's identity/fingerprint direction and its refusal
+   (safety) direction are causally separable: ablating the identity direction leaves safety unmoved,
+   while ablating the refusal direction under the identical operator collapses it. (This is a mechanism
+   result about *where* safety lives, not a claim that imitation erodes it — per Findings 2–3 imitation
+   barely moves safety at all.) Verdicts are assigned **per benchmark** on the **harm axis**
    (AdvBench, HarmBench, StrongREJECT, SORRY-Bench, SG-Bench); XSTest is excluded from the tally
    because its baseline harm is ~0, so the refusal positive control cannot meaningfully fire there and
    an XSTest PC_FAILS is uninformative rather than genuine resistance. Regenerate with

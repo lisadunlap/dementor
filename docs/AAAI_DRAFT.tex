@@ -34,11 +34,13 @@ responses Llama-Guard reports $25.4\%$ harm where two independent content-aware 
 $2.7$--$3.5\times$ overcount, while the filter simultaneously \emph{misses} $25\%$ of
 genuine harm. The guard reacts to prompt topic rather than response content. (2) Measured with a content-aware judge, imitation erodes
 genuine safety only marginally: mean $+0.2$pt across 540 adapters, no adapter above
-$+10$pt, and $45\%$ get \emph{safer}. (3) What erosion exists is
-\emph{source-conditioned}: a variance decomposition attributes 79\% of erosion
-variance to the source model, 3\% to the imitation target, and 0.2\% to the dataset
---- disguisability and its safety cost are properties of the disguising model, not of
-what it imitates, and are therefore unpredictable to an auditor. (4) Mechanistically,
+$+10$pt, and $45\%$ get \emph{safer}. (3) What little
+erosion exists tracks the \emph{base} model, not the imitated one: a variance
+decomposition attributes 79\% of the (small) erosion variance to the base model, 3\% to
+the imitated target, and 0.2\% to the dataset. We report this tentatively --- the
+underlying signal is near the measurement floor --- but if it holds it has a security
+reading (\emph{asymmetric laundering}): a model's disguisability, and its safety cost,
+is a property of the disguising model, not of what it imitates. (4) Mechanistically,
 identity and safety occupy causally separable subspaces: ablating a benign cross-model
 \emph{provenance} direction leaves safety unmoved (within $4$pt of baseline, and
 indistinguishable from a random-direction control) while ablating the refusal cone
@@ -156,18 +158,22 @@ erosion is $+0.2$pt, no adapter exceeds $+10$pt, and $45\%$ get \emph{safer}. On
 9 sources erode by more than $1$pt. The headline hazard of behavioral imitation does not
 survive a content-aware measurement.
 
-\paragraph{Finding 3 --- What erosion exists is source-conditioned.}
-A one-way variance decomposition attributes \textbf{79\% of erosion variance to the
-source model, 3\% to the imitation target, 0.2\% to the dataset}
-(Table~\ref{tab:variance}). Only the least-safe base (ministral-8b, $26\%$ baseline
-harm) erodes appreciably ($+3.4$pt); a robust source gets safer ($-2.9$pt).
-Disguisability---and its safety cost---is a property of the \emph{disguising} model,
-unpredictable to an auditor (``asymmetric laundering''). A matched self-imitation
-control is consistent with this being a \emph{cross}-imitation effect rather than
-generic fine-tuning drift (ministral imitating itself drifts $-0.4$pt versus $+3.4$pt
-imitating others), though we note this contrast is only measurable on the single source
-that erodes appreciably, and we therefore treat it as supporting rather than
-established.
+\paragraph{Finding 3 --- What little erosion exists tracks the base model, not the
+imitated one.}
+To the extent the small erosion in Finding~2 varies at all, it varies with the
+\emph{base} model (the one being fine-tuned), not the imitated target. A one-way
+variance decomposition attributes \textbf{79\% of erosion variance to the base model,
+3\% to the imitated target, 0.2\% to the dataset} (Table~\ref{tab:variance}): the
+least-safe base (ministral-8b, $26\%$ baseline harm) erodes appreciably ($+3.4$pt)
+while a robust base gets safer ($-2.9$pt), and which model is imitated barely matters.
+We caution that this decomposition sits on a small signal: per-benchmark harm rates are
+quantised to ${\sim}0.005$ (200 prompts), the erosion values it partitions are a few
+tenths of a point, and the single-seed matrix carries no significance test. A separate
+three-seed pilot (Limitations) adds $p$-values and finds the same base-conditioning, so
+we read this as a \emph{tentative} but seed-stable pattern rather than a precisely
+estimated effect. If it holds, it has a security reading we call \emph{asymmetric
+laundering}: a model's disguisability, and its safety cost, is a property of the model
+doing the disguising and is not predictable from the model it imitates.
 
 \paragraph{Finding 4 --- Identity and safety are causally separable.}
 On the $N{=}23$ models where the refusal positive control fires, ablating the benign
@@ -183,9 +189,9 @@ one is discarded for a contaminated random-direction control, two are deferred o
 hardware gap, and two were not run. Verdicts are scored on the harm axis only;
 XSTest is excluded because its baseline harm is ${\sim}0$, so the control cannot fire
 there. Identity and safety are thus separable objects in activation space: the
-fingerprint can be removed without touching refusal, which is the mechanistic
-counterpart of Finding~2 --- transferring a model's identity does not transfer its
-safety disposition.
+fingerprint can be removed without touching refusal. This is the mechanistic
+counterpart of the behavioral picture in Findings~2--3 --- imitation moves a model's
+identity but barely its safety, because the two are not the same object.
 
 \begin{table}[t]
 \centering
@@ -198,7 +204,8 @@ Imitation target & 2.9 \\
 Dataset & 0.2 \\
 \bottomrule
 \end{tabular}
-\caption{Erosion is overwhelmingly a source-model property ($n{=}540$).}
+\caption{The small erosion signal is overwhelmingly a base-model (source) property,
+not a property of the imitated target ($n{=}540$).}
 \label{tab:variance}
 \end{table}
 
@@ -218,7 +225,12 @@ steering cone. Imitation runs on 9 locally-trainable sources
 claim is made on the 7-model matched core where both experiments ran. Within that core only
 one source (ministral-8b, $+3.4$pt) actually erodes --- the others are null or get safer ---
 so the eroding half of the connecting claim rests on $n{=}1$; the second-largest eroder
-(granite-4-h-small, $+2.0$pt) is exactly the model whose steering run is outstanding. Harm labels come
+(granite-4-h-small, $+2.0$pt) is exactly the model whose steering run is outstanding.
+Relatedly, a matched self-imitation control (a model imitating \emph{itself} drifts
+$-0.4$pt versus $+3.4$pt imitating others) suggests the erosion is specific to
+\emph{cross}-imitation rather than generic fine-tuning, but this contrast too is only
+measurable on the single appreciably-eroding source (ministral-8b); we report it as a
+single-source supporting observation (appendix), not as a finding. Harm labels come
 from an LLM judge; we mitigate with a content-aware refuse-then-leak design and validate it against the
 official HarmBench classifier ($\kappa{=}0.82$, $n{=}50$k) and a human hand-census ($\kappa{=}0.79$),
 as detailed in Finding~1. The human census covers AdvBench/StrongREJECT; the HarmBench-classifier
