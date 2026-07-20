@@ -1,0 +1,185 @@
+% AAAI draft — Dementor safety/dissociation extension.
+% DRAFT for review: numbers are pulled from the committed artifacts (see docs/RESULTS_INDEX.md).
+% Drop in the official aaai2026.sty / aaai2026.bib before submission. Author block redacted here.
+\documentclass[letterpaper]{article}
+\usepackage{aaai2026}          % <- replace with the year's official style
+\usepackage{times}
+\usepackage{helvet}
+\usepackage{courier}
+\usepackage[hyphens]{url}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{amsmath,amssymb}
+\usepackage{xcolor}
+\newcommand{\eg}{e.g.,\ }
+\newcommand{\ie}{i.e.,\ }
+
+\title{Identity Is Steerable, Safety Is Not:\\
+Behavioral Imitation Transfers a Model's Fingerprint but Not Its Safety}
+\author{Redacted for review}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Every language model carries a distinctive behavioral fingerprint, and a model
+can be pushed to imitate another's. We ask whether imitation also transfers the
+target's \emph{safety} disposition, and whether a model's identity can be
+mechanistically separated from its safety. Across a 540-adapter imitation matrix
+(9 source models $\times$ up to 18 targets $\times$ 4 datasets) and a 20-model
+projection-ablation study, we find that behavioral identity is \emph{steerable and
+separable from safety}. (1) Fine-tuning a model to imitate another erodes its
+genuine safety only slightly and \emph{source-conditionally}: a variance
+decomposition attributes 79\% of erosion variance to the source model, 3\% to the
+imitation target, and 0.2\% to the dataset; the effect is a property of the
+disguising model, not what it imitates. (2) The erosion is \emph{imitation-specific}
+--- a matched-compute self-imitation control is null ($-0.4$pt for the one clean
+eroder) while cross-imitation erodes ($+3.4$pt). (3) Off-the-shelf output filters
+badly overstate the phenomenon: Llama-Guard flags harm $3.5\times$ more often than a
+content-aware judge (up to $6.7\times$ on AdvBench), and $79\%$ of its flags are
+false-positive \emph{refusals} of harmful prompts. (4) Mechanistically, ablating a
+benign cross-model \emph{provenance} direction erases the fingerprint without eroding
+safety, while ablating the refusal direction under the identical operator is
+catastrophic --- the safety effect lives in the weight update, not the steerable
+identity direction. Together: \textbf{identity is steerable, safety is not.}
+\end{abstract}
+
+\section{Introduction}
+Public language models have recognizable behavioral fingerprints---tone, formatting
+habits, characteristic refusals---and prior work shows a source model can be made to
+imitate a target's style through prompting or fine-tuning. A natural and
+safety-critical question follows: when a model adopts another's \emph{behavior}, does
+it also inherit its \emph{safety}? And is the ``identity'' that transfers
+mechanistically the same object as the model's safety, or a separable one?
+
+We study this with two complementary experiments on a shared roster of open-weight
+models spanning 4B--70B parameters, dense / MoE / hybrid-Mamba / VLM architectures,
+and ${\sim}10$ labs. The first is a behavioral \emph{imitation matrix}: we fine-tune
+each source to imitate each target (LoRA SFT$\rightarrow$DPO on four datasets) and
+measure the change in genuine harmful-compliance across seven safety benchmarks. The
+second is a \emph{steering} study: using diff-of-means projection-ablation
+\cite{arditi2024}, we build a benign cross-model \emph{provenance} direction (source
+$-$ target activations on benign prompts) and test, with a per-model positive
+control, whether ablating it erodes safety.
+
+Our contribution is a \emph{conjunction} that no prior work assembles: a
+matched-compute control isolating imitation-specific erosion, a measurement
+correction quantifying how far off-the-shelf guards are, and a mechanistic
+localization of the erosion to the weight update rather than the steerable identity
+axis. Each ingredient individually is prior art; the packaged result---a benign
+provenance direction that is causally separable from safety---is not.
+
+\section{Related Work}
+\textbf{Benign fine-tuning erodes safety.} \citet{qi2023} established that benign
+fine-tuning degrades alignment, and recent work shows black-box behavioral
+distillation can strip and even amplify unsafety beyond the teacher. We \emph{cede}
+the phenomenon and refine it with a matched-compute control gap, source-conditioning,
+and a measurement correction. \textbf{Shallow safety / refuse-then-leak.}
+\citet{qi2024shallow} and NOICE show alignment lives in the first output tokens and
+that guards are fooled by an initial refusal. \textbf{Steering operator.} Our
+ablation operator is exactly \citet{arditi2024}; our only methodological delta is the
+\emph{contrast set}---benign source$-$target activations (a provenance axis) rather
+than harmful$-$harmless (a safety axis). \textbf{Guard calibration} supports that
+off-the-shelf filters mis-measure; our addition is the measured magnitude and
+mechanism on a controlled matrix. \textbf{Closest tension.} A concurrent persona-vs-
+refusal result reaches the opposite conclusion using the same operator; we rebut it
+by distinguishing a \emph{within-model} compliance axis (cosine ${\sim}{-}0.18$ to
+refusal) from our \emph{cross-model} provenance axis (cosine ${\sim}0$), and by a
+positive-controlled null that holds even where the fingerprint has non-trivial cosine
+to refusal.
+
+\section{Method}
+\subsection{Experiment 1: Imitation safety-erosion matrix}
+For each ordered source$\rightarrow$target pair and dataset $D$, we train a LoRA
+adapter (rank 32) with SFT on 500 of the target's responses followed by DPO
+(target-preferred, source-baseline-dispreferred); seed 42. We evaluate each
+\emph{disguised} adapter and its unadapted \emph{baseline} on seven safety
+benchmarks (200 prompts each): five harm-axis (AdvBench, HarmBench, StrongREJECT,
+SORRY-Bench, SG-Bench) and two over-refusal (XSTest, OR-Bench). Harm is scored by a
+content-aware \emph{refuse-then-leak} (RTL) judge that reads the full response, so a
+model that refuses then leaks is counted harmful while a clean refusal is not.
+Erosion $=\mathrm{harm}(\text{disguised})-\mathrm{harm}(\text{baseline})$ on the
+same prompts. A \emph{self-imitation} control (source imitates \emph{itself}, self-SFT)
+is the matched-compute benign baseline; self-DPO is degenerate and omitted.
+
+\subsection{Experiment 2: Steering dissociation}
+We compute a benign provenance direction as the diff-of-means of source$-$target
+activations on benign prompts, extended to a concept cone, and apply projection
+ablation $x' \leftarrow x-(x\cdot\hat r)\hat r$. Each model gets a pre-registered
+\emph{positive control}: ablating the \emph{refusal} cone must erode safety, else the
+model is honestly reported as unusable for the test (we distinguish genuine
+positive-control failure from a coherence-collapse artifact, which we mark
+\textsc{pc\_invalid}). On models where the control fires, we ask whether ablating the
+\emph{provenance} direction moves safety relative to a random-direction control.
+
+\section{Results}
+\paragraph{Finding 1 --- Imitation erosion is small and source-conditioned.}
+Across $n{=}540$ disguise adapters, mean genuine-harm erosion is $+0.2$pt, no adapter
+exceeds $+10$pt, and $45\%$ get \emph{safer}. A one-way variance decomposition of the
+erosion attributes \textbf{79\% to the source model, 3\% to the imitation target,
+0.2\% to the dataset} (Table~\ref{tab:variance}). Only the least-safe base
+(ministral-8b, $26\%$ baseline harm) erodes appreciably ($+3.4$pt); a robust source
+gets safer ($-2.9$pt). Disguisability---and its safety cost---is a property of the
+\emph{disguising} model, unpredictable to an auditor (``asymmetric laundering'').
+
+\paragraph{Finding 2 --- The erosion is imitation-specific.}
+A matched self-imitation control isolates the effect: ministral imitating
+\emph{itself} drifts $-0.4$pt (null, all four datasets), while imitating \emph{others}
+erodes $+3.4$pt; a robust source is null both ways. The erosion is a property of
+\emph{cross}-imitation, not of fine-tuning on 500 examples per se.
+
+\paragraph{Finding 3 --- Off-the-shelf guards overstate the effect $3.5\times$.}
+On $n{=}4{,}712$ matrix responses, Llama-Guard-3-8B flags $25.4\%$ unsafe versus
+$7.2\%$ genuine harm --- a \textbf{$3.5\times$ overcount} ($6.7\times$ on AdvBench).
+The mechanism is not refuse-then-leak: $79\%$ of Guard's flags ($940/1{,}196$) are
+false positives and \emph{every one is a clean refusal} of a harmful prompt---Guard
+reacts to the prompt topic, not whether the response delivered harm---while it
+simultaneously \emph{misses} $25\%$ of genuine harm (recall $75.3\%$). Practitioners
+relying on such filters both over-flag safe refusals and under-detect real harm.
+
+\paragraph{Finding 4 --- Identity is steerable, safety is not.}
+On the $N{=}20$ models where the positive control fires, ablating the benign
+provenance direction is null (indistinguishable from a random-direction control)
+while ablating the refusal direction under the identical operator erodes safety
+catastrophically. The dissociation is \textbf{20/20 CLEAN} across the roster; on the
+core set, four models genuinely resist single-direction refusal ablation (reported as
+resistance, not support), one is \textsc{pc\_invalid} (an all-layer cone
+over-ablates a deep VLM tower), and two 120B/32B-hybrid models are deferred to larger
+hardware. Weight-level DPO imitation erodes safety, but the \emph{steerable} identity
+direction does not carry that erosion.
+
+\begin{table}[t]
+\centering
+\begin{tabular}{lc}
+\toprule
+Factor & \% of erosion variance ($\eta^2$) \\
+\midrule
+Source model & 79.1 \\
+Imitation target & 2.9 \\
+Dataset & 0.2 \\
+\bottomrule
+\end{tabular}
+\caption{Erosion is overwhelmingly a source-model property ($n{=}540$).}
+\label{tab:variance}
+\end{table}
+
+\section{Limitations}
+Results are single-seed (42). Two large models (a 120B MoE, a 32B hybrid) are deferred
+to 4-GPU hardware for the steering cone. Imitation runs on 9 locally-trainable sources
+(deep coverage) versus 20 steering models (cheap-intervention breadth); the connecting
+claim is made on the 8-model matched core where both experiments ran. Harm labels come
+from an LLM judge; we mitigate with a content-aware refuse-then-leak design and a
+three-way adjudication.
+
+\section{Conclusion}
+A model's behavioral identity is steerable and \emph{separable} from its safety.
+Imitation transfers the fingerprint but its small, source-conditioned safety erosion
+lives in the weight update rather than the steerable identity direction, and
+off-the-shelf guards overstate that erosion ${\sim}3.5\times$ by flagging refusals as
+unsafe. Behavioral-fingerprint auditing is therefore unreliable in adversarial
+settings---and unreliable \emph{unpredictably}, per source---while capability/safety
+must be measured with content-aware judges, not output filters.
+
+\bibliographystyle{aaai}
+% \bibliography{dementor}
+\end{document}
