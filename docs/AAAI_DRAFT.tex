@@ -164,7 +164,16 @@ Dataset & 0.2 \\
 \end{table}
 
 \section{Limitations}
-Results are single-seed (42). Two large models (a 120B MoE, a 32B hybrid) are deferred
+The main matrix is single-seed (42). Our central claims---a measurement correction
+(Finding~3) and a mechanistic dissociation (Finding~4)---involve no training
+stochasticity, and the erosion effect is characterized as \emph{small} rather than
+precisely estimated, so we expect the qualitative conclusions to be seed-robust. A
+separate 7-model, 3-seed pilot (seeds 42--44) supports this directly: overall genuine
+erosion holds at $+0.27/+0.21/+0.21$pt across seeds, the per-model seed standard
+deviation ($\sim$0.1pt) is ${\sim}8\times$ smaller than the between-source spread
+($\sim$0.75pt), and every model's erode/does-not-erode verdict is preserved across all
+three seeds. Multi-seed replication of the full matrix is left to future work.
+Two large models (a 120B MoE, a 32B hybrid) are deferred
 to 4-GPU hardware for the steering cone. Imitation runs on 9 locally-trainable sources
 (deep coverage) versus 20 steering models (cheap-intervention breadth); the connecting
 claim is made on the 8-model matched core where both experiments ran. Harm labels come
