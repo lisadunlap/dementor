@@ -63,6 +63,11 @@ SAMPLE_ENV = dict(HF_HOME=EC.HF_HOME, HF_HUB_CACHE=SAMPLE_HF_HUB_CACHE,
 # GPU-politeness env for the batched-judge worker subprocess (mirror erosion_daemon.BASE_ENV).
 JUDGE_ENV = dict(HF_HOME=EC.HF_HOME, HF_HUB_CACHE=EC.HF_HUB_CACHE,
                  HF_HUB_DISABLE_XET="1", HF_HUB_OFFLINE="1", PYTHONPATH=EC.REPO,
+                 # Reclaim fragmented reserve so the RTL-judge subprocess + canonical graders fit on
+                 # one 80GB card (the batched judge peaks near the limit; ~5GB is otherwise lost to
+                 # allocator fragmentation, which tipped it into OOM on the Tinker source items).
+                 PYTORCH_CUDA_ALLOC_CONF=os.environ.get("PYTORCH_CUDA_ALLOC_CONF",
+                                                        "expandable_segments:True"),
                  RTL_JUDGE_BATCH_SIZE=os.environ.get("RTL_JUDGE_BATCH_SIZE", "96"),
                  RTL_JUDGE_MAX_RESP_CHARS=os.environ.get("RTL_JUDGE_MAX_RESP_CHARS", "1800"))
 

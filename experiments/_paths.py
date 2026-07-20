@@ -41,4 +41,22 @@ HF_HOME = env("DEMENTOR_HF_HOME", env("HF_HOME", "/data/ethantsliu/huggingface")
 HF_HUB_CACHE = env("HF_HUB_CACHE", os.path.join(HF_HOME, "hub"))
 PY = env("DEMENTOR_PY", sys.executable)
 GPUS = [int(x) for x in env("DEMENTOR_GPUS", "5,6,7").split(",") if str(x).strip()]
-RTL_JUDGE_MODEL = env("RTL_JUDGE_MODEL", "Qwen/Qwen3-8B")
+def _resolve_rtl_judge():
+    """The RTL judge model. An explicit RTL_JUDGE_MODEL wins. Otherwise prefer a COMPLETE local
+    checkout under DEMENTOR_MODELS_DIR: the HF hub-cache entry for Qwen3-8B is frequently weightless
+    under HF_HUB_OFFLINE=1 (config only, no *.safetensors), which makes from_pretrained raise
+    'does not appear to have a file named model.safetensors' at judge time. Falling back to the repo
+    id only when no local weights exist keeps the offline box working without an env var."""
+    explicit = env("RTL_JUDGE_MODEL", None)
+    if explicit:
+        return explicit
+    local = os.path.join(env("DEMENTOR_MODELS_DIR", "/data/ethantsliu/models_dl"), "Qwen3-8B")
+    try:
+        if os.path.isdir(local) and any(f.endswith(".safetensors") for f in os.listdir(local)):
+            return local
+    except OSError:
+        pass
+    return "Qwen/Qwen3-8B"
+
+
+RTL_JUDGE_MODEL = _resolve_rtl_judge()
