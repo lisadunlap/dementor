@@ -200,18 +200,9 @@ def sample_item(it, benchmarks, max_prompts, subsample_seed, max_new_tokens, sam
     if not getattr(tok, "chat_template", None):
         EC.log(f"[sample] {it['id']} no chat template for {base}; raw prompt fallback enabled", logf)
 
-    def sample_one(enc):
-        for attempt in range(5):
-            try:
-                fut = samp.sample(prompt=types.ModelInput.from_ints(tokens=enc), num_samples=1,
-                                  sampling_params=sp)
-                return fut.result().sequences[0].tokens
-            except Exception as e:
-                if attempt == 4:
-                    EC.log(f"[sample] {it['id']} give-up: {type(e).__name__} {str(e)[:120]}", logf)
-                    return []
-                time.sleep(min(2 ** attempt, 20))
-        return []
+    def _submit(enc):
+        return samp.sample(prompt=types.ModelInput.from_ints(tokens=enc), num_samples=1,
+                           sampling_params=sp)
 
     for b in need:
         sub_csv = EC.get_subsample(b, max_prompts, subsample_seed, logf)
@@ -220,8 +211,30 @@ def sample_item(it, benchmarks, max_prompts, subsample_seed, max_new_tokens, sam
         EC.log(f"[sample] {it['id']} {b}: {len(prompts)} prompts via Tinker (base={base})", logf)
         t0 = time.time()
         encoded = [tok.encode(render(p), add_special_tokens=False) for p in prompts]  # serial
-        with ThreadPoolExecutor(max_workers=sample_workers) as ex:
-            tok_outs = list(ex.map(sample_one, encoded))                              # parallel remote
+        # Tinker best practice (async-patterns docs): submit ALL prompts as non-blocking Futures up
+        # front so Tinker batches+pipelines them on-GPU, THEN collect -- far faster than a thread pool
+        # that submits one request and blocks on it (which drains between waves, capping in-flight at
+        # sample_workers). sample() returns immediately with a Future. Retry only the failures.
+        futs = [_submit(e) for e in encoded]
+        tok_outs = [None] * len(futs)
+        pending = list(range(len(futs)))
+        for attempt in range(5):
+            failed = []
+            for i in pending:
+                try:
+                    tok_outs[i] = futs[i].result().sequences[0].tokens
+                except Exception as e:
+                    failed.append(i)
+                    if attempt == 4:
+                        EC.log(f"[sample] {it['id']} {b} idx{i} give-up: "
+                               f"{type(e).__name__} {str(e)[:100]}", logf)
+            if not failed:
+                break
+            time.sleep(min(2 ** attempt, 20))
+            for i in failed:
+                futs[i] = _submit(encoded[i])
+            pending = failed
+        tok_outs = [t if t is not None else [] for t in tok_outs]
         resps = [clean_response(base, tok.decode(t)) if t else "" for t in tok_outs]  # serial
         out = pd.DataFrame({
             "prompt": prompts,
