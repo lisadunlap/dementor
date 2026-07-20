@@ -22,6 +22,13 @@ official HarmBench classifier, and a validated refuse-then-leak "RTL" judge).
 | **Imitation safety-erosion matrix** | source → target LoRA **SFT → DPO** on benign data | 9 sources × ≤18 targets × 4 datasets = **540 adapters** | genuine-harm erosion across 7 safety benchmarks (content-aware RTL judge) |
 | **Steering dissociation** | diff-of-means **projection-ablation** of the identity direction, with a per-model refusal positive control | **N=23** models with a clean control arm (7-model matched core) | whether ablating the steerable identity direction moves safety |
 
+The imitation matrix is **rectangular (9 × 18), not square, by design.** Copying a model only needs its
+*outputs*, but using a model as a *source* means fine-tuning its full weights — so the **9 sources are
+every model we could fine-tune locally**, while larger or API-only models (the 120B MoEs, the Tinker-/
+API-served checkpoints) appear as **imitation targets only**. Making it symmetric (18 × 18) would require
+fine-tuning those big/API-only models as bases, which is exactly the cost the design avoids; it loses no
+generality, since the claims are about how a *source's* safety changes, not the targets'.
+
 ## Results at a glance
 
 | # | Finding | Headline number |
