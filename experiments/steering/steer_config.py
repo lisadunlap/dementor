@@ -25,20 +25,16 @@ import sys
 import json
 
 _HERE = os.path.dirname(os.path.abspath(__file__))   # experiments/steering
+_EXP = os.path.dirname(_HERE)                         # experiments/
+if _EXP not in sys.path:
+    sys.path.insert(0, _EXP)
+import _paths  # shared path/env primitives
 
 
-def _env(name, default):
-    v = os.environ.get(name)
-    return v if v else default
+_env = _paths.env  # backward-compatible alias (identical semantics)
 
 
-def _first(*cands):
-    """First candidate path that EXISTS, else the last one (so the value is always defined).
-    Lets a default prefer the in-repo shipped asset while falling back to our box's live tree."""
-    for c in cands:
-        if c and os.path.exists(c):
-            return c
-    return cands[-1]
+_first = _paths.first  # first-existing-path helper (identical)
 
 
 # In-repo shipped steering assets live next to this module under experiments/steering/data/
@@ -50,15 +46,15 @@ _LIVE_STEER = "/data/ethantsliu/exp_steer_safety"
 
 
 # Repo root (for `dementor` imports). Default: two levels up from here (experiments/steering -> repo).
-REPO = _env("DEMENTOR_REPO", os.path.dirname(os.path.dirname(_HERE)))
+REPO = _paths.REPO
 
 # Big-disk data/outputs root. Canonical env DEMENTOR_DATA (shared with the imitation package);
 # DEMENTOR_DATA_ROOT kept as a legacy alias. Default: the repo's data/ dir (a symlink to big disk here).
-DATA_ROOT = _env("DEMENTOR_DATA", _env("DEMENTOR_DATA_ROOT", os.path.join(REPO, "data")))
+DATA_ROOT = _paths.DATA_ROOT
 
 # Steering experiment tree root -- holds judge_all.py + benchmarks/ that cone_eval.py consumes. NOT
 # in git (lives in the steering experiment tree on our box). Override with DEMENTOR_STEER_ROOT.
-STEER_ROOT = _env("DEMENTOR_STEER_ROOT", "/data/ethantsliu/exp_steer_safety")
+STEER_ROOT = _paths.STEER_ROOT
 
 # Where the roster reads rdo_worklist.json + writes per-model <slug>/ dirs. Default: the LIVE run
 # location on our box. A partner points DEMENTOR_STEER_WORK at their own scratch dir.
@@ -117,19 +113,19 @@ REPO_ENV = _env("DEMENTOR_REPO_ENV", os.path.join(REPO, ".env"))
 # HF caches. Canonical env DEMENTOR_HF_HOME (shared with the imitation package); standard HF_HOME
 # kept as an alias. Default: our box's big-disk HF cache (so behaviour is unchanged here). The hub
 # subcache is env-overridable and defaults to <HF_HOME>/hub.
-HF_HOME = _env("DEMENTOR_HF_HOME", _env("HF_HOME", "/data/ethantsliu/huggingface"))
-HF_HUB_CACHE = _env("HF_HUB_CACHE", os.path.join(HF_HOME, "hub"))
+HF_HOME = _paths.HF_HOME
+HF_HUB_CACHE = _paths.HF_HUB_CACHE
 
 # Python interpreter for subprocess re-launches. Default: the interpreter running this process, so
 # the child inherits the same venv.
-PY = _env("DEMENTOR_PY", sys.executable)
+PY = _paths.PY
 
 # RTL / local-classifier judge model (matches cone_eval / canonical_graders defaults exactly).
-JUDGE_MODEL = _env("RTL_JUDGE_MODEL", "Qwen/Qwen3-8B")
+JUDGE_MODEL = _paths.RTL_JUDGE_MODEL
 
 # GPU ids the sustained-idle daemons may use. Default 5,6,7 (our shared box: GPU4 banned, 0-3 belong
 # to others). A partner on a dedicated box sets DEMENTOR_GPUS=0,1,2,3.
-GPUS = [int(x) for x in _env("DEMENTOR_GPUS", "5,6,7").split(",") if str(x).strip()]
+GPUS = _paths.GPUS
 
 # Single fixed seed (NO multi-seed sweep for now). The RDO cone pins torch/random RNG to this in
 # port/rdo_port.py; exposed here as the one canonical knob (env DEMENTOR_SEED). Default 42.

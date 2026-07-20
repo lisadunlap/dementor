@@ -1,0 +1,44 @@
+"""Shared path/env primitives for the Dementor experiment packages.
+
+Both experiments/imitation_safety/erosion_common.py and experiments/steering/steer_config.py
+independently declared the same `_env` helper and the same env-overridable roots (REPO, DATA_ROOT,
+HF_HOME, HF_HUB_CACHE, PY, GPUS, STEER_ROOT, RTL_JUDGE_MODEL). Those are centralized here so there is
+one source of truth. Every value stays ENV-OVERRIDABLE with the identical default it had before, so
+behavior is unchanged when no DEMENTOR_* var is set.
+
+NOTE: roots whose resolution DIFFERS between the two packages (RTL_JUDGE_DIR, JUDGE_ALL, PORT, and the
+package-specific registry/work/model roots) are deliberately NOT centralized here — each package keeps
+its own definition (using `env`/`first` below) because their in-repo-vs-fallback candidate order
+differs. This module only owns the byte-identical shared roots.
+"""
+import os
+import sys
+
+# experiments/_paths.py -> dirname = experiments/ -> dirname = repo root.
+_REPO_DEFAULT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def env(name, default):
+    """Return $name if set and non-empty, else default. (Was `_env` in both packages.)"""
+    v = os.environ.get(name)
+    return v if v else default
+
+
+def first(*cands):
+    """First candidate path that EXISTS, else the last one (always defined). Lets a default prefer an
+    in-repo shipped asset while falling back to the live tree. (Was `_first`/`_prefer`.)"""
+    for c in cands:
+        if c and os.path.exists(c):
+            return c
+    return cands[-1]
+
+
+# ---- byte-identical shared roots (env-overridable; defaults preserved verbatim) ----
+REPO = env("DEMENTOR_REPO", _REPO_DEFAULT)
+DATA_ROOT = env("DEMENTOR_DATA", env("DEMENTOR_DATA_ROOT", os.path.join(REPO, "data")))
+STEER_ROOT = env("DEMENTOR_STEER_ROOT", "/data/ethantsliu/exp_steer_safety")
+HF_HOME = env("DEMENTOR_HF_HOME", env("HF_HOME", "/data/ethantsliu/huggingface"))
+HF_HUB_CACHE = env("HF_HUB_CACHE", os.path.join(HF_HOME, "hub"))
+PY = env("DEMENTOR_PY", sys.executable)
+GPUS = [int(x) for x in env("DEMENTOR_GPUS", "5,6,7").split(",") if str(x).strip()]
+RTL_JUDGE_MODEL = env("RTL_JUDGE_MODEL", "Qwen/Qwen3-8B")

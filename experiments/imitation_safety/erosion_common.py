@@ -33,16 +33,20 @@ from types import ModuleType
 # helpers reachable (STEER_ROOT / RTL_JUDGE_DIR) for the JUDGE phase.
 _HERE = os.path.dirname(os.path.abspath(__file__))              # experiments/imitation_safety
 
-def _env(name, default):
-    v = os.environ.get(name)
-    return v if v else default
+# Shared path/env primitives (env(), first(), and the byte-identical roots REPO/DATA_ROOT/STEER_ROOT/
+# HF_HOME/HF_HUB_CACHE/PY/GPUS/RTL_JUDGE_MODEL) live in experiments/_paths.py -- one source of truth.
+_EXP = os.path.dirname(_HERE)                                   # experiments/
+if _EXP not in sys.path:
+    sys.path.insert(0, _EXP)
+import _paths
+_env = _paths.env                                              # backward-compatible alias (identical)
 
-# Repo root (for `dementor` imports + repo-relative dataset paths). Default: two levels up from here.
-REPO = _env("DEMENTOR_REPO", os.path.dirname(os.path.dirname(_HERE)))
+# Repo root (for `dementor` imports + repo-relative dataset paths).
+REPO = _paths.REPO
 
 # Big-disk data/outputs root (work dirs, subsamples, results). Default: <repo>/data (our box: a
 # symlink to the big disk). Canonical shared env var DEMENTOR_DATA (matches the steering half).
-DATA_ROOT = _env("DEMENTOR_DATA", os.path.join(REPO, "data"))
+DATA_ROOT = _paths.DATA_ROOT
 
 # Steering-side judge/grader helpers. These are now COMMITTED IN-REPO at experiments/steering/port/
 # (judge_all.py, rtl_judge.py, cone_eval.py, canonical_graders.py all live in that one port/ dir), so
@@ -51,11 +55,9 @@ DATA_ROOT = _env("DEMENTOR_DATA", os.path.join(REPO, "data"))
 # DON'T need these; the JUDGE/GRADE + fidelity `judge` scorer DO. Env vars override everything.
 _INREPO_STEER_PORT = os.path.join(REPO, "experiments", "steering", "port")
 
-def _prefer(inrepo, fallback):
-    """Return the in-repo path if it exists, else the (our-box) fallback path."""
-    return inrepo if os.path.exists(inrepo) else fallback
+_prefer = _paths.first                  # first-existing-path helper; _prefer(a,b) == first(a,b)
 
-STEER_ROOT = _env("DEMENTOR_STEER_ROOT", "/data/ethantsliu/exp_steer_safety")
+STEER_ROOT = _paths.STEER_ROOT
 # PORT: dir holding cone_eval.py + canonical_graders.py (in-repo it also holds judge_all + rtl_judge).
 PORT = _env("DEMENTOR_PORT_DIR", _prefer(_INREPO_STEER_PORT, os.path.join(STEER_ROOT, "repl80_rdo", "port")))
 # rtl_judge.py lives in the in-repo port/ dir; on our box it was a separate exp3_safety/leak_fix dir.
@@ -104,20 +106,20 @@ RESULTS_SAFETY = _env("DEMENTOR_RESULTS_SAFETY", os.path.join(DATA_ROOT, "result
 # HF caches. Canonical shared env var DEMENTOR_HF_HOME (matches the steering half); we also honor a
 # plain HF_HOME if that's all that's set, and fall back to our-box default. Propagated into every
 # subprocess env below as HF_HOME so the HF libraries pick it up.
-HF_HOME = _env("DEMENTOR_HF_HOME", _env("HF_HOME", "/data/ethantsliu/huggingface"))
-HF_HUB_CACHE = _env("HF_HUB_CACHE", os.path.join(HF_HOME, "hub"))
+HF_HOME = _paths.HF_HOME
+HF_HUB_CACHE = _paths.HF_HUB_CACHE
 
 # Python interpreter for subprocess re-launches (runner / judge worker / judge_all). Default: the
 # interpreter running this process, so the child inherits the same venv.
-PY = _env("DEMENTOR_PY", sys.executable)
+PY = _paths.PY
 
 # RTL judge model + local classifier model (match cone_eval / canonical_graders defaults exactly).
-RTL_JUDGE_MODEL = os.environ.get("RTL_JUDGE_MODEL", "Qwen/Qwen3-8B")
+RTL_JUDGE_MODEL = _paths.RTL_JUDGE_MODEL
 
 # GPU ids the sustained-idle daemons (erosion / tinker-judge / fidelity) may use. Default 5,6,7
 # (our shared box: GPU4 banned, 0-3 belong to others). A partner on a DEDICATED 4xH100 box sets
 # DEMENTOR_GPUS=0,1,2,3 -- there is no GPU4 prohibition off our box.
-GPUS = [int(x) for x in _env("DEMENTOR_GPUS", "5,6,7").split(",") if str(x).strip()]
+GPUS = _paths.GPUS
 
 for _p in (PORT, os.path.dirname(PORT), REPO, RTL_JUDGE_DIR):
     if _p not in sys.path:
