@@ -22,32 +22,16 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import erosion_common as EC
 import prompt_erosion_common as PC
 import gpu_lease
+import daemon_common as DC  # shared gpu_stat / dlog factory / HF-offline env builder
 
 GPUS = EC.GPUS   # env DEMENTOR_GPUS (default 5,6,7; partner 4xH100 box: DEMENTOR_GPUS=0,1,2,3)
 LEASE_HOLDER = "prompt_erosion"
 HERE = os.path.dirname(os.path.abspath(__file__))
 RUNNER = os.path.join(HERE, "run_prompt_erosion_item.py")
-BASE_ENV = dict(os.environ, HF_HOME=EC.HF_HOME,
-                HF_HUB_CACHE=EC.HF_HUB_CACHE, HF_HUB_DISABLE_XET="1",
-                PYTHONPATH=EC.REPO)
-BASE_ENV.setdefault("HF_HUB_OFFLINE", "1")
+BASE_ENV = DC.hf_offline_env(EC.REPO, EC.HF_HOME, EC.HF_HUB_CACHE)
 
-
-def dlog(m):
-    line = f"[{time.strftime('%H:%M:%S')}] {m}"
-    print(line, flush=True)
-    open(os.path.join(HERE, "logs", "prompt_daemon.log"), "a").write(line + "\n")
-
-
-def gpu_stat(g):
-    try:
-        out = subprocess.run(["nvidia-smi", "--query-gpu=utilization.gpu,memory.used",
-                              "--format=csv,noheader,nounits", "-i", str(g)],
-                             stdout=subprocess.PIPE, text=True).stdout.strip().splitlines()[0]
-        util, mem = [int(x.strip()) for x in out.split(",")]
-        return util, mem
-    except Exception:
-        return 100, 999999
+dlog = DC.make_dlog(os.path.join(HERE, "logs", "prompt_daemon.log"))
+gpu_stat = DC.gpu_stat
 
 
 def launch(item, gpus, extra):

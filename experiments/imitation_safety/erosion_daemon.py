@@ -24,17 +24,15 @@ import os, sys, time, argparse, subprocess
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import erosion_common as EC
 import gpu_lease  # shared atomic GPU-lease lock (arbitrates among the sustained-idle daemons)
+import daemon_common as DC  # shared gpu_stat / dlog factory / HF-offline env builder
 
 GPUS = EC.GPUS   # env DEMENTOR_GPUS (default 5,6,7; partner 4xH100 box: DEMENTOR_GPUS=0,1,2,3)
 LEASE_HOLDER = "erosion_daemon"
 HERE = os.path.dirname(os.path.abspath(__file__))
 RUNNER = os.path.join(HERE, "run_erosion_item.py")
-BASE_ENV = dict(os.environ, HF_HOME=EC.HF_HOME,
-                HF_HUB_CACHE=EC.HF_HUB_CACHE, HF_HUB_DISABLE_XET="1",
-                PYTHONPATH=EC.REPO)
 # Cached models run fully offline (avoids the HF Xet download hang); pre-set HF_HUB_OFFLINE=0 to
 # let an uncached base (e.g. Ministral-8B) fetch on first use.
-BASE_ENV.setdefault("HF_HUB_OFFLINE", "1")
+BASE_ENV = DC.hf_offline_env(EC.REPO, EC.HF_HOME, EC.HF_HUB_CACHE)
 
 # Per-base generation batch override.  The global --gen-batch (32) is calibrated for the big
 # bases: phi-4 (14B) already sits at ~64GB / 80GB at batch 32, and the 31B+ bases are memory-
@@ -51,10 +49,7 @@ GEN_BATCH_BY_BASE = {
 }
 
 
-def dlog(m):
-    line = f"[{time.strftime('%H:%M:%S')}] {m}"
-    print(line, flush=True)
-    open(os.path.join(HERE, "logs", "daemon.log"), "a").write(line + "\n")
+dlog = DC.make_dlog(os.path.join(HERE, "logs", "daemon.log"))
 
 
 def done(item_id):
@@ -62,15 +57,7 @@ def done(item_id):
     return os.path.exists(os.path.join(d, "metrics.json")) or os.path.exists(os.path.join(d, "ERROR.json"))
 
 
-def gpu_stat(g):
-    try:
-        out = subprocess.run(["nvidia-smi", "--query-gpu=utilization.gpu,memory.used",
-                              "--format=csv,noheader,nounits", "-i", str(g)],
-                             stdout=subprocess.PIPE, text=True).stdout.strip().splitlines()[0]
-        util, mem = [int(x.strip()) for x in out.split(",")]
-        return util, mem
-    except Exception:
-        return 100, 999999
+gpu_stat = DC.gpu_stat
 
 
 def external_running_ids(worklist):
