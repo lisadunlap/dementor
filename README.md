@@ -23,10 +23,13 @@ official HarmBench classifier, and a validated refuse-then-leak "RTL" judge).
 | **Steering dissociation** | diff-of-means **projection-ablation** of the identity direction, with a per-model refusal positive control | **N=23** models with a clean control arm (7-model matched core) | whether ablating the steerable identity direction moves safety |
 
 The imitation matrix is **rectangular (9 × 18), not square, by design.** Copying a model only needs its
-*outputs*, but using a model as a *source* means fine-tuning its full weights — so the **9 sources are
-every model we could fine-tune locally**, while larger or API-only models (the 120B MoEs, the Tinker-/
-API-served checkpoints) appear as **imitation targets only**. Making it symmetric (18 × 18) would require
-fine-tuning those big/API-only models as bases, which is exactly the cost the design avoids; it loses no
+*outputs*, but using a model as a *source* means fine-tuning its full weights — so the **9 sources are the
+models in our local fine-tuning track**, while **models we did not fine-tune locally** appear as
+**imitation targets only**. Those are of two kinds: (a) models served through a *separate* training
+backend (the Tinker API), so their adapters live in a different catalog and they were never fine-tuned as
+local bases — this includes small ones like qwen3.5-4b and qwen3-8b, so it is **not** about size; and
+(b) the largest models (the 120B MoEs) that do not fit our local GPUs at all. Making it symmetric (18 ×
+18) would mean fine-tuning all of them locally, which the design deliberately avoids; it loses no
 generality, since the claims are about how a *source's* safety changes, not the targets'.
 
 ## Results at a glance

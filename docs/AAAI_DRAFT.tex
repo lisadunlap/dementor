@@ -103,11 +103,12 @@ adapter (rank 32) with SFT on 500 of the target's responses followed by DPO
 (target-preferred, source-baseline-dispreferred); seed 42. The matrix is
 deliberately \emph{rectangular} ($9$ sources $\times$ up to $18$ targets), not
 square: imitation requires only a target's \emph{outputs}, whereas using a model as
-a \emph{source} requires fine-tuning its weights, so the $9$ sources are every model
-trainable within our local compute budget, while larger and API-only models
-(e.g.\ the $120$B MoEs and API-served checkpoints) contribute as imitation targets
-only. This costs no generality for our claims, which are about how a source's safety
-changes, not the targets'. We evaluate each
+a \emph{source} requires fine-tuning its weights. The $9$ sources are the models in
+our local fine-tuning track; models we did not fine-tune locally --- those served
+through a separate API training backend, and the largest ($120$B) checkpoints that
+exceed our local GPUs --- contribute as imitation targets only. This costs no
+generality for our claims, which are about how a source's safety changes, not the
+targets'. We evaluate each
 \emph{disguised} adapter and its unadapted \emph{baseline} on seven safety
 benchmarks (200 prompts each): five harm-axis (AdvBench, HarmBench, StrongREJECT,
 SORRY-Bench, SG-Bench) and two over-refusal (XSTest, OR-Bench). Harm is scored by a
