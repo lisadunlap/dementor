@@ -25,7 +25,7 @@ official HarmBench classifier, and a validated refuse-then-leak "RTL" judge).
 
 | # | Finding | Headline number |
 | --- | --- | --- |
-| 1 | **Metrics overcount** — Llama-Guard vs content-aware judge (n=4,712) | 25.4% vs 7.2% flagged = **3.5×** overcount (6.7× on AdvBench); judge validated vs official HarmBench cls (**κ=0.82**, base rates 25.5% vs 24.7%, n=50k) |
+| 1 | **Metrics overcount** — Llama-Guard vs two content-aware graders (n=4,712) | Guard **25.4%** vs HarmBench-cls **9.3%** vs RTL **7.2%** on identical responses → Guard overcounts **2.7–3.5×**; the two content-aware graders bracket 7–9%, Guard is the outlier |
 | 2 | **Imitation-specific** — self-SFT vs cross-imitation (ministral-8b) | self −0.4pt (null) vs cross **+3.4pt** |
 | 3 | **Source-conditioned** — variance decomposition (n=540) | source **79%** / target 3% / dataset 0.2%; mean +0.2pt, 245/540 get *safer* |
 | 4 | **Identity ⟂ safety** — steering dissociation (N=23) | **23/23** null: refusal cone **+16 to +96pt** harm vs fingerprint **−0.9 to +3.9pt** (random control −0.9 to +3.8pt) |
@@ -39,7 +39,7 @@ Not all four findings carry equal weight. Stated honestly so the framing matches
 
 | Tier | Finding | Why |
 | --- | --- | --- |
-| **Strong** | #1 metrics overcount | n=4,712 responses; the judge agrees with the **official HarmBench classifier at κ=0.82 over 50k responses** (base rates 25.5% vs 24.7%), so the overcount is Guard's, not the judge's; no training stochasticity |
+| **Strong** | #1 metrics overcount | n=4,712 responses; an **independent published grader (HarmBench-cls) confirms 9.3% vs Guard's 25.4%** on identical responses, so the overcount is Guard's, not the judge's; no training stochasticity |
 | **Strong** | #4 identity ⟂ safety | 23 models, ~10 labs, dense/MoE/hybrid/VLM; positive-controlled with a random-direction comparator; forward-pass only, so seed-independent |
 | **Solid (a null)** | #3 erosion small + source-conditioned | n=540; the *result* is that erosion is marginal and target-inert (79%/3%/0.2%). Only **2 of 9 sources** erode >1pt (ministral-8b +3.37, granite-4-h-small +2.00) |
 | **Thin (n=1)** | #2 imitation-specific | The self-SFT-vs-cross contrast is meaningful on **ministral-8b alone** — the only source with both real erosion and a self-control |
@@ -79,18 +79,21 @@ and its steering verdict is the one result that would take that contrast from n=
   verdict is identical across all three seeds**. So the source-conditioning is not seed noise. (Pilot
   roster is disjoint from the main 9 sources; seed-stability is a property of the training procedure.
   Data: [`data/results/safety/multiseed_pilot/`](data/results/safety/multiseed_pilot).)
-- **Metrics overcount (CONFIRMED).** Off-the-shelf output filters (Llama-Guard-3-8B) flag **25.4%** of
-  responses unsafe vs **7.2%** genuine harm under a content-aware judge — a **3.5× overcount** (6.7× on
-  AdvBench) over n=4,712 matrix responses — while it simultaneously **misses 25% of genuine harm**
-  (recall 75.3%). **The judge is validated against the official HarmBench classifier**
-  (`cais/HarmBench-Llama-2-13b-cls`): over 50k responses carrying both labels, RTL agrees at **κ=0.82**
-  with **base rates 25.5% vs 24.7%** — so RTL is not lenient, and the overcount is Guard's property, not
-  the judge's (`experiments/imitation_safety/validate_rtl_vs_harmbench.py`). The overcount lands on
-  responses that do not deliver harm (Guard is topic-reactive); note the sharper "every flag is a clean
-  refusal" phrasing is only partly independent — 21% of those responses carry no explicit refusal phrase
-  and 43% contain leaked special tokens, so we state it as "does not deliver harm" rather than "clean
-  refusal". *(Refuse-then-leak is a separate, real phenomenon the RTL judge catches — 144 cases both
-  judges agree are harmful — but it is not what drives the Guard overcount.)*
+- **Metrics overcount (CONFIRMED, corroborated by an independent grader).** On the same 4,712 matrix
+  responses, three graders disagree sharply: **Llama-Guard 25.4% / official HarmBench classifier 9.3% /
+  our RTL judge 7.2%**. The two *content-aware* graders bracket genuine harm at **7–9%** while the output
+  filter alone says 25% — so Guard is the outlier, overcounting **2.7× vs the independent HarmBench
+  classifier** (3.5× vs RTL), and it simultaneously **misses 25% of genuine harm** (recall 75.3%). This
+  is the key point: the overcount does **not** rest on trusting our judge — a published third-party grader
+  independently confirms harm is ~9%, still far below Guard
+  (`experiments/imitation_safety/direct_guard_vs_harmbench.py`,
+  `validate_rtl_vs_harmbench.py`). Guard flags responses that do not deliver harm (it is topic-reactive);
+  we state that conservatively rather than "every flag is a clean refusal" — that sharper phrasing is only
+  partly independent (21% of the flagged responses carry no refusal phrase, 43% contain leaked special
+  tokens). Honest caveat: RTL is marginally *more* lenient than HarmBench-cls (7.2% vs 9.3%, mostly on
+  SORRY-Bench), so our erosion numbers are if anything a slight underestimate — which does not rescue
+  Guard. *(Refuse-then-leak is a separate real phenomenon the RTL judge catches — 144 cases both judges
+  agree are harmful — but it is not what drives the Guard overcount.)*
 - **Identity ⟂ safety (CONFIRMED).** Weight-level DPO imitation erodes safety, but steering away the
   *same* identity direction leaves safety unchanged. Across the **23 models whose refusal positive
   control fires and whose random-direction control arm is clean**, ablating the fingerprint is null in

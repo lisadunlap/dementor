@@ -28,12 +28,11 @@ controlled 540-adapter imitation matrix (9 source models $\times$ up to 18 targe
 $\times$ 4 datasets) and a 23-model projection-ablation study, and reach a more
 measured conclusion: \textbf{imitation transfers a model's fingerprint without
 transferring its safety, and the reported hazard is largely a measurement artifact.}
-(1) Off-the-shelf output filters badly overstate the phenomenon: Llama-Guard flags
-harm $3.5\times$ more often than a content-aware judge (up to $6.7\times$ on
-AdvBench). The mechanism is not refuse-then-leak --- $79\%$ of its flags are
-false-positive \emph{clean refusals} of harmful prompts, because the guard reacts to
-prompt topic rather than response content, while it simultaneously \emph{misses}
-$25\%$ of genuine harm. (2) Measured with a content-aware judge, imitation erodes
+(1) Off-the-shelf output filters badly overstate the phenomenon: on identical
+responses Llama-Guard reports $25.4\%$ harm where two independent content-aware graders
+--- our judge and the official HarmBench classifier --- agree on $7$--$9\%$, a
+$2.7$--$3.5\times$ overcount, while the filter simultaneously \emph{misses} $25\%$ of
+genuine harm. The guard reacts to prompt topic rather than response content. (2) Measured with a content-aware judge, imitation erodes
 genuine safety only marginally: mean $+0.2$pt across 540 adapters, no adapter above
 $+10$pt, and $45\%$ get \emph{safer}. (3) What erosion exists is
 \emph{source-conditioned}: a variance decomposition attributes 79\% of erosion
@@ -124,7 +123,7 @@ control fires, we ask whether ablating the \emph{provenance} direction moves saf
 relative to that random-direction control.
 
 \section{Results}
-\paragraph{Finding 1 --- Off-the-shelf guards overstate the effect $3.5\times$.}
+\paragraph{Finding 1 --- Off-the-shelf guards overstate the effect $2.7$--$3.5\times$.}
 On $n{=}4{,}712$ matrix responses, Llama-Guard-3-8B flags $25.4\%$ unsafe versus
 $7.2\%$ genuine harm --- a \textbf{$3.5\times$ overcount} ($6.7\times$ on AdvBench) ---
 while it simultaneously \emph{misses} $25\%$ of genuine harm (recall $75.3\%$). Guard
@@ -133,18 +132,23 @@ response content. This result is logically prior to the rest: any erosion estima
 computed with such a filter inherits the inflation, which is why we measure with a
 content-aware judge throughout.
 
-The overcount is a claim about two instruments disagreeing, so we anchor our judge to
-an \emph{external} reference rather than asserting it. The content-aware judge agrees
-with the official HarmBench classifier (\texttt{cais/HarmBench-Llama-2-13b-cls}) at
-$93.2\%$ (Cohen's $\kappa{=}0.82$) over $n{=}50{,}000$ responses carrying both labels,
-with base rates $25.5\%$ (ours) versus $24.7\%$ (HarmBench) --- within $0.8$pt. The
-judge is therefore not systematically lenient, so the overcount is a property of the
-guard. It is additionally validated against a $227$-item human hand-census
-($\mathrm{F1}{=}0.83$, $\kappa{=}0.79$). We note the sharper claim that Guard's false
-positives are all \emph{clean refusals} is only partly independent of the judge: a
-refusal-phrase lexicon covers $79\%$ of them and $43\%$ contain degenerate decoding
-artifacts, so we report the conservative form (``does not deliver harm''), not
-``clean refusal''.
+The overcount is a claim about two instruments disagreeing, so we corroborate it with
+an \emph{independent} third grader on the identical responses. Scoring the same
+$4{,}712$ responses with the official HarmBench classifier
+(\texttt{cais/HarmBench-Llama-2-13b-cls}) gives harm rates of \textbf{Llama-Guard
+$25.4\%$, HarmBench classifier $9.3\%$, our judge $7.2\%$}: the two content-aware
+graders bracket genuine harm at $7$--$9\%$ while the output filter alone reports $25\%$.
+Guard is thus the outlier, overcounting $2.7\times$ relative to the independent grader
+($3.5\times$ relative to ours), and the claim does not rest on trusting our judge. A
+second cross-check on the disjoint steering distribution ($n{=}50{,}000$) agrees
+($\kappa{=}0.82$, base rates $25.5\%$ vs $24.7\%$). We report the overcount
+conservatively as $2.7$--$3.5\times$; our judge is if anything marginally \emph{more}
+lenient than the HarmBench classifier (concentrated on SORRY-Bench), so our
+RTL-scored erosion is a slight underestimate, which does not rescue the filter. We
+also decline the sharper claim that Guard's false positives are all \emph{clean
+refusals}: a refusal-phrase lexicon covers only $79\%$ of them and $43\%$ contain
+degenerate decoding artifacts, so we report the conservative form (``does not deliver
+harm'').
 
 \paragraph{Finding 2 --- Measured properly, imitation erosion is small.}
 Across $n{=}540$ disguise adapters scored by the content-aware judge, mean genuine-harm
@@ -224,8 +228,8 @@ agreement extends the check across the full harm axis.
 Behavioral imitation transfers a model's fingerprint without transferring its safety.
 Measured with a content-aware judge, the safety cost of imitation is small
 ($+0.2$pt mean; $45\%$ of adapters get \emph{safer}) and confined to sources that were
-already fragile; off-the-shelf guards inflate it ${\sim}3.5\times$ by flagging clean
-refusals as unsafe. The mechanistic counterpart is a causal dissociation: a model's
+already fragile; off-the-shelf guards inflate it $2.7$--$3.5\times$ (versus two
+independent content-aware graders) by flagging responses that do not deliver harm. The mechanistic counterpart is a causal dissociation: a model's
 identity direction can be ablated without moving its refusal behavior, across 23
 models. Two practical consequences follow. First, safety claims about fine-tuned or
 distilled models must be measured with content-aware judges rather than output

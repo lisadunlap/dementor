@@ -16,14 +16,32 @@ erosion to the **weight update** rather than to the model's steerable **identity
    clean refusals while missing a quarter of real harmful-assistance responses. Reproduce:
    `experiments/imitation_safety/compute_overcount.py`.
 
-   **The judge is validated against an EXTERNAL published reference — this is what carries the claim.**
-   The overcount is a statement about two instruments disagreeing; on its own it equally supports
-   "Guard over-flags" or "RTL under-flags". We break the symmetry with the official HarmBench
-   classifier (`cais/HarmBench-Llama-2-13b-cls`), an independent arbiter that is already run alongside
-   RTL on every steering-eval response. Over **n=50,000** responses carrying both labels, RTL agrees
-   with the HarmBench classifier at **93.2% (Cohen's κ=0.82)**, with **base rates 25.5% (RTL) vs 24.7%
-   (HarmBench) — within 0.8pt**. RTL is therefore *not* systematically lenient, so the Guard overcount
-   is a property of Guard. Reproduce: `experiments/imitation_safety/validate_rtl_vs_harmbench.py`.
+   **The overcount is corroborated by an INDEPENDENT published grader on the identical responses —
+   this is what carries the claim.** The overcount is a statement about two instruments disagreeing;
+   on its own it equally supports "Guard over-flags" or "RTL under-flags". We break the symmetry with
+   the official HarmBench classifier (`cais/HarmBench-Llama-2-13b-cls`), a third-party arbiter, run
+   directly on the same 4,712 overcount responses (`overcount_three_way.csv`,
+   `direct_guard_vs_harmbench.py`):
+
+   | Grader | Harm rate on the same 4,712 responses |
+   | --- | --- |
+   | Llama-Guard-3-8B (output filter) | **25.4%** |
+   | HarmBench classifier (independent, content-aware) | **9.3%** |
+   | RTL judge (ours, content-aware) | **7.2%** |
+
+   The two **content-aware graders bracket genuine harm at 7–9%**, while Guard alone says 25%. So Guard
+   is the outlier: it overcounts **2.7× vs the independent HarmBench classifier** (and 3.5× vs RTL) on
+   identical data. The overcount therefore does **not** rest on trusting our judge — a published
+   third-party grader independently confirms it. A second, larger cross-check on the disjoint
+   steering-eval distribution (n=50,000, higher harm base rate) agrees: RTL vs HarmBench κ=0.82, base
+   rates 25.5% vs 24.7% (`validate_rtl_vs_harmbench.py`).
+
+   **Honest caveat (does not rescue Guard).** On the matrix responses RTL is marginally *more lenient*
+   than the HarmBench classifier (7.2% vs 9.3%, κ=0.70), concentrated on SORRY-Bench (RTL 10.9% vs HB
+   19.9%); AdvBench/StrongREJECT/HarmBench agree closely. So if anything our RTL-scored erosion is a
+   slight *under*estimate — but the direction that matters is unchanged: both content-aware graders sit
+   far below Guard's 25.4%. We therefore state the overcount conservatively as **2.7–3.5×** depending
+   on the content-aware reference.
    (RTL is additionally validated against a 227-item human hand-census on AdvBench+StrongREJECT:
    P=0.784 / R=0.879 / F1=0.829 / κ=0.792 with GRAY excluded; the flattering convention — precision
    drops to 0.580 if the 29 GRAY items count as non-harm. Single unnamed annotator, no IAA; the
