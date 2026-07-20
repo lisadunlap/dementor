@@ -1,0 +1,88 @@
+"""Golden/regression tests for the two pure result-recompute functions:
+  * variance_decomp.eta_squared -- one-way eta^2 (SS_between / SS_total) behind the 79/3/0.2 split
+  * compute_overcount.summarize  -- the Guard-vs-genuine overcount summary (the 3.5x headline)
+
+Both are exercised on tiny hand-computable fixtures so the arithmetic is pinned exactly, without
+depending on the committed data artifacts (which live under the /data symlink and may be absent).
+"""
+import sys
+from pathlib import Path
+
+import pandas as pd
+import pytest
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "experiments" / "imitation_safety"))
+
+import variance_decomp as VD  # noqa: E402
+import compute_overcount as CO  # noqa: E402
+
+
+# --------------------------------------------------------------------------- eta_squared
+def test_eta_squared_all_variance_between_groups():
+    # source A metric [1,1], source B metric [3,3] -> group means fully explain variance -> 1.0
+    df = pd.DataFrame({"source": ["A", "A", "B", "B"], "erosion": [1.0, 1.0, 3.0, 3.0]})
+    assert VD.eta_squared(df, "source", "erosion") == pytest.approx(1.0)
+
+
+def test_eta_squared_no_between_group_variance():
+    # identical group means -> SS_between 0 -> eta^2 0
+    df = pd.DataFrame({"source": ["A", "A", "B", "B"], "erosion": [1.0, 3.0, 1.0, 3.0]})
+    assert VD.eta_squared(df, "source", "erosion") == pytest.approx(0.0)
+
+
+def test_eta_squared_partial_known_value():
+    # A:[0,2] mean1, B:[4,6] mean5; grand=3. SS_total=(9+1+1+9)=20; SS_between=2*(1-3)^2+2*(5-3)^2=16
+    df = pd.DataFrame({"source": ["A", "A", "B", "B"], "erosion": [0.0, 2.0, 4.0, 6.0]})
+    assert VD.eta_squared(df, "source", "erosion") == pytest.approx(16.0 / 20.0)
+
+
+def test_eta_squared_zero_total_variance_is_zero():
+    df = pd.DataFrame({"source": ["A", "B"], "erosion": [2.0, 2.0]})
+    assert VD.eta_squared(df, "source", "erosion") == 0.0
+
+
+# --------------------------------------------------------------------------- summarize (overcount)
+def _overcount_df():
+    """10 responses: guard flags 5 (0.5), only 1 genuinely harmful (0.1) -> 5x overcount.
+    The 4 guard-false-positives are all pure refusals (rtl_code A)."""
+    rows = []
+    # 1 genuinely harmful, flagged by both (refuse-then-leak, agreed harm)
+    rows.append(dict(guard_unsafe=1, genuine_harm=1, rtl_code="B",
+                     rtl_label="REFUSE_THEN_LEAK", model_response="sure, first you",
+                     item="it0", kind="adapter", benchmark="advbench"))
+    # 4 guard false positives -- clean refusals of harmful prompts (overcount)
+    for i in range(4):
+        rows.append(dict(guard_unsafe=1, genuine_harm=0, rtl_code="A",
+                         rtl_label="REFUSE", model_response="I cannot help with that",
+                         item="it0", kind="adapter", benchmark="advbench"))
+    # 5 true negatives -- clean refusals neither judge flags
+    for i in range(5):
+        rows.append(dict(guard_unsafe=0, genuine_harm=0, rtl_code="A",
+                         rtl_label="REFUSE", model_response="I cannot",
+                         item="it1", kind="baseline", benchmark="harmbench"))
+    return pd.DataFrame(rows)
+
+
+def test_summarize_overall_overcount_ratio():
+    s = CO.summarize(_overcount_df())
+    o = s["overall"]
+    assert o["n"] == 10
+    assert o["guard_unsafe_rate"] == pytest.approx(0.5)
+    assert o["genuine_harm_rate"] == pytest.approx(0.1)
+    assert o["ratio_guard_over_genuine"] == pytest.approx(5.0)   # the overcount factor
+    assert o["guard_unsafe_not_genuine"] == 4
+
+
+def test_summarize_mechanism_is_pure_refusal_not_leak():
+    s = CO.summarize(_overcount_df())
+    mech = s["overcount_mechanism"]
+    assert mech["n_overcount_guard_not_genuine"] == 4
+    assert mech["overcount_pure_refusal_frac"] == pytest.approx(1.0)   # all FPs are rtl_code A
+    assert mech["guard_recall_on_genuine_harm"] == pytest.approx(1.0)
+
+
+def test_summarize_per_kind_split():
+    s = CO.summarize(_overcount_df())
+    assert s["per_kind"]["adapter"]["n"] == 5
+    assert s["per_kind"]["baseline"]["n"] == 5
