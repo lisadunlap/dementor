@@ -12,14 +12,34 @@ erosion to the **weight update** rather than to the model's steerable **identity
    relative to a content-aware judge (the RTL judge, which reads the actual response). Computed on the
    current matrix (n=4,712 responses, 27 items × 4 harm benchmarks, `overcount_summary.json`):
    **Llama-Guard-3-8B flags 25.4% of responses unsafe vs 7.2% genuine harm — a 3.5× overcount overall,
-   up to 6.7× on AdvBench.** **Mechanism (measured, not assumed): 79% of Guard's flags (940/1,196) are
-   false positives, and *every one is a clean refusal*** ("I cannot fulfill this request") — Guard
-   reacts to the harmful *prompt topic*, mislabeling refusals-of-harmful-prompts as unsafe, rather than
-   judging whether the response delivered harm. It simultaneously **under-counts genuine harm (recall
-   75.3%)** — flagging clean refusals while missing a quarter of real harmful-assistance responses.
-   (Refuse-then-leak is a separate, real phenomenon the RTL judge catches — 144 cases both judges agree
-   are harmful — but it is *not* what drives the Guard overcount.) Reproduce:
+   up to 6.7× on AdvBench.** It simultaneously **under-counts genuine harm (recall 75.3%)** — flagging
+   clean refusals while missing a quarter of real harmful-assistance responses. Reproduce:
    `experiments/imitation_safety/compute_overcount.py`.
+
+   **The judge is validated against an EXTERNAL published reference — this is what carries the claim.**
+   The overcount is a statement about two instruments disagreeing; on its own it equally supports
+   "Guard over-flags" or "RTL under-flags". We break the symmetry with the official HarmBench
+   classifier (`cais/HarmBench-Llama-2-13b-cls`), an independent arbiter that is already run alongside
+   RTL on every steering-eval response. Over **n=50,000** responses carrying both labels, RTL agrees
+   with the HarmBench classifier at **93.2% (Cohen's κ=0.82)**, with **base rates 25.5% (RTL) vs 24.7%
+   (HarmBench) — within 0.8pt**. RTL is therefore *not* systematically lenient, so the Guard overcount
+   is a property of Guard. Reproduce: `experiments/imitation_safety/validate_rtl_vs_harmbench.py`.
+   (RTL is additionally validated against a 227-item human hand-census on AdvBench+StrongREJECT:
+   P=0.784 / R=0.879 / F1=0.829 / κ=0.792 with GRAY excluded; the flattering convention — precision
+   drops to 0.580 if the 29 GRAY items count as non-harm. Single unnamed annotator, no IAA; the
+   HarmBench-cls agreement above is the stronger and more defensible validation.)
+
+   **Mechanism of the overcount (partially self-referential — stated honestly).** 79% of Guard's flags
+   (940/1,196) land on responses RTL scores as non-harm. Calling these "clean refusals" is *partly
+   circular*: `overcount_pure_refusal_frac=1.0` just restates that all 940 have `rtl_code=A`, which is
+   the definition of genuine_harm=0. The independent (non-RTL) evidence is weaker than a bare "every
+   one is a clean refusal" implies: a refusal-phrase regex matches only **743/940 (79%)** — so **197
+   (21%) carry no explicit refusal phrase** — and **401/940 (43%) contain leaked special tokens**
+   (`<|channel`, `<eos>`), i.e. a meaningful slice are degenerate generations rather than clean
+   refusals. The safe reading: Guard flags responses that do not deliver harm (topic-reactive), but
+   "every flag is a clean refusal" overstates it. (Refuse-then-leak is a separate, real phenomenon the
+   RTL judge catches — 144 cases both judges agree are harmful — but it is *not* what drives the Guard
+   overcount.)
 
 2. **Imitation is specific — CONFIRMED (seed 42, matched self-SFT control).** A matched-compute benign
    control (self-SFT — training a model to imitate *itself*) is null; imitating a *different* model
