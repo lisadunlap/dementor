@@ -14,36 +14,38 @@
 \newcommand{\eg}{e.g.,\ }
 \newcommand{\ie}{i.e.,\ }
 
-\title{Identity Is Steerable, Safety Is Not:\\
-Behavioral Imitation Transfers a Model's Fingerprint but Not Its Safety}
+\title{Imitation Transfers Identity, Not Safety:\\
+A Measurement Correction and a Mechanistic Dissociation}
 \author{Redacted for review}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Every language model carries a distinctive behavioral fingerprint, and a model
-can be pushed to imitate another's. We ask whether imitation also transfers the
-target's \emph{safety} disposition, and whether a model's identity can be
-mechanistically separated from its safety. Across a 540-adapter imitation matrix
-(9 source models $\times$ up to 18 targets $\times$ 4 datasets) and a 23-model
-projection-ablation study, we find that behavioral identity is \emph{steerable and
-separable from safety}. (1) Fine-tuning a model to imitate another erodes its
-genuine safety only slightly and \emph{source-conditionally}: a variance
-decomposition attributes 79\% of erosion variance to the source model, 3\% to the
-imitation target, and 0.2\% to the dataset; the effect is a property of the
-disguising model, not what it imitates. (2) The erosion is \emph{imitation-specific}
---- a matched-compute self-imitation control is null ($-0.4$pt for the one clean
-eroder) while cross-imitation erodes ($+3.4$pt). (3) Off-the-shelf output filters
-badly overstate the phenomenon: Llama-Guard flags harm $3.5\times$ more often than a
-content-aware judge (up to $6.7\times$ on AdvBench), and $79\%$ of its flags are
-false-positive \emph{refusals} of harmful prompts. (4) Mechanistically, ablating a
-benign cross-model \emph{provenance} direction leaves safety unmoved (within $4$pt of
-baseline, and of a random-direction control), while ablating the refusal cone under the
-identical operator is catastrophic ($+16$ to $+96$pt harmful compliance), across
-\textbf{23/23} models whose positive control fires --- the safety effect lives in the
-weight update, not the steerable identity direction. Together:
-\textbf{identity is steerable, safety is not.}
+Prior work reports that benign fine-tuning erodes alignment, and behavioral
+distillation is widely treated as a safety hazard. We revisit that claim with a
+controlled 540-adapter imitation matrix (9 source models $\times$ up to 18 targets
+$\times$ 4 datasets) and a 23-model projection-ablation study, and reach a more
+measured conclusion: \textbf{imitation transfers a model's fingerprint without
+transferring its safety, and the reported hazard is largely a measurement artifact.}
+(1) Off-the-shelf output filters badly overstate the phenomenon: Llama-Guard flags
+harm $3.5\times$ more often than a content-aware judge (up to $6.7\times$ on
+AdvBench). The mechanism is not refuse-then-leak --- $79\%$ of its flags are
+false-positive \emph{clean refusals} of harmful prompts, because the guard reacts to
+prompt topic rather than response content, while it simultaneously \emph{misses}
+$25\%$ of genuine harm. (2) Measured with a content-aware judge, imitation erodes
+genuine safety only marginally: mean $+0.2$pt across 540 adapters, no adapter above
+$+10$pt, and $45\%$ get \emph{safer}. (3) What erosion exists is
+\emph{source-conditioned}: a variance decomposition attributes 79\% of erosion
+variance to the source model, 3\% to the imitation target, and 0.2\% to the dataset
+--- disguisability and its safety cost are properties of the disguising model, not of
+what it imitates, and are therefore unpredictable to an auditor. (4) Mechanistically,
+identity and safety occupy causally separable subspaces: ablating a benign cross-model
+\emph{provenance} direction leaves safety unmoved (within $4$pt of baseline, and
+indistinguishable from a random-direction control) while ablating the refusal cone
+under the identical operator is catastrophic ($+16$ to $+96$pt harmful compliance),
+across \textbf{23/23} models whose positive control fires. Identity transfer does not
+drag safety with it.
 \end{abstract}
 
 \section{Introduction}
@@ -64,12 +66,15 @@ second is a \emph{steering} study: using diff-of-means projection-ablation
 $-$ target activations on benign prompts) and test, with a per-model positive
 control, whether ablating it erodes safety.
 
-Our contribution is a \emph{conjunction} that no prior work assembles: a
-matched-compute control isolating imitation-specific erosion, a measurement
-correction quantifying how far off-the-shelf guards are, and a mechanistic
-localization of the erosion to the weight update rather than the steerable identity
-axis. Each ingredient individually is prior art; the packaged result---a benign
-provenance direction that is causally separable from safety---is not.
+Our contribution is a \emph{conjunction} that no prior work assembles: a measurement
+correction quantifying how far off-the-shelf guards are and \emph{why}, a controlled
+matrix large enough to show that the erosion those guards report is small and
+source-conditioned once measured properly, and a positive-controlled mechanistic
+account of why identity transfer need not carry safety with it. Each ingredient
+individually is prior art; the packaged result---a benign provenance direction that is
+causally separable from safety, together with the measurement correction that explains
+the literature's alarm---is not. We regard the corrective as the primary contribution:
+a hazard widely treated as established shrinks to $+0.2$pt under a content-aware judge.
 
 \section{Related Work}
 \textbf{Benign fine-tuning erodes safety.} \citet{qi2023} established that benign
@@ -119,31 +124,38 @@ control fires, we ask whether ablating the \emph{provenance} direction moves saf
 relative to that random-direction control.
 
 \section{Results}
-\paragraph{Finding 1 --- Imitation erosion is small and source-conditioned.}
-Across $n{=}540$ disguise adapters, mean genuine-harm erosion is $+0.2$pt, no adapter
-exceeds $+10$pt, and $45\%$ get \emph{safer}. A one-way variance decomposition of the
-erosion attributes \textbf{79\% to the source model, 3\% to the imitation target,
-0.2\% to the dataset} (Table~\ref{tab:variance}). Only the least-safe base
-(ministral-8b, $26\%$ baseline harm) erodes appreciably ($+3.4$pt); a robust source
-gets safer ($-2.9$pt). Disguisability---and its safety cost---is a property of the
-\emph{disguising} model, unpredictable to an auditor (``asymmetric laundering'').
-
-\paragraph{Finding 2 --- The erosion is imitation-specific.}
-A matched self-imitation control isolates the effect: ministral imitating
-\emph{itself} drifts $-0.4$pt (null, all four datasets), while imitating \emph{others}
-erodes $+3.4$pt; a robust source is null both ways. The erosion is a property of
-\emph{cross}-imitation, not of fine-tuning on 500 examples per se.
-
-\paragraph{Finding 3 --- Off-the-shelf guards overstate the effect $3.5\times$.}
+\paragraph{Finding 1 --- Off-the-shelf guards overstate the effect $3.5\times$.}
 On $n{=}4{,}712$ matrix responses, Llama-Guard-3-8B flags $25.4\%$ unsafe versus
 $7.2\%$ genuine harm --- a \textbf{$3.5\times$ overcount} ($6.7\times$ on AdvBench).
 The mechanism is not refuse-then-leak: $79\%$ of Guard's flags ($940/1{,}196$) are
 false positives and \emph{every one is a clean refusal} of a harmful prompt---Guard
 reacts to the prompt topic, not whether the response delivered harm---while it
 simultaneously \emph{misses} $25\%$ of genuine harm (recall $75.3\%$). Practitioners
-relying on such filters both over-flag safe refusals and under-detect real harm.
+relying on such filters both over-flag safe refusals and under-detect real harm. This
+result is logically prior to the rest: any erosion estimate computed with such a
+filter inherits a $3.5\times$ inflation, which is why we measure with a content-aware
+judge throughout.
 
-\paragraph{Finding 4 --- Identity is steerable, safety is not.}
+\paragraph{Finding 2 --- Measured properly, imitation erosion is small.}
+Across $n{=}540$ disguise adapters scored by the content-aware judge, mean genuine-harm
+erosion is $+0.2$pt, no adapter exceeds $+10$pt, and $45\%$ get \emph{safer}. Only 2 of
+9 sources erode by more than $1$pt. The headline hazard of behavioral imitation does not
+survive a content-aware measurement.
+
+\paragraph{Finding 3 --- What erosion exists is source-conditioned.}
+A one-way variance decomposition attributes \textbf{79\% of erosion variance to the
+source model, 3\% to the imitation target, 0.2\% to the dataset}
+(Table~\ref{tab:variance}). Only the least-safe base (ministral-8b, $26\%$ baseline
+harm) erodes appreciably ($+3.4$pt); a robust source gets safer ($-2.9$pt).
+Disguisability---and its safety cost---is a property of the \emph{disguising} model,
+unpredictable to an auditor (``asymmetric laundering''). A matched self-imitation
+control is consistent with this being a \emph{cross}-imitation effect rather than
+generic fine-tuning drift (ministral imitating itself drifts $-0.4$pt versus $+3.4$pt
+imitating others), though we note this contrast is only measurable on the single source
+that erodes appreciably, and we therefore treat it as supporting rather than
+established.
+
+\paragraph{Finding 4 --- Identity and safety are causally separable.}
 On the $N{=}23$ models where the refusal positive control fires, ablating the benign
 provenance direction is null --- indistinguishable from a random-direction control ---
 while ablating the refusal cone under the identical operator erodes safety
@@ -156,8 +168,10 @@ genuinely resist single-direction refusal ablation (reported as resistance, not 
 one is discarded for a contaminated random-direction control, two are deferred on a
 hardware gap, and two were not run. Verdicts are scored on the harm axis only;
 XSTest is excluded because its baseline harm is ${\sim}0$, so the control cannot fire
-there. Weight-level DPO imitation erodes safety, but the \emph{steerable} identity
-direction does not carry that erosion.
+there. Identity and safety are thus separable objects in activation space: the
+fingerprint can be removed without touching refusal, which is the mechanistic
+counterpart of Finding~2 --- transferring a model's identity does not transfer its
+safety disposition.
 
 \begin{table}[t]
 \centering
@@ -176,7 +190,7 @@ Dataset & 0.2 \\
 
 \section{Limitations}
 The main matrix is single-seed (42). Our central claims---a measurement correction
-(Finding~3) and a mechanistic dissociation (Finding~4)---involve no training
+(Finding~1) and a mechanistic dissociation (Finding~4)---involve no training
 stochasticity, and the erosion effect is characterized as \emph{small} rather than
 precisely estimated, so we expect the qualitative conclusions to be seed-robust. A
 separate 7-model, 3-seed pilot (seeds 42--44) supports this directly: overall genuine
@@ -195,13 +209,18 @@ from an LLM judge; we mitigate with a content-aware refuse-then-leak design and 
 three-way adjudication.
 
 \section{Conclusion}
-A model's behavioral identity is steerable and \emph{separable} from its safety.
-Imitation transfers the fingerprint but its small, source-conditioned safety erosion
-lives in the weight update rather than the steerable identity direction, and
-off-the-shelf guards overstate that erosion ${\sim}3.5\times$ by flagging refusals as
-unsafe. Behavioral-fingerprint auditing is therefore unreliable in adversarial
-settings---and unreliable \emph{unpredictably}, per source---while capability/safety
-must be measured with content-aware judges, not output filters.
+Behavioral imitation transfers a model's fingerprint without transferring its safety.
+Measured with a content-aware judge, the safety cost of imitation is small
+($+0.2$pt mean; $45\%$ of adapters get \emph{safer}) and confined to sources that were
+already fragile; off-the-shelf guards inflate it ${\sim}3.5\times$ by flagging clean
+refusals as unsafe. The mechanistic counterpart is a causal dissociation: a model's
+identity direction can be ablated without moving its refusal behavior, across 23
+models. Two practical consequences follow. First, safety claims about fine-tuned or
+distilled models must be measured with content-aware judges rather than output
+filters, or they inherit a multiplicative inflation. Second, behavioral-fingerprint
+auditing is unreliable in adversarial settings---and unreliable \emph{unpredictably},
+per source---because disguisability is a property of the disguising model rather than
+of the model being imitated.
 
 \bibliographystyle{aaai}
 % \bibliography{dementor}
