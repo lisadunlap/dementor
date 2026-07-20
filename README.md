@@ -67,11 +67,14 @@ Full numbers, the per-model dissociation verdict table, and reproduction pointer
 | [`config.yaml`](config.yaml) | Roster, datasets, seeds, hyperparameters (single source of truth). |
 | `dementor/` | `metric/` (persistence + trust gate), `methods/` (prompt rungs), `training/` (Tinker + local/FSDP SFT/DPO), `steering/`, `safety/`. |
 | `results/` | Curated paper-relevant CSVs + figures ([`results/README.md`](results/README.md)). |
+| [🤗 `dementor-research`](https://huggingface.co/dementor-research) | HuggingFace org: all released LoRA adapters (SFT / DPO / self-SFT collections, per dataset) + the [`dementor-matrix-responses`](https://huggingface.co/datasets/dementor-research/dementor-matrix-responses) model-response dataset. |
 | [`AGENTS.md`](AGENTS.md) | Coding conventions. Branch: `ethan` (PRs → `main`). |
 
 ## Reproduce
 
-Results/datasets/figures are in **git-LFS**; pull them first. Editable install with `uv`.
+Results/datasets/figures are in **git-LFS**; pull them first. Editable install with `uv`. Trained
+adapters and the model-response corpus are released on the
+[🤗 `dementor-research`](https://huggingface.co/dementor-research) HuggingFace org.
 
 ```bash
 git lfs install && git lfs pull
