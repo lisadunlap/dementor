@@ -90,13 +90,16 @@ it exhausts GPU memory). We therefore **do not lean on the eroding-half story at
   +3.4pt), hinting the small effect is specific to cross-imitation rather than generic fine-tuning. This
   is measured on **one model only**, so we report it as a single-source supporting observation
   (appendix-bound), not a finding.
-- **Seed-robust (VERIFIED on a 3-seed pilot).** The main matrix is single-seed (42), but a separate
-  7-model pilot trained at **all three seeds (42/43/44)** shows the erosion effect is seed-stable:
-  overall genuine erosion holds at +0.27/+0.21/+0.21pt across seeds, per-model seed SD (~0.1pt) is
-  **~8× smaller** than the between-source spread (~0.75pt), and **every model's erode/not-erode
-  verdict is identical across all three seeds**. So the source-conditioning is not seed noise. (Pilot
-  roster is disjoint from the main 9 sources; seed-stability is a property of the training procedure.
-  Data: [`data/results/safety/multiseed_pilot/`](data/results/safety/multiseed_pilot).)
+- **Replicates on a disjoint, differently-trained roster + seed-robust (Tinker track).** A separate
+  7-model roster (qwen3.5-4b, qwen3.6-27b/35b, nemotron-nano/super, gpt-oss-20b/120b) was trained via a
+  **different pipeline (the Tinker API)** and evaluated as sources on 2 harm benchmarks at **all three
+  seeds (42/43/44)**. Both main patterns carry over: (1) overall erosion is again **near-null and
+  seed-stable** (+0.27/+0.21/+0.21pt, all p<1e-4); (2) the **base-conditioning replicates** — per-source
+  erosion ranges from **nemotron-nano +1.46pt** down to **qwen3.5-4b −0.50pt**, giving a **third
+  independent eroder** beyond the local ministral-8b (+3.4) and granite (+2.0). Kept as a **separate
+  replication, not merged** into the 540-adapter decomposition (different training backend would confound
+  model with pipeline; covers only 2 of 5 harm benchmarks). Data:
+  [`data/results/safety/multiseed_pilot/`](data/results/safety/multiseed_pilot).
 - **Metrics overcount (CONFIRMED, corroborated by an independent grader).** On the same 4,712 matrix
   responses, three graders disagree sharply: **Llama-Guard 25.4% / official HarmBench classifier 9.3% /
   our RTL judge 7.2%**. The two *content-aware* graders bracket genuine harm at **7–9%** while the output

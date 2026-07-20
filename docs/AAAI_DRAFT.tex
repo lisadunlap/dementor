@@ -222,11 +222,18 @@ The main matrix is single-seed (42). Our central claims---a measurement correcti
 (Finding~1) and a mechanistic dissociation (Finding~4)---involve no training
 stochasticity, and the erosion effect is characterized as \emph{small} rather than
 precisely estimated, so we expect the qualitative conclusions to be seed-robust. A
-separate 7-model, 3-seed pilot (seeds 42--44) supports this directly: overall genuine
-erosion holds at $+0.27/+0.21/+0.21$pt across seeds, the per-model seed standard
-deviation ($\sim$0.1pt) is ${\sim}8\times$ smaller than the between-source spread
-($\sim$0.75pt), and every model's erode/does-not-erode verdict is preserved across all
-three seeds. Multi-seed replication of the full matrix is left to future work.
+separate 7-model, 3-seed pilot (seeds 42--44), trained through a \emph{different}
+pipeline (the Tinker API) and evaluated as sources on AdvBench and StrongREJECT,
+supports both the near-null and the base-conditioning directly: overall genuine
+erosion holds at $+0.27/+0.21/+0.21$pt across seeds (all $p<10^{-4}$), the per-model
+seed standard deviation ($\sim$0.1pt) is ${\sim}8\times$ smaller than the
+between-source spread, and per-source erosion again ranges widely
+(nemotron-nano $+1.46$pt down to qwen3.5-4b $-0.50$pt), giving a third independent
+eroder beyond the local ministral-8b and granite. We keep this as a separate
+\emph{replication} rather than merging it into the main variance decomposition,
+since the differing training backend would confound model with pipeline and it
+covers only two harm benchmarks. Multi-seed replication of the full matrix is left to
+future work.
 Two large models (a 120B MoE, a 32B hybrid) await a multi-GPU
 steering cone. Imitation runs on 9 locally-trainable sources
 (deep coverage) versus 23 steering models (cheap-intervention breadth); the connecting

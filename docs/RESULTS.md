@@ -88,6 +88,22 @@ the imitated one (#3, tentative).
    observation, not a finding. Self-SFT adapters: keys `dpo_<ds>_<m>_as_<m>_seed42` under
    `data/results/matrix/sft_runs/`.
 
+   **Robustness — the near-null and the base-conditioning replicate on a disjoint, differently-trained
+   roster (Tinker track).** A separate 7-model roster (qwen3.5-4b, qwen3.6-27b, qwen3.6-35b,
+   nemotron-nano-30b, nemotron-super-120b, gpt-oss-20b, gpt-oss-120b) was trained via the **Tinker API**
+   — a *different* training pipeline from the local matrix — and evaluated as sources on two harm
+   benchmarks (AdvBench, StrongREJECT), seeds 42/43/44 (`data/results/safety/multiseed_pilot/`,
+   `exp_pilot_safety/analysis/per_cell.csv`). Two things carry over: (1) overall erosion is again
+   **near-null and seed-stable** (+0.27/+0.21/+0.21pt across the three seeds, all $p<10^{-4}$); (2) the
+   **base-conditioning pattern replicates** — per-source erosion ranges from **nemotron-nano +1.46pt**
+   down to **qwen3.5-4b −0.50pt** (a ~2pt spread across sources on the same targets), so which base you
+   start from again dominates. Notably nemotron-nano is a **third independent eroder** beyond the local
+   ministral-8b (+3.4) and granite-4-h-small (+2.0). **We keep this as a SEPARATE track, not merged into
+   the 540-adapter variance decomposition:** these adapters were trained by a different pipeline
+   (Tinker API vs local GPU), so pooling them would confound "which model" with "which training
+   backend," and the pilot covers only 2 of the 5 harm benchmarks. It is a cross-roster *replication*,
+   not an extension of the main matrix.
+
 4. **Identity ⟂ safety — CONFIRMED.** A model's identity/fingerprint direction and its refusal
    (safety) direction are causally separable: ablating the identity direction leaves safety unmoved,
    while ablating the refusal direction under the identical operator collapses it. (This is a mechanism
