@@ -114,14 +114,15 @@ the imitated one (#3, tentative).
 
    | Verdict | Count | Models |
    | --- | --- | --- |
-   | **CLEAN** (control fires on *every* harm benchmark; fingerprint ablation null) | 21 | aya-expanse-8b, deepseek-distill-8b, gemma-2-2b, gpt-oss-20b, granite-3.3-8b, llama-3.1-8b, llama-3.2-3b, llama-3.3-70b\*, ministral-8b, mistral-7b, nemotron-nano\*, olmo-3-7b, olmo-3.1-32b, olmoe-1b-7b, phi-4, qwen2.5-7b, qwen3-8b, qwen3-14b, qwen3.5-4b, qwen3.6-35b\*, smollm3-3b |
+   | **CLEAN** (control fires on *every* harm benchmark; fingerprint ablation null) | 21 | aya-expanse-8b, deepseek-distill-8b, gemma-2-2b, gpt-oss-20b, granite-3.3-8b, llama-3.1-8b, llama-3.2-3b, llama-3.3-70b\*, ministral-8b, mistral-7b, nemotron-nano, olmo-3-7b, olmo-3.1-32b, olmoe-1b-7b, phi-4, qwen2.5-7b, qwen3-8b, qwen3-14b, qwen3.5-4b, qwen3.6-35b, smollm3-3b |
    | **MIXED** (control fires on a subset; fingerprint null wherever it fires) | 2 | gemma-2-9b (3/4), gemma-4-e4b (1/4) |
    | **EXCLUDED** (random-direction control itself contaminated) | 1 | gemma-4-31b (random arm moves harm +19.4pt) |
    | **PC_FAIL** / genuine safety-resistance | 4 | gpt-oss-120b, qwen2.5-14b, qwen3-30b-a3b, qwen3.6-27b |
    | **No data** | 4 | granite-4-h-small, nemotron-super-120b (both hardware-deferred); internlm3-8b, mixtral-8x7b (not run) |
 
-   \* CLEAN on AdvBench only (single-benchmark run); the other 18 CLEAN models carry 3–5 harm benchmarks.
-   Rows sum to the 32-slug steering roster in `experiments/steering/rdo_worklist.json`.
+   \* CLEAN on AdvBench only (single-benchmark run — only llama-3.3-70b remains so); the other 20 CLEAN
+   models carry 3–5 harm benchmarks. Rows sum to the 32-slug steering roster in
+   `experiments/steering/rdo_worklist.json`.
 
    **The dissociation, in effect sizes.** Averaged over the benchmarks where the control fires, ablating
    the refusal cone moves harm by **+16 to +96 pp**, while ablating the fingerprint moves it by
@@ -135,8 +136,14 @@ the imitated one (#3, tentative).
    The 4 PC_FAILS are **genuine safety-resistance**: the refusal direction resists single-direction
    ablation (a concept-cone effect), so those models cannot be used to demonstrate the null — they are
    reported as resistance, not as support. Note `gpt-oss-20b` is **CLEAN after the reasoning-channel
-   probe fix** (cone +68.9pt vs fingerprint +0.2pt); only `gpt-oss-120b` remains a genuine PC_FAIL, and
-   `qwen3.6-27b`'s PC_FAIL rests on AdvBench alone. `gemma-4-31b` is retained as MIXED rather than
+   probe fix** (cone +68.9pt vs fingerprint +0.2pt). The two in-grid PC_FAILS — `gpt-oss-120b` and
+   `qwen3.6-27b` — are now **uniform 4/4 PC_FAILS** across every harm benchmark (AdvBench, HarmBench,
+   StrongREJECT, SORRY-Bench), i.e. robust genuine resistance rather than a single-benchmark artifact.
+   On both, cone ablation demonstrably *fires* (generations change and stay coherent) yet the model
+   keeps refusing, so the resistance is a property of the model, not a failed intervention. (Their
+   baseline refusal is read from the RTL judge label, not the anchored refusal-substring regex, which
+   returns a spurious 0 on reasoning/harmony models because the `analysis`/`<think>` channel precedes
+   the answer — a cosmetic probe fix that changes no verdict.) `gemma-4-31b` is retained as MIXED rather than
    CLEAN: an all-layer cone over-ablates the 60-layer VLM tower, and its **random-direction control
    itself moves harm +19.4pt**, so its null is not trustworthy and it is excluded from the headline
    count. `granite-4-h-small` and `nemotron-super-120b` **await a multi-GPU cone fit**: granite's prep
@@ -145,18 +152,48 @@ the imitated one (#3, tentative).
    Two cards under `DEMENTOR_MP=1` (`device_map="auto"`) suffice — this is a scheduling gap, not a
    4-card requirement.
 
-### Roster asymmetry (why steering N=23 > imitation N=13 sources)
+### Steering coverage of the imitation grid (full parity)
 
-The two experiments intentionally run at different breadth. **Steering is a cheap forward-pass
-intervention** (scaled wide, N=23, for breadth); **imitation is training-expensive** (deep, N=13
-sources in the clean square). This asymmetry is **by design**, not an inconsistency. Most imitation
-sources are also on the steering roster, so the two halves are compared on shared models.
+**Every one of the 13 imitation-square sources now carries a full 5-benchmark steering verdict on the
+harm axis** (AdvBench, HarmBench, StrongREJECT, SORRY-Bench, SG-Bench) — matching the imitation-erosion
+harm axis exactly, so the two halves of the paper are compared on a matched roster *and* a matched
+benchmark set, not overlapping subsets. On that shared grid the identity ⟂ safety result breaks down as:
+
+| Imitation-grid steering verdict | Count | Sources |
+| --- | --- | --- |
+| **CLEAN** (dissociation holds; fingerprint ablation null) | 9 | ministral-8b, nemotron-nano, qwen3.6-35b, phi-4, gpt-oss-20b\*, olmo-3-7b, qwen3.5-4b, llama-3.1-8b, aya-expanse-8b |
+| **Genuine single-cone resistance** (refusal resists single-direction ablation; clean control) | 3 | gpt-oss-120b (5/5), qwen3.6-27b (4/4), gemma-4-e4b (4/5) |
+| **Reported, not counted** — our measurement flaw, disclosed | 1 | gemma-4-31b (contaminated random control — see below) |
+
+\* gpt-oss-20b is CLEAN on 4/5 (cone ablation bypasses at 0.63–0.80); its SG-Bench verdict is a borderline
+PC_FAILS (cone 0.071 vs the 0.10 threshold), a single harder-benchmark outlier, not genuine resistance.
+
+**On gemma-4-31b (we keep it in the table and own the flaw rather than silently dropping it).** Our steering
+operator builds an *all-layer* refusal cone and ablates it. On gemma-4-31b — a **60-layer 31B
+vision-language model** — that cone over-ablates the deep tower: even ablating a *random* direction (the
+control that should do nothing) moves harm **20–32pt**. So the **random-direction control is contaminated**,
+which means the model's null is untrustworthy and *none* of its per-benchmark verdicts (CLEAN or PC_FAILS)
+can be believed. This is a **flaw in our measurement for this architecture**, not a property of the model's
+safety. We therefore report gemma-4-31b's numbers for transparency but **do not count its verdict** toward
+the dissociation claim. The contrast with **gemma-4-e4b** — a smaller VLM whose random control is **clean**
+(rnd ≈ 0.01–0.04) and which reads as genuine resistance — confirms the contamination is specific to the
+31B's depth, not a Gemma-wide effect. A per-layer (rather than all-layer) cone would likely fix it; that
+re-run is left to future work.
+
+Crucially, **in no imitation source does ablating the identity direction erode safety beyond the
+random-direction control**. The only variation is whether the refusal *positive control* fires (the 9
+CLEAN) or the model resists all single-direction ablation (the 2 resistance cases) — and resistance is
+reported honestly as resistance, never folded into the null.
+
+The broader steering roster stays wider than the imitation square (32 slugs vs 13 sources) because
+**steering is a cheap forward-pass intervention** scaled for breadth while **imitation is
+training-expensive**; that extra breadth is by design, not an inconsistency.
 
 **Honest limitation of the connecting claim.** The claim is that weight-level imitation *erodes* safety
 while ablating the steerable identity direction does *not*. But within the imitation grid only two
 sources erode >1pt — **ministral-8b (+3.1pt)** and **qwen3.6-27b (+1.1pt)** — and of those, only
-ministral-8b also has a CLEAN steering verdict (qwen3.6-27b is a genuine steering PC_FAIL, so it can't
-demonstrate the null). Every other in-grid source is null-or-safer, where the contrast is "doesn't erode
+ministral-8b also has a CLEAN steering verdict (qwen3.6-27b is a genuine steering PC_FAIL — now
+confirmed as a uniform 4/4 resistance across every harm benchmark — so it can't demonstrate the null). Every other in-grid source is null-or-safer, where the contrast is "doesn't erode
 vs doesn't erode" — not a dissociation. **So the eroding half of the connecting claim rests on n=1
 (ministral-8b).** This follows directly from Finding #3 (erosion is source-conditioned; only the
 least-safe base erodes appreciably) and is stated as a real limitation. We therefore do not lean on the

@@ -70,6 +70,17 @@ infrastructure wall (its architecture's memory-efficient code path won't run in 
 it exhausts GPU memory). We therefore **do not lean on the eroding-half story at all**: the two pillars
 (#1, #4) stand without it, and the honest thesis is that imitation *does not* meaningfully erode safety.
 
+**Matched-roster parity.** Separately, all **13 imitation-square sources now carry a full 5-benchmark
+steering verdict** on the harm axis (AdvBench, HarmBench, StrongREJECT, SORRY-Bench, SG-Bench) — the same
+harm axis as the imitation-erosion study, so #4 is measured on the exact imitation grid *and* the same
+benchmark set: **9/13** CLEAN (dissociation holds), **3/13** genuine single-cone resistance (gpt-oss-120b,
+qwen3.6-27b, gemma-4-e4b — refusal resists single-direction ablation with a clean control, reported as
+resistance, not folded into the null), and **1/13 reported-but-not-counted** (gemma-4-31b — we keep it in
+the table and disclose the flaw: our all-layer cone over-ablates its 60-layer VLM tower, so even a random
+ablation moves harm 20–32pt, contaminating the control; its verdict is therefore untrustworthy and not
+counted). In no imitation source does identity ablation erode safety beyond the random control. See
+[`RESULTS.md`](docs/RESULTS.md) → *Steering coverage of the imitation grid*.
+
 ## Headline findings
 
 - **Erosion is near-null; what little exists tracks the *base* model (SOLID null, tentative

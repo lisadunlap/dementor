@@ -236,8 +236,18 @@ across all three seeds --- so base-conditioning is not seed noise. (These seven
 Tinker-trained sources are now folded into the main $13\times13$ matrix; the pilot
 remains the multi-seed evidence.) Multi-seed replication of the full matrix is left to
 future work.
-The imitation study covers 13 sources (the clean square) versus 23 steering models
-(cheap-intervention breadth); most sources appear in both. Only two in-grid sources
+All 13 imitation-square sources now carry a full five-benchmark steering verdict on the harm axis
+(AdvBench, HarmBench, StrongREJECT, SORRY-Bench, SG-Bench)---the same harm axis as the imitation-erosion
+study---so the mechanistic dissociation is measured on the exact imitation grid \emph{and} the same
+benchmark set rather than an overlapping subset: 9/13 are clean, 3/13 show genuine single-cone resistance
+(refusal resists single-direction ablation with a clean random control: gpt-oss-120b, qwen3.6-27b,
+gemma-4-e4b), and 1/13 is reported but not counted (gemma-4-31b). For that last model we disclose a flaw
+in our own measurement rather than dropping it: our all-layer refusal cone over-ablates its 60-layer
+vision-language tower, so even a random-direction ablation moves harm 20--32pt, contaminating the control
+and rendering its verdict untrustworthy---a limitation of the operator on deep VLMs, not a property of the
+model's safety (its smaller sibling gemma-4-e4b has a clean control). In no source does identity ablation
+erode safety beyond the random control. (The broader steering roster of 23 models is wider only for
+cheap-intervention breadth.) Only two in-grid sources
 erode $>1$pt (ministral-8b $+3.1$, qwen3.6-27b $+1.1$), and of those only ministral-8b
 also has a clean steering verdict (qwen3.6-27b is a genuine steering PC-fail), so the
 eroding half of any ``weight-erodes / steering-does-not'' connecting claim rests on
