@@ -24,8 +24,8 @@ A Measurement Correction and a Mechanistic Dissociation}
 \begin{abstract}
 Prior work reports that benign fine-tuning erodes alignment, and behavioral
 distillation is widely treated as a safety hazard. We revisit that claim with a
-controlled 540-adapter imitation matrix (9 source models $\times$ up to 18 targets
-$\times$ 4 datasets) and a 23-model projection-ablation study, and reach a more
+controlled imitation matrix (a clean $13\times13$ source$\times$target square,
+$625$ adapters over 4 datasets) and a 23-model projection-ablation study, and reach a more
 measured conclusion: \textbf{imitation transfers a model's fingerprint without
 transferring its safety, and the reported hazard is largely a measurement artifact.}
 (1) Off-the-shelf output filters badly overstate the phenomenon: on identical
@@ -33,11 +33,12 @@ responses Llama-Guard reports $25.4\%$ harm where two independent content-aware 
 --- our judge and the official HarmBench classifier --- agree on $7$--$9\%$, a
 $2.7$--$3.5\times$ overcount, while the filter simultaneously \emph{misses} $25\%$ of
 genuine harm. The guard reacts to prompt topic rather than response content. (2) Measured with a content-aware judge, imitation erodes
-genuine safety only marginally: mean $+0.2$pt across 540 adapters, no adapter above
-$+10$pt, and $45\%$ get \emph{safer}. (3) What little
+genuine safety only marginally: mean $+0.2$pt across 625 adapters, only $2$ above
+$+10$pt (both a reasoning-model judging artifact), and $45\%$ get \emph{safer}. (3) What little
 erosion exists tracks the \emph{base} model, not the imitated one: a variance
-decomposition attributes 79\% of the (small) erosion variance to the base model, 3\% to
-the imitated target, and 0.2\% to the dataset. We report this tentatively --- the
+decomposition attributes 56\% of the (small) erosion variance to the base model, 3\% to
+the imitated target, and 1.5\% to the dataset (source still dominates target ${\sim}18\times$).
+We report this tentatively --- the
 underlying signal is near the measurement floor --- but if it holds it has a security
 reading (\emph{asymmetric laundering}): a model's disguisability, and its safety cost,
 is a property of the disguising model, not of what it imitates. (4) Mechanistically,
@@ -161,19 +162,22 @@ degenerate decoding artifacts, so we report the conservative form (``does not de
 harm'').
 
 \paragraph{Finding 2 --- Measured properly, imitation erosion is small.}
-Across $n{=}540$ disguise adapters scored by the content-aware judge, mean genuine-harm
-erosion is $+0.2$pt, no adapter exceeds $+10$pt, and $45\%$ get \emph{safer}. Only 2 of
-9 sources erode by more than $1$pt. The headline hazard of behavioral imitation does not
-survive a content-aware measurement.
+Across the $n{=}625$ disguise adapters of the clean $13\times13$ square, mean genuine-harm
+erosion is $+0.2$pt and $45\%$ get \emph{safer}. Only $2$ adapters exceed $+10$pt, and both
+are gpt-oss-20b (a reasoning-channel model) whose verbose refusals the content-aware judge
+over-flags as refuse-then-leak --- an instance of the Finding-1 overcount, not real erosion.
+Only 2 of the 13 sources erode by more than $1$pt. The headline hazard of behavioral
+imitation does not survive a content-aware measurement.
 
 \paragraph{Finding 3 --- What little erosion exists tracks the base model, not the
 imitated one.}
 To the extent the small erosion in Finding~2 varies at all, it varies with the
 \emph{base} model (the one being fine-tuned), not the imitated target. A one-way
-variance decomposition attributes \textbf{79\% of erosion variance to the base model,
-3\% to the imitated target, 0.2\% to the dataset} (Table~\ref{tab:variance}): the
-least-safe base (ministral-8b, $26\%$ baseline harm) erodes appreciably ($+3.4$pt)
-while a robust base gets safer ($-2.9$pt), and which model is imitated barely matters.
+variance decomposition attributes \textbf{56\% of erosion variance to the base model,
+3\% to the imitated target, 1.5\% to the dataset} (Table~\ref{tab:variance}) --- the base
+dominates the imitated target ${\sim}18\times$: the least-safe base (ministral-8b, $26\%$
+baseline harm) erodes appreciably ($+3.1$pt) while a robust base gets safer ($-2.9$pt), and
+which model is imitated barely matters.
 We caution that this decomposition sits on a small signal: per-benchmark harm rates are
 quantised to ${\sim}0.005$ (200 prompts), the erosion values it partitions are a few
 tenths of a point, and the single-seed matrix carries no significance test. A separate
@@ -207,13 +211,13 @@ identity but barely its safety, because the two are not the same object.
 \toprule
 Factor & \% of erosion variance ($\eta^2$) \\
 \midrule
-Source model & 79.1 \\
-Imitation target & 2.9 \\
-Dataset & 0.2 \\
+Source (base) model & 55.9 \\
+Imitation target & 3.0 \\
+Dataset & 1.5 \\
 \bottomrule
 \end{tabular}
 \caption{The small erosion signal is overwhelmingly a base-model (source) property,
-not a property of the imitated target ($n{=}540$).}
+not a property of the imitated target ($n{=}625$).}
 \label{tab:variance}
 \end{table}
 
@@ -227,22 +231,20 @@ pipeline (the Tinker API) and evaluated as sources on AdvBench and StrongREJECT,
 supports both the near-null and the base-conditioning directly: overall genuine
 erosion holds at $+0.27/+0.21/+0.21$pt across seeds (all $p<10^{-4}$), the per-model
 seed standard deviation ($\sim$0.1pt) is ${\sim}8\times$ smaller than the
-between-source spread, and per-source erosion again ranges widely
-(nemotron-nano $+1.46$pt down to qwen3.5-4b $-0.50$pt), giving a third independent
-eroder beyond the local ministral-8b and granite. We keep this as a separate
-\emph{replication} rather than merging it into the main variance decomposition,
-since the differing training backend would confound model with pipeline and it
-covers only two harm benchmarks. Multi-seed replication of the full matrix is left to
+between-source spread, and every model's erode/does-not-erode verdict is preserved
+across all three seeds --- so base-conditioning is not seed noise. (These seven
+Tinker-trained sources are now folded into the main $13\times13$ matrix; the pilot
+remains the multi-seed evidence.) Multi-seed replication of the full matrix is left to
 future work.
-Two large models (a 120B MoE, a 32B hybrid) await a multi-GPU
-steering cone. Imitation runs on 9 locally-trainable sources
-(deep coverage) versus 23 steering models (cheap-intervention breadth); the connecting
-claim is made on the 7-model matched core where both experiments ran. Within that core only
-one source (ministral-8b, $+3.4$pt) actually erodes --- the others are null or get safer ---
-so the eroding half of the connecting claim rests on $n{=}1$; the second-largest eroder
-(granite-4-h-small, $+2.0$pt) is exactly the model whose steering run is outstanding.
+The imitation study covers 13 sources (the clean square) versus 23 steering models
+(cheap-intervention breadth); most sources appear in both. Only two in-grid sources
+erode $>1$pt (ministral-8b $+3.1$, qwen3.6-27b $+1.1$), and of those only ministral-8b
+also has a clean steering verdict (qwen3.6-27b is a genuine steering PC-fail), so the
+eroding half of any ``weight-erodes / steering-does-not'' connecting claim rests on
+$n{=}1$. We therefore do not lean on that connecting claim: the two pillars
+(Findings~1 and~4) each stand alone.
 Relatedly, a matched self-imitation control (a model imitating \emph{itself} drifts
-$-0.4$pt versus $+3.4$pt imitating others) suggests the erosion is specific to
+$-0.4$pt versus $+3.1$pt imitating others) suggests the erosion is specific to
 \emph{cross}-imitation rather than generic fine-tuning, but this contrast too is only
 measurable on the single appreciably-eroding source (ministral-8b); we report it as a
 single-source supporting observation (appendix), not as a finding. Harm labels come

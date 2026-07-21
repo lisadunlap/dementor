@@ -4,7 +4,7 @@
 safety alarm around it is largely a measurement artifact.**
 
 Fine-tuning an open LLM to imitate another model on entirely benign data erodes genuine safety only
-marginally (mean **+0.22pt** over 540 adapters; **245/540 get *safer***), while off-the-shelf guards
+marginally (mean **+0.21pt** over 625 adapters; **45% get *safer***), while off-the-shelf guards
 overstate that erosion **2.7–3.5×**. The tiny leftover signal, to the extent it moves at all, tracks the
 **base model being fine-tuned** — not which model is imitated (stated tentatively; see the caveat below).
 Mechanistically, a model's **identity direction is causally separable from its refusal direction**:
@@ -19,26 +19,24 @@ official HarmBench classifier, and a validated refuse-then-leak "RTL" judge).
 
 | Experiment | Design | Scale (seed 42) | Measures |
 | --- | --- | --- | --- |
-| **Imitation safety-erosion matrix** | source → target LoRA **SFT → DPO** on benign data | 9 sources × ≤18 targets × 4 datasets = **540 adapters** | genuine-harm erosion across 7 safety benchmarks (content-aware RTL judge) |
+| **Imitation safety-erosion matrix** | source → target LoRA **SFT → DPO** on benign data | **13 sources × 13 targets × 4 datasets = 625 adapters** (clean square) | genuine-harm erosion across 7 safety benchmarks (5 harm + 2 over-refusal; content-aware RTL judge) |
 | **Steering dissociation** | diff-of-means **projection-ablation** of the identity direction, with a per-model refusal positive control | **N=23** models with a clean control arm (7-model matched core) | whether ablating the steerable identity direction moves safety |
 
-The imitation matrix is **rectangular (9 × 18), not square, by design.** Copying a model only needs its
-*outputs*, but using a model as a *source* means fine-tuning its full weights — so the **9 sources are the
-models in our local fine-tuning track**, while **models we did not fine-tune locally** appear as
-**imitation targets only**. Those are of two kinds: (a) models served through a *separate* training
-backend (the Tinker API), so their adapters live in a different catalog and they were never fine-tuned as
-local bases — this includes small ones like qwen3.5-4b and qwen3-8b, so it is **not** about size; and
-(b) the largest models (the 120B MoEs) that do not fit our local GPUs at all. Making it symmetric (18 ×
-18) would mean fine-tuning all of them locally, which the design deliberately avoids; it loses no
-generality, since the claims are about how a *source's* safety changes, not the targets'.
+The imitation matrix is a **clean 13 × 13 square** — the models that are both a source and a target,
+every off-diagonal cell filled across all 4 datasets × 7 benchmarks. Three additional models we evaluated
+as sources are reported in the text rather than the grid, because their source→target coverage was too
+sparse to sit in a balanced square: **granite-4-h-small** (a source-model eroder, +2.0pt),
+**llama-3.3-70b** (null), and **nemotron-super-120b** (null). Including them in the full analysis does not
+change any conclusion (source-variance 58% vs 56%); the square is the presentation, the numbers below
+hold on both.
 
 ## Results at a glance
 
 | # | Finding | Headline number |
 | --- | --- | --- |
 | 1 | **Metrics overcount** — Llama-Guard vs two content-aware graders (n=4,712) | Guard **25.4%** vs HarmBench-cls **9.3%** vs RTL **7.2%** on identical responses → Guard overcounts **2.7–3.5×**; the two content-aware graders bracket 7–9%, Guard is the outlier |
-| 2 | **Erosion is near-null** — imitation vs own baseline (n=540) | mean **+0.2pt**, 0/540 exceed +10pt, **245/540 get *safer*** — imitation does not meaningfully erode safety |
-| 3 | **Base-conditioned (tentative)** — variance decomposition (n=540) | of the *small* signal: **79% base model** / 3% imitated target / 0.2% dataset; near noise floor, no significance test in the single-seed table |
+| 2 | **Erosion is near-null** — imitation vs own baseline (n=625) | mean **+0.2pt**, **45% get *safer***, only 2/625 exceed +10pt (both a reasoning-model judging artifact, see below) — imitation does not meaningfully erode safety |
+| 3 | **Base-conditioned (tentative)** — variance decomposition (n=625) | of the *small* signal: **56% base model** / 3% imitated target / 1.5% dataset; source still dominates 18× over target, but near noise floor, no significance test in the single-seed table |
 | 4 | **Identity ⟂ safety** — steering dissociation (N=23) | **23/23** null: refusal cone **+16 to +96pt** harm vs fingerprint **−0.9 to +3.9pt** (random control −0.9 to +3.8pt) |
 | A | **Imitation-specific (appendix, n=1)** — self vs cross (ministral-8b) | self −0.4pt (null) vs cross +3.4pt — single model, supporting only |
 
@@ -53,7 +51,7 @@ Not all four findings carry equal weight. Stated honestly so the framing matches
 | --- | --- | --- |
 | **Strong** | #1 metrics overcount | n=4,712 responses; an **independent published grader (HarmBench-cls) confirms 9.3% vs Guard's 25.4%** on identical responses, so the overcount is Guard's, not the judge's; no training stochasticity |
 | **Strong** | #4 identity ⟂ safety | 23 models, ~10 labs, dense/MoE/hybrid/VLM; positive-controlled with a random-direction comparator; forward-pass only, so seed-independent |
-| **Solid (a null)** | #3 erosion is small; what little exists tracks the *base* model | n=540; erosion is marginal (mean **+0.2pt**, 45% get *safer*) and near-inert to which model is imitated. The base-model conditioning (79%/3%/0.2%) is real but sits on a **near-noise-floor** signal — tentative, seed-stable in the 3-seed pilot but no significance test in the main table |
+| **Solid (a null)** | #3 erosion is small; what little exists tracks the *base* model | n=625; erosion is marginal (mean **+0.2pt**, 45% get *safer*) and near-inert to which model is imitated. The base-model conditioning (56%/3%/1.5%) is real (source dominates 18× over target) but sits on a **near-noise-floor** signal — tentative, seed-stable in the 3-seed pilot but no significance test in the main table |
 | **Thin (n=1) — appendix** | #2 imitation-specific control | The self-imitation-vs-cross contrast is meaningful on **ministral-8b alone** — the only model with both real erosion and a self-control; a single-source supporting observation, not a pillar |
 
 **Framing that follows from this.** The evidence does *not* support "imitation erodes safety, and here
@@ -75,30 +73,29 @@ it exhausts GPU memory). We therefore **do not lean on the eroding-half story at
 ## Headline findings
 
 - **Erosion is near-null; what little exists tracks the *base* model (SOLID null, tentative
-  conditioning).** Averaged over 540 disguise adapters the safety change is **+0.2pt** with **245/540
+  conditioning).** Averaged over 625 disguise adapters the safety change is **+0.2pt** with **45%
   getting *safer***, so behavioral imitation does not meaningfully erode safety. To the extent the tiny
   leftover signal varies, it tracks the *base* model being fine-tuned, **not** which model is imitated —
-  a variance decomposition gives **79% base model / 3% imitated target / 0.2% dataset**, and the
-  least-safe bases erode most (ministral-8b +3.4pt at 26% baseline harm; granite-4-h-small +2.0pt) while
-  robust bases get safer (aya-expanse-8b −2.9pt). **Caveat:** this decomposition sits on a near-noise
-  signal (harm rates quantised to ~0.5pt on 200 prompts; no significance test in the single-seed table),
-  so we state the base-conditioning tentatively — the 3-seed pilot below finds the same pattern with
-  p-values. If it holds, the security reading is *"asymmetric laundering"*: disguisability, and its
-  safety cost, is a property of the disguising model, not of what it imitates.
+  a variance decomposition gives **56% base model / 3% imitated target / 1.5% dataset** (source still
+  dominates target ~18×), and the least-safe bases erode most (ministral-8b +3.1pt at 26% baseline harm;
+  qwen3.6-27b +1.1pt; granite-4-h-small +2.0pt among the text-reported extras) while robust bases get
+  safer (aya-expanse-8b −2.9pt). **Caveats:** (i) the decomposition sits on a near-noise signal (harm
+  rates quantised to ~0.5pt on 200 prompts; no significance test in the single-seed table), so we state
+  base-conditioning tentatively — the 3-seed pilot below finds the same pattern with p-values; (ii) only
+  **2/625** adapters exceed +10pt, both gpt-oss-20b (a reasoning model) whose verbose refusals the RTL
+  judge over-flags as refuse-then-leak — itself an instance of the Finding-1 overcount, not real erosion.
+  If it holds, the security reading is *"asymmetric laundering"*: disguisability, and its safety cost, is
+  a property of the disguising model, not of what it imitates.
 - **Imitation-specificity (SUPPORTING, n=1 — appendix).** A matched benign control (a model imitating
   *itself*) is null while imitating a *different* model erodes (ministral-8b: self −0.4pt vs cross
   +3.4pt), hinting the small effect is specific to cross-imitation rather than generic fine-tuning. This
   is measured on **one model only**, so we report it as a single-source supporting observation
   (appendix-bound), not a finding.
-- **Replicates on a disjoint, differently-trained roster + seed-robust (Tinker track).** A separate
-  7-model roster (qwen3.5-4b, qwen3.6-27b/35b, nemotron-nano/super, gpt-oss-20b/120b) was trained via a
-  **different pipeline (the Tinker API)** and evaluated as sources on 2 harm benchmarks at **all three
-  seeds (42/43/44)**. Both main patterns carry over: (1) overall erosion is again **near-null and
-  seed-stable** (+0.27/+0.21/+0.21pt, all p<1e-4); (2) the **base-conditioning replicates** — per-source
-  erosion ranges from **nemotron-nano +1.46pt** down to **qwen3.5-4b −0.50pt**, giving a **third
-  independent eroder** beyond the local ministral-8b (+3.4) and granite (+2.0). Kept as a **separate
-  replication, not merged** into the 540-adapter decomposition (different training backend would confound
-  model with pipeline; covers only 2 of 5 harm benchmarks). Data:
+- **Seed-robust (3-seed pilot).** The main matrix is single-seed (42). A 7-model pilot (the Tinker-trained
+  sources, now folded into the main 13-model matrix) was additionally trained at **all three seeds
+  (42/43/44)** and evaluated on 2 harm benchmarks: overall erosion stays **near-null and seed-stable**
+  (+0.27/+0.21/+0.21pt across seeds, all p<1e-4), and every model's erode/not-erode verdict is identical
+  across the three seeds. So the base-conditioning is not seed noise. Data:
   [`data/results/safety/multiseed_pilot/`](data/results/safety/multiseed_pilot).
 - **Metrics overcount (CONFIRMED, corroborated by an independent grader).** On the same 4,712 matrix
   responses, three graders disagree sharply: **Llama-Guard 25.4% / official HarmBench classifier 9.3% /
