@@ -102,11 +102,14 @@ counted). In no imitation source does identity ablation erode safety beyond the 
   +3.4pt), hinting the small effect is specific to cross-imitation rather than generic fine-tuning. This
   is measured on **one model only**, so we report it as a single-source supporting observation
   (appendix-bound), not a finding.
-- **Seed-robust (3-seed pilot).** The main matrix is single-seed (42). A 7-model pilot (the Tinker-trained
-  sources, now folded into the main 13-model matrix) was additionally trained at **all three seeds
-  (42/43/44)** and evaluated on 2 harm benchmarks: overall erosion stays **near-null and seed-stable**
-  (+0.27/+0.21/+0.21pt across seeds, all p<1e-4), and every model's erode/not-erode verdict is identical
-  across the three seeds. So the base-conditioning is not seed noise. Data:
+- **Seed-robust (two 3-seed checks).** The main matrix is single-seed (42), backed by two independent
+  3-seed checks (42/43/44). **(a)** The 7 Tinker-trained sources were trained at all three seeds and
+  evaluated on 2 harm benchmarks: erosion stays **near-null and seed-stable** (+0.27/+0.21/+0.21pt, all
+  p<1e-4), verdicts identical across seeds. **(b)** Because that pilot roster is disjoint from the local
+  sources, we re-ran the **local** eroder (ministral) and a null control (aya) at seeds 43/44 on all 4
+  datasets: ministral erodes **+4.2/+4.9/+4.7pt** across seeds (across-seed SD **0.29pt**), aya stays
+  **+1.4/+1.1/+1.2pt** (SD **0.13pt**) — the between-source gap (~3.5pt) is **~12–27× the seed SD**, so
+  source-conditioning holds on the exact matrix models, not just a proxy. Data:
   [`data/results/safety/multiseed_pilot/`](data/results/safety/multiseed_pilot).
 - **Metrics overcount (CONFIRMED, corroborated by an independent grader).** On the same 4,712 matrix
   responses, three graders disagree sharply: **Llama-Guard 25.4% / official HarmBench classifier 9.3% /

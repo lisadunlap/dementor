@@ -95,12 +95,18 @@ the imitated one (#3, tentative).
    report it as a single-source supporting observation, not a finding. Self-SFT keys
    `dpo_<ds>_<m>_as_<m>_seed42` under `data/results/matrix/sft_runs/`.
 
-   **Robustness — seed-stability (3-seed pilot).** The main matrix is single-seed (42). A 7-model pilot
-   (the Tinker-trained sources, now folded into the main 13-model matrix) was additionally trained at
-   **seeds 42/43/44** and evaluated on two harm benchmarks (`data/results/safety/multiseed_pilot/`):
-   overall erosion stays **near-null and seed-stable** (+0.27/+0.21/+0.21pt across seeds, all $p<10^{-4}$),
-   and every model's erode/not-erode verdict is identical across the three seeds — so base-conditioning
-   is not seed noise.
+   **Robustness — seed-stability (two 3-seed checks).** The main matrix is single-seed (42). Two
+   independent 3-seed checks (seeds 42/43/44) confirm the base-conditioning is not seed noise. **(a) Tinker
+   pilot** — the 7 Tinker-trained sources (now folded into the main 13-model matrix) were trained at all
+   three seeds and evaluated on two harm benchmarks (`data/results/safety/multiseed_pilot/`): overall
+   erosion stays near-null and seed-stable (+0.27/+0.21/+0.21pt across seeds, all $p<10^{-4}$), with every
+   model's erode/not-erode verdict identical across seeds. **(b) Local-roster check** — because the pilot
+   roster is disjoint from the local sources, we additionally re-trained the local eroder **ministral** and
+   a null control **aya** at seeds 43/44 across all 4 datasets (5 targets each) and re-scored erosion
+   (advbench + strongreject, RTL genuine-harm): ministral erodes at **+4.2/+4.9/+4.7pt** across seeds
+   42/43/44 (across-seed SD **0.29pt**) while aya stays at **+1.4/+1.1/+1.2pt** (SD **0.13pt**). The
+   between-source gap (~3.5pt) is **~12–27× the across-seed SD**, so source-conditioning holds on the exact
+   models in the matrix, not only a proxy roster.
 
 4. **Identity ⟂ safety — CONFIRMED.** A model's identity/fingerprint direction and its refusal
    (safety) direction are causally separable: ablating the identity direction leaves safety unmoved,

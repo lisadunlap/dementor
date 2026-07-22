@@ -233,9 +233,14 @@ erosion holds at $+0.27/+0.21/+0.21$pt across seeds (all $p<10^{-4}$), the per-m
 seed standard deviation ($\sim$0.1pt) is ${\sim}8\times$ smaller than the
 between-source spread, and every model's erode/does-not-erode verdict is preserved
 across all three seeds --- so base-conditioning is not seed noise. (These seven
-Tinker-trained sources are now folded into the main $13\times13$ matrix; the pilot
-remains the multi-seed evidence.) Multi-seed replication of the full matrix is left to
-future work.
+Tinker-trained sources are now folded into the main $13\times13$ matrix.) Because that
+pilot roster is disjoint from the locally-trained sources, we additionally re-trained the
+local eroder (ministral) and a null control (aya) at seeds 43/44 across all four datasets
+and re-scored erosion on the same two benchmarks: ministral erodes at $+4.2/+4.9/+4.7$pt
+across seeds 42/43/44 (across-seed SD $0.29$pt) while aya stays at $+1.4/+1.1/+1.2$pt (SD
+$0.13$pt), so the between-source gap ($\sim$3.5pt) is ${\sim}12\text{--}27\times$ the
+across-seed SD --- confirming source-conditioning on the exact matrix models, not only a
+proxy roster. Multi-seed replication of the \emph{full} matrix is left to future work.
 All 13 imitation-square sources now carry a full five-benchmark steering verdict on the harm axis
 (AdvBench, HarmBench, StrongREJECT, SORRY-Bench, SG-Bench)---the same harm axis as the imitation-erosion
 study---so the mechanistic dissociation is measured on the exact imitation grid \emph{and} the same
