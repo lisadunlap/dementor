@@ -170,12 +170,10 @@ the imitated one (#3, tentative).
 
 ### Steering coverage of the imitation grid (full parity)
 
-**All 13 imitation-square sources carry a steering verdict on the harm axis** (AdvBench, HarmBench,
-StrongREJECT, SORRY-Bench, SG-Bench) — matching the imitation-erosion harm axis, so the two halves of the
-paper are compared on a matched roster. **12 of the 13 carry the full 5 benchmarks**; qwen3.6-35b carries
-**4/5** — its AdvBench cell is omitted because the 35B MoE plus the steering-cone operator exceeds a single
-80GB GPU and model-parallel was unavailable on the shared box; its verdict (CLEAN) is robust across the 4 it
-does carry, so this does not affect the tally. On that shared grid the identity ⟂ safety result breaks down as:
+**Every one of the 13 imitation-square sources carries a full 5-benchmark steering verdict on the harm
+axis** (AdvBench, HarmBench, StrongREJECT, SORRY-Bench, SG-Bench) — matching the imitation-erosion harm
+axis exactly, so the two halves of the paper are compared on a matched roster *and* a matched benchmark
+set. On that shared grid the identity ⟂ safety result breaks down as:
 
 | Imitation-grid steering verdict | Count | Sources |
 | --- | --- | --- |

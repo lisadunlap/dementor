@@ -241,12 +241,10 @@ across seeds 42/43/44 (across-seed SD $0.29$pt) while aya stays at $+1.4/+1.1/+1
 $0.13$pt), so the between-source gap ($\sim$3.5pt) is ${\sim}12\text{--}27\times$ the
 across-seed SD --- confirming source-conditioning on the exact matrix models, not only a
 proxy roster. Multi-seed replication of the \emph{full} matrix is left to future work.
-All 13 imitation-square sources carry a steering verdict on the harm axis
+All 13 imitation-square sources now carry a full five-benchmark steering verdict on the harm axis
 (AdvBench, HarmBench, StrongREJECT, SORRY-Bench, SG-Bench)---the same harm axis as the imitation-erosion
-study---so the mechanistic dissociation is measured on the exact imitation grid. Twelve carry all five
-benchmarks; qwen3.6-35b carries four (AdvBench omitted, as the 35B MoE plus the steering operator exceeds a
-single 80GB GPU and model-parallel was unavailable), with a CLEAN verdict robust across the four it does
-carry: 9/13 are clean, 3/13 show genuine single-cone resistance
+study---so the mechanistic dissociation is measured on the exact imitation grid \emph{and} the same
+benchmark set rather than an overlapping subset: 9/13 are clean, 3/13 show genuine single-cone resistance
 (refusal resists single-direction ablation with a clean random control: gpt-oss-120b, qwen3.6-27b,
 gemma-4-e4b), and 1/13 is reported but not counted (gemma-4-31b). For that last model we disclose a flaw
 in our own measurement rather than dropping it: our all-layer refusal cone over-ablates its 60-layer
