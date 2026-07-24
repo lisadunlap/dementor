@@ -30,6 +30,13 @@ sparse to sit in a balanced square: **granite-4-h-small** (a source-model eroder
 change any conclusion (source-variance 58% vs 56%); the square is the presentation, the numbers below
 hold on both.
 
+**The 13 (each is both a source and a target):** ministral-8b, nemotron-nano-30b-a3b, gemma-4-31b,
+qwen3.6-35b-a3b, gpt-oss-120b, gemma-4-e4b, qwen3.6-27b, phi-4, gpt-oss-20b, olmo-3-7b, qwen3.5-4b,
+llama-3.1-8b, aya-expanse-8b — spanning **4B–120B**, 8 providers, and dense / MoE / mamba-hybrid / VLM
+architectures. **Dropped to the text (sources only, sparse coverage):** granite-4-h-small (+2.0pt eroder),
+llama-3.3-70b (null), nemotron-super-120b (null). Full per-model ids/params in [`config.yaml`](config.yaml)
+(`imitation: core`).
+
 ## Results at a glance
 
 | # | Finding | Headline number |

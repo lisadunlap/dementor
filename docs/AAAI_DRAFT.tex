@@ -282,6 +282,50 @@ auditing is unreliable in adversarial settings---and unreliable \emph{unpredicta
 per source---because disguisability is a property of the disguising model rather than
 of the model being imitated.
 
+\appendix
+\section{Model Roster}
+\label{app:roster}
+Table~\ref{tab:roster} gives the full imitation roster. Thirteen models form the clean
+square---each serves as both source and target, with every off-diagonal cell filled across
+all four datasets and seven safety benchmarks. Three further models were evaluated as
+\emph{sources only} and are reported in the text rather than the grid, their
+source$\to$target coverage being too sparse for a balanced square; including them leaves
+the source-variance share essentially unchanged (58\% vs.\ 56\%).
+
+\begin{table}[t]
+\centering
+\small
+\begin{tabular}{llll}
+\toprule
+Model & Params & Provider & Arch. \\
+\midrule
+\multicolumn{4}{l}{\emph{Clean $13\times13$ square (each is both source and target)}} \\
+Ministral-8B-Instruct-2410   & 8B         & Mistral   & dense \\
+Nemotron-3-Nano-30B-A3B      & 30B (A3B)  & NVIDIA    & MoE \\
+gemma-4-31B-it               & 31B        & Google    & VLM \\
+Qwen3.6-35B-A3B              & 35B (A3B)  & Qwen      & MoE \\
+gpt-oss-120b                 & 120B       & OpenAI    & MoE \\
+gemma-4-E4B-it               & E4B        & Google    & VLM \\
+Qwen3.6-27B                  & 27B        & Qwen      & mamba-hybrid \\
+phi-4                        & 14B        & Microsoft & dense \\
+gpt-oss-20b                  & 20B        & OpenAI    & MoE \\
+OLMo-3-7B-Instruct           & 7B         & AllenAI   & dense \\
+Qwen3.5-4B                   & 4B         & Qwen      & mamba-hybrid \\
+Llama-3.1-8B-Instruct        & 8B         & Meta      & dense \\
+aya-expanse-8b               & 8B         & Cohere    & dense \\
+\midrule
+\multicolumn{4}{l}{\emph{Sources only (reported in text, not the grid)}} \\
+granite-4.0-h-small          & 32B (A9B)  & IBM       & mamba-hybrid \\
+Llama-3.3-70B-Instruct       & 70B        & Meta      & dense \\
+Nemotron-3-Super-120B-A12B   & 120B (A12B)& NVIDIA    & MoE \\
+\bottomrule
+\end{tabular}
+\caption{Imitation roster: 13 clean-square models (each a source and a target) plus 3
+source-only models reported in the text. Spans 4B--120B across 8 providers and
+dense / MoE / mamba-hybrid / VLM architectures.}
+\label{tab:roster}
+\end{table}
+
 \bibliographystyle{aaai}
 % \bibliography{dementor}
 \end{document}
