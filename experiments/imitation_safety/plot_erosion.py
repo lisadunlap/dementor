@@ -48,25 +48,30 @@ def main():
     print(f"[plot] {n} disguise adapters with baselines ({args.seed})")
 
     # ---- Fig 1: source x target erosion heatmap (mean over datasets) ------------------
-    piv = summ.pivot_table(index="source", columns="target", values=he, aggfunc="mean")
-    # order rows by mean erosion (most-eroding source at top)
+    # Report in PERCENTAGE POINTS.  Two display fixes so genuinely-distinct cells don't read as
+    # "repeated constants": (1) annotate at 0.1pp precision (2-decimal *fractions* collapsed a whole
+    # safe-source row like aya's -2.5..-3.6pp to a single "-0.03"); (2) clip the colour scale to the
+    # 95th percentile so one outlier cell (the gpt-oss-20b RTL false-positive, +15.6pp) doesn't wash
+    # every other row into an indistinguishable shade.
+    piv = summ.pivot_table(index="source", columns="target", values=he, aggfunc="mean") * 100.0  # -> pp
     row_order = piv.mean(axis=1).sort_values(ascending=False).index
     piv = piv.reindex(row_order)
-    vmax = np.nanmax(np.abs(piv.values)) or 0.05
+    finite = np.abs(piv.values[np.isfinite(piv.values)])
+    vmax = max(float(np.nanpercentile(finite, 95)) if finite.size else 5.0, 1.0)
     fig, ax = plt.subplots(figsize=(max(8, 0.5 * piv.shape[1] + 4), 0.5 * piv.shape[0] + 3))
     im = ax.imshow(piv.values, cmap="RdBu_r", vmin=-vmax, vmax=vmax, aspect="auto")
     ax.set_xticks(range(piv.shape[1])); ax.set_xticklabels(piv.columns, rotation=45, ha="right", fontsize=8)
     ax.set_yticks(range(piv.shape[0])); ax.set_yticklabels(piv.index, fontsize=9)
     ax.set_xlabel("target (imitated model)"); ax.set_ylabel("source (disguised model)")
     ax.set_title(f"Imitation safety-erosion matrix (mean over datasets, {args.seed})\n"
-                 "red = safety eroded, blue = safer; erosion = harm(disguised) − harm(baseline)", fontsize=10)
+                 "red = safety eroded, blue = safer; erosion = harm(disguised) − harm(baseline), in pp", fontsize=10)
     for i in range(piv.shape[0]):
         for j in range(piv.shape[1]):
             v = piv.values[i, j]
             if not np.isnan(v):
-                ax.text(j, i, f"{v:+.2f}", ha="center", va="center", fontsize=6,
+                ax.text(j, i, f"{v:+.1f}", ha="center", va="center", fontsize=6,
                         color="white" if abs(v) > 0.6 * vmax else "black")
-    fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, label="mean harm erosion")
+    fig.colorbar(im, ax=ax, fraction=0.025, pad=0.02, label="mean harm erosion (pp; colour clipped at 95th pct)")
     fig.tight_layout(); fig.savefig(os.path.join(figdir, "erosion_heatmap.png"), dpi=150); plt.close(fig)
 
     # ---- Fig 2: per-source erosion + absolute baseline vs disguised harm --------------

@@ -68,7 +68,17 @@ the imitated one (#3, tentative).
    (a reasoning-channel model) whose verbose refusals the RTL judge over-flags as refuse-then-leak — i.e.
    an instance of the Finding-1 overcount, not real erosion — so we report them as a judging artifact, not
    a hazard. This near-null is why the paper's weight is carried by the measurement-overcount (#1) and the
-   dissociation (#4), not by a raw-erosion magnitude. *(Three further models — granite-4-h-small +2.0pt (a
+   dissociation (#4), not by a raw-erosion magnitude.
+
+   **Reading the heatmap (`figures/erosion_heatmap.png`).** A *safe* source's row is near-uniform
+   (e.g. aya ≈ −2.5 to −3.6pp across every target; llama-3.1-8b ≈ −0.1 to −1.2pp) while a *permissive*
+   source's row is spread out (ministral −0.6 to +6.1pp; gpt-oss-20b −0.9 to +15.6pp). This is
+   **source-conditioning made visible**, not a repeated constant: a safe model refuses regardless of whom
+   it imitates, so its harm barely moves across targets. The cells are all distinct (aya's 17 targets take
+   14 distinct values) — an earlier version of the figure *looked* constant only because it annotated
+   2-decimal fractions (1pp granularity collapsed −2.5…−3.6pp to a single "−0.03") and let one +15.6pp
+   outlier dominate the colour scale; the figure now annotates in 0.1pp and clips the colour at the 95th
+   percentile. *(Three further models — granite-4-h-small +2.0pt (a
    source eroder), llama-3.3-70b and nemotron-super-120b (null) — were evaluated as sources but reported
    here rather than in the grid, their source→target coverage being too sparse for a balanced square.
    Including them in the analysis changes nothing: mean +0.33pt, source-variance 58% vs 56%.)*
