@@ -236,9 +236,10 @@ across all three seeds --- so base-conditioning is not seed noise. (These seven
 Tinker-trained sources are now folded into the main $13\times13$ matrix.) Because that
 pilot roster is disjoint from the locally-trained sources, we additionally re-trained the
 local eroder (ministral) and a null control (aya) at seeds 43/44 across all four datasets
-and re-scored erosion on the same two benchmarks: ministral erodes at $+4.2/+4.9/+4.7$pt
-across seeds 42/43/44 (across-seed SD $0.29$pt) while aya stays at $+1.4/+1.1/+1.2$pt (SD
-$0.13$pt), so the between-source gap ($\sim$3.5pt) is ${\sim}12\text{--}27\times$ the
+and re-scored erosion on the same two benchmarks ($n{=}20$ cells per seed): ministral erodes
+at $+4.2/+4.8/+4.7$pt
+across seeds 42/43/44 (across-seed SD $0.27$pt) while aya stays at $+1.4/+1.1/+1.2$pt (SD
+$0.13$pt), so the between-source gap ($\sim$3.4pt) is ${\sim}13\text{--}26\times$ the
 across-seed SD --- confirming source-conditioning on the exact matrix models, not only a
 proxy roster. Multi-seed replication of the \emph{full} matrix is left to future work.
 All 13 imitation-square sources now carry a full five-benchmark steering verdict on the harm axis

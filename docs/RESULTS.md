@@ -113,9 +113,10 @@ the imitated one (#3, tentative).
    model's erode/not-erode verdict identical across seeds. **(b) Local-roster check** — because the pilot
    roster is disjoint from the local sources, we additionally re-trained the local eroder **ministral** and
    a null control **aya** at seeds 43/44 across all 4 datasets (5 targets each) and re-scored erosion
-   (advbench + strongreject, RTL genuine-harm): ministral erodes at **+4.2/+4.9/+4.7pt** across seeds
-   42/43/44 (across-seed SD **0.29pt**) while aya stays at **+1.4/+1.1/+1.2pt** (SD **0.13pt**). The
-   between-source gap (~3.5pt) is **~12–27× the across-seed SD**, so source-conditioning holds on the exact
+   (advbench + strongreject, RTL genuine-harm, n=20 cells per seed): ministral erodes at
+   **+4.2/+4.8/+4.7pt** across seeds 42/43/44 (across-seed SD **0.27pt**) while aya stays at
+   **+1.4/+1.1/+1.2pt** (SD **0.13pt**). The
+   between-source gap (~3.4pt) is **~13–26× the across-seed SD**, so source-conditioning holds on the exact
    models in the matrix, not only a proxy roster.
 
 4. **Identity ⟂ safety — CONFIRMED.** A model's identity/fingerprint direction and its refusal

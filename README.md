@@ -114,8 +114,9 @@ counted). In no imitation source does identity ablation erode safety beyond the 
   evaluated on 2 harm benchmarks: erosion stays **near-null and seed-stable** (+0.27/+0.21/+0.21pt, all
   p<1e-4), verdicts identical across seeds. **(b)** Because that pilot roster is disjoint from the local
   sources, we re-ran the **local** eroder (ministral) and a null control (aya) at seeds 43/44 on all 4
-  datasets: ministral erodes **+4.2/+4.9/+4.7pt** across seeds (across-seed SD **0.29pt**), aya stays
-  **+1.4/+1.1/+1.2pt** (SD **0.13pt**) — the between-source gap (~3.5pt) is **~12–27× the seed SD**, so
+  datasets (n=20 cells per seed): ministral erodes **+4.2/+4.8/+4.7pt** across seeds (across-seed SD
+  **0.27pt**), aya stays
+  **+1.4/+1.1/+1.2pt** (SD **0.13pt**) — the between-source gap (~3.4pt) is **~13–26× the seed SD**, so
   source-conditioning holds on the exact matrix models, not just a proxy. Data:
   [`data/results/safety/multiseed_pilot/`](data/results/safety/multiseed_pilot).
 - **Metrics overcount (CONFIRMED, corroborated by an independent grader).** On the same 4,712 matrix
