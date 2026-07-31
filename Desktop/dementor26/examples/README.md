@@ -1,0 +1,44 @@
+Examples and Provider Setup
+
+This page shows concrete, copy‑paste examples for common providers via LiteLLM and how to run the core methods succinctly.
+
+Environment variables
+- OpenAI: `export OPENAI_API_KEY=...`
+- Anthropic: `export ANTHROPIC_API_KEY=...`
+- Google (Gemini): `export GEMINI_API_KEY=...`
+- Together: `export TOGETHER_AI_API_KEY=...`
+- xAI: `export XAI_API_KEY=...`
+
+Model strings
+- LiteLLM providers:
+  - OpenAI: `openai/gpt-4o-mini`, `openai/gpt-4o`
+  - Anthropic: `anthropic/claude-3-haiku-20240307`, `anthropic/claude-3-5-sonnet-20240620`
+  - Google: `gcp/gemini-1.5-pro` (LiteLLM provider alias may vary)
+  - Together: `together_ai/meta-llama/Meta-Llama-3.1-8B-Instruct-Turbo`
+  - xAI: `xai/grok-2-latest`
+
+- Local HuggingFace (Transformers): prefix with `hf:`
+  - e.g., `hf:meta-llama/Llama-3.1-8B-Instruct`
+
+- Local vLLM: prefix with `vllm:`
+  - e.g., `vllm:/path/to/your/model` or `vllm:meta-llama/Llama-3.1-8B-Instruct`
+
+Disguise commands
+- Random baseline
+  - `python disguise.py --model openai/gpt-4o-mini --disguise-as gpt-4o --method random_sampling --num-samples 200`
+
+- Contrastive rules
+  - `python disguise.py --model openai/gpt-4o-mini --disguise-as gpt-4o --method contrastive --num-samples 200`
+
+Scoring with metrics
+```bash
+python -m scripts.scorer pairwise \
+  --input data/results/chatbot_arena/disguised/my_run.csv \
+  --output data/results/chatbot_arena/scores/my_run_scored/scored.csv
+cat data/results/chatbot_arena/scores/my_run_scored/scored_metrics.csv
+cat data/results/chatbot_arena/scores/my_run_scored/summary.json
+```
+
+Notes
+- If you cannot use an API provider, you can still evaluate existing results with the scorer and heuristics-only mode.
+- For local judge scoring, install `vllm` and run the scorer with the default LLM judge; otherwise use `--heuristics-only`.

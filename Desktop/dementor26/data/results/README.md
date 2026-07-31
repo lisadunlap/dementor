@@ -1,0 +1,1 @@
+This directory holds the disguised csvs, as well as the scoring and metrics (for both base and disguised csvs). 
