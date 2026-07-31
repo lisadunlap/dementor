@@ -25,7 +25,7 @@ A Measurement Correction and a Mechanistic Dissociation}
 Prior work reports that benign fine-tuning erodes alignment, and behavioral
 distillation is widely treated as a safety hazard. We revisit that claim with a
 controlled imitation matrix (a clean $13\times13$ source$\times$target square,
-$625$ adapters over 4 datasets) and a 23-model projection-ablation study, and reach a more
+$769$ adapters over 4 datasets) and a 23-model projection-ablation study, and reach a more
 measured conclusion: \textbf{imitation transfers a model's fingerprint without
 transferring its safety, and the reported hazard is largely a measurement artifact.}
 (1) Off-the-shelf output filters badly overstate the phenomenon: on identical
@@ -33,11 +33,11 @@ responses Llama-Guard reports $25.4\%$ harm where two independent content-aware 
 --- our judge and the official HarmBench classifier --- agree on $7$--$9\%$, a
 $2.7$--$3.5\times$ overcount, while the filter simultaneously \emph{misses} $25\%$ of
 genuine harm. The guard reacts to prompt topic rather than response content. (2) Measured with a content-aware judge, imitation erodes
-genuine safety only marginally: mean $+0.2$pt across 625 adapters, only $2$ above
-$+10$pt (both a reasoning-model judging artifact), and $45\%$ get \emph{safer}. (3) What little
+genuine safety only marginally: mean $+0.33$pt across 769 adapters, only $2$ above
+$+10$pt (both a reasoning-model judging artifact), and $42\%$ get \emph{safer}. (3) What little
 erosion exists tracks the \emph{base} model, not the imitated one: a variance
-decomposition attributes 56\% of the (small) erosion variance to the base model, 3\% to
-the imitated target, and 1.5\% to the dataset (source still dominates target ${\sim}18\times$).
+decomposition attributes 57.5\% of the (small) erosion variance to the base model, 3.1\% to
+the imitated target, and 0.8\% to the dataset (source still dominates target ${\sim}18\times$).
 We report this tentatively --- the
 underlying signal is near the measurement floor --- but if it holds it has a security
 reading (\emph{asymmetric laundering}): a model's disguisability, and its safety cost,
@@ -162,9 +162,11 @@ degenerate decoding artifacts, so we report the conservative form (``does not de
 harm'').
 
 \paragraph{Finding 2 --- Measured properly, imitation erosion is small.}
-Across the $n{=}625$ disguise adapters of the clean $13\times13$ square, mean genuine-harm
-erosion is $+0.2$pt and $45\%$ get \emph{safer}. Only $2$ adapters exceed $+10$pt, and both
-are gpt-oss-20b (a reasoning-channel model) whose verbose refusals the content-aware judge
+Across the $n{=}769$ disguise adapters (the clean $13\times13$ square contributes $497$
+off-diagonal adapters: all $156$ cells are filled, but $43$ carry a single dataset rather than
+all four), mean genuine-harm erosion is $+0.33$pt and $42\%$ get \emph{safer}; restricted to the
+square alone, $+0.35$pt and $40.6\%$. Only $2$ adapters exceed $+10$pt, and in both
+gpt-oss-20b is the fine-tuned \emph{base} (a reasoning-channel model) whose verbose refusals the content-aware judge
 over-flags as refuse-then-leak --- an instance of the Finding-1 overcount, not real erosion.
 Only 2 of the 13 sources erode by more than $1$pt. The headline hazard of behavioral
 imitation does not survive a content-aware measurement.
@@ -173,8 +175,8 @@ imitation does not survive a content-aware measurement.
 imitated one.}
 To the extent the small erosion in Finding~2 varies at all, it varies with the
 \emph{base} model (the one being fine-tuned), not the imitated target. A one-way
-variance decomposition attributes \textbf{56\% of erosion variance to the base model,
-3\% to the imitated target, 1.5\% to the dataset} (Table~\ref{tab:variance}) --- the base
+variance decomposition attributes \textbf{57.5\% of erosion variance to the base model,
+3.1\% to the imitated target, 0.8\% to the dataset} (Table~\ref{tab:variance}) --- the base
 dominates the imitated target ${\sim}18\times$: the least-safe base (ministral-8b, $26\%$
 baseline harm) erodes appreciably ($+3.1$pt) while a robust base gets safer ($-2.9$pt), and
 which model is imitated barely matters.
@@ -211,13 +213,13 @@ identity but barely its safety, because the two are not the same object.
 \toprule
 Factor & \% of erosion variance ($\eta^2$) \\
 \midrule
-Source (base) model & 55.9 \\
-Imitation target & 3.0 \\
-Dataset & 1.5 \\
+Source (base) model & 57.5 \\
+Imitation target & 3.1 \\
+Dataset & 0.8 \\
 \bottomrule
 \end{tabular}
 \caption{The small erosion signal is overwhelmingly a base-model (source) property,
-not a property of the imitated target ($n{=}625$).}
+not a property of the imitated target ($n{=}769$).}
 \label{tab:variance}
 \end{table}
 
@@ -272,7 +274,7 @@ agreement extends the check across the full harm axis.
 \section{Conclusion}
 Behavioral imitation transfers a model's fingerprint without transferring its safety.
 Measured with a content-aware judge, the safety cost of imitation is small
-($+0.2$pt mean; $45\%$ of adapters get \emph{safer}) and confined to sources that were
+($+0.33$pt mean; $42\%$ of adapters get \emph{safer}) and confined to sources that were
 already fragile; off-the-shelf guards inflate it $2.7$--$3.5\times$ (versus two
 independent content-aware graders) by flagging responses that do not deliver harm. The mechanistic counterpart is a causal dissociation: a model's
 identity direction can be ablated without moving its refusal behavior, across 23
@@ -287,11 +289,14 @@ of the model being imitated.
 \section{Model Roster}
 \label{app:roster}
 Table~\ref{tab:roster} gives the full imitation roster. Thirteen models form the clean
-square---each serves as both source and target, with every off-diagonal cell filled across
-all four datasets and seven safety benchmarks. Three further models were evaluated as
+square---each serves as both source and target, with all $156$ off-diagonal cells filled across
+seven safety benchmarks. Dataset depth per cell is uneven: $113$ cells carry all four datasets
+and $43$ carry one, so the square comprises $497$ off-diagonal adapters rather than $156\times4$.
+Three further models were evaluated as
 \emph{sources only} and are reported in the text rather than the grid, their
-source$\to$target coverage being too sparse for a balanced square; including them leaves
-the source-variance share essentially unchanged (58\% vs.\ 56\%).
+source$\to$target coverage being too sparse for the square; including them leaves
+the source-variance share essentially unchanged ($57.5\%$ over the full $769$-adapter roster
+vs.\ $59.7\%$ on the square alone).
 
 \begin{table}[t]
 \centering

@@ -14,9 +14,10 @@ framing for every number is [`RESULTS.md`](RESULTS.md).
 
 ## (a) `data/results/safety/` — imitation safety-erosion matrix — CURRENT
 
-The current genuine-harm (RTL) erosion results for the seed-42 disguise-adapter sweep (540
-adapters). Small, **source-conditioned** erosion (variance 79% source / 3% target / 0.2% dataset).
-Contains `erosion_seed42_summary.csv` (540 adapters), `erosion_seed42_long.csv` (3,780 rows), and
+The current genuine-harm (RTL) erosion results for the seed-42 disguise-adapter sweep (769
+adapters, 16 sources × 18 targets). Small, **source-conditioned** erosion (variance 57.5% source /
+3.1% target / 0.8% dataset, per `erosion_variance_stats.json`).
+Contains `erosion_seed42_summary.csv` (769 adapters), `erosion_seed42_long.csv` (5,383 rows), and
 `figures/` (`erosion_heatmap.png`, `erosion_by_source.png`, `erosion_by_dataset.png`,
 `erosion_distribution.png`). Built by `experiments/imitation_safety/build_erosion_csv.py` +
 `plot_erosion.py`. See [`data/results/safety/README.md`](../data/results/safety/README.md) and

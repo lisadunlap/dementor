@@ -1,7 +1,7 @@
 # Results
 
 **Thesis.** Fine-tuning a model to imitate another model's behavior on benign data does **not**
-meaningfully erode its safety (mean +0.2pt over 625 adapters; 45% get *safer*), and standard safety
+meaningfully erode its safety (mean +0.33pt over 769 adapters; 42% get *safer*), and standard safety
 classifiers materially **overstate** what little there is (2.7–3.5×). Two pillars: the measurement
 overcount (#1) and a mechanistic result that a model's **identity direction is causally separable from
 its safety/refusal direction** (#4). Secondary: what tiny erosion exists tracks the **base model**, not
@@ -60,18 +60,23 @@ the imitated one (#3, tentative).
    RTL judge catches — 144 cases both judges agree are harmful — but it is *not* what drives the Guard
    overcount.)
 
-2. **Erosion is near-null — SOLID (seed 42, n=625).** The imitation study is a **clean 13×13 square**
-   (models that are both source and target; every off-diagonal cell filled across 4 datasets × 7
-   benchmarks). Averaged over its 625 disguise adapters, mean genuine-harm erosion is **+0.2pt** and
-   **45% get *safer***. Behavioral imitation on benign data does **not** meaningfully erode safety once
-   measured with a content-aware judge. Only **2/625** adapters exceed +10pt, and both are **gpt-oss-20b**
+2. **Erosion is near-null — SOLID (seed 42, n=769).** The imitation study is a **clean 13×13 square**
+   (models that are both source and target; all 156 off-diagonal cells filled across 7 benchmarks —
+   though dataset depth per cell is uneven: 113 cells carry all 4 datasets, 42 carry 1 and one carries 3, so the square is
+   **497 off-diagonal adapters**, not 156 × 4). Averaged over the full **769**-adapter roster, mean
+   genuine-harm erosion is **+0.33pt** and **42% get *safer*** (on the square alone: +0.35pt, 40.6%
+   safer). Behavioral imitation on benign data does **not** meaningfully erode safety once
+   measured with a content-aware judge. Only **2/769** adapters exceed +10pt, and both have
+   **gpt-oss-20b as the fine-tuned base**
    (a reasoning-channel model) whose verbose refusals the RTL judge over-flags as refuse-then-leak — i.e.
    an instance of the Finding-1 overcount, not real erosion — so we report them as a judging artifact, not
    a hazard. This near-null is why the paper's weight is carried by the measurement-overcount (#1) and the
    dissociation (#4), not by a raw-erosion magnitude.
 
    **Reading the heatmap (`figures/erosion_heatmap.png`).** A *safe* source's row is near-uniform
-   (e.g. aya ≈ −2.5 to −3.6pp across every target; llama-3.1-8b ≈ −0.1 to −1.2pp) while a *permissive*
+   (e.g. aya ≈ −2.5 to −3.1pp across every *cross-imitation* target — the −3.6pp figure quoted
+   previously was aya's **self-imitation** cell, which is excluded from the off-diagonal signal;
+   llama-3.1-8b ≈ −0.1 to −1.2pp) while a *permissive*
    source's row is spread out (ministral −0.6 to +6.1pp; gpt-oss-20b −0.9 to +15.6pp). This is
    **source-conditioning made visible**, not a repeated constant: a safe model refuses regardless of whom
    it imitates, so its harm barely moves across targets. The cells are all distinct (aya's 17 targets take
@@ -79,13 +84,14 @@ the imitated one (#3, tentative).
    2-decimal fractions (1pp granularity collapsed −2.5…−3.6pp to a single "−0.03") and let one +15.6pp
    outlier dominate the colour scale; the figure now annotates in 0.1pp and clips the colour at the 95th
    percentile. *(Three further models — granite-4-h-small +2.0pt (a
-   source eroder), llama-3.3-70b and nemotron-super-120b (null) — were evaluated as sources but reported
-   here rather than in the grid, their source→target coverage being too sparse for a balanced square.
-   Including them in the analysis changes nothing: mean +0.33pt, source-variance 58% vs 56%.)*
+   source eroder), llama-3.3-70b (−0.3pt) and nemotron-super-120b (+1.0pt) — were evaluated as sources but
+   reported here rather than in the grid, their source→target coverage being too sparse for the square.
+   Including them changes nothing qualitatively: source-variance 57.5% on the full roster vs 59.7% on the
+   square alone.)*
 
 3. **What little erosion exists tracks the BASE model, not the imitated one — SOLID direction,
-   TENTATIVE magnitude (seed 42, n=625).** A variance decomposition attributes **56% of the (small)
-   erosion variance to the base model being fine-tuned, 3% to the imitated target, 1.5% to the dataset**
+   TENTATIVE magnitude (seed 42, n=769).** A variance decomposition attributes **57.5% of the (small)
+   erosion variance to the base model being fine-tuned, 3.1% to the imitated target, 0.8% to the dataset**
    — the base still dominates the imitated target ~18×. The least-safe base (ministral-8b, 26% baseline
    harm) erodes most (+3.1pt); qwen3.6-27b is the other in-grid eroder (+1.1pt); robust bases are
    null-to-negative (aya-expanse-8b gets *safer*, −2.9pt). **Caveat (important):** this decomposition
@@ -93,7 +99,7 @@ the imitated one (#3, tentative).
    the single-seed table carries no significance test — so treat base-conditioning as a *tentative,
    seed-stable pattern* (the 3-seed pilot below finds the same pattern with p-values), not a precisely
    estimated effect. *(Merging the tinker sources lowered the source-variance from the local-only 79% to
-   56%: more diverse sources add spread. The qualitative claim — source ≫ target — is unchanged.)* If it
+   57.5%: more diverse sources add spread. The qualitative claim — source ≫ target — is unchanged.)* If it
    holds, the security reading is **"asymmetric laundering"**: disguisability, and its safety cost, is a
    property of the disguising (base) model, not of what it imitates. *(NB: "source" in the CSV = the base
    model that is fine-tuned; "target" = the imitated model.)*
