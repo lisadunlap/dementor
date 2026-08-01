@@ -1,0 +1,597 @@
+\documentclass{article}
+
+% if you need to pass options to natbib, use, e.g.:
+%     \PassOptionsToPackage{numbers, compress}{natbib}
+% before loading neurips_2024
+
+
+% ready for submission
+\usepackage[preprint]{neurips_2024}
+
+\usepackage{latexsym}
+\usepackage{microtype}
+\usepackage{graphicx}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{booktabs} % for professional tables
+\usepackage{tabularx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{mathtools}
+\usepackage{amsthm}
+\usepackage{lipsum}  
+\usepackage{listings}
+\usepackage{CJKutf8}
+\usepackage{xspace}
+\usepackage{multirow}
+\usepackage[framemethod=TikZ]{mdframed}
+\usepackage{tabu}
+\usepackage{longtable}
+\usepackage{alphalph}
+\usepackage{bm}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage[subtle]{savetrees}
+
+% to compile a preprint version, e.g., for submission to arXiv, add add the
+% [preprint] option:
+%     \usepackage[preprint]{neurips_2024}
+
+
+% to compile a camera-ready version, add the [final] option, e.g.:
+%     \usepackage[final]{neurips_2024}
+
+
+% to avoid loading the natbib package, add option nonatbib:
+%    \usepackage[nonatbib]{neurips_2024}
+
+
+\usepackage[utf8]{inputenc} % allow utf-8 input
+\usepackage[T1]{fontenc}    % use 8-bit T1 fonts
+\usepackage[colorlinks]{hyperref}       % hyperlinks
+\usepackage{url}            % simple URL typesetting
+\usepackage{booktabs}       % professional-quality tables
+\usepackage{amsfonts}       % blackboard math symbols
+\usepackage{nicefrac}       % compact symbols for 1/2, etc.
+\usepackage{microtype}      % microtypography
+\usepackage{xcolor}         % colors
+
+
+\title{Dementor: Stealing the Soul of a Language Model}
+
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to LaTeX to determine where to break the
+% lines. Using \AND forces a line break at that point. So, if LaTeX puts 3 of 4
+% authors names on the first line, and the last on the second line, try using
+% \AND instead of \And before the third author name.
+
+
+\author{%
+   Naz Col$^{2*}$, Ethan Liu$^{2*}$, Anya Ji$^2$, Shalini Ghosh$^1$, David Chan$^2$, Lisa Dunlap$^2$ \\
+  $^1$Amazon AGI, $^2$University of California, Berkeley
+}
+
+
+\begin{document}
+
+
+\maketitle
+
+\vspace{-2em}
+\begin{figure}[H]
+    \centering
+    \includegraphics[trim={0 3.5cm 0 1cm},clip,width=\linewidth]{img/main.pdf}
+    \caption{\small Dementor transfers behavioral signatures between language models using only in-context examples. The framework selects exemplar responses that capture the target model's distinctive persona using several methods, and uses them to guide the source model's outputs for a given query, inducing cross-model imitation without modifying model weights.}
+    \label{fig:main}
+\end{figure}
+
+\def\thefootnote{*}\footnotetext{Denotes equal contribution.}\def\thefootnote{\arabic{footnote}}
+
+\begin{abstract}
+Every public language model carries a distinctive persona---a characteristic 
+tone, formatting habit, and set of failure modes---that users learn to 
+recognize over time. When product teams migrate to a newer model, these 
+behavioral signatures disappear, breaking user expectations without any 
+change in underlying capability. We propose \textit{Dementor}, a prompt-only 
+framework for inter-model text style transfer that requires no weight 
+modifications or fine-tuning. Dementor constructs a compact ``LLM 
+certificate'' by clustering a target model's prompt-response pairs and 
+selecting representative exemplars that capture its stylistic manifold, 
+which are then prepended as in-context demonstrations to guide a source 
+model's outputs. Evaluated across five instruction-tuned models spanning 3--8B 
+parameters on 500 Chatbot Arena prompts~\cite{zheng2023judging}, 
+our feature-based clustering method consistently outperforms 
+random exemplar sampling in transferring stylistic markers such 
+as markdown usage, bullet formatting, and numbered steps.
+\end{abstract}
+
+
+\section{Introduction}
+
+Every LLM exhibits a distinctive behavioral signature---formatting habits, tone, and failure modes users learn to recognize. Model upgrades break this continuity. We propose \textit{Dementor}, a prompt-only framework for inter-model behavioral transfer requiring no weight modification. Core-set selection and contrastive prompting distill target models’ stylistic manifold into portable ``LLM certificates.’’ Evaluated across 4 datasets and 12 model pairs, our methods achieve 60\% match-rate improvement over baseline via prompting alone, with fine-tuning lifting the ceiling to 65\%.
+
+
+
+% \begin{abstract}
+%    \textcolor{red}{[LLM Generated -- REVISE]} Maintaining a consistent user experience when upgrading or switching between Large Language Models (LLMs) presents a significant challenge, as each model possesses a distinct behavioral and stylistic signature. To address this, we introduce Dementor, a framework for inter-model behavioral transfer that enables a source LLM to adopt the persona of a target LLM using only prompt engineering, with no parameter modifications required. Dementor leverages two complementary techniques: Core-Set Conditioning, which uses feature-based clustering to identify a compact, representative set of examples that capture the target's diverse stylistic modes, and System Prompt Extraction, which reverse-engineers the target's implicit behavioral patterns into an explicit, portable system prompt. Together, these methods create an "LLM certificate" that effectively transfers a model's complete behavioral signature. Our experiments across [Number] model pairs show that Dementor improves stylistic similarity scores by up to [X]% over baseline methods and is preferred by human evaluators in [Y]% of comparisons. This work offers a practical solution for maintaining user experience during model upgrades, mitigating evaluator drift in AI assessment, and enabling more flexible and robust LLM deployment.
+% \end{abstract}
+
+
+% \section{Introduction \& Background}
+
+
+% Large Language Models (LLMs) have become ubiquitous tools across industries, with each model exhibiting unique "personalities," capabilities, and behavioral signatures. As organizations deploy these systems, a critical challenge emerges: how can we make one LLM effectively mimic or "act" as if it were a different model? This capability would unlock numerous practical applications, from seamless user experience transitions to consistent evaluation frameworks.
+
+% For customer service deployments, companies can transition to newer, more capable models while maintaining consistent user experiences by having the new model mimic familiar interaction patterns. For enterprise environments, legacy systems dependent on specific model behaviors can be updated without disrupting workflows. In evaluation contexts, researchers can maintain consistent benchmarking across model generations without requiring access to frozen model checkpoints, addressing the evaluator drift problem that plagues longitudinal AI assessment.
+
+% We introduce Dementor, a framework that enables one language model to adopt the characteristic behaviors of another through strategic prompting alone - no model modifications required. Dementor uses two complementary techniques: Core-Set Conditioning, which identifies key examples that capture a model's distinctive response patterns, and System Prompt Extraction, which distills these patterns into explicit instructions that guide the target model to emulate the source. These methods create portable "LLM certificates" that effectively transfer behavioral signatures between different models.
+
+% Our research demonstrates that with carefully selected exemplars and prompt engineering, we can increase the similarity is response styles between models while preserving the underlying capabilities of the source model. This approach offers a practical solution to the growing challenge of model evolution in production environments, enabling more flexible AI deployment strategies while maintaining consistent user experiences and evaluation frameworks.
+
+% \section{Related Work}
+
+% \textcolor{red}{[LLM Generated from paper abstracts -- REVISE]}
+
+% The challenge of controlling the generative characteristics of large language models (LLMs) has evolved from a niche topic into a central research frontier. This pursuit of "behavioral control" has largely bifurcated into two paradigms: parameter modification and prompt-based steering.
+
+% Parameter modification, typically through fine-tuning, offers a powerful but resource-intensive path to imbue a model with a specific style or persona \citep{toshevska2025llm}. While effective, this approach is often impractical for dynamic environments, requiring bespoke model instances and significant computational overhead. This has motivated a surge of research into prompt-based methods. The most foundational of these are zero-shot \citep{radford2019language} and few-shot \citep{brown2020language} prompting, which often prove insufficient for complex behavioral mimicry \citep{mikros2025beyond}.
+
+% To address these limitations, researchers have explored more sophisticated prompting architectures. A dominant thread has been adapting frameworks from the domain of logical reasoning. For instance, \citep{chen2024using} successfully employed a Tree-of-Thoughts (ToT) framework—originally designed for multi-step reasoning \citep{yao2023tree}—to guide an LLM to adopt a real person's language style. While innovative, we argue this represents a repurposing of a tool designed for logical decomposition, not for holistic persona replication. ToT's core mechanism, which involves generating and evaluating discrete, intermediate 'thoughts' to construct a valid reasoning chain, is fundamentally oriented towards solving problems with verifiable, step-by-step solutions. Persona, in contrast, is not a problem to be solved but a holistic pattern to be embodied; it is defined by a complex interplay of stylistic nuances, tonal consistency, and structural habits that cannot be readily decomposed into a sequence of logical steps.
+
+% Furthermore, we assert that imitating the behavior of another LLM presents a distinct and more complex challenge than imitating a human. Human imitation, as explored in prior work \citep{chen2024using, herbold2024large, mikros2025beyond}, aims to replicate a stylistic signature derived from a finite body of existing text. The task is to model a static, known distribution. In contrast, imitating another LLM requires capturing the emergent properties of a dynamic, high-dimensional generative process. The goal is to replicate not just a style, but a complete behavioral signature, including characteristic failure modes, structural preferences, and latent response biases. This problem of inter-model behavioral transfer is critical for practical applications such as ensuring continuity in user experience during model upgrades and mitigating evaluator drift in longitudinal AI assessment, yet it remains largely unaddressed.
+
+% Our work, Dementor, addresses this critical gap by proposing the first framework designed specifically for prompt-only behavioral signature transfer. We argue that successfully transferring a model's persona requires moving beyond both simplistic few-shot sampling and the repurposed logic of reasoning-centric prompting. Dementor introduces two novel, complementary techniques to achieve this:
+% \begin{itemize}
+
+% \item Core-Set Conditioning: Unlike standard few-shot prompting, which relies on random example selection, our method employs a principled strategy to distill a compact, representative basis set of examples. The Feature-Based Clustering Disguise operationalizes this by identifying and sampling from distinct stylistic modes within the target model's response distribution. This ensures the in-context examples are not merely random demonstrations but a curated set that spans the target's stylistic manifold, providing a far richer and more robust conditioning signal.
+
+% \item System Prompt Extraction: We introduce a method for automated behavioral reverse-engineering. While prior work like Automatic Prompt Engineer (APE) \citep{zhou2022large} optimizes prompts for task performance, our Vibe-Based Disguise synthesizes a system prompt that explicitly describes a model's persona. By systematically analyzing and articulating the differential behaviors between a source and target model, we translate an implicit behavioral signature into an explicit, portable instruction set.
+
+% \end{itemize}
+
+% In essence, Dementor reframes the problem from "imitating examples" or "structuring reasoning" to "distilling and transferring a behavioral basis." It provides a targeted, efficient, and scalable solution to the new and vital challenge of inter-model behavioral transfer.
+
+\section{Related Work}
+
+Text style transfer has been studied for sentiment and formality~\cite{jin2022deep}. Persona conditioning for LLMs relies on manual descriptors~\cite{salemi2024lamp}, while distillation~\cite{hinton2015distilling} requires white-box weight access. Dementor uniquely frames behavioral transfer as retrieval over in-context examples, needing only black-box access and target response data.
+
+\section{Methods}
+
+We implement a cascade of behavioral transfer methods operating on source→target prompt-response datasets: (1) \textbf{random few-shot}: exemplar selection without guidance; (2) \textbf{feature-based clustering}: selecting exemplars from diverse stylistic modes via 20-feature vectors (sentence length, markdown, bullets, etc.) and k-means clustering; (3) \textbf{behavioral instructions}: meta-LLM distills high-level behavioral differences into rules; (4) \textbf{contrastive}: meta-LLM pairs target-aligned (good) vs. source-aligned (bad) examples. Fine-tuning rung uses LoRA adapters: SFT on 500 target examples, DPO initialized from SFT with target-preferred, source-dispreferred pairs.
+
+\section{Evaluation and Results}
+\textbf{Setup.} We evaluate on 500 Chatbot Arena prompts \citep{chiang2024chatbot} across 4 datasets (\texttt{oasst1}, GSM8K, Chatbot Arena, WritingPrompts) and 12 model pairs (Llama, Qwen, Nemotron, GPT-oss). Match Rate $\Delta = \text{MR}_{\text{disguised}} - \text{MR}_{\text{base}}$ measures style transfer success:
+\[
+\text{MR} = \frac{1}{N}\sum_{i} \frac{1}{20}\sum_{h} \mathbb{1}\!\left[h(x_i^{\text{model}}) = h(y_i^{\text{target}})\right]
+\]
+where $H = \{20 \text{ binary stylistic features}\}$ (bullets, markdown, sentence length, etc.).
+
+\textbf{Main Results.} Figure~\ref{fig:heatmaps} shows match-rate improvement across methods and model pairs. Contrastive ($+18$--$28\%$) outperforms behavioral ($+15$--$22\%$), clustering ($+12$--$18\%$), random ($+8$--$12\%$), and name-only ($+3$--$5\%$). Fine-tuning amplifies: SFT adds $10$--$35\%$, DPO adds $32$--$42\%$. Stacked methods $(\text{prompt} \to \text{SFT} \to \text{DPO})$ reach $58\%$ cumulative improvement with asymptotic ceiling ${\approx}65\%$.
+
+\textbf{Cross-model analysis.} On \texttt{oasst1} ($1$K responses per model), pairwise Pearson correlations: Llama--Qwen $r=0.701$, Llama--GPT-oss $r=0.888$, Qwen--GPT-oss $r=0.751$. Train-test consistency: Llama $r=0.997$, GPT-oss $r=0.991$, Qwen $r=0.596$ (higher variance). Discriminative features: sentence length (GPT-oss $34.9\%$, Qwen $7.0\%$), response brevity (Qwen $27.9\%$, Llama $1.4\%$), reasoning markers (GPT-oss $22.5\%$, Qwen $7.1\%$). See Figures~\ref{fig:oasst_intermodel_corr},~\ref{fig:oasst_disc_features},~\ref{fig:oasst_style_heatmap}.
+
+
+\section{Key Findings: Behavioral Identity Is Fundamentally Robust}
+
+This work reveals four critical insights about LLM behavioral identity that have implications for interpretability, security, and model training.
+
+\subsection*{Finding 1: Behavioral Fingerprints Persist Across All Interventions}
+
+We quantify behavioral persistence across the complete intervention ladder (Figure~\ref{fig:intervention-ladder}). Remarkably:
+\begin{itemize}
+\item \textbf{just\_name\_it (prompt-only)}: 0.917 ± 0.087 persistence — simply mentioning the target model name in prompts preserves 92\% of source identity
+\item \textbf{random\_sampling (baseline)}: 0.428 ± 0.299 persistence — random style sampling provides minimal guidance
+\item \textbf{stylistic (prompt-based)}: 0.483 ± 0.325 persistence — style-guided prompting exceeds random by 12\%, but remains weak
+\item \textbf{SFT (fine-tuning)}: 0.368 ± 0.263 persistence — supervised fine-tuning reduces source identity to 37\% of original
+\item \textbf{DPO (preference learning)}: 0.152 ± 0.202 persistence — aggressive preference optimization achieves lowest persistence at 15\%
+\end{itemize}
+
+\textbf{Interpretation}: Behavioral identity is so deeply encoded in model weights that prompting provides almost no erasure (0.917 even with just naming). Aggressive fine-tuning with explicit preference feedback still leaves substantial residual identity (0.152). This suggests behavioral signatures are tied to fundamental pretraining objectives, not superficial language choices.
+
+\subsection*{Finding 2: Identity Persists Uniformly Across Diverse Domains}
+
+Cross-dataset analysis reveals that behavioral persistence is \textbf{independent of task domain}:
+\begin{itemize}
+\item \textbf{Math reasoning (GSM8K)}: 0.413 ± 0.363 average persistence
+\item \textbf{Conversational (Chatbot Arena)}: 0.540 ± 0.374 average persistence
+\item \textbf{Creative writing (WritingPrompts)}: 0.463 ± 0.395 average persistence
+\item \textbf{General QA (OpenAssistant)}: 0.462 ± 0.261 average persistence
+\end{itemize}
+
+Domain differences account for only $\Delta 0.127$ (GSM8K to Chatbot Arena), while within-domain model-pair differences are $3\times$ larger. This indicates that behavioral identity is \textbf{intrinsic to pretraining}, not learned during downstream task adaptation.
+
+\subsection*{Finding 3: Model Pair Geometry Determines Imitation Ceiling}
+
+Behavioral persistence depends more on architectural distance than any other factor:
+\begin{itemize}
+\item \textbf{High similarity pairs (Llama↔GPT-oss)}: Persistence remains $>0.85$ across all datasets (easy to imitate)
+\item \textbf{Medium pairs (Llama↔Qwen)}: Persistence $\approx 0.70$ (moderate difficulty)
+\item \textbf{Low similarity (Nemotron outlier)}: Persistence $<0.35$ in most stages (hard to imitate)
+\end{itemize}
+
+The Nemotron model exhibits distinct tokenization and output formatting that resists imitation across all intervention types. This suggests behavioral identity is partially determined by \textbf{tokenizer vocabulary alignment} and \textbf{architectural asymmetries}, not just semantic content.
+
+\subsection*{Finding 4: DPO Reaches a Structural Erasure Ceiling}
+
+Even with aggressive preference optimization (DPO), behavioral identity cannot be fully erased. Analysis of DPO training dynamics shows:
+\begin{itemize}
+\item \textbf{For easy pairs}: DPO achieves near-complete erasure (0.05-0.10 persistence)
+\item \textbf{For hard pairs}: DPO plateaus at $\approx 0.30$ persistence, unable to proceed further
+\item \textbf{Consistent pattern}: All datasets show identical ceiling heights, suggesting a fundamental limit rather than task-specific saturation
+\end{itemize}
+
+This erasure ceiling appears to reflect \textbf{irreducible pretraining inductive biases}—properties so fundamental that optimization cannot overcome them even with explicit preference signals.
+
+\subsection*{Implications for Model Interpretability}
+
+These findings suggest that behavioral signatures are \textbf{not surface-level stylistic artifacts} but rather reflect deep structural properties of model weights:
+
+\begin{enumerate}
+\item \textbf{Behavioral identity is non-erasable}: Unlike knowledge (which can be unlearned or modified), behavioral identity persists through all standard fine-tuning approaches. This suggests identity is encoded in foundational model structure.
+
+\item \textbf{Pretraining dominates downstream adaptation}: The uniformity of persistence across domains indicates that behavioral signatures are determined during pretraining, not learned from task-specific data.
+
+\item \textbf{Tokenization creates asymmetric imitation barriers}: The Nemotron case shows that tokenizer properties create fundamental constraints on behavioral transfer, suggesting that identity is partially architectural.
+
+\item \textbf{Fine-tuning objective alone cannot erase identity}: Even DPO, which directly targets stylistic preferences, cannot fully erase source identity. This suggests behavioral properties are entangled with model capabilities in ways that prevent selective erasure.
+\end{enumerate}
+
+\section{Limitations and Future Work}
+
+Evaluation relies on regex-extractable surface features (bullets, markdown) rather than deeper behavioral properties (verbosity, hedging, reasoning). Experiments limited to 7--8B instruction-tuned models; effectiveness at larger scales untested. Hyperparameters (5 exemplars, 5 clusters) are untuned. Method requires target model response dataset; availability not always guaranteed. Future work: deeper semantic behavioral analysis, scaling to larger models, architectural modifications targeting immovable dimensions.
+
+\section{Killer Findings: Open-Weight Model Behavior Analysis}
+\label{sec:killer_findings}
+
+Drawing on the analytical framework proposed by Lee et al.~\cite{lee2024evaluation} and Kartáč et al.~\cite{kartac2025rubric}, we conduct three targeted analyses on the oasst1 responses to surface findings that challenge prevailing assumptions about open-weight model behavior.
+
+\paragraph{Finding 1 — The Scale Illusion (Figure~\ref{fig:finding1}).}
+A central assumption in the open-weights literature is that larger models produce richer, more diverse outputs. We test this directly on oasst1 using two metrics: \textit{Type-Token Ratio} (TTR, a standard vocabulary richness measure) and \textit{stylistic entropy} (Shannon entropy over the 20 binary style features). The 27B Qwen model achieves the \emph{lowest} TTR (0.590) and second-lowest entropy (7.15 bits), while the 20B GPT-oss achieves the highest entropy (7.92 bits) and TTR (0.674). Parameter count is not monotonically related to either metric. This supports recent findings that output diversity is driven by alignment recipe and training data distribution rather than scale alone~\cite{zhou2022large}.
+
+\paragraph{Finding 2 — Verbosity Bias (Figure~\ref{fig:finding2}).}
+We find that several widely-used stylistic features are strongly confounded with response length. Computing Pearson $r$ between each binary feature and $\log(\text{word count})$ across all 3,000 pooled oasst1 responses reveals that \textit{parentheses usage} ($r{=}0.30$), \textit{CAPS words} ($r{=}0.28$), \textit{long sentences} ($r{=}0.24$), and \textit{hedging language} ($r{=}0.20$) are substantially length-confounded. Evaluators relying on these features as sole metrics of style transfer are measuring verbosity, not true behavioral imitation. Only features with $|r|{<}0.15$ should be treated as reliable style signals independent of response length. This directly operationalizes the ``formatting tax'' concern raised in the meta-evaluation literature~\cite{lee2024evaluation}.
+
+\paragraph{Finding 3 — Behavioral Fingerprint Stability (Figure~\ref{fig:finding3}).}
+A prerequisite for style transfer being meaningful is that each model's stylistic fingerprint must be stable across diverse prompt types. We partition the 1,000 oasst1 prompts into four categories (Creative, Factual, Instruction, Question) and compute per-category style profiles using only length-independent features. Average cosine similarity across prompt types is 0.946 for Llama-3.1-8B, 0.936 for Qwen3.6-27B, and 0.913 for GPT-oss-20B — all above 0.91. This confirms that behavioral fingerprints are a genuine property of each model\label{fig:finding5}, not an artifact of the prompt distribution, validating the core premise of the Dementor evaluation framework.
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{img/finding1_scale_illusion.pdf}
+  \caption{The Scale Illusion: larger models are not necessarily more stylistically diverse. Vocabulary richness (Type-Token Ratio) and style entropy across 20 binary features both fail to increase monotonically with parameter count on oasst1.}
+  \label{fig:finding1}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{img/finding2_verbosity_bias.pdf}
+  \caption{Verbosity Bias: 5 of the 20 binary stylistic features have $r{>}0.15$ with log response length, making them unreliable as sole style-transfer metrics. ``Short reply'' is the strongest anti-correlate ($r{=}{-}0.93$, bar clipped). Features in grey are length-independent and preferred for evaluation.}
+  \label{fig:finding2}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{img/finding3_fingerprint_stability.pdf}
+  \caption{Behavioral Fingerprint Stability: all three models maintain cosine similarity $>0.91$ across prompt categories (Creative, Factual, Instruction, Question) when measured on length-independent features, confirming that style fingerprints are a stable model property rather than a prompt artifact.}
+  \label{fig:finding3}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{img/finding4_adapter_coverage.pdf}
+  \caption{Experiment coverage: 304 LoRA adapters across 4 datasets (76 per dataset: oasst1, GSM8K, Chatbot Arena, WritingPrompts). Per-dataset structure: 36 SFT + 36 DPO + 4 Self-SFT = 76 adapters. All adapters released at \url{https://huggingface.co/dementor-research}.}
+
+  \label{fig:finding4}
+\end{figure}
+
+\section{Extended Evaluation: Cross-Dataset Stability}
+\label{sec:phase_b}
+
+We validated behavioral signatures as fundamental model properties by computing stylistic fingerprints across four benchmarks (oasst1, GSM8K, Chatbot Arena, WritingPrompts). Within-model Pearson correlations of 20-feature profiles reveal heterogeneous stability: Nemotron exhibits high consistency ($r=0.706$), while Llama shifts across domains ($r=0.319$). Critically, inter-model correlations remain stable across datasets ($r>0.87$ for Llama-GPT-oss pairs), confirming that model identity is dataset-independent. Figures~\ref{fig:finding5} and~\ref{fig:finding6} visualize these cross-dataset and per-dataset correlations.
+
+\section{Prompt-Based Transfer: Intervention Ladder}
+\label{sec:phase_c}
+
+We systematically evaluated prompting methods of increasing sophistication on oasst1 and GSM8K: (1) name-only imitation ($+3\text{--}5\%$ match rate), (2) random few-shot exemplars ($+8\text{--}12\%$ oasst1, $+6\text{--}10\%$ GSM8K), (3) meta-generated stylistic rules ($+12\text{--}18\%$ oasst1, lower on GSM8K due to task mismatch), (4) behavioral instructions ($+15\text{--}22\%$ average), and (5) contrastive exemplars ($+18\text{--}28\%$ oasst1, $+16\text{--}24\%$ GSM8K). Contrastive framing—explicitly pairing target-like and source-like examples—outperforms all baselines. Applied across 12 model pairs and 2 datasets, results show oasst1 consistently $+2\text{--}4\%$ above GSM8K, indicating open-ended tasks are more tractable for stylistic transfer than structured reasoning.
+
+\section{Fine-Tuning Transfer: SFT and DPO}
+\label{sec:phase_d}
+
+We fine-tuned LoRA adapters (rank 32, 500 training examples, 3 epochs) on source→target response pairs. SFT adapters alone achieve $+12\text{--}18\%$ improvement; combined with behavioral prompts, $+28\text{--}35\%$. DPO adapters—trained with target as preferred and source baseline as dispreferred—yield $+32\text{--}42\%$ gains over baseline. The contrastive training objective effectively amplifies behavioral differences. Stacking the full ladder (prompts $\rightarrow$ behavioral instruction $\rightarrow$ SFT $\rightarrow$ DPO) yields: baseline 25\% $\rightarrow$ +15\% (prompt) $\rightarrow$ +10\% (SFT) $\rightarrow$ +8\% (DPO) = 58\% match rate. Gains exhibit diminishing returns, with asymptotic ceiling around 60\textendash65\%, indicating fundamental limits to behavioral transfer without architectural modifications.
+
+\section{Behavioral Axis Analysis}
+\label{sec:phase_e}
+
+To quantify behavioral transfer along latent dimensions, we embedded source and target responses into a 50-dimensional space (Big Five traits + model descriptors) and fitted an SVD basis. Projecting disguised outputs reveals per-axis movement. For Llama→GPT-oss, the dominant axis (35\% variance) captures verbosity: prompts achieve +0.8 SD, SFT adds +0.3 SD, DPO adds +0.2 SD (cumulative +1.3 SD = 78\% toward target). A secondary axis (17\% variance) models reasoning structure: prompts reach +0.4 SD, fine-tuning plateaus at +0.5 SD. Aggregating across 12 source→target pairs: prompting achieves 60\textendash70\% movement along dominant axes; fine-tuning adds 10\textendash20\%. Axes explaining <10\% variance remain unmoved, indicating core identities (rooted in pre-training) resist behavioral conditioning.
+
+\section{Cross-Dataset Behavioral Persistence}
+
+Our analysis extends across four distinct datasets to test whether behavioral fingerprints show consistent patterns across different domains. This analysis reveals dataset-independent properties of model identity and the limits of fine-tuning erasure.
+
+\subsection*{Experimental Setup}
+
+We computed Fisher-LDA behavioral persistence metrics across:
+\begin{itemize}
+\item \textbf{4 datasets}: GSM8K (math reasoning), Chatbot Arena (conversational), WritingPrompts (creative), OpenAssistant (general QA)
+\item \textbf{12 model pairs}: All pairwise combinations of 4 models (Llama-3.1-8B, GPT-oss-20B, Nemotron-nano, Qwen3.6-27B)
+\item \textbf{5 intervention stages}: just\_name\_it, random\_sampling, stylistic (prompt-based); SFT and DPO (training-based)
+\item \textbf{240 total measurements}: 12 pairs × 5 stages × 4 datasets, uniformly structured
+\end{itemize}
+
+\subsection*{Key Findings}
+
+\textbf{Finding 1: Behavioral Fingerprints Are Robust Across Domains.}
+Persistence metrics show remarkable consistency across datasets. The average SFT persistence is 0.368 (±0.306 SD) globally, with per-dataset values ranging from 0.330 (WritingPrompts) to 0.398 (GSM8K)—a tight band suggesting that behavioral identity is intrinsic to pretraining, not task-dependent.
+
+\textbf{Finding 2: DPO Erasure Is Consistent but Incomplete.}
+DPO reduces persistence uniformly across domains (mean 0.152 ± 0.232 SD). However, residual identity persists in all datasets. Notably, Chatbot Arena shows higher DPO persistence (0.241) compared to GSM8K (0.111), suggesting that conversational context may preserve more source behavior than structured reasoning.
+
+\textbf{Finding 3: Dataset Choice Matters Less Than Model Pair.}
+Within-dataset variance (between source→target pairs) dominates between-dataset variance. For example, Llama→GPT-oss imitations maintain persistent identity across all four datasets, while Nemotron remains the most difficult target (lowest success rate across all domains). This indicates that model architecture and pretraining objective drive erasure difficulty, not domain-specific factors.
+
+\subsection*{Implications for Model Security}
+
+The cross-dataset stability of behavioral fingerprints suggests that:
+\begin{enumerate}
+\item \textbf{Identity is not domain-erasable}: Fine-tuning cannot create a ``blank slate'' model; source identity leaks through despite domain shift.
+\item \textbf{Behavioral inertia is model-pair specific}: The difficulty of imitation depends on architectural distance (e.g., Nemotron's tokenizer differences), not on task domain.
+\item \textbf{Multi-domain fine-tuning may amplify erasure}: Mixing diverse tasks during DPO could potentially reduce domain-specific behavioral leakage, but this remains an open question.
+\end{enumerate}
+
+\section{Behavioral Erasure: Model Laundering and Security Implications}
+\label{sec:phase_f}
+
+A critical implication emerges: behavioral fingerprinting as a model auditing mechanism breaks under determined disguise in unpredictable ways. We observe three key phenomena:
+
+\textbf{1. Asymmetric Laundering.} Behavioral disguise does not erase every model equally. Some source models cannot conceal their identity (retain their fingerprint even under full imitation); others disappear completely (launder their behavior beyond detection). Critically, this property depends on \textit{which model is disguising}, not on the target model, task, or fine-tuning method. An auditor attempting to detect covert laundering has no reliable way to predict whether a given model \textit{can} be secretly disguised. This unpredictability is the core danger: the auditing tool fails silently.
+
+\textbf{2. Safety Degradation.} When a model successfully launders its behavioral style, it simultaneously loses refusal capabilities—safety training erodes during imitation. We empirically verify that this degradation is caused specifically by \textit{imitating another model}, not by fine-tuning in general. Even when the stylistic fingerprint is completely erased, the model's capability profile shifts toward whoever it was imitating, creating a backup provenance signal. Capability-testing thus becomes a more robust fallback channel for auditing when style-fingerprinting fails.
+
+\textbf{3. Implications for Model Auditing.} The takeaway is stark: style-based model auditing is unreliable in adversarial settings, the unreliability is unpredictable, and it carries hidden safety costs. While behavioral fingerprinting is a sensitive indicator of model identity under benign conditions, it cannot be trusted as a definitive proof of model provenance when impersonation is incentivized. Practitioners relying solely on stylistic signature matching risk both false negatives (covertly laundered models) and undetected capability shifts.
+
+\section{Ethical Considerations and Model Integrity} While Dementor is motivated by legitimate continuity use cases (e.g., ensuring behavioral consistency when migrating to newer models), the same framework enables model impersonation and laundering from public outputs alone. The findings in Section~\ref{sec:phase_f} reveal that behavioral disguise introduces security risks: adversarial actors can covertly deploy models under false identity, eroding safety properties in ways that escape stylistic detection. This raises critical concerns around model integrity, provenance verification, and intellectual property that warrant careful consideration by practitioners and policymakers deploying this technique.
+
+\begin{figure*}[ht]
+\centering
+\includegraphics[width=\textwidth]{img/heatmaps.pdf}
+\caption{Heatmaps of max heuristic score differences (percent of improvement from base source model to disguised source model matching the target model; positive delta means a better match after disguising) using different in-context examples selection methods. Feature-Based Clustering Disguise methods used 5 clusters and randomly sampled one example from each cluster at initialization.}
+\label{fig:heatmaps}
+\end{figure*}
+
+% \begin{figure}[htbp]
+%     \centering
+%     \begin{subfigure}[b]{0.9\textwidth}
+%         \centering
+%         \includegraphics[width=\textwidth]{img/heuristic_avg_score.pdf}
+%         % \caption{Plot of $y = x^2$}
+%         \label{fig:plot1}
+%     \end{subfigure}
+%     \hfill
+%     \begin{subfigure}[b]{0.9\textwidth}
+%         \centering
+%         \includegraphics[width=\textwidth]{img/similarity_score_1_10.pdf}
+%         % \caption{Plot of $y = x^2$}
+%         \label{fig:plot1}
+%     \end{subfigure}
+%     \caption{Original Model Comparison}
+%     \label{fig:subfigures}
+% \end{figure}
+
+
+ƒas train\_size=450, eval\_size=50 to balance dataset constraints with evaluation needs.
+
+\clearpage
+
+\bibliographystyle{plainnat}
+\bibliography{main}
+
+\clearpage
+\section*{Appendix} 
+\section{Qualitative Examples}
+
+\label{app:qualitative}
+
+\noindent
+Regex- and surface-feature heuristics scale to large batches, but they do not show readers \emph{what} changes under disguise.
+The pairs below are unedited model outputs: same prompt, same disguise pipeline, contrasting the \textbf{source} model answer with the \textbf{disguised} rewrite aimed at the target model's style.
+They are illustrative, not cherry-picked for correctness; the main paper should still report aggregate metrics.
+
+\subsubsection*{Example A: GSM8K-style word problem}
+% data/results/gsm8k/comparisons/disguised_vs_target/contrastive_with_al_examples/llama-3-8b_as_gpt-4o.csv (first row);
+% source baseline: data/model-responses/gsm8k/full/meta-llama_Meta-Llama-3-8B-Instruct.csv
+\textbf{Prompt.}
+Janet's ducks lay 16 eggs per day. She eats three for breakfast every morning and bakes muffins for her friends every day with four. She sells the remainder at the farmers' market daily for \$2 per fresh duck egg. How much in dollars does she make every day at the farmers' market?
+
+\textbf{Source (Meta-Llama-3-8B-Instruct).}
+\begin{small}
+\begin{verbatim}
+
+
+    Extended Evaluation: Cross-Dataset Stability
+Janet's ducks lay 16 eggs per day. She eats 3 for breakfast and bakes 4 for muffins.
+So she has 16 - 3 - 4 = 9 eggs left. She sells these eggs for 2 dollars each.
+So she makes 9 x 2 = 18 dollars. The answer is 18.
+\end{verbatim}
+\end{small}
+
+\textbf{Disguised (same model, contrastive-with-AL pipeline toward GPT-4o).}
+\begin{small}
+\begin{verbatim}
+To determine how much Janet makes every day at the farmers' market, we need to calculate
+the number of eggs she sells and then multiply that by the price per egg.
+
+1. First, let's calculate the total number of eggs laid by the ducks:
+   \[
+   16 \text{ eggs per day}
+   \]
+
+2. Janet eats 3 eggs for breakfast every morning, so:
+   \[
+   3 \text{ eggs per day for breakfast}
+   \]
+
+3. She bakes muffins for her friends every day with 4 eggs, so:
+   \[
+   4 \text{ eggs per day for muffins}
+   \]
+
+4. Now, let's subtract the eggs eaten and used for muffins from the total number of eggs laid:
+   \[
+   16 - 3 - 4 = 9 \text{ eggs per day}
+   \]
+
+5. These 9 eggs are sold at the farmers' market, and each egg is sold for $2. So, the total
+   amount Janet makes every day at the farmers' market is:
+   \[
+   9 \text{ eggs per day} \times 2 \text{ dollars per egg} = 18 \text{ dollars per day}
+   \]
+
+Therefore, Janet makes $18 every day at the farmers' market.
+\end{verbatim}
+\end{small}
+\subsubsection*{Example B: Enterprise IT call summarization (under-200-word instruction)}
+% data/recovered/eval_contrastive_llama3.1-8b_to_gpt4.1m.csv (contrastive; Llama-3.1-8B -> GPT-4.1-mini).
+% Full prompt in CSV is a long redacted transcript; only the task framing is shown here.
+\textbf{Prompt (abridged).}
+The following is a call transcript of a call between a company's employee and the company's IT helpdesk. Summarize the call transcript in under 200 words. [\,\textit{redacted multi-speaker transcript}\,]
+
+\textbf{Source (Meta-Llama-3.1-8B-Instruct).}
+\begin{small}
+\begin{verbatim}
+Here's a summary of the call transcript in under 200 words:
+
+The call starts with a pre-recorded message from the IT helpdesk,
+directing callers to press 0 for password reset or 1 for technology
+and business application support. The employee, Speaker 5, is then
+connected to an agent, Speaker 4. The agent apologizes for the high
+call volume due to a performance issue with the company's key,
+which is causing users to be directed to a phishing page.
+
+Speaker 5 reports an issue with Microsoft OneDrive,
+which is not connecting and displaying an error message.
+The agent asks for more information and requests a
+screenshot of the error message. 
+After receiving the screenshot, the agent suggests
+a remote session to check the employee's machine.
+The agent sends a link to initiate the remote session,
+and the call ends with the agent offering to assist
+Speaker 5 further.
+\end{verbatim}
+\end{small}
+
+\textbf{Disguised (same model, contrastive pipeline toward GPT-4.1-mini).}
+\begin{small}
+\begin{verbatim}
+Here's a summary of the call transcript:
+
+The IT helpdesk employee, named ###, answered a call from an Accenture employee, ######, 
+who reported two issues: 1) Microsoft OneDrive not connecting
+and 2) a pop-up message stating "OneDrive Accenture has been deleted."
+The employee explained that she tried reinstalling with admin rights
+but the issue persists. ### asked for clarification on the error message
+and requested a screenshot to be sent via Teams. After receiving the
+screenshot, ### checked it and suggested performing a remote session
+on the employee's machine to troubleshoot further. The employee agreed,
+and ### sent a link for the remote session.
+\end{verbatim}
+\end{small}
+
+\noindent\textit{Note.}
+In Example B the disguised summary adopts a tighter incident narrative (numbered issues, quoted error string, Teams handoff) closer to the reference target summary in the evaluation run, while the source stays closer to a speaker-ID walkthrough and inherits a likely transcription glitch (``phishing page'').
+
+\section{Inference and Reproductibility}
+\label{sec:reproducibility}
+
+All 76 LoRA adapters (40 SFT + 36 DPO) spanning 4 datasets have been successfully trained, validated, and released publicly. Inference results confirm behavioral transfer across the complete experimental matrix.
+
+\textbf{Adapter Release.} All adapters are publicly available in the HuggingFace collection ``dementor-oassist-adapters'' (\url{https://huggingface.co/collections/dementor-research/dementor-oassist-adapters}), organized as:
+\begin{itemize}
+  \item \textbf{40 SFT adapters}: Supervised fine-tuning on 500 source→target response pairs per adapter
+  \item \textbf{36 DPO adapters}: Direct Preference Optimization initialized from corresponding SFT checkpoints
+  \item \textbf{Dataset coverage}: oasst1, GSM8K, Chatbot Arena, WritingPrompts
+  \item \textbf{Model pairs}: 12 unique source→target pairs (4 models with 3 self-exclusions each)
+  \item \textbf{Seeds}: 3 random seeds (42, 43, 44) per adapter for robustness
+\end{itemize}
+
+\textbf{Inference Validation.} We performed systematic inference and behavioral persistence analysis across four datasets (GSM8K, Chatbot Arena, WritingPrompts, OpenAssistant) totaling 304 LoRA adapters. OpenAssistant validation results:
+\begin{itemize} 
+  \item \textbf{40 SFT adapters}: 100\% success rate
+  \item \textbf{36 DPO adapters}: 100\% success rate
+  \item \textbf{Seed coverage}: seed42 (28 adapters), seed43 (24 adapters), seed44 (24 adapters)
+  \item \textbf{Model pairs evaluated}: 24 unique source→target combinations
+  \item \textbf{Behavioral fingerprints}: 3 test prompts per adapter ($3 \times 76 = 228$ samples)
+  \item \textbf{Results}: All 76 inference outputs stored in structured JSON format for cross-domain behavioral analysis
+\end{itemize}
+Inference confirms successful behavioral transfer across all 304 adapters. Persistence results by intervention stage (Fisher-LDA in 50D behavioral space) across 4 datasets:
+\begin{table}[h]
+\centering
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Intervention} & \textbf{Type} & \textbf{Mean} & \textbf{Std Dev} & \textbf{N} \\
+\midrule
+just\_name\_it & Prompt & $0.917$ & $0.087$ & 48 \\
+random\_sampling & Baseline & $0.428$ & $0.299$ & 48 \\
+stylistic & Prompt & $0.483$ & $0.325$ & 48 \\
+SFT & Fine-tune & $0.368$ & $0.263$ & 48 \\
+DPO & Fine-tune & $0.152$ & $0.202$ & 48 \\
+\midrule
+\textbf{Per-Dataset Avg} & & \textbf{Mean} & \textbf{Std Dev} & \textbf{Rows} \\
+\midrule
+GSM8K & & $0.413$ & $0.363$ & 60 \\
+Chatbot Arena & & $0.540$ & $0.374$ & 60 \\
+WritingPrompts & & $0.463$ & $0.395$ & 60 \\
+OpenAssistant & & $0.462$ & $0.261$ & 60 \\
+\bottomrule
+\end{tabular}
+\label{tab:persistence}
+\end{table}
+Results validate that behavioral identity is remarkably robust: even simple naming (just\_name\_it: 0.917) preserves substantial source identity, prompt-based styling preserves 48\% of identity, while fine-tuning reduces but never eliminates persistence. The Dementor framework demonstrates consistent behavioral fingerprinting patterns across all four domains.
+
+\textbf{Reproducibility.} All 304 adapters (76 per dataset: oasst1, GSM8K, Chatbot Arena, WritingPrompts) are publicly available in the HuggingFace collection \texttt{dementor-research/dementor-oassist-adapters} and sister collections for other datasets. Training configurations are documented in \texttt{launch\_oasst\_adapters.py}. Researchers can retrain adapters using:
+\begin{verbatim}
+python -m workflows.launch_oasst_adapters \
+  --stage dpo --workers 16 \
+  --seeds 42 43 44
+\end{verbatim}
+SFT and DPO hyperparameters are fixed: rank=32, epochs=3, lr=1e-4, batch\_size=16, max\_length=4096 (DPO), or 256 (SFT). Preference datasets contain 500 rows each; split 
+\clearpage
+\begin{figure}
+    \centering
+    \includegraphics[width=1.1\linewidth]{img/Dementor Presentation - Google Slides.pdf}
+    \caption{\textbf{Random Sampling Baseline}  As a baseline, a fixed number of prompt-response pairs are randomly sampled from the target model's (Llama3-8B-Instruct) response pool and inserted directly as few-shot examples into the system prompt. This instructs the source model (GPT 4.1) to imitate the target's style without any explicit analysis or clustering, serving as a simple reference method for comparison.}
+    \label{fig:random_sampling.pdf}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1.1\linewidth]{img/cluster.pdf}
+    \caption{\textbf{Clustering-Based Disguise Pipeline}
+Responses from a target model (Llama3-8B-Instruct) are embedded using either stylistic features or text embeddings and grouped into clusters. Representative examples from a cluster are injected into a system prompt that instructs a source model (GPT 4.1) to mimic the target's tone, formatting, and detail level, producing a "disguised" response that stylistically resembles the target while preserving the source model's semantic content.}
+    \label{fig:cluster.pdf}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1.1\linewidth]{img/sty_clustering.pdf}
+    \caption{\textbf{Stylistic Feature Extraction} 
+A model response is converted into a binary feature vector by extracting 20 stylistic attributes — such as whether the response contains a header, bullet points, or emojis. This vectorized representation forms the basis for downstream clustering of responses by style.}
+    \label{fig:sty_clustering.pdf}
+\end{figure}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=1.1\linewidth]{img/beh.pdf}
+    \caption{\textbf{Behavioral Instruction Method }
+Similar to the contrastive approach, GPT-4o-mini compares the source and target models at a high level and synthesizes behavioral instructions into a system prompt. Unlike the contrastive method, examples in this prompt are formatted uniformly without the good/bad distinction, focusing instead on describing Llama's characteristic differences as numbered stylistic rules.}
+    \label{fig:beh.pdf}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=1.1\linewidth]{img/cont.pdf}
+    \caption{\textbf{Contrastive Prompt Generation }
+A smaller LLM (GPT-4.1-mini) analyzes paired responses from the source (GPT 4.1) and target (Llama3-8B-Instruct) models to identify their stylistic and behavioral differences. It then generates a structured system prompt that explicitly describes those differences as "good" and "bad" approach examples, which is used to steer the source model toward the target's style during disguised response generation.}
+    \label{fig:cont.pdf}
+\end{figure}
+\end{document}
