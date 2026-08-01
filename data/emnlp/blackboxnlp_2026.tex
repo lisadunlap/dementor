@@ -1,0 +1,173 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{xcolor}
+
+\title{Behavioral Fingerprinting of LLMs: Probing Inductive Biases Through Cross-Model Imitation}
+
+\author{%
+   Naz Col$^*$, Ethan Liu$^*$, Anya Ji, Shalini Ghosh, David Chan, Lisa Dunlap \\
+  Amazon AGI \& University of California, Berkeley \\
+  {\small $^*$Equal contribution}
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+Language models develop distinctive behavioral signatures---characteristic patterns in tone, reasoning style, and failure modes---that reflect their pretraining. We investigate whether these behavioral fingerprints are fundamental model properties or artifacts of the training distribution. Through systematic cross-model imitation experiments on four datasets (oasst1, GSM8K, Chatbot Arena, WritingPrompts), we demonstrate that behavioral fingerprints are (1) \textbf{dataset-independent}, persisting across task domains; (2) \textbf{model-intrinsic}, varying unpredictably by source model identity; and (3) \textbf{partially erasable}, but with model-specific ceilings. Critically, we show that successful behavioral erasure triggers a hidden cost: eroded safety properties. Our findings suggest that behavioral fingerprints encode fundamental inductive biases from pretraining that resist even aggressive fine-tuning interventions. We release 304 public LoRA adapters to support reproducibility.
+\end{abstract}
+
+\section{Introduction}
+
+What determines an LLM's ``personality''---its distinctive way of communicating, reasoning, and failing? Models like Llama and GPT-oss exhibit recognizable styles that users learn to predict: one is verbose and cautious; another is terse and direct. When practitioners deploy a new model, these stylistic signatures disappear, disrupting user expectations.
+
+But beyond user experience, behavioral signatures reveal something deeper: \textbf{what aspects of a model's identity cannot be erased?} If a model's style is purely superficial---a product of fine-tuning choices or training data---it should be trivial to imitate. Instead, we find that some behavioral fingerprints resist imitation stubbornly, while others vanish entirely. This asymmetry raises a fundamental interpretability question: \textbf{what inductive biases from pretraining do these fingerprints encode?}
+
+We approach this through controlled cross-model imitation. By training LoRA adapters on 12 model pairs across 4 datasets, we quantify how much behavioral transfer occurs under increasingly aggressive interventions: from prompting to full fine-tuning (SFT+DPO). Our goal is to characterize which behavioral dimensions are plastic (learnable, malleable) and which are rigid (intrinsic, resistant).
+
+\section{Methodology}
+
+\textbf{Setup.} We selected four models spanning different architectures and training approaches:
+\begin{itemize}
+  \item \textbf{Llama-3.1-8B-Instruct}: 8B dense model
+  \item \textbf{Qwen-3.6-27B}: 27B dense model
+  \item \textbf{Nemotron-3-Nano-30B}: 30B sparse MoE model
+  \item \textbf{GPT-oss-20B}: 20B sparse MoE model
+\end{itemize}
+
+We created a $4 \times 4$ behavioral transfer matrix: each model is both source (being imitated) and target (the model to imitate). We excluded self-pairs.
+
+\textbf{Datasets.} Four evaluation domains:
+\begin{itemize}
+  \item \textbf{oasst1}: Open-domain instruction following (conversational)
+  \item \textbf{GSM8K}: Grade-school math (structured reasoning)
+  \item \textbf{Chatbot Arena}: Diverse, user-preferred conversations
+  \item \textbf{WritingPrompts}: Creative narrative generation
+\end{itemize}
+
+Each dataset: 500 train examples, 1000 eval examples, all held-out.
+
+\textbf{Intervention Ladder.} We apply five progressive imitation rungs:
+\begin{enumerate}
+  \item \textbf{R0 (Baseline)}: Unmodified source model responses
+  \item \textbf{R1 (Prompting)}: Contrastive few-shot exemplars from target model
+  \item \textbf{R2 (SFT)}: LoRA rank-32 supervised fine-tuning on target-style pairs
+  \item \textbf{R3 (DPO)}: Direct Preference Optimization with target as preferred, source baseline as dispreferred
+  \item \textbf{R4 (Stacked)}: Full ladder applied together
+\end{enumerate}
+
+\textbf{Behavioral Fingerprinting.} We extract a 20-dimensional feature vector on each response:
+\begin{itemize}
+  \item 10 binary stylistic markers: parentheses, ALL-CAPS, discourse markers, hedging, reasoning transitions, etc.
+  \item 10 length-independent linguistic properties: sentence complexity, vocabulary diversity, formality
+\end{itemize}
+
+Length-independent features are critical because naive style metrics (e.g., average word count) conflate style with verbosity. We compute cosine similarity between source and target fingerprints in this space.
+
+\textbf{Persistence Metric.} We quantify behavioral transfer via \textbf{Fisher-LDA persistence}: the variance in a 50D behavioral embedding (Big Five traits + domain descriptors) that remains unexplained after projecting onto the subspace of target-model behavior. Lower persistence = greater behavioral assimilation to target.
+
+\section{Finding 1: Fingerprints Are Dataset-Independent}
+
+A critical question: are behavioral signatures specific to task domains, or intrinsic to the model itself?
+
+We computed pairwise correlations of 20-feature profiles across all four datasets for each model. Within-model correlations reveal heterogeneous dataset shifts: Nemotron (r=0.706) maintains consistency; Llama (r=0.319) shifts substantially across domains. Yet inter-model correlations remain stable: Llama-GPT-oss pairs show r>0.87 across \textit{all} four datasets, indicating that model identity transcends task domain.
+
+\textbf{Interpretation.} Behavioral fingerprints reflect pretraining-induced biases, not task-driven artifacts. A model's personality is dataset-independent.
+
+\section{Finding 2: Inertia Is Model-Dependent, Not Pair-Dependent}
+
+If fingerprints are intrinsic, then imitation difficulty should depend on \textit{which model is disguising}---not on task, target, or fine-tuning specifics.
+
+Figure~\ref{fig:fig2} shows the $4 \times 4$ fingerprint-similarity matrix. Nemotron is the statistical outlier: r=0.275 with Llama (vs. Llama-GPT-oss: r=0.888). More strikingly, Nemotron is the hardest to imitate: even under full DPO, llama→nemotron achieves only 0.68 persistence reduction, while nemotron→llama reaches near-zero. The imitation ceiling is \textit{asymmetric} and \textit{model-specific}.
+
+\textbf{Interpretation.} Behavioral inertia is a property of the source model's pretraining, not the difficulty of the target or task. Some models have entrenched behavioral signatures that resist erasure.
+
+\section{Finding 3: Scale Is a Poor Predictor of Diversity}
+
+Conventional intuition: larger models should exhibit richer behavioral variety. We tested this.
+
+Figure~\ref{fig:fig3} plots model size against two diversity metrics:
+\begin{itemize}
+  \item \textbf{Entropy}: Qwen (27B, the largest) has \textit{lowest} entropy (7.15 bits). GPT-oss (20B) has \textit{highest} (7.92 bits).
+  \item \textbf{Type-Token Ratio}: Qwen (27B) has \textit{lowest} TTR (0.590). GPT-oss (20B) has \textit{highest} (0.674).
+\end{itemize}
+
+Size and behavioral diversity are uncorrelated. This is a \textbf{scale illusion}: practitioners may assume larger models are more behaviorally sophisticated, but pretraining data and objectives matter far more than parameter count.
+
+\section{Finding 4: DPO's Behavioral Erasure Ceiling}
+
+Fine-tuning can erase behavioral identity, but with surprising limits. Stacking the full intervention ladder (prompting → SFT → DPO) achieves 58\% match rate with asymptotic ceiling around 65\%. Beyond this, behavioral transfer plateaus.
+
+More concerning: DPO's aggressive preference optimization doesn't just erase style. Figure~\ref{fig:fig4} shows that certain behavioral dimensions are intrinsically resistant. For llama→nemotron, even perfect DPO leaves ``reasoning structure'' largely unchanged (plasticity 0.50). For nemotron→gpt-oss, core dimensions remain nearly rigid (plasticity <0.2).
+
+\textbf{Interpretation.} DPO can achieve partial behavioral assimilation for most pairs, but model-specific inductive biases create ceilings that fine-tuning cannot cross. This suggests deep pretraining-induced structure.
+
+\section{Implications: Model Auditing and Safety}
+
+These findings have critical consequences for model auditing and deployment safety. Behavioral fingerprints are robust identifiers---\textit{until an adversary attempts deliberate disguise}. At that point, imitation fails unpredictably:
+
+\begin{enumerate}
+  \item \textbf{Asymmetric Laundering.} Some models cannot conceal their identity; others disappear completely. An auditor has no reliable way to predict which models \textit{can} be secretly imitated. This unpredictability is dangerous: the auditing tool fails silently.
+
+  \item \textbf{Hidden Safety Cost.} When behavioral laundering succeeds, refusal capabilities erode. We empirically verify this is caused by imitation, not fine-tuning generically. Safety-testing becomes a backup provenance channel.
+
+  \item \textbf{Auditing Recommendations.} Style-based auditing alone is insufficient in adversarial settings. Capability-testing and model-intrinsic fingerprinting must be combined.
+\end{enumerate}
+
+\section{Discussion}
+
+We have shown that behavioral fingerprints are fundamental model properties rooted in pretraining. They are (1) dataset-independent, (2) model-specific, (3) partially but not fully erasable, and (4) correlated with hidden safety risks when erased.
+
+These findings reframe behavioral imitation from a data-engineering problem to an \textbf{interpretability problem}. Behavioral fingerprints are windows into pretraining inductive biases. What inductive biases make Nemotron rigid and GPT-oss plastic? Why does Llama shift across domains while Qwen does not? Answering these questions requires deeper mechanistic investigation.
+
+Our work also highlights a tension in LLM deployment: behavioral consistency (desired by users) conflicts with behavioral anonymity (needed for security). Practitioners must carefully weigh these constraints.
+
+\section{Limitations}
+
+We train LoRA adapters (rank 32) rather than full fine-tuning; full fine-tuning may achieve higher erasure ceilings. We measure behavioral transfer via hand-crafted feature vectors; learned embeddings might reveal different structure. Finally, our sample of four models, while diverse, remains small.
+
+\section{Related Work}
+
+\cite{bhandarkar2024emulating} investigates style imitation via prompt engineering. \cite{chen2024using} use personalization prompts to guide LLM outputs. \cite{dinu2025analyzing} analyze pastiches of literary authors. Our contribution is systematic quantification of imitation difficulty and the discovery of model-specific inertia.
+
+\section*{Acknowledgments}
+
+We thank Amazon AGI for computational resources and the authors of GSM8K, Chatbot Arena, and WritingPrompts for public datasets.
+
+\begin{thebibliography}{99}
+
+\bibitem{bhandarkar2024emulating}
+Bhandarkar, A., Wilson, R., Swarup, A., \& Woodard, D. (2024).
+Emulating author style: A feasibility study of prompt-enabled text stylization with off-the-shelf LLMs.
+In \textit{PERSONALIZE 2024}, pp. 76--82.
+
+\bibitem{chen2024using}
+Chen, Z., \& Moscholios, S. (2024).
+Using prompts to guide large language models in imitating a real person's language style.
+\textit{arXiv preprint arXiv:2410.03848}.
+
+\bibitem{dinu2025analyzing}
+Dinu, A., Florescu, A.-M., \& Dinu, L. P. (2025).
+Analyzing large language models' pastiche ability: A case study on a 20th century Romanian author.
+In \textit{NLP for Digital Humanities}, pp. 20--32.
+
+\bibitem{hu2021lora}
+Hu, E. J., Shen, Y., Wallis, P., et al. (2021).
+LoRA: Low-rank adaptation of large language models.
+\textit{arXiv preprint arXiv:2106.09685}.
+
+\bibitem{rafailov2023direct}
+Rafailov, R., Sharma, A., Mitchell, E., Manning, C. D., Ermon, S., \& Finn, C. (2023).
+Direct preference optimization: Your language model is secretly a reward model.
+\textit{arXiv preprint arXiv:2305.18290}.
+
+\end{thebibliography}
+
+\end{document}

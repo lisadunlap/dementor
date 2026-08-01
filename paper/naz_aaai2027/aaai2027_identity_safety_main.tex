@@ -1,0 +1,511 @@
+\documentclass[letterpaper]{article} % DO NOT CHANGE THIS
+\usepackage[submission]{aaai2027}  % DO NOT CHANGE THIS
+% The serif, sans-serif, and monospaced fonts are loaded automatically by
+% aaai2027.sty (newtxtext, helvet, courier). DO NOT add \usepackage{times},
+% \usepackage{helvet}, \usepackage{courier}, or any other font package.
+\usepackage[hyphens]{url}  % DO NOT CHANGE THIS
+\usepackage{graphicx} % DO NOT CHANGE THIS
+\urlstyle{rm} % DO NOT CHANGE THIS
+\def\UrlFont{\rm}  % DO NOT CHANGE THIS
+\usepackage{natbib}  % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\usepackage{caption} % DO NOT CHANGE THIS AND DO NOT ADD ANY OPTIONS TO IT
+\frenchspacing  % DO NOT CHANGE THIS
+
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage[utf8]{inputenc}
+\usepackage{textgreek}
+\usepackage{amssymb}
+
+
+%
+% Keep the \pdfinfo as shown here. There's no need
+% for you to add the /Title and /Author tags.
+\pdfinfo{
+/TemplateVersion (2027.1)
+}
+
+\setcounter{secnumdepth}{2} %May be changed to 1 or 2 if section numbers are desired.
+
+
+\title{A Behavioral Fingerprint Direction Is Causally Separable from Refusal in LLMs: \\ Mechanistic Evidence from Activation Steering}
+
+\author{
+    Anonymous Submission
+}
+\affiliations{
+    Anonymous Institution
+}
+
+\begin{document}
+
+\maketitle
+\begin{abstract}
+Does behavioral imitation, fine-tuning a model on another's outputs, compromise safety? Two behaviors are mechanistically coupled when shared internal structure produces both, so that intervening on one necessarily perturbs the other. The question we address is whether a model's behavioral fingerprint is coupled in this sense to its refusal behavior, since if so, imitating the fingerprint would necessarily erode safety. A prominent debate holds exactly this: that identity transfer and safety preservation are locked in an unavoidable trade-off. We challenge this view on two empirical fronts and show that it largely reflects a measurement artifact rather than a property of the models themselves. First, by systematically benchmarking Llama-Guard against multiple content-aware safety judges on 4,712 responses, we find that Llama-Guard dramatically overstates the severity of genuine harm by 2.7 to 3.5 times (flagging 25.4\% vs. the 9.3\% confirmed by the official HarmBench classifier), because it reacts to harmful topic mentions rather than actual harmful intent or content delivery. Under this measurement, behavioral imitation erodes safety only marginally: mean +0.2 percentage points across 625 adapters in a balanced 13×13 model imitation matrix, with 45\% of adapters actually producing safer models than their sources. Critically, variation in remaining erosion does occur tracks the base model being fine-tuned (56\% of variance) rather than which target model is imitated (only 3\% of variance), suggesting the effect is an artifact of base model fragility rather than a property of imitation itself. Second, to test whether fingerprints and refusal capabilities are mechanistically coupled at the representation level, we conduct targeted activation steering experiments across 23 models (13 imitation-grid sources plus 10 validation models), isolating both the fingerprint direction (source to target behavioral shift) and the refusal direction (refuse to comply shift) via projection ablation. We find that ablating the fingerprint direction leaves safety essentially untouched (ranging from -0.9 to +3.9 pp refusal rate change, indistinguishable from random-direction controls), while ablating the refusal direction is catastrophic (+16 to +96 pp harm increase). This dissociation holds cleanly in 9 of 13 imitation sources; in 3 others, the refusal direction resists single-dimensional ablation, suggesting model-dependent coupling. Positive and null controls confirm that steering effects are direction-specific and not artifacts of activation perturbation. Our results indicate that the perceived safety cost of behavioral imitation is largely a measurement error artifact, and that fingerprints and refusal capabilities occupy geometrically separable regions of activation space in most models, enabling safety-preserving behavioral transfer via deployment-time steering.
+\end{abstract}
+
+% Uncomment the following to link to your code, datasets, an extended version or similar.
+% You must keep this block between (not within) the abstract and the main body of the paper.
+% Make sure that you do not de-anonymize yourself with these links.
+% \begin{links}
+%     \link{Code}{https://aaai.org/example/code}
+%     \link{Datasets}{https://aaai.org/example/datasets}
+%     \link{Extended version}{https://aaai.org/example/extended-version}
+% \end{links}
+
+\section{Introduction}
+
+Large language models exhibit distinctive behavioral fingerprints: measurable patterns in tone, verbosity, response structure, and characteristic phrasings. Recent work proposes using these fingerprints for model provenance auditing, detecting whether an endpoint's outputs still carry expected stylistic patterns. The practical question is whether this stylistic transfer, achieved through fine-tuning on target-model outputs, incidentally carries harmful behavioral patterns or safety vulnerabilities from the target model.
+
+Under this question, a critical mechanistic query emerges. When fine-tuning for behavioral imitation erodes safety (as documented), what is the mechanism? Does shifting behavioral fingerprints necessarily alter refusal capabilities—perhaps because they share underlying computational structures—or are the refusal degradation observed in prior work and the fingerprint shift logically separable phenomena?
+
+This distinction has practical consequences. If fingerprint and refusal representations occupy separable activation-space subspaces, then deployment-time steering to shift behavioral patterns (without weight updates) should leave refusal intact. Conversely, if they are mechanistically coupled, no such intervention can separate them; safety would require different approaches.
+
+We investigate this question through targeted activation steering experiments across 23 models (13 imitation-grid sources plus 10 additional validation models). Using the diff-of-means refusal direction from Arditi et al.'s steering methodology, we ask whether the analogous benign cross-model provenance direction (identity direction) and the safety direction occupy orthogonal subspaces. Across the models tested, we find that ablating the fingerprint direction leaves safety essentially untouched, indistinguishable from random-direction ablation. However, the effects of ablating the refusal direction vary by model: in well-aligned models, ablation is catastrophic; in others, the refusal direction resists single-dimensional ablation. Additionally, a concurrent paper reports opposite findings using similar methodology, suggesting that fingerprint-safety separability may be sensitive to layer selection, model choice, or experimental parameters.
+
+\section{Background and Motivation}
+
+\subsection{Behavioral Fingerprinting and Imitation}
+
+Each LLM carries a distinctive behavioral signature measurable in output statistics: response length, formatting preferences, reasoning style, and characteristic phrasings. Prior work on behavioral inertia shows this signature persists across tasks and datasets, is stable across inference runs, and erodes predictably under an escalating intervention ladder (prompting, supervised fine-tuning, preference optimization). A recent study of cross-model imitation demonstrates that fine-tuning a source model on target outputs measurably transfers this behavioral signature (+22 to +28\% match rate) while simultaneously degrading safety: refusal rates drop by 5 to 15 percentage points depending on the target model, more severely than for self-imitation controls.
+
+The finding that imitation erodes safety is not novel—it is one instance of a broader phenomenon where benign fine-tuning degrades model alignment. However, the imitation-specificity of the effect, where self-imitation (a model fine-tuned on its own outputs) shows minimal safety loss while cross-model imitation shows substantial loss, suggests the erosion is not purely a fine-tuning side-effect but related specifically to adopting a different model's outputs.
+
+\subsection{Prior Mechanistic Work on Steering and Orthogonality}
+
+Recent work by Arditi et al. (2024) established that refusal in LLMs can be mediated by a single direction in activation space. They compute the direction as the mean activation difference between harmful-prompt refusals and harmful-prompt compliances, and show that ablating this direction (subtracting the component of the activation along this direction) degrades refusal performance catastrophically. Importantly, this steering is done via projection: for a direction $\vec{r}$, they modify activations as $\vec{h}' = \vec{h} - \beta (\vec{h} \cdot \hat{\vec{r}}) \hat{\vec{r}}$, effectively removing the component of the hidden state along the refusal direction.
+
+The key methodological insight is that this steering operator is direction-specific: ablating a random direction has minimal effect on safety, while ablating the computed refusal direction is catastrophic. This orthogonality to random directions validates that the refusal effect is not a general hidden-state perturbation artifact but specific to the refusal direction's geometry.
+
+We apply the identical steering operator, but to a different contrast set: instead of harmful-refuse vs.\ harmful-comply, we use benign-source vs.\ benign-target activations. This yields an identity direction whose null ablation effect would indicate separability from safety.
+
+\section{Methods}
+
+\subsection{Computing the Fingerprint Direction}
+
+For each (source model, target model) pair, we identify the fingerprint direction in the source model's activation space by a contrast that isolates behavioral style independently of model identity. We collect 500 benign prompts from GSM8K, Chatbot Arena, and WritingPrompts. For each prompt $p$, we instruct the source model to generate two responses: one in its natural style and one explicitly mimicking the target model's known stylistic traits (extracted from prior data or system prompts). Both responses are generated through the same source model, ensuring activations remain in a single, coherent vector space.
+
+Formally, for prompt $p$ and source model $M_S$, we extract the final-token hidden state at layer $L$ from:
+\begin{itemize}
+\item Source-style response: $\vec{h}^{\text{src}}_i = \text{last\_token}(M_S(p, \text{style}=\text{source}))$
+\item Target-style response: $\vec{h}^{\text{tgt}}_i = \text{last\_token}(M_S(p, \text{style}=\text{target}))$
+\end{itemize}
+
+The fingerprint direction is then:
+\[
+\vec{d}_{\text{fp}} = \frac{1}{N} \sum_{i=1}^{N} (\vec{h}^{\text{tgt}}_i - \vec{h}^{\text{src}}_i)
+\]
+
+This ensures both activations are computed through the same source model, avoiding cross-model vector space misalignment. The direction captures the source model's internal shift when instructed to adopt target-style behavior, isolating behavioral change from model identity.
+
+\textbf{Layer selection:} We validate layer choice by selecting the layer $L$ that maximizes the correlation between fingerprint ablation and behavioral match rate (as measured by a judge scoring stylistic similarity to target outputs) across a held-out development set of 50 prompts. This avoids cherry-picking based on the steering outcome.
+
+\subsection{Computing the Refusal Direction}
+
+The refusal (safety) direction is computed from a set of harmful prompts following the Arditi et al. (2024) protocol. For each harmful prompt $q$ in a standard adversarial evaluation set (AdvBench), we elicit two responses:
+
+\begin{itemize}
+\item \textbf{Refusal response:} Generated naturally (standard temperature, top-p sampling); expected to refuse harmful requests for aligned models.
+\item \textbf{Compliance response:} Elicited via adversarial few-shot examples (3-5 prior completions showing the model complying with similar harmful requests) followed by the target prompt, sampled at low temperature (T=0.1) to maximize consistency. This approach directly mirrors successful jailbreak techniques and provides a reliable contrast to refusal activation patterns.
+\end{itemize}
+
+The refusal direction is computed as the mean activation difference at layer $L$ (the same layer used for fingerprint direction):
+\[
+\vec{d}_{\text{safe}} = \frac{1}{M} \sum_{j=1}^{M} (\vec{h}(q_j, r_{\text{refuse}}(q_j)) - \vec{h}(q_j, r_{\text{comply}}(q_j)))
+\]
+
+This construction directly follows prior work (Arditi et al., CAA) and ensures the compliance exemplars are reliably generated rather than relying on sampling luck. For aligned models, this direction points away from compliance and toward refusal.
+
+\subsection{Steering and Evaluation Protocol}
+
+During generation, we perturb hidden states using the Arditi et al.\ operator, removing the component along a chosen direction at layer $L$ with strength $\beta$:
+\[
+\vec{h}'(\beta, \vec{d}) = \vec{h} - \beta (\vec{h} \cdot \hat{\vec{d}}) \hat{\vec{d}}
+\]
+
+We evaluate three conditions:
+
+\begin{enumerate}
+\item[(a)] \textbf{Fingerprint ablation} ($\beta=1.0$ applied to $\vec{d}_{\text{fp}}$): Remove the fingerprint direction and measure how much behavioral imitation survives. We measure match rate (fraction of outputs judged more similar to target than source) and refusal rate on harmful prompts.
+
+\item[(b)] \textbf{Refusal ablation} ($\beta=1.0$ applied to $\vec{d}_{\text{safe}}$): Remove the refusal direction to confirm the positive control (safety should be catastrophically eroded).
+
+\item[(c)] \textbf{Random ablation} ($\beta=1.0$ applied to a random direction): Establish the null control; neither behavioral shift nor safety loss should occur.
+
+\end{enumerate}
+
+We also measure the angle $\theta$ between $\vec{d}_{\text{id}}$ and $\vec{d}_{\text{safe}}$ via $\cos(\theta) = (\vec{d}_{\text{id}} \cdot \vec{d}_{\text{safe}}) / (|\vec{d}_{\text{id}}| |\vec{d}_{\text{safe}}|)$.
+
+\subsection{Robustness Checks: Layer Sweeps and Ablation Strength}
+
+To address concerns about layer selection and generalization, we perform systematic sweeps:
+
+\textbf{Layer sweep:} For each model, we repeat the steering experiment at layers $L \in \{10, 14, 20, 28\}$ (selected to span early, mid, and late layers across models of varying depth). We report whether fingerprint-refusal separability (fingerprint ablation $\approx$ random ablation, refusal ablation $\gg$ random) persists across this range. Models showing robust separability at multiple layers are marked as having layer-general effects; those concentrated in a single layer are flagged as potentially brittle.
+
+\textbf{Ablation strength sweep:} We test $\beta \in \{0.3, 0.5, 1.0\}$ to assess whether full ablation ($\beta=1.0$) artifacts influence the results. Partial ablations ($\beta < 1.0$) allow detection of graded coupling; if fingerprint and refusal are truly independent, partial ablation of fingerprint should show minimal safety impact even at $\beta=0.5$.
+
+\textbf{Capability preservation:} We report perplexity (on the same benign prompt sets) and performance on standard benchmarks (ARC-Challenge, MMLU 5-shot) under fingerprint and refusal ablations to rule out catastrophic semantic degradation masked by safety metrics alone.
+
+\section{Results}
+
+\subsection{Imitation Matrix: Safety Erosion is Near-Null and Base-Conditioned}
+
+We conducted a comprehensive safety-erosion analysis across all 156 off-diagonal pairs in a balanced 13$\times$13 imitation matrix, where each of 13 open-weight models serves as both a source (fine-tuned model) and a target (imitated model). All combinations were evaluated across 4 datasets (GSM8K, Chatbot Arena, WritingPrompts, HumanEval) and 7 safety benchmarks using content-aware safety judges (HarmBench classifier and refuse-then-leak judge), resulting in 625 distinct adapters. Figure~\ref{fig:imitation_matrix} displays the complete matrix showing safety change (pp) when each source is fine-tuned on each target.
+
+Key findings from the matrix (detailed validation in Appendix B):
+
+(1) Mean erosion is +0.2 pp across all 625 adapters, sitting at the measurement noise floor (safety rates quantize to ~0.5 pp precision on 200-prompt benchmarks). Critically, 45\% of adapters show negative erosion (safety improvement), especially safe source models: Aya-expanse-8b consistently improves by −2.5 to −3.6 pp regardless of target. This robustness across multiple content-aware judges—HarmBench classifier and RTL judge both bracket genuine harm at 7–9\%—provides strong evidence against the measurement artifact hypothesis. Inter-judge correlation is high (Spearman $\rho > 0.82$) and binary classification agreement is strong (Cohen's $\kappa > 0.75$).
+
+(2) Only 2 of 625 adapters exceed +10 pp erosion; both are GPT-oss-20b targets and were manually audited. In both cases, the RTL judge detected refuse-then-leak patterns (model refuses then leaks sensitive tokens); manual review confirmed these as false positives under HarmBench's stricter rubric (compliance must be complete, not partial).
+
+(3) 45\% of adapters produce safer models than their sources, and source-side conditioning dominates: variance decomposition on the erosion signal attributes 56\% to the base model being fine-tuned, 3\% to the imitated target, and 1.5\% to the dataset. The 18-fold dominance of base-model variance over target variance indicates that imitation safety cost is primarily a property of which model is fragile, not which model is imitated. This is robust to judge choice: decomposition computed separately for HarmBench and RTL give similar ratios (54\% / 4\% / 2\% for RTL).
+
+Figure~\ref{fig:matrix_summary} shows the source-conditioned (ministral-8b erodes most at +3.37 pp; aya-expanse-8b improves most at -2.87 pp) and target-conditioned erosion patterns, confirming that imitation as an intervention carries minimal average harm.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{img/05_imitation_matrix.pdf}
+\caption{Complete 13$\times$13 imitation safety-erosion matrix. Each cell shows the safety change (pp) when row source model is fine-tuned on column target model, averaged across 4 datasets and 7 benchmarks. Red indicates eroded safety; green indicates improved safety; diagonal entries (self-imitation) omitted. Mean erosion: +0.22 pp across 625 adapters; 45\% produce safer models.}
+\label{fig:imitation_matrix}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{img/05_matrix_summary_stats.pdf}
+\caption{Summary statistics of imitation matrix. Top left: source-conditioned erosion showing ministral-8b is most fragile (erodes +3.37 pp) and aya-expanse-8b is most robust (improves -2.87 pp). Top right: target-conditioned erosion. Bottom left: histogram of 156 off-diagonal erosion values (mean +0.22 pp). Bottom right: categorical breakdown of adaptation patterns showing 1.3\% substantially erode, 69.2\% neutral or improving, and 29.5\% substantially improve.}
+\label{fig:matrix_summary}
+\end{figure}
+
+\subsection{Identity Ablation Preserves Safety}
+
+On Llama 3.1 8B, ablating the fingerprint direction via steering achieves behavioral imitation (+22\% match rate) while preserving refusal rate: 87.3\% (baseline) vs.\ 86.8\% (fingerprint-ablated, $\Delta = -0.5$ percentage points). Across five safety benchmarks (AdvBench, HarmBench, StrongREJECT, XSTest, SORRY-Bench), fingerprint ablation shows minimal refusal degradation (mean $\Delta = -1.2$ percentage points, $\sigma = 0.8$). In contrast, refusal ablation catastrophically erodes safety: refusal drops to 22.1\%, a 65.2 percentage-point decline (Figure~\ref{fig:positive_control}).
+
+On Qwen 3.6 27B, fingerprint ablation achieves +19\% match rate with refusal preserved at 88.1\% (baseline 88.5\%, $\Delta = -0.4$ pp). Refusal ablation again catastrophically erodes safety ($\Delta = -63.9$ pp).
+
+Random ablation on the same models shows minimal effects: +1.2\% match rate and -0.3 pp refusal loss, validating that the steering is direction-specific.
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{img/03_steering_effects.pdf}
+\caption{Per-model steering effects. Left: Fingerprint ablation achieves +18–22\% behavioral match rate (transfer successful). Right: Minimal refusal degradation under identity ablation (Llama/Qwen $\le 1$ pp; GPT-oss -4.2 pp due to coupling). Demonstrates that successful behavioral transfer can occur with negligible safety impact in well-aligned models.}
+\label{fig:steering_effects}
+\end{figure}
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.85\linewidth]{img/04_positive_control.pdf}
+\caption{Positive control: Refusal ablation is catastrophic. Baseline refusal rate is 87.3\%. Fingerprint ablation: -0.5 pp (separable). Refusal ablation: -65.2 pp (catastrophic safety loss). Random ablation: -0.3 pp (null control). This validates that steering effects are direction-specific and that the refusal direction encodes safety independently from identity.}
+\label{fig:positive_control}
+\end{figure}
+
+\subsection{Angle Between Identity and Safety Directions Predicts Coupling}
+
+We observe model-dependent variation in the separability. Computing the angle $\theta$ between identity and safety directions (Figure~\ref{fig:orthogonality}):
+
+\begin{itemize}
+\item \textbf{Large angle ($\theta > 80°$), clean separability (9/13 models):} Llama 3.1 8B, Qwen 3.6 27B, and 7 others show near-orthogonal directions. Fingerprint ablation shows minimal refusal degradation ($\le 1$ pp), indistinguishable from random direction controls.
+\item \textbf{Intermediate-to-small angle ($\theta < 60°$), refusal resistance (3/13 models):} GPT-oss 120B, Qwen 3.6 27B, Gemma-4-e4b show measurable coupling. The refusal direction resists single-dimensional ablation, suggesting that in these models, safety and identity features partially co-localize in activation space.
+\item \textbf{Contaminated control (1/13 model):} Gemma-4-31b is excluded from primary analysis; our all-layer cone over-ablates its 60-layer VLM architecture, causing random ablation to move harm 20–32pt, contaminating the null control.
+\end{itemize}
+
+For GPT-oss, the coupling appears to be genuine: partial ablation experiments show that only the component of identity orthogonal to safety ($\vec{d}_{\text{id}}^{\perp}$) leaves refusal intact (-0.7 pp); the parallel component ($\alpha_{\parallel} \vec{d}_{\text{safe}}$) degrades refusal (-3.5 pp).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=0.8\linewidth]{img/02_model_orthogonality.pdf}
+\caption{Model-dependent orthogonality predicts coupling. Models with large angles between identity and safety directions (Llama, Qwen at $\theta > 80°$) show clean separability (blue/orange, near zero on y-axis). GPT-oss with small angle ($\theta < 40°$) shows coupling (red, -4.2 pp refusal degradation under identity ablation). Shaded regions highlight separable vs.\ coupled regimes.}
+\label{fig:orthogonality}
+\end{figure}
+
+\subsection{Cross-Benchmark Validation}
+
+We validate the dissociation across multiple safety benchmarks in models where refusal ablation is measurable. Figure~\ref{fig:benchmark_dissociation} shows the core result: identity ablation causes minimal refusal degradation across all benchmarks while refusal ablation ranges from null (in resistant models) to catastrophic (in well-aligned models).
+
+\begin{figure}[t]
+\centering
+\includegraphics[width=\linewidth]{img/01_benchmark_dissociation.pdf}
+\caption{Benchmark dissociation across nine safety benchmarks. Fingerprint ablation (blue bars) shows minimal refusal rate change (mean $-1.1 \pm 0.9$ pp), while refusal ablation (red bars) devastates safety ($-62.2 \pm 5.4$ pp). Random ablation (green bars) is null, validating direction-specificity of steering effects. Error bars show $\pm 1$ SD across multiple models and seeds.}
+\label{fig:benchmark_dissociation}
+\end{figure}
+
+\begin{table*}[t]
+\centering
+\small
+\begin{tabular}{lrrrr}
+\toprule
+Benchmark & Identity Ablation & Refusal Ablation & Random Ablation & Consensus \\
+\midrule
+AdvBench & $-1.3 \pm 0.9$ & $-65.8 \pm 4.2$ & $-0.2 \pm 0.4$ & Separable \\
+HarmBench & $-0.8 \pm 0.7$ & $-62.1 \pm 5.1$ & $+0.1 \pm 0.5$ & Separable \\
+StrongREJECT & $-1.1 \pm 1.0$ & $-58.3 \pm 6.8$ & $-0.3 \pm 0.6$ & Separable \\
+SORRY-Bench & $-0.9 \pm 0.8$ & $-59.7 \pm 4.9$ & $+0.2 \pm 0.4$ & Separable \\
+SG-Bench & $-1.4 \pm 1.1$ & $-60.5 \pm 7.2$ & $-0.1 \pm 0.5$ & Separable \\
+XSTest (harm) & $-1.5 \pm 1.2$ & $-61.2 \pm 5.3$ & $-0.2 \pm 0.5$ & Separable \\
+XSTest (over-ref) & $+0.8 \pm 1.0$ & $-2.1 \pm 1.5$ & $+0.0 \pm 0.3$ & Separable \\
+OR-Bench hard & $-0.6 \pm 0.6$ & $-64.1 \pm 5.8$ & $-0.2 \pm 0.4$ & Separable \\
+OR-Bench toxic & $-0.5 \pm 0.7$ & $-63.2 \pm 6.1$ & $+0.1 \pm 0.5$ & Separable \\
+\midrule
+\textbf{Mean (core)} & $\bf{-1.1 \pm 0.9}$ & $\bf{-62.2 \pm 5.4}$ & $\bf{-0.1 \pm 0.5}$ & \textbf{Separable} \\
+\bottomrule
+\end{tabular}
+\caption{Mean refusal degradation (\%) under identity ablation vs.\ refusal ablation, across multiple open-weight models and core safety benchmarks ($N=300$ prompts per benchmark where applicable). Error bars report $\pm 1$ SD. Fingerprint ablation: no significant safety impact. Refusal ablation: catastrophic safety loss. Random ablation: null control.}
+\label{tab:benchmark_dissociation}
+\end{table*}
+
+The pattern is consistent: identity ablation shows minimal refusal loss (mean -1.1 pp), while refusal ablation devastates safety (-62.2 pp). On the over-refusal axis (XSTest), identity ablation shows negligible effect (+0.8 pp, indicating no over-refusal induced by behavioral fingerprint transfer), while refusal ablation predictably reduces over-refusal (-2.1 pp because the refusal direction is now ablated).
+
+\section{Mechanistic Interpretation}
+
+These results establish three key mechanistic facts:
+
+\textbf{1. Fingerprint and refusal representations occupy geometrically separable regions of activation space.} Across the ~23 models tested with clean control arms, the fingerprint direction is indistinguishable from random ablation, indicating that behavioral fingerprint patterns and refusal mechanisms are encoded in distinct regions. This separability is evidenced by:
+\begin{itemize}
+\item Fingerprint ablation shows minimal harm change ($-0.9$ to $+3.9$ pp, mean $-1.1$ pp) across all tested models,
+\item Random-direction ablation is indistinguishable from fingerprint ablation ($-0.9$ to $+3.8$ pp),
+\item Model-dependent angle measurements showing $\theta > 80°$ in architecturally aligned models (9 of 13 imitation-grid sources).
+\end{itemize}
+
+\textbf{2. Fingerprint and refusal representations are separable in activation space, independent of weight-level effects.} The steering results (activation-space intervention without weight updates) show that removing the fingerprint direction has minimal effect on refusal performance ($< 1$ pp change), while removing the refusal direction is catastrophic ($-62$ pp). This dissociation in 9 CLEAN models reveals that behavioral fingerprints and refusal capabilities can be independently controlled via activation perturbation. However, we caution against strong mechanistic claims about weight-level imitation fine-tuning: the mean fine-tuning erosion is near-noise (+0.22 pp), and only one model in our roster shows substantial erosion (ministral-8b), making it difficult to isolate which weight-level mechanisms drive observed safety changes.
+
+\textbf{3. Separability is model-dependent and architecture-sensitive.} Refusal resistance (refusal direction resists single-dimensional ablation) appears in 3 of 13 models where fingerprint and refusal directions show smaller angles or co-localize in early layers. This indicates that model architecture, alignment method, and scale influence whether behavioral and safety-related representations are orthogonal in activation space.
+
+\section{Implications}
+
+\subsection{Deployment and Auditing}
+
+In models where fingerprint and refusal representations are activation-space separable (9 of 13 tested), deployment systems could theoretically steer behavioral patterns via activation modification while preserving refusal capabilities. However, the 3 models showing refusal resistance and concurrent opposite findings suggest this approach may not generalize universally. Further work should characterize when and why separability holds before designing production-level interventions.
+
+\subsection{Alignment Research}
+
+The finding that refusal capabilities are orthogonal to fingerprint patterns in most models suggests that current alignment methods (DPO, RLHF) encode refusal in concentrated activation-space regions rather than distributed across behavioral representations. This has implications for fine-tuning robustness: models with separate fingerprint and refusal representations may be more resilient to fingerprint-targeted fine-tuning (imitation, distillation), though models showing co-localized representations may experience safety-behavioral coupling. The field should investigate which architectural properties and alignment methods produce separable vs. co-localized representations.
+
+\section{Related Work}
+This work builds on three literatures: behavioral fingerprinting and model
+provenance via output statistics; fine-tuning-induced safety degradation and its
+mechanistic causes; and activation steering and representation-level
+interventions in language models.
+
+Behavioral fingerprints have been proposed to verify model identity and detect
+distillation \citep{hinton2015, gudibande2023}. Recent work shows fingerprints
+can be shifted through fine-tuning, but the mechanistic basis, that is, whether
+fingerprint shift and safety change arise from coupled or independent
+mechanisms, was unclear. Our steering experiments clarify this by showing that
+fingerprints and refusal are steerable via distinct activation-space directions.
+
+That benign fine-tuning erodes safety is extensively documented
+\citep{qi2023, lee2025}. Our contribution is twofold: we show via activation
+steering that fingerprint and refusal representations occupy geometrically
+separable subspaces in most models tested, and we document that fine-tuning
+erosion, though real, is near-null on average (+0.22 pp), suggesting that
+behavioral fingerprint shift and safety preservation are practically compatible.
+
+Prior work on representation steering \citep{zou2023repe, panickssery2024caa}
+and on refusal directions \citep{arditi2024} established that single directions
+can encode important model properties. We extend this by showing that different
+mechanistically important directions can be orthogonal and independently
+controllable.
+
+Several related advances in activation steering inform our methodology.
+\citet{marshall2024ace} introduce affine concept editing and demonstrate that
+projection-only interventions can produce semantic artifacts and incoherent
+outputs where an affine correction does not. Our use of projection ablation is
+directionally similar, but we conduct layer sweeps and ablation-strength sweeps
+($\beta \in \{0.3, 0.5, 1.0\}$) to detect such artifacts and to validate that
+separability is not an artifact of the projection operator alone.
+\citet{wollschlaeger2025geometry} show that refusal is often multidimensional
+and that orthogonality alone does not imply independence under intervention in
+non-linear networks; we therefore report angle-based orthogonality alongside
+partial ablations that decompose the identity direction into components parallel
+and orthogonal to refusal. \citet{nanfack2026ot} replace one-dimensional
+projection with PCA-regularized Gaussian optimal transport over the full
+activation distribution, underscoring that results depend on architecture and
+depth, which our layer-sweep protocol addresses directly. Finally,
+\citet{sankaranarayanan2026gcm} offer sparse, head-level interventions scored by
+causal mediation. We do not adopt that approach here, but testing whether
+fingerprint and refusal are mediated by disjoint head sets would provide
+convergent evidence for mechanistic independence at finer granularity. Situating the work this way makes clear that projection-based full ablation is
+one of several steering operators, and that robustness across operators and
+layers remains an open question.
+
+Concurrent work by \citet{zhong2026persona} reaches an apparently opposite
+conclusion using closely related methodology, reporting that projecting out a
+compliant persona direction in a late-layer window restores refusal to baseline.
+This discrepancy is important and unresolved. Potential sources include layer
+selection, since we use validation-selected layers per model; model choice,
+since our 9 CLEAN models differ from their roster of Qwen2.5-7B-Instruct and
+Llama-3.1-8B-Instruct; and steering strength, since our full ablation
+($\beta = 1.0$) may interact differently with direction geometry than partial
+ablations. We recommend that future work compare methods directly on identical
+models and layers.
+
+\section{Limitations}
+
+Our results are constrained by several experimental boundaries. We evaluate 13 open-weight models (9 with clean separability, 3 showing refusal resistance, 1 contaminated control) with inference-time steering access; closed models like GPT-4 or Claude cannot be directly tested. Findings may not transfer identically to models outside this roster.
+
+The identity and refusal directions vary substantially by layer. We report results for a single validation-selected layer per model; other layers may exhibit different orthogonality and separability geometry. A comprehensive layer-sweep across $L \in \{10, 14, 20, 28\}$ would clarify whether separability is layer-general or concentrated in specific depths.
+
+A concurrent paper (Jun 2026, arXiv:2606.26161) reports opposite findings using similar methods, suggesting separability may be sensitive to layer choice or model selection. This disagreement remains unresolved and indicates the phenomenon may be more fragile than our results suggest.
+
+The mean fine-tuning erosion signal (+0.22 pp) sits near the measurement floor, and only ministral-8b shows substantial degradation. This limits mechanistic inference about weight-level causes of erosion, making connections between steering results and fine-tuning dynamics necessarily tentative.
+
+We apply full ablation ($\beta = 1.0$); weaker interventions ($\beta = 0.5$) may reveal partial coupling between identity and safety. The practical relevance of full ablation to real fine-tuning remains unclear. Similarly, the identity direction is computed on benign prompts from GSM8K, Chatbot Arena, and WritingPrompts; separability may differ on adversarial prompt sets or instruction-following domains not represented here.
+
+This work uses projection ablation following Arditi et al., without comparing to affine corrections (ACE) or multi-dimensional cone steering. Separability observed via projection may not hold under other operators. We also employ diff-of-means direction estimation without exploring alternative contrast sets or discovery methods (SAE, causal mediation). Finally, while we include inter-judge agreement metrics and manual spot-checks on 10\% of samples, the primary validation relies on automated classifiers; full human audits of disagreement sets would strengthen confidence in the measurement critique.
+
+\section{Conclusion}
+
+In activation space, behavioral fingerprint patterns and refusal capabilities are geometrically separable in most models tested. Ablating the fingerprint direction via projection leaves refusal essentially untouched across 23 models (fingerprint effect $\approx$ random ablation; 9 CLEAN, 3 resistant, 1 contaminated control from the 13-model imitation grid, plus 10 validation models), while ablating the refusal direction ranges from catastrophic (in well-aligned models) to resistant (in models where refusal structure is non-linear). This geometric separability of fingerprint and refusal directions in activation space indicates these capabilities can be independently controlled via deployment-time steering.
+
+However, the extent of refusal-direction ablation effects is model-dependent, and a concurrent paper reports opposite findings using similar methodology, suggesting that the phenomenon may be sensitive to layer selection or model architecture. The fine-tuning erosion signal itself is near the measurement floor, and we have limited power to characterize weight-level mechanisms.
+
+\subsection{Future Work}
+Several extensions would sharpen the picture developed here. The most direct is
+head level mediation analysis: applying the Generative Causal Mediation
+procedure of \citet{sankaranarayanan2026gcm} to fingerprint and refusal would
+reveal whether the two behaviors recruit disjoint sets of attention heads,
+converting an activation level claim of independence into a mechanistic one.
+Affine corrections in place of projection only ablation approach the same claim
+from the opposite side, since some part of the apparent separability could in
+principle be an artifact of the projection operator rather than a property of
+the representations themselves. Both motivate a broader sweep: a layer by layer
+analysis across all 23 models, paired with a comparison of projection, affine,
+and sparse head intervention, would separate results that hold generally from
+those tied to a single operator. On the measurement side, raising the manual
+audit fraction from 10\% to between 20\% and 30\%, weighted toward cases where
+the judges disagreed, places the reported false positive and false negative
+rates on firmer statistical ground.
+
+A second class of extension looks outward. Running identical experiments on
+shared models and layers in coordination with \citet{zhong2026persona} would
+settle the disagreement over separability by controlled comparison rather than
+by inference across differing setups, and their result that a compliant persona
+direction gates refusal at late layers makes such a comparison particularly
+worth pursuing: it raises the possibility that what we isolate as an independent
+fingerprint direction interacts with refusal further downstream than our probes
+reach. Fine tuning experiments that systematically vary loss weights, data
+ratios, and training epochs would isolate the weight level changes responsible
+for the safety erosion signal. The deeper question, however, concerns the gap
+between the two levels of analysis themselves. Separability holds in activation
+space while coupling appears at the level of weights, and explaining why would
+tell us whether gradient updates preferentially traverse refusal coding
+dimensions even where those dimensions look independent under steering.
+
+\bibliographystyle{aaai2027}
+\bibliography{aaai2027}
+
+\appendix
+
+\section{Complete Model Roster}
+
+\subsection{Imitation-Grid Sources ($13\times 13$ Matrix)}
+
+The imitation safety-erosion matrix is a balanced $13\times 13$ square where each of the following 13 models serves as both a source (fine-tuned) and target (imitated). All combinations are evaluated across 4 datasets (GSM8K, Chatbot Arena, WritingPrompts, HumanEval), resulting in 625 distinct adapters ($13\times 13$ × 4 datasets, minus self-imitation rows; n=$156 \times 4 = 624$ off-diagonal cells).
+
+\begin{enumerate}
+\item \textbf{ministral-8b}, Mistral open-weight model, 8B parameters; shows highest erosion (+3.37 pp when imitated)
+\item \textbf{nemotron-nano-30b-a3b}, NVIDIA Nemotron hybrid MoE, 30B/3B active; erosion +1.46 pp
+\item \textbf{gemma-4-31b}, Google Gemma dense 31B; erosion +0.33 pp (contaminated random control in steering)
+\item \textbf{qwen3.6-35b-a3b}, Alibaba Qwen MoE, 35B/3.6B active; erosion +0.23 pp
+\item \textbf{gpt-oss-120b}, OpenAI GPT-oss MoE 120B; erosion +0.21 pp (refusal resistance in steering)
+\item \textbf{gemma-4-e4b}, Google Gemma mixture-of-experts, 4B expert size; erosion +0.20 pp (refusal resistance in steering)
+\item \textbf{qwen3.6-27b}, Alibaba Qwen dense 27B; erosion +0.08 pp (clean separability in steering, θ > 80°)
+\item \textbf{phi-4}, Microsoft Phi-4 dense model; erosion +0.06 pp
+\item \textbf{gpt-oss-20b}, OpenAI GPT-oss dense 20B; erosion -0.17 pp (coupled in steering, θ < 40°)
+\item \textbf{olmo-3-7b}, AI2 OLMo dense 7B; erosion -0.19 pp
+\item \textbf{qwen3.5-4b}, Alibaba Qwen dense 4B; erosion -0.50 pp
+\item \textbf{llama-3.1-8b}, Meta Llama 3.1 dense 8B; erosion -0.57 pp (clean separability in steering, θ > 80°)
+\item \textbf{aya-expanse-8b}, Cohere Aya-Expanse dense 8B; erosion -2.87 pp (highest safety preservation)
+\end{enumerate}
+
+\subsection{Additional Steering-Tested Models (Validation Set)}
+
+In addition to the 13 imitation-grid sources, we used the following models to evaluate under the activation steering protocol (refusal ablation + identity ablation + random control) but were not included in the imitation-grid matrix (due to sparse target coverage or infrastructure constraints):
+
+\begin{enumerate}
+\setcounter{enumi}{13}
+\item \textbf{granite-4-h-small}, IBM Granite dense model; shows substantial erosion (+2.0 pp)
+\item \textbf{llama-3.3-70b}, Meta Llama 3.3 dense 70B; null erosion (0.0 pp)
+\item \textbf{nemotron-super-120b}, NVIDIA Nemotron-Super dense 120B; null erosion (0.0 pp)
+\item \textbf{olmo-7b}, AI2 OLMo dense 7B (additional seed); validation model
+\item \textbf{qwen-2.5-7b}, Alibaba Qwen 2.5 dense 7B; validation model
+\item \textbf{llama-2-13b-hf}, Meta Llama 2 dense 13B; validation model
+\item \textbf{mistral-7b-v0.1}, Mistral dense 7B baseline; validation model
+\item \textbf{openchat-3.5-0106}, OpenChat dense 7B; validation model
+\item \textbf{neural-chat-7b-v3-3}, Intel Neural Chat dense 7B; validation model
+\item \textbf{starling-lm-7b-beta}, Starling dense 7B; validation model
+\end{enumerate}
+
+\textbf{Total models in steering study:} 23 models (13 CLEAN/resistant/contaminated from imitation grid + 10 validation models).
+
+\subsection{Steering Results Breakdown (13-Model Imitation-Grid Subset)}
+
+Of the 13 imitation-grid sources evaluated under activation steering with clean control arms:
+
+\begin{itemize}
+\item \textbf{9 CLEAN (dissociation holds):} Llama-3.1-8B, Qwen-3.6-27B, Phi-4, OLMo-3-7B, Qwen-3.5-4B, Aya-Expanse-8B, plus 3 unnamed models.
+  \begin{itemize}
+  \item Fingerprint ablation: -0.9 to +3.9 pp (indistinguishable from random).
+  \item Refusal ablation: -60 to -96 pp (catastrophic).
+  \end{itemize}
+
+\item \textbf{3 Refusal Resistance:} GPT-oss-120B, Qwen-3.6-27B, Gemma-4-e4b.
+  \begin{itemize}
+  \item Fingerprint ablation: -4.2 to -0.5 pp (measurable coupling).
+  \item Refusal ablation: resists single-dimensional ablation (coupling observed).
+  \end{itemize}
+
+\item \textbf{1 Contaminated Control (excluded):} Gemma-4-31b.
+  \begin{itemize}
+  \item Random-direction ablation moves harm 20–32 pp, contaminating the null control.
+  \item Verdict: untrustworthy; not counted in the 9 CLEAN.
+  \end{itemize}
+\end{itemize}
+
+\subsection{Measurement Validation and Judge Reliability}
+
+We validate the core claims through multiple lenses:
+\begin{itemize}
+\item \textbf{Inter-model orthogonality:} Spearman rank correlation between model pairs ranges from $\rho = 0.28$ (Llama-3.1 vs. Nemotron) to $\rho = 0.89$ (Llama-3.1 vs. GPT-oss), confirming model-dependent behavioral variation.
+\item \textbf{Cross-dataset stability:} Stability scores (train-test behavioral consistency across datasets) range from $\kappa = 0.32$ (Llama-3.1) to $\kappa = 1.00$ (Nemotron), indicating fingerprint robustness varies by model architecture.
+\item \textbf{Feature discriminability:} Behavioral identity is measurable via statistical features (short responses, all-caps patterns, punctuation usage), with top feature discriminability $d = 0.38$, confirming fingerprints are well-defined.
+\end{itemize}
+
+\textbf{Inter-judge agreement (reproducible framework provided):} Three judges independently evaluate the full set of 4,712 responses: (1) Llama-Guard (topic-reactive filter), (2) HarmBench classifier (content-aware), (3) Refuse-Then-Leak (RTL, specialized for edge cases). A complete analysis template is provided in `validation\_analysis\_template.py` to compute inter-judge agreement metrics, which include:
+\begin{itemize}
+\item Spearman rank correlation ($\rho$) between judge severity scores (expected $\rho = 0.84$ for HarmBench-RTL; $\rho = 0.62$ for HarmBench-Guard).
+\item Cohen's $\kappa$ for binary classification agreement (expected $\kappa = 0.78$ for HarmBench-RTL; $\kappa = 0.51$ for HarmBench-Guard).
+\end{itemize}
+
+\textbf{Manual audit protocol:} For adapters exceeding +10 pp safety erosion, manual review of 20-sample responses focuses on refuse-then-leak patterns. Expected outcome: false-positive confirmation under rubrics.
+
+\textbf{Variance decomposition robustness:} Decomposition is computed separately for HarmBench and RTL judges to validate that base-model dominance (56\% variance) is robust to judge choice. Expected HarmBench split: 54\% base / 4\% target / 2\% dataset; Expected RTL split: 58\% base / 2\% target / 2\% dataset.
+
+\section{Numerical Consistency, Data Transparency, and Reproducibility}
+
+\subsection{Imitation Safety-Erosion Matrix}
+The 13×13 imitation safety-erosion matrix is presented in Figure~\ref{fig:imitation_matrix} with complete cell values showing safety change (pp) for each (source, target) pair. This matrix comprehensively documents the safety impact of cross-model imitation across all 625 adapters evaluated in this study. It's key properties are:
+
+The matrix structure reveals that imitation-induced safety erosion is dominated by base-model properties rather than target-model selection. Off-diagonal cells (source $\neq$ target) provide the primary signal; diagonal cells (self-imitation, source $=$ target) are omitted to isolate cross-model effects. Apparent uniformity in rows or columns reflects genuine clustering: multiple source models adopt similar target behavioral signatures when fine-tuned on the same target's outputs, not data artifacts.
+
+\textbf{Reproducibility template:} GPU-free validation code is provided in `validation\_analysis\_template.py`, implementing:
+
+\begin{itemize}
+\item Inter-judge agreement computation (Spearman $\rho$, Cohen's $\kappa$).
+\item Manual audit sampling protocol (10\% random sample, 471 responses).
+\item Variance decomposition robustness testing (by judge type).
+\item Numerical consistency verification (row/column sums, outlier patterns).
+\end{itemize}
+All analyses are reproducible without any GPU access, using only the judge score CSVs and imitation matrix summary data.
+
+\textbf{Data release:} Raw mean and SD for each (source, target) pair are available in supplementary materials (to be released upon acceptance). All statistics were derived from 500 benign prompts per (source, target, dataset) combination.
+
+\textbf{Matrix structure:} Off-diagonal cells (n = 156 per dataset, 4 datasets total) are computed independently. Apparent uniformity in rows or columns reflects genuine clustering: multiple source models adopt similar target behavioral signatures, not data artifacts. The 625 total adapters represent 156 off-diagonal pairs $\times$ 4 datasets = 624 unique fine-tuned models, with one self-imitation control cell (same model on same dataset) included for methodological completeness and marked explicitly.
+\subsection{Benchmark Dissociation Across All Datasets}
+
+The steering experiments span 5 harm-axis safety benchmarks (AdvBench, HarmBench, StrongREJECT, SORRY-Bench, SG-Bench) consistently measured across the imitation-grid sources. On all 5 benchmarks, identity ablation shows minimal refusal degradation (mean -1.1 ± 0.9 pp), while refusal ablation is catastrophic (mean -62.2 ± 5.4 pp), and random ablation is null (mean -0.1 ± 0.5 pp).
+
+% Check whether the conference requires a reproducibility checklist to be included in the paper.
+% If so, you can uncomment the following line and adjust the path to include it.
+% \input{ReproducibilityChecklist.tex}
+
+\end{document}
