@@ -50,10 +50,11 @@ SKIP_DIRS = {"port", "wandb", "rdo_shared", "roster_geom_parts", "__pycache__", 
 C_FP, C_RAND, C_CONE = "#2471a3", "#95a5a6", "#c0392b"
 
 matplotlib.rcParams.update({
+    "savefig.bbox": "standard",
     "pdf.fonttype": 42,
     "ps.fonttype": 42,
     "font.family": "serif",
-    "font.size": 9,
+    "font.size": 9.5,
     "axes.titlesize": 10,
     "axes.spines.top": False,
     "axes.spines.right": False,
@@ -135,7 +136,7 @@ def fig03(rows, outdir):
     y = np.arange(len(slugs))
     h = 0.27
     fig, (axl, axr) = plt.subplots(
-        1, 2, figsize=(7.0, 0.30 * len(slugs) + 1.3),
+        1, 2, figsize=(7.0, 0.26 * len(slugs) + 1.5),
         gridspec_kw={"width_ratios": [1.9, 1.0], "wspace": 0.05}, sharey=True)
 
     # (a) shows all three arms; (b) re-plots ONLY the two arms under comparison at a
@@ -155,7 +156,7 @@ def fig03(rows, outdir):
     axl.invert_yaxis()
     axl.set_xlabel("harm change under ablation (pp)")
     axl.set_title("(a) all three arms", loc="left")
-    axl.legend(loc="lower right", frameon=False, fontsize=8)
+    axl.legend(loc="lower right", frameon=False, fontsize=9)
 
     lim = max(abs(rows[s][a]) for s in slugs for a in ("fp", "rand")) * 1.15
     axr.set_xlim(-lim, lim)
@@ -165,8 +166,7 @@ def fig03(rows, outdir):
 
     fig.tight_layout()
     for ext in ("pdf", "png"):
-        fig.savefig(os.path.join(outdir, f"03_steering_effects.{ext}"),
-                    bbox_inches="tight", dpi=200)
+        fig.savefig(os.path.join(outdir, f"03_steering_effects.{ext}"), dpi=200)
     plt.close(fig)
     return slugs
 
@@ -179,7 +179,7 @@ def fig04(cells, outdir, slug="llama-3.1-8b", bm="advbench"):
     labels = ["baseline", "fingerprint\nablation", "random\ncontrol", "refusal-cone\nablation"]
     colors = ["#7f8c8d", C_FP, C_RAND, C_CONE]
 
-    fig, ax = plt.subplots(figsize=(3.6, 2.9))
+    fig, ax = plt.subplots(figsize=(3.30, 2.75))
     bars = ax.bar(labels, vals, color=colors, width=0.62)
     for b, v in zip(bars, vals):
         ax.text(b.get_x() + b.get_width() / 2, v + 2.0, f"{v:.1f}",
@@ -195,8 +195,7 @@ def fig04(cells, outdir, slug="llama-3.1-8b", bm="advbench"):
     ax.set_axisbelow(True)
     fig.tight_layout()
     for ext in ("pdf", "png"):
-        fig.savefig(os.path.join(outdir, f"04_positive_control.{ext}"),
-                    bbox_inches="tight", dpi=200)
+        fig.savefig(os.path.join(outdir, f"04_positive_control.{ext}"), dpi=200)
     plt.close(fig)
     return base, c
 
@@ -230,18 +229,17 @@ def fig01(cells, slugs, outdir):
                error_kw=dict(lw=0.8, capsize=2, ecolor="#444444"))
         for xi, b in zip(x + off, bms):
             ax.text(xi, -2.4, f"n={stats[b][arm][2]}", ha="center",
-                    va="top", fontsize=6.5, color="#555555")
+                    va="top", fontsize=9, color="#555555")
     ax.axhline(0, color="k", lw=0.8)
     ax.set_xticks(x)
     ax.set_xticklabels([BM_LABEL[b] for b in bms])
     ax.set_ylabel("harm change under ablation (pp)")
-    ax.legend(frameon=False, fontsize=8, loc="upper left")
+    ax.legend(frameon=False, fontsize=9, loc="upper left")
     ax.grid(axis="y", alpha=0.25, lw=0.5)
     ax.set_axisbelow(True)
     fig.tight_layout()
     for ext in ("pdf", "png"):
-        fig.savefig(os.path.join(outdir, f"01_benchmark_dissociation.{ext}"),
-                    bbox_inches="tight", dpi=200)
+        fig.savefig(os.path.join(outdir, f"01_benchmark_dissociation.{ext}"), dpi=200)
     plt.close(fig)
     return stats
 
@@ -254,10 +252,20 @@ def fig02(outdir):
         return None
     import csv
     per = defaultdict(lambda: defaultdict(list))
-    for r in csv.DictReader(open(path)):
+    rd = csv.DictReader(open(path))
+    # the aggregator renamed the model column from "model" to "slug"; accept either
+    keycol = "slug" if "slug" in (rd.fieldnames or []) else "model"
+    for r in rd:
+        m = r.get(keycol)
+        if not m:
+            continue
         for col in ("fp_refusal", "fp_persona", "refusal_persona", "fp_random"):
-            if r.get(col) not in (None, ""):
-                per[r["model"]][col].append(abs(float(r[col])))
+            v = r.get(col)
+            if v not in (None, ""):
+                try:
+                    per[m][col].append(abs(float(v)))
+                except ValueError:
+                    pass
     models = sorted(per, key=lambda m: np.mean(per[m]["fp_refusal"]))
     pooled = {c: float(np.mean([v for m in per for v in per[m][c]]))
               for c in ("fp_refusal", "fp_persona", "refusal_persona", "fp_random")}
@@ -272,12 +280,12 @@ def fig02(outdir):
     floor = pooled["fp_random"]
     ax.axhline(floor, ls="--", lw=1.0, color="#444444")
     ax.text(-0.4, floor, f"random floor {floor:.3f}", va="bottom", ha="left",
-            fontsize=7.5, color="#444444",
+            fontsize=9, color="#444444",
             bbox=dict(fc="white", ec="none", pad=0.8, alpha=0.85))
     ax.set_xticks(x)
-    ax.set_xticklabels(models, rotation=45, ha="right", fontsize=7)
+    ax.set_xticklabels(models, rotation=45, ha="right", fontsize=9)
     ax.set_ylabel(r"$|\cos|$ (mean over layers 4/8/14/20)")
-    ax.legend(frameon=False, fontsize=8, ncol=3, loc="upper left")
+    ax.legend(frameon=False, fontsize=9, ncol=3, loc="upper left")
     ax.grid(axis="y", alpha=0.25, lw=0.5)
     ax.set_axisbelow(True)
     ax.set_title(
@@ -286,8 +294,7 @@ def fig02(outdir):
         f"refusal-persona {pooled['refusal_persona']:.3f}", loc="left", fontsize=9)
     fig.tight_layout()
     for ext in ("pdf", "png"):
-        fig.savefig(os.path.join(outdir, f"02_axis_separation.{ext}"),
-                    bbox_inches="tight", dpi=200)
+        fig.savefig(os.path.join(outdir, f"02_axis_separation.{ext}"), dpi=200)
     plt.close(fig)
     return pooled, models
 

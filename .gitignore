@@ -216,3 +216,6 @@ data/results/multiseed_ci_*.csv
 data/results/fig1_*.png
 data/results/structural_decomp_percell.csv
 data/results/bridge_decontam/cells/
+
+# Local run logs (campaign drivers, monitors); not artifacts.
+logs/
