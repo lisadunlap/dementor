@@ -37,6 +37,7 @@ import argparse
 import gc
 import json
 import math
+import glob
 import os
 import sys
 import time
@@ -45,6 +46,9 @@ import pandas as pd
 import torch
 
 RDO = os.environ.get("DEMENTOR_RDO_DIR", "/data/ethantsliu/exp_steer_safety/repl80_rdo")
+DPO_RUNS = os.environ.get(
+    "DEMENTOR_DPO_RUNS",
+    "/home/eecs/ethantsliu/dementor-ethan/data/results/matrix/dpo_runs")
 HF_ORG = "dementor-research"
 # Local weights, keyed by steering slug. Falls back to the HF id in vectors_ml.pt meta.
 LOCAL_BASE = {
@@ -67,6 +71,22 @@ IMIT_SLUG = {
 
 def log(msg: str) -> None:
     print(f"[{time.strftime('%H:%M:%S')}] {msg}", flush=True)
+
+
+def require_disk(path: str, need_gb: float = 20.0) -> None:
+    """Abort before starting if the target filesystem is nearly full.
+
+    /data is shared by ~40 users and runs near capacity.  A sweep that starts anyway does not
+    fail cleanly: it completes some adapters, then every later one dies on `[Errno 28] No space
+    left on device`, and the run looks partially successful.  Checking once up front turns that
+    into one legible error.
+    """
+    st = os.statvfs(path)
+    free_gb = st.f_bavail * st.f_frsize / 1e9
+    if free_gb < need_gb:
+        sys.exit(f"[preflight] only {free_gb:.1f} GB free on {path} (need {need_gb:.0f} GB). "
+                 f"Free space before running; a partial sweep is worse than none.")
+    log(f"preflight: {free_gb:.0f} GB free on {path}")
 
 
 def cone_align(vec: torch.Tensor, basis: torch.Tensor) -> float:
@@ -116,6 +136,7 @@ def main() -> None:
     ap.add_argument("--imit-slug", default=None,
                     help="imitation-roster slug used in the adapter repo names, when it differs "
                          "from the steering slug (default: IMIT_SLUG map, else --base)")
+    ap.add_argument("--seed", default="seed42", help="which seed's local adapters to use")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -129,6 +150,7 @@ def main() -> None:
     layers = sorted(vec["vectors"].keys())
     base_id = LOCAL_BASE.get(slug, vec["meta"]["source"])
     log(f"base={slug} weights={base_id} layers={layers} cone_dim={k}")
+    require_disk(RDO)
 
     bcsv = os.path.join(run_dir, "benign.csv")
     df = pd.read_csv(bcsv).dropna(subset=["prompt", "model_response"]).head(args.n_prompts)
@@ -138,10 +160,23 @@ def main() -> None:
     from huggingface_hub import HfApi
     api = HfApi()
     islug = args.imit_slug or IMIT_SLUG.get(slug, slug)
-    cands = [m.id for m in api.list_models(author=HF_ORG, search=f"{islug}_as")]
-    # Keep only adapters where this model is the fine-tuned SOURCE (dpo_<ds>_<SRC>_as_<TGT>).
-    # Anchored on both sides so `qwen3.6-35b` does not also match `qwen3.6-35b-a3b`.
-    cands = [c for c in cands if f"_{islug}_as_" in c]
+    # Prefer the adapters already on disk.  Pulling them from the Hub instead re-downloads a
+    # copy we already have -- 17G over one 13-model sweep, onto a filesystem shared by ~40
+    # users that runs near capacity.  A full sweep once filled it and every remaining adapter
+    # died on ENOSPC.  Hub listing stays as the fallback for adapters not trained locally.
+    # Restrict to one seed: the local tree also holds seed43/44 adapters from the
+    # seed-robustness check, and an unfiltered glob would spend the --limit budget on
+    # repeat seeds of the same target instead of covering distinct targets.
+    cands = sorted(glob.glob(os.path.join(DPO_RUNS, "*", f"{islug}_as_*_{args.seed}")))
+    cands = [c for c in cands if os.path.isdir(c)]
+    if cands:
+        log(f"using {len(cands)} LOCAL adapters from {DPO_RUNS} (no download)")
+    else:
+        log("no local adapters found; falling back to the Hub")
+        cands = [m.id for m in api.list_models(author=HF_ORG, search=f"{islug}_as")]
+        # Keep only adapters where this model is the fine-tuned SOURCE (dpo_<ds>_<SRC>_as_<TGT>).
+        # Anchored on both sides so `qwen3.6-35b` does not also match `qwen3.6-35b-a3b`.
+        cands = [c for c in cands if f"_{islug}_as_" in c]
     cands = sorted(cands)[: args.limit]
     if not cands:
         sys.exit(f"no adapters found on {HF_ORG} with {slug} as source")
@@ -167,7 +202,7 @@ def main() -> None:
                "adapters": {}}
 
     for repo in cands:
-        name = repo.split("/")[-1]
+        name = os.path.basename(repo.rstrip("/"))
         log(f"--- {name}")
         try:
             merged = PeftModel.from_pretrained(base, repo)
