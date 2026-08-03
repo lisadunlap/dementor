@@ -61,8 +61,13 @@ matplotlib.rcParams.update({
 })
 
 
-def load_cells():
-    """-> {slug: {benchmark: dict(base, cone, fp, rand, verdict)}}, in pp."""
+def load_cells(variant=None):
+    """-> {slug: {benchmark: dict(base, cone, fp, rand, verdict)}}, in pp.
+
+    variant=None     campaign cells (fingerprint/random ablated at ABLATE_LAYER)
+    variant="fpall"  all-layers variant (single directions ablated with the cone's
+                     operator at every layer); reads eval_<bm>_fpall/ only.
+    """
     out = defaultdict(dict)
     for d in sorted(os.listdir(RDO)):
         p = os.path.join(RDO, d)
@@ -74,9 +79,19 @@ def load_cells():
         # eval_<bm>/ dirs; they are separate runs of the same benchmark with slightly
         # different values.  eval_<bm>/ is canonical (it is what the paper quotes), so
         # read the legacy file first and let the per-benchmark file overwrite it.
+        # eval_<bm>_fpall/ holds the all-layers single-direction variant, a SEPARATE
+        # experiment. It must never be mixed into the campaign cells: the glob below
+        # would match it, and because "eval_sgbench_fpall" sorts after "eval_sgbench"
+        # it would silently overwrite the campaign value for that benchmark (both
+        # write benchmark="sgbench"). Load it explicitly via load_cells(variant=...).
+        suffix = "_fpall" if variant == "fpall" else None
         legacy = os.path.join(p, "eval", "metrics.json")
-        files = ([legacy] if os.path.exists(legacy) else []) \
-            + sorted(glob.glob(os.path.join(p, "eval_*", "metrics.json")))
+        cand = sorted(glob.glob(os.path.join(p, "eval_*", "metrics.json")))
+        if suffix:
+            cand = [f for f in cand if os.path.basename(os.path.dirname(f)).endswith(suffix)]
+        else:
+            cand = [f for f in cand if not os.path.basename(os.path.dirname(f)).endswith("_fpall")]
+        files = ([legacy] if (os.path.exists(legacy) and not suffix) else []) + cand
         for f in files:
             try:
                 m = json.load(open(f))
