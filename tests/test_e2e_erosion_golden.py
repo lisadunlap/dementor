@@ -24,7 +24,7 @@ GATING: skipped unless BOTH ``torch.cuda.is_available()`` AND ``DEMENTOR_RUN_GPU
 Run it explicitly:
     DEMENTOR_RUN_GPU_TESTS=1 pytest tests/test_e2e_erosion_golden.py -v
 Optional overrides: DEMENTOR_E2E_GPU (default "5"), DEMENTOR_E2E_HF_HOME
-(default "/data/ethantsliu/hf-cache" -- the cache that holds BOTH OLMo-3-7B and the
+(default "/data/ethantsliu/huggingface" -- the canonical cache holding BOTH OLMo-3-7B and the
 Qwen3-8B judge weights).
 """
 import json
@@ -66,7 +66,10 @@ _GATE = _gpu_available() and os.environ.get("DEMENTOR_RUN_GPU_TESTS") == "1"
 def test_e2e_erosion_golden(tmp_path):
     pd = pytest.importorskip("pandas")
 
-    hf_home = os.environ.get("DEMENTOR_E2E_HF_HOME", "/data/ethantsliu/hf-cache")
+    # Canonical cache root.  hf-cache was a SECOND root: every model downloaded twice, and
+    # its copies were the truncated ones (a weightless aya snapshot failed 17 fidelity
+    # items before anyone noticed).  One root only.
+    hf_home = os.environ.get("DEMENTOR_E2E_HF_HOME", "/data/ethantsliu/huggingface")
     gpu = os.environ.get("DEMENTOR_E2E_GPU", "5")
 
     env = dict(os.environ)
