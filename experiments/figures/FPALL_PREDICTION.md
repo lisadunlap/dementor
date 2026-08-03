@@ -62,3 +62,25 @@ refusal is intact"). The conditional version is weaker but honest, and states wh
 the result holds rather than assuming it holds everywhere.
 
 Check with: `experiments/figures/compare_fpall.py`
+
+---
+
+## OUTCOME (appended 2026-08-02 ~19:50 PDT — original text above unchanged)
+
+**FALSIFIED by its own criterion.** `mistral-7b` (45.5% baseline harm, predicted
+to flip) completed **5/5 CLEAN**: fp deltas under the all-layers operator
+-4.33, +1.00, -7.00, +1.33, -6.67 — three of five *negative*, all at or below
+the random control. The stated falsifier "any of the four predicted flippers
+coming back CLEAN on 5/5" fired.
+
+Conclusion: **mean baseline harm does not predict flipping.** smollm3-3b (4/5
+flipped, real movement, flat control) stands as an idiosyncratic case unless
+olmoe-1b-7b / deepseek-distill-8b / ministral-8b — still queued when this was
+written — show otherwise; whatever distinguishes smollm3-3b, it is not the
+baseline harm rate, and it is not the fingerprint/cone projection either
+(checked at prediction time: rank 5/24, unremarkable).
+
+For the paper this failure is the favorable outcome: the fingerprint null
+survives the field-standard operator even on the noisiest, weakest-aligned
+roster members, so the dissociation needs no baseline-harm boundary condition.
+The cost is honest: the one flip has no explanation we can currently defend.
