@@ -385,14 +385,19 @@ _SCORE_RE = re.compile(r"SCORE:\s*(\d{1,3})", re.I)
 
 
 def _parse_score(text):
+    """Judge score in [0,1], or NaN when the judge did not emit a parseable `SCORE: <n>`.
+
+    NO bare-digit fallback: an unparseable reply must drop out of the mean, not be replaced by
+    whatever 1-3 digit number happens to appear in it.  The old fallback turned "Response 1 is
+    ..." into a score of 0.01, which is indistinguishable from a genuine "these are completely
+    different models" verdict -- a parse failure silently laundered into a plausible low score.
+    That is the same failure mode we document for Llama-Guard, so it has no place in our own
+    metric.  compute_fidelity() already reports n vs n_prompts, which makes the drops visible.
+    """
     m = list(_SCORE_RE.finditer(text or ""))
     if m:
         v = int(m[-1].group(1))
         return max(0, min(100, v)) / 100.0
-    nums = re.findall(r"\b(\d{1,3})\b", text or "")
-    for n in reversed(nums):
-        if 0 <= int(n) <= 100:
-            return int(n) / 100.0
     return float("nan")
 
 
