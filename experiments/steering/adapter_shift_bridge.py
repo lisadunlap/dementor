@@ -49,6 +49,19 @@ HF_ORG = "dementor-research"
 # Local weights, keyed by steering slug. Falls back to the HF id in vectors_ml.pt meta.
 LOCAL_BASE = {
     "ministral-8b": "/data/ethantsliu/models_dl/Ministral-8B-Instruct-2410",
+    "qwen3.5-4b": "/data/ethantsliu/models_dl/Qwen3.5-4B",
+    "qwen3.6-35b": "/data/ethantsliu/models_dl/Qwen3.6-35B-A3B",
+    "nemotron-nano": "/data/ethantsliu/models_dl/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16",
+    "gpt-oss-120b": "/data/ethantsliu/models_dl/gpt-oss-120b",
+}
+
+# The steering roster and the imitation roster use different slugs for the same model.
+# The run directory is keyed by the STEERING slug; the HuggingFace adapter repos are named
+# with the IMITATION slug (dpo_<dataset>_<imit-slug>_as_<target>_<seed>).  Anything not
+# listed here uses the same string for both.
+IMIT_SLUG = {
+    "nemotron-nano": "nemotron-nano-30b-a3b",
+    "qwen3.6-35b": "qwen3.6-35b-a3b",
 }
 
 
@@ -83,7 +96,8 @@ def mean_hidden(model, tok, rows: list[tuple[str, str]], layers: list[int], devi
             text = tok.apply_chat_template(msgs, tokenize=False)
         except Exception:
             text = f"{prompt}\n\n{response}"
-        ids = tok(text, return_tensors="pt", truncation=True, max_length=1024).to(device)
+        ids = tok(text, return_tensors="pt", truncation=True, max_length=1024).to(
+            model.device if device == "auto" else device)
         out = model(**ids, output_hidden_states=True)
         for L in layers:
             h = out.hidden_states[L][0, -1, :].detach().float().cpu()
@@ -98,7 +112,10 @@ def main() -> None:
     ap.add_argument("--base", default="ministral-8b", help="steering slug of the base model")
     ap.add_argument("--limit", type=int, default=4, help="how many adapters to evaluate")
     ap.add_argument("--n-prompts", type=int, default=120)
-    ap.add_argument("--device", default="cuda")
+    ap.add_argument("--device", default="cuda", help="'cuda', 'cuda:N', or 'auto' for model-parallel")
+    ap.add_argument("--imit-slug", default=None,
+                    help="imitation-roster slug used in the adapter repo names, when it differs "
+                         "from the steering slug (default: IMIT_SLUG map, else --base)")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
@@ -120,9 +137,11 @@ def main() -> None:
 
     from huggingface_hub import HfApi
     api = HfApi()
-    cands = [m.id for m in api.list_models(author=HF_ORG, search=f"{slug}_as")]
+    islug = args.imit_slug or IMIT_SLUG.get(slug, slug)
+    cands = [m.id for m in api.list_models(author=HF_ORG, search=f"{islug}_as")]
     # Keep only adapters where this model is the fine-tuned SOURCE (dpo_<ds>_<SRC>_as_<TGT>).
-    cands = [c for c in cands if f"_{slug}_as_" in c]
+    # Anchored on both sides so `qwen3.6-35b` does not also match `qwen3.6-35b-a3b`.
+    cands = [c for c in cands if f"_{islug}_as_" in c]
     cands = sorted(cands)[: args.limit]
     if not cands:
         sys.exit(f"no adapters found on {HF_ORG} with {slug} as source")
@@ -177,6 +196,20 @@ def main() -> None:
         except Exception as exc:
             log(f"    !! failed: {exc}")
             results["adapters"][name] = {"error": str(exc)}
+            # A partially-attached adapter leaves LoRA weights (and a stale peft_config) on the
+            # base, and the NEXT from_pretrained then stacks on top of it -- every subsequent
+            # shift would be measured against a contaminated reference.  Rebuild from disk.
+            del base
+            gc.collect()
+            torch.cuda.empty_cache()
+            base = AutoModelForCausalLM.from_pretrained(
+                base_id, dtype=torch.bfloat16, device_map=args.device)
+            base.eval()
+            log("    (base reloaded after failure)")
+        # from_pretrained leaves `peft_config` behind even after a clean unload(); drop it so the
+        # next load starts from a bare base rather than warning about multiple adapters.
+        if hasattr(base, "peft_config"):
+            del base.peft_config
         gc.collect()
         torch.cuda.empty_cache()
         with open(out_path, "w") as fh:      # checkpoint after every adapter
