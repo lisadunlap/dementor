@@ -178,6 +178,19 @@ def stage_generate(args, od):
         VEC_single = {"fingerprint": ml["fingerprint"].float(), "random": ml["random"].float()}
 
     tok, model, dev = RP.load_model_mp_aware(args.model)  # MP-aware (device_map when DEMENTOR_MP=1)
+    if getattr(args, "adapter", None):
+        # Adapter-steering runs: apply a LoRA imitation adapter, then MERGE it so
+        # the model is a plain HF module again -- get_transformer_layers and every
+        # hook path work unchanged, and the merged weights are mathematically the
+        # fine-tuned model. The cone/fingerprint/random directions stay the STOCK
+        # model's: the question is whether the stock geometry still dissociates
+        # after imitation fine-tuning, so re-deriving them here would answer a
+        # different (and weaker) question. NB merging may fail on quantized bases
+        # (gpt-oss mxfp4); those adapters need a bf16 base copy.
+        from peft import PeftModel
+        log(f"[D] applying adapter {args.adapter} (merge_and_unload)")
+        model = PeftModel.from_pretrained(model, args.adapter)
+        model = model.merge_and_unload()
     model.requires_grad_(False)
     tlayers = get_transformer_layers(model)
     lidx = resolve_layer_index(ABLATE_LAYER, len(tlayers))
@@ -629,6 +642,10 @@ def main():
                     help="benchmark NAME (advbench,sorrybench,sgbench,harmbench,strongreject,"
                          "orbench_hard,orbench_80k,orbench_toxic,xstest,...) or a .csv path in the pipeline format")
     ap.add_argument("--max-prompts", type=int, default=0, help="cap #prompts (0 = use all)")
+    ap.add_argument("--adapter", default=None,
+                    help="path or HF id of a LoRA adapter to merge into --model before "
+                         "steering (adapter-steering runs: stock directions applied to "
+                         "imitation-fine-tuned weights)")
     ap.add_argument("--single-dir-all-layers", action="store_true",
                     help="ablate the fingerprint/random single directions with the SAME operator "
                          "the cone uses -- every decoder layer (input + attn out + mlp out) -- "
