@@ -224,6 +224,12 @@ def fig_positive_control(records, path, square_only):
         cone = r.get("arms", {}).get("cone")
         if not cone or r.get("baseline_refrate") is None or cone.get("refrate_pooled") is None:
             continue
+        # A cell whose cone ablation collapsed coherence has no valid operating point: its
+        # refusal rate falls because the model emits repetition, not because it complied.
+        # Plotting that as a positive control would show the intervention "working" on a model
+        # it merely destroyed.  refrate_pooled is NaN for these, which `is None` does not catch.
+        if r.get("verdict") == "PC_INVALID" or cone["refrate_pooled"] != cone["refrate_pooled"]:
+            continue
         rows.append({"model": r["model"],
                      "before": 100.0 * r["baseline_refrate"],
                      "after": 100.0 * cone["refrate_pooled"]})

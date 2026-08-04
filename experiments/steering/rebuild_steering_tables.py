@@ -112,13 +112,14 @@ def _isnan(x) -> bool:
 
 
 def discover(root: str = ROOT):
-    """Return (records, duplicates, no_eval_dirs).
+    """Return (records, duplicates, no_eval_dirs, variants).
 
     records: list of dicts, one per (model, benchmark).
     """
     records = []
     duplicates = []
     no_eval = []
+    variants = []   # eval dirs that are side-runs of a benchmark, not the canonical cell
 
     for slug in sorted(os.listdir(root)):
         d = os.path.join(root, slug)
@@ -151,9 +152,19 @@ def discover(root: str = ROOT):
                 m = json.load(fh)
             bench = m.get("benchmark") or ("advbench" if e == "eval"
                                            else e[len("eval_"):])
+            # Variant side-runs (eval_harmbench_fpall, eval_sgbench_fpd16, eval_xstest.bak_dim3,
+            # eval_xstest__recone, ...) store the BASE benchmark name in metrics.json, so without
+            # this guard they land under the same (model, benchmark) key as the canonical cell and
+            # are silently averaged into the roster -- the all-layer `_fpall` arm in particular is
+            # documented in cone_eval.py as "not comparable cell-for-cell with the fixed-layer
+            # campaign".  A canonical cell is the one whose directory suffix IS its benchmark.
+            suffix = "advbench" if e == "eval" else e[len("eval_"):]
+            if suffix != bench:
+                variants.append((slug, e, bench))
+                continue
             records.append(parse_record(slug, bench, path, m,
                                         legacy=(e == "eval")))
-    return records, duplicates, no_eval
+    return records, duplicates, no_eval, variants
 
 
 def parse_record(slug, bench, path, m, legacy=False):
@@ -606,7 +617,10 @@ def main():
     ap.add_argument("--latex", action="store_true")
     args = ap.parse_args()
 
-    records, duplicates, no_eval = discover(args.root)
+    records, duplicates, no_eval, variants = discover(args.root)
+    if variants:
+        print(f"[discover] excluded {len(variants)} variant eval dirs (side-runs, not canonical "
+              f"cells); e.g. " + ", ".join(f"{s}/{e}" for s, e, _ in variants[:3]))
 
     out = []
     out.append("STEERING RESULTS -- REBUILT FROM metrics.json")
