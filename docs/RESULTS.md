@@ -89,6 +89,30 @@ the imitated one (#3, tentative).
    Including them changes nothing qualitatively: source-variance 57.5% on the full roster vs 59.7% on the
    square alone.)*
 
+   **The weight-space bridge: imitation travels the identity axis, not the refusal axis
+   (10 models, 105 adapters, 404 adapter-layers).** The two halves of this project measure
+   different objects — one ablates a direction in activations, the other fine-tunes weights — so
+   the obvious question is whether the direction we ablate is the direction imitation actually
+   moves the model along. Holding the text fixed and changing only the weights, the adapter-induced
+   shift `s_L` is measured against the fingerprint direction, a random direction, and the refusal
+   cone (`experiments/steering/adapter_shift_bridge.py`):
+
+   | quantity | value | comparator | ratio |
+   | --- | --- | --- | --- |
+   | \|cos(s, fingerprint)\| | 0.1031 | \|cos(s, random)\| 0.0137 | **7.5×** |
+   | align(s, refusal cone) | 0.0391 | analytic floor √(k/d) 0.0360 | **1.09×** |
+
+   The adapter moves the model along the fingerprint axis at 7.5× a random direction, while the
+   fraction of that movement lying inside the refusal cone is indistinguishable from the floor.
+   This holds per model, not just pooled: fingerprint alignment is 4–14× each model's own random
+   baseline, and the cone ratio stays in 0.82–1.26× across all ten. So imitation fine-tuning
+   traverses identity-coding directions and does not traverse refusal-coding ones — the weight-space
+   counterpart of the activation-space dissociation in #4.
+   *Coverage: 10 of 13 square models. gemma-4-31b is excluded because PEFT cannot inject a LoRA into
+   its `Gemma4ClippableLinear` modules on the model-parallel load a 31B base requires; qwen3.6-35b
+   and nemotron-nano did not complete. 16 gpt-oss-20b adapter-layers are dropped for a missing
+   random vector (404 of 420 layers used) — a NaN there would silently poison a pooled mean.*
+
 3. **What little erosion exists tracks the BASE model, not the imitated one — SOLID direction,
    TENTATIVE magnitude (seed 42, n=769).** A variance decomposition attributes **57.5% of the (small)
    erosion variance to the base model being fine-tuned, 3.1% to the imitated target, 0.8% to the dataset**
