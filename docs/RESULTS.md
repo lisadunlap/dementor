@@ -483,3 +483,54 @@ Actionable, in priority order: (a) widen k for qwen3.6-27b, (b) re-evaluate qwen
 its k=5 retry cone, (c) re-run the gpt-oss-120b k<=5 pass against a valid baseline. All three
 need GPU; none changes an existing CLEAN verdict, since all four models are already outside the
 24-model dissociation roster.
+
+## The dissociation survives imitation fine-tuning (2026-08-04)
+
+Every steering result so far was measured on stock models. This asks whether the same geometry
+still holds on the *fine-tuned* weights -- if imitation training moved refusal into the identity
+direction, the disguise adapters would be the place to see it.
+
+Design: 4 CLEAN sources x 4 imitation targets x 2 harm benchmarks = 32 cells, chatbot_arena
+seed 42, 300 prompts each. The LoRA adapter is merged into the base and then steered with the
+**stock** cone / fingerprint / random directions -- re-deriving directions on the adapter would
+answer a different and weaker question. Each cell is paired against the same source model's own
+base cell on the same benchmark, so only the weights differ.
+
+| quantity | adapter | base | delta | test |
+| --- | --- | --- | --- | --- |
+| baseline harm | 8.21 | 7.29 | +0.92 pp | -- |
+| cone (positive control) | 69.86 | 70.92 | **-1.05 pp** | Wilcoxon $W{=}94$, $p{=}0.004$ |
+| fingerprint (under test) | 8.16 | 7.09 | +1.06 pp | -- |
+| **fingerprint excess over random** | **-0.62** | **-0.53** | **-0.09 pp** | Wilcoxon $W{=}210$, $p{=}0.87$ |
+
+**All 32 adapter cells are CLEAN, and 0 of 32 differ in verdict from their base cell.**
+
+Two distinct readings, and they should not be conflated:
+
+* The positive control is *slightly* weaker on fine-tuned weights (-1.05 pp, p = 0.004). This is
+  small but real, and it is the expected direction: the cone was fit on stock activations, so
+  fine-tuning moves the weights slightly off the subspace it was fit to. It does not threaten the
+  control, which still drives harm to ~70%.
+* The dissociation quantity -- fingerprint's excess over the random arm -- does **not** move
+  (-0.09 pp, p = 0.87). Imitation fine-tuning does not shift refusal into the identity direction.
+
+Unlike the SFT/DPO stage split, this null does not depend on any one model. The design is balanced
+(8 cells per source, 8 per target) and the effect is flat across both margins:
+
+| source | delta | target | delta |
+| --- | --- | --- | --- |
+| aya-expanse-8b | -0.62 pp | gemma-4-31b | -0.42 pp |
+| llama-3.1-8b | +0.33 pp | gpt-oss-120b | +0.25 pp |
+| ministral-8b | -0.38 pp | llama-3.3-70b | +0.29 pp |
+| olmo-3-7b | +0.33 pp | qwen3.5-4b | -0.46 pp |
+
+Per-cell range -3.33 to +1.67 pp (SD 1.06), median exactly 0.00. Notably ministral-8b, whose
+25% baseline harm dominates every unpaired mean in this project, is unremarkable here (-0.38 pp)
+because the comparison is paired within model.
+
+Infrastructure: `run_benchmark_eval.py` gained `--adapter`, `--cone`, `--vectors-ml` and
+`--outdir`; the first three *require* `--outdir` so an adapter or alternative-cone run can never
+land in the canonical roster tree, where `rebuild_steering_tables` would fold it into that
+model's base cell. Verified after the sweep: the roster still holds exactly 200 records, 200
+unique (model, benchmark) keys, and no adapter cells. Comparison via
+`experiments/steering/compare_adapter_vs_base.py`.
