@@ -37,8 +37,18 @@ def test_adapter_re_accepts_each_dataset(ds):
     assert EC.ADAPTER_RE.match(f"dpo_{ds}_a_as_b_seed1") is not None
 
 
+@pytest.mark.parametrize("stage", ["dpo", "sft"])
+def test_adapter_re_accepts_both_pipeline_stages(stage):
+    """Both stages resolve: `dpo_` is the SFT->DPO end state the published matrix measures,
+    `sft_` points at the same run's SFT parent and isolates the imitation step from the
+    preference step.  The capture groups are identical either way."""
+    m = EC.ADAPTER_RE.match(f"{stage}_gsm8k_a_as_b_seed42")
+    assert m is not None
+    assert (m.group(1), m.group(2), m.group(3), m.group(4)) == ("gsm8k", "a", "b", "42")
+
+
 @pytest.mark.parametrize("bad", [
-    "sft_gsm8k_a_as_b_seed42",              # wrong prefix (not dpo_)
+    "rlhf_gsm8k_a_as_b_seed42",             # unknown pipeline stage (only dpo_/sft_)
     "dpo_unknownds_a_as_b_seed42",          # unlisted dataset
     "dpo_gsm8k_a_as_b_seedXX",              # non-numeric seed
     "dpo_gsm8k_a_b_seed42",                 # missing _as_
