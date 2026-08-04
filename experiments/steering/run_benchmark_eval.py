@@ -64,15 +64,28 @@ def main():
     ap.add_argument("--betas", default="0.6,1.0,1.4")
     ap.add_argument("--max-prompts", type=int, default=300)
     ap.add_argument("--gen-batch", type=int, default=16)
+    ap.add_argument("--adapter", default=None,
+                    help="LoRA imitation adapter to merge into the base before steering "
+                         "(cone/fingerprint/random stay the STOCK model's directions). "
+                         "REQUIRES --outdir: adapter runs must not land in the canonical "
+                         "roster tree, or rebuild_steering_tables would fold them into the "
+                         "base model's cells.")
+    ap.add_argument("--outdir", default=None,
+                    help="base output dir for eval_<bench>/ (default: WORK_ROOT/<slug>). "
+                         "Cone and vectors are still read from WORK_ROOT/<slug>.")
     args = ap.parse_args()
+    if args.adapter and not args.outdir:
+        sys.exit("--adapter requires --outdir (keep adapter runs out of the canonical roster tree)")
 
     wl = CFG.load_worklist()   # repo/scratch fallback + per-box model-path resolution
     spec = next((m for m in wl["models"] if m["slug"] == args.slug), None)
     if spec is None:
         sys.exit(f"unknown slug {args.slug}")
-    od = os.path.join(ROOT, args.slug)
-    cone = os.path.join(od, "selected_cone.pt")
-    vml = os.path.join(od, "vectors_ml.pt")
+    src = os.path.join(ROOT, args.slug)            # where the STOCK artifacts live
+    od = args.outdir or src                        # where THIS run's outputs go
+    os.makedirs(od, exist_ok=True)
+    cone = os.path.join(src, "selected_cone.pt")
+    vml = os.path.join(src, "vectors_ml.pt")
     for f in (cone, vml):
         if not os.path.exists(f):
             sys.exit(f"missing prerequisite {f} (run run_rdo_model.py {args.slug} first)")
@@ -107,6 +120,8 @@ def main():
         cmd = [PY, os.path.join(PORT, "cone_eval.py"), "--model", spec["path"], "--cone", cone,
                "--out", out, "--vectors-ml", vml, "--betas", args.betas,
                "--benchmark", bench, "--gen-batch", str(args.gen_batch)]
+        if args.adapter:
+            cmd += ["--adapter", args.adapter]
         if args.max_prompts:
             cmd += ["--max-prompts", str(args.max_prompts)]
         cmd += NATIVE.get(bench, [])
