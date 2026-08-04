@@ -113,6 +113,30 @@ the imitated one (#3, tentative).
    and nemotron-nano did not complete. 16 gpt-oss-20b adapter-layers are dropped for a missing
    random vector (404 of 420 layers used) — a NaN there would silently poison a pooled mean.*
 
+   **Which stage moves safety, SFT or DPO? NOT IDENTIFIABLE at this n — reported as a null.**
+   The matrix evaluates `dpo_*` items, i.e. the end of SFT→DPO, so it cannot by itself say whether
+   safety moves at the imitation step or the preference step. We closed that gap by evaluating the
+   SFT parents directly (95 seed42 cells, advbench + strongreject, 150 prompts) — and the answer
+   does not survive contact with one model:
+
+   | population | SFT step | DPO step |
+   | --- | --- | --- |
+   | all 95 cells | **−0.67 pp** | **+1.56 pp** |
+   | source-balanced (7 sources) | −0.83 pp | +1.75 pp |
+   | **excluding ministral-8b** (82 cells) | **+1.19 pp** | **−0.99 pp** |
+
+   **Both signs flip when a single source is removed.** ministral-8b carries 24.5% baseline harm —
+   roughly 6× every other source — so it dominates any mean over cells, and dropping it reverses
+   the direction of both stages. Each stage effect is also under ~1.2 pp, i.e. at the same
+   measurement floor that makes Finding 3 tentative. Per-cell the split is a coin flip: SFT raises
+   harm in 48/95 cells, DPO in 41/95.
+
+   We therefore do **not** claim that erosion is a DPO-step effect, and the paper should not
+   decompose the (already near-null) erosion by stage. The defensible statement is the one that
+   holds either way: *neither stage produces erosion large enough to have a stable sign.* The SFT
+   items are evaluated and committed so the decomposition can be revisited at higher n or on the
+   full 5-benchmark axis.
+
 3. **What little erosion exists tracks the BASE model, not the imitated one — SOLID direction,
    TENTATIVE magnitude (seed 42, n=769).** A variance decomposition attributes **57.5% of the (small)
    erosion variance to the base model being fine-tuned, 3.1% to the imitated target, 0.8% to the dataset**
