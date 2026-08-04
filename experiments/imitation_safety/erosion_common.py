@@ -206,7 +206,12 @@ def _slug_maps():
 
 # Disguise adapter key: dpo_<dataset>_<source-slug>_as_<target-slug>_seed<N>.  Groups:
 #   1=dataset  2=source slug  3=target slug  4=seed number
-ADAPTER_RE = re.compile(r"^dpo_(chatbot_arena|gsm8k|oasst1|writingprompts)_(.+)_as_(.+)_seed(\d+)$")
+# Accepts both pipeline stages.  `dpo_` is the end of SFT->DPO and is what the published matrix
+# measures; `sft_` points at the same run's SFT parent and isolates the imitation step from the
+# preference step.  The capture groups are unchanged, so every existing dpo_ id resolves exactly
+# as before -- this only ADMITS the sft_ ids, which previously fell through as "unknown item id".
+ADAPTER_RE = re.compile(
+    r"^(?:dpo|sft)_(chatbot_arena|gsm8k|oasst1|writingprompts)_(.+)_as_(.+)_seed(\d+)$")
 
 
 def load_registry_entries():
