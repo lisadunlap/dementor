@@ -70,6 +70,12 @@ def main():
                          "REQUIRES --outdir: adapter runs must not land in the canonical "
                          "roster tree, or rebuild_steering_tables would fold them into the "
                          "base model's cells.")
+    ap.add_argument("--cone", default=None,
+                    help="override the cone .pt (default: WORK_ROOT/<slug>/selected_cone.pt). "
+                         "Use with --outdir to evaluate an alternative cone -- e.g. a wider-k "
+                         "retry fit -- without overwriting the canonical roster cell.")
+    ap.add_argument("--vectors-ml", dest="vectors_ml", default=None,
+                    help="override vectors_ml.pt (default: WORK_ROOT/<slug>/vectors_ml.pt)")
     ap.add_argument("--outdir", default=None,
                     help="base output dir for eval_<bench>/ (default: WORK_ROOT/<slug>). "
                          "Cone and vectors are still read from WORK_ROOT/<slug>.")
@@ -84,8 +90,10 @@ def main():
     src = os.path.join(ROOT, args.slug)            # where the STOCK artifacts live
     od = args.outdir or src                        # where THIS run's outputs go
     os.makedirs(od, exist_ok=True)
-    cone = os.path.join(src, "selected_cone.pt")
-    vml = os.path.join(src, "vectors_ml.pt")
+    cone = args.cone or os.path.join(src, "selected_cone.pt")
+    vml = args.vectors_ml or os.path.join(src, "vectors_ml.pt")
+    if (args.cone or args.vectors_ml) and not args.outdir:
+        sys.exit("--cone/--vectors-ml require --outdir (do not overwrite the canonical cell)")
     for f in (cone, vml):
         if not os.path.exists(f):
             sys.exit(f"missing prerequisite {f} (run run_rdo_model.py {args.slug} first)")
