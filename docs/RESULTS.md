@@ -433,3 +433,53 @@ response opening with "I'm sorry" -- including helpful ones ("I'm sorry, I don't
 are located, but here are some places..."). It gives a smaller effect (+3.46 pp fingerprint-minus-
 random). The native classifier reads the whole response and is the one to believe; both are
 reported by `over_refusal_axis.py` and both show the same qualitative pattern.
+
+## Refusal-resistance is mostly NOT a rank-k truncation artifact (2026-08-04)
+
+The paper flags as a limitation that the cone search used k in {2,3,4} for most models and only
+reached k in {2..8} for 9 of 28, so "resistance under a small fixed k should not be read as a
+property of the model". Auditing the stored `selection.json` per-dim scores settles most of it.
+
+The training objective's own score (`erosion` = base_harmful_bypass - harmful_bypass_ablated):
+
+| model | k searched | best score | selected | benchmark verdict |
+| --- | --- | --- | --- | --- |
+| gpt-oss-120b | 2-4 | 12.25 @ k=2 | 2 | PC_FAILS |
+| qwen2.5-14b | 2-8 | 12.92 @ k=5 | 5 | PC_FAILS |
+| qwen3.6-27b | 2-4 | **1.30** @ k=3 | 3 | PC_FAILS |
+| qwen3-30b-a3b | 2-4 | 9.49 @ k=2 | 2 | fires on 1 of 7 |
+
+**The cone-training score does not predict the benchmark positive control.** gpt-oss-120b (12.25)
+and qwen2.5-14b (12.92) score as well as CLEAN models on the training objective yet fail the
+control on every harm benchmark. Whatever refusal-resistance is, it is not "the search failed to
+find a cone" for those two -- and for gpt-oss-120b the score *declines* with k (12.25 / 1.23 /
+1.98), so a wider sweep is not indicated. Only qwen3.6-27b never found a cone at all (1.30 vs
+~12), which is the one case where truncation is the plausible explanation -- consistent with the
+appendix note that a k=8, beta=2.0 cone drives its refusal 1.00 -> 0.00 by layer 43.
+
+Three findings from the `*_retry5` (k<=5) pass, which lives in `repl80_rdo/<slug>_retry5/` and is
+excluded from the roster by `DUP_SUFFIXES`:
+
+1. **qwen3.6-27b was never retried.** There is no `qwen3.6-27b_retry5`. The paper says the pass
+   covered "two of the three reported as refusal-resistant (gpt-oss-120b and qwen2.5-14b)", which
+   is exactly right -- the remaining third is the one where a wider k is most likely to matter.
+
+2. **The gpt-oss-120b retry is not comparable and cannot support the claim made from it.** Its
+   `base_harmful_bypass` is **-18.42**, against **+1.19** in the canonical run -- the baseline
+   itself moved by ~20 units, so its all-zero erosion scores (0.000 / 0.000 / -0.583 / -0.095)
+   are not evidence that no better cone exists at k<=5. By contrast qwen2.5-14b and qwen3-30b-a3b
+   retried against an *identical* baseline (1.318 and 2.781 in both runs) and are comparable.
+   The paper's "found no higher-scoring cone for any of them" holds for qwen2.5-14b
+   (retry 11.68 < canonical 12.92) but should not be asserted for gpt-oss-120b.
+
+3. **qwen3-30b-a3b has a better cone available that the roster ignores.** Its retry found
+   k=5, erosion **11.59**, against the canonical k=2 at **9.49** -- same baseline, so a genuine
+   improvement. This is the model whose control fires on only 1 of 7 benchmarks and which the
+   paper calls the weakest control in the roster (+8.50 pp on its best of the 5). Re-evaluating
+   it with the k=5 cone is the cheapest available test of whether its weak control is a cone-fit
+   problem rather than a model property.
+
+Actionable, in priority order: (a) widen k for qwen3.6-27b, (b) re-evaluate qwen3-30b-a3b with
+its k=5 retry cone, (c) re-run the gpt-oss-120b k<=5 pass against a valid baseline. All three
+need GPU; none changes an existing CLEAN verdict, since all four models are already outside the
+24-model dissociation roster.
