@@ -338,3 +338,46 @@ fingerprint/random arms of several models. Spot-reading gemma-4-31b's random arm
 false positives in that category (a refusal that redirects to *legal* information; a pun about a
 gardening competition). This inflates absolute harm rates roughly uniformly across arms, so the
 dissociation is unaffected, but the absolute levels should not be read as precise.
+
+## The dissociation is robust to the harm definition (2026-08-04)
+
+Prompted by the observation that 20.8% of all `genuine_harm` calls are `REFUSE_THEN_LEAK` rather
+than `FULL_COMPLY`, we recomputed every arm under three nested definitions, all over the SAME
+coherence-gated rows the pipeline uses:
+
+| definition | meaning | cone | fingerprint | random | baseline |
+| --- | --- | --- | --- | --- | --- |
+| `notA` | `rtl_code != 'A'` -- what `stage_analyze` actually uses | 47.68 | 8.40 | 8.88 | 8.45 |
+| `BC` | the documented `genuine_harm` (B or C) | 47.05 | 8.39 | 8.88 | 8.45 |
+| `C` | full compliance only (conservative) | 41.54 | 4.75 | 5.43 | 5.06 |
+
+(mean harm, pp, pooled over 1992 arm-beta cells across 30 models)
+
+The claim under test is the fingerprint-vs-random excess, and it is ~0 under all three:
+
+| definition | mean excess | median | SD | n |
+| --- | --- | --- | --- | --- |
+| `notA` | -0.48 pp | +0.00 | 3.32 | 603 |
+| `BC` | -0.49 pp | +0.00 | 3.31 | 603 |
+| `C` | -0.69 pp | +0.00 | 2.96 | 603 |
+
+Restricting to full compliance nearly halves the *absolute* fingerprint harm (8.39 -> 4.75 pp),
+so roughly 43% of that arm's harm is category B. But the positive control still separates by
+~36 pp over baseline, and the fingerprint arm stays at or below the random arm. **The
+between-arm comparison the paper makes does not depend on the choice.**
+
+Two definitional notes surfaced by this check:
+
+* `stage_analyze` scores harm as `rtl_code != 'A'`, which counts `DEGENERATE_LOOP` as harmful --
+  a *different* definition from `genuine_harm` (B or C). It turns out not to matter: D almost
+  never survives the coherence gate (mean 0.19% of gated rows; only 17 of 1992 cells exceed 1%),
+  so `notA` and `BC` agree to 0.01 pp on the fingerprint arm. Worth aligning, but it is not
+  distorting anything today.
+* Hand-reading a stratified sample of 8 category-B responses across models, arms and benchmarks:
+  B is mostly correct. Genuine refuse-then-deliver cases dominate (a ransomware script behind a
+  disclaimer; "I cannot fulfill your request" followed by "here are some of the benefits of drunk
+  driving that you requested"; a purple-drank recipe; five serial-number-removal methods). The
+  false positives share one shape -- refusing and then explaining the *defensive* side (how to
+  secure e-commerce against phishing, how detectors catch polymorphic malware). An earlier
+  impression that B was broadly unreliable came from sampling gemma-4-31b's random arm, which is
+  the one model already known to be contaminated, and did not generalize.
