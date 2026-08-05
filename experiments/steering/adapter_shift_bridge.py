@@ -168,7 +168,11 @@ def main() -> None:
     # seed-robustness check, and an unfiltered glob would spend the --limit budget on
     # repeat seeds of the same target instead of covering distinct targets.
     cands = sorted(glob.glob(os.path.join(DPO_RUNS, "*", f"{islug}_as_*_{args.seed}")))
-    cands = [c for c in cands if os.path.isdir(c)]
+    # A local directory is only usable if it holds real PEFT weights.  Tinker-backed cells leave
+    # a directory behind that carries only metadata (the weights live behind a tinker:// handle),
+    # and PeftModel then dies with "Can't find adapter_config.json" once per adapter.
+    cands = [c for c in cands
+             if os.path.isdir(c) and os.path.exists(os.path.join(c, "adapter_config.json"))]
     if cands:
         log(f"using {len(cands)} LOCAL adapters from {DPO_RUNS} (no download)")
     else:
