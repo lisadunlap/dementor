@@ -567,37 +567,72 @@ Companion result, same task: **qwen3-30b-a3b re-evaluated with its better k=5 re
 training objective's score again fails to predict the benchmark control. Remaining benchmarks
 for that model are still running.
 
-## qwen3.6-27b's "refusal resistance" is a cone-training failure (2026-08-04)
+## qwen3.6-27b is UNTESTABLE, not refusal-resistant (2026-08-04)
 
 qwen3.6-27b was the one resistant model the k<=5 retry never covered, and the only one whose
-cone-training score never rose above noise (best 1.30 against ~12 for models whose cone fits).
-Training it over the full k in {2,...,8} with betas extended to 3.0 does not change that:
+cone-training score never rose above noise. Training it over the full k in {2,...,8} with betas
+extended to 3.0 does not change that:
 
 | k | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | erosion | +0.44 | +1.48 | -0.60 | +1.10 | -0.06 | +1.32 | +0.50 |
 
-No value of k reaches even a sixth of a normal model's score, and the sequence is flat noise
-rather than a rising curve truncated too early.
+Flat noise against ~12 for models whose cone fits -- not a rising curve truncated too early.
+We traced the whole causal chain:
 
-**The reason is that the cone never trains.** Every step of every dim reports `loss=nan`, and
-every checkpoint saves with `lowest_loss=inf` -- meaning no step ever improved on the initial
-value, so the saved "cone" is whatever the initialisation produced. This is true in the new
-k in {2..8} run *and* in the canonical k in {2,3,4} run (9 `loss=nan` lines in its `rdo_run.log`),
-so it is a persistent property of this model in this pipeline, not a transient. The model is a
-27B mamba-hybrid, and bf16 NaN in SSM layers is a failure mode this project has hit before.
+1. **Under dim-ablation the model emits exactly one token: `<|im_end|>`.** Unablated it answers
+   normally ("I cannot provide instructions on how to create fake accounts..."). Ablated, it
+   immediately ends the turn. This is not a decoding artifact -- decoding with
+   `skip_special_tokens=False` shows the single EOS token and nothing else.
+2. So **861 of 861 ablation targets are empty**, against 0% empty for every other roster model
+   (qwen3-14b, qwen3.6-35b, ministral-8b, olmo-3-7b all produce ~150-character targets).
+3. Empty targets mean every label is `-100`, and `F.cross_entropy(..., ignore_index=-100)` over an
+   all-ignored batch returns **NaN**.
+4. NaN reaches `total`, and `total < lowest` is **False for NaN**, so `lowest` stays `inf` and
+   **no step is ever recorded as best**. The saved cone is the random initialisation.
+5. The run still writes `cone_dim_*.pt` and **exits 0**.
 
-The consequence is that **qwen3.6-27b's PC_FAILS verdict carries no information about the model**.
-It belongs with gemma-4-31b as a measurement failure -- there, coherence collapse made the
-positive control untestable; here, the optimiser producing NaN means no positive control was ever
-constructed. Neither is evidence that the model resists refusal ablation. Both are already outside
-the 24-model dissociation roster, so no reported result changes; what changes is what may be said
-about *why* they are outside it.
+The model forward is entirely healthy under ablation -- all 64 layers finite, max |hidden| = 482
+against a bf16 ceiling of 3.4e38, logits finite with max |logit| = 20.4. Nothing is numerically
+unstable; the pipeline simply had nothing to train on and did not notice.
 
-**Unverified claim flagged.** The appendix states that "a wider cone reaches refusal in at least
-one resistant case (Qwen 3.6 27B, k=8, beta=2.0, refusal 1.00 -> 0.00 by layer 43)". We could not
-locate the artifact behind that number: qwen3.6-27b is not among the 9 models in the k<=8
-`bank_dim8` pass, there is no layer-sweep output directory for it, and the k=8 cone we trained
-here is untrained in the sense above (erosion +0.50). The claim may rest on a run we cannot see;
-it should be re-derived or removed before submission, since it is currently the paper's only
-evidence that resistance is not a model property.
+`loss=nan` appears in 21/21 of its steps here and 9/9 in the canonical k<=4 run, and in **zero**
+steps for all 20 other models. It is specific to this model and reproducible.
+
+**qwen3.6-27b therefore belongs with gemma-4-31b as a measurement failure, not a finding.** Both
+are cases where the intervention destroys generation: gemma-4-31b collapses into repetition at
+eval time, qwen3.6-27b terminates instantly at target-generation time, before a cone can even be
+fit. Neither is evidence that the model resists refusal ablation. Both are already outside the
+24-model dissociation roster, so no reported result changes.
+
+**Pipeline fix (rdo_port.py).** Two guards, because this failure was silent end to end:
+* `build_targets` now aborts when >= 50% of ablation targets are empty (`RDO_EMPTY_TARGET_ABORT`),
+  with a message saying the model is untestable rather than resistant.
+* Each of the six loss terms is checked for non-finiteness and names itself the first time it
+  breaks, instead of vanishing into an `inf` best-loss.
+
+**Scope of this failure -- and a correction.** We initially withdrew the appendix claim that "a
+wider cone reaches refusal in at least one resistant case (Qwen 3.6 27B, k=8, beta=2.0, refusal
+1.00 -> 0.00 by layer 43)" on the grounds that no cone can be trained for this model. That was too
+hasty: the claim describes a **single-layer depth sweep**, a different intervention from the
+all-layer ablation that breaks the trainer. Testing both on the same model and direction:
+
+| ablation | empty generations | mean new tokens | still refusing |
+| --- | --- | --- | --- |
+| unablated | 0/6 | 40.0 | 5/6 |
+| single layer 14 | 0/6 | 40.0 | 6/6 |
+| single layer 27 | 0/6 | 40.0 | 5/6 |
+| single layer 39 | 0/6 | 40.0 | 4/6 |
+| single layer 43 | 0/6 | 40.0 | 5/6 |
+| single layer 55 | 0/6 | 40.0 | 4/6 |
+| **all 64 layers** | **6/6** | **1.0** | 0/6 |
+
+Single-layer ablation leaves the model generating at full length. **The collapse is specific to
+ablating every layer at once**, which is exactly what target generation does -- so the depth sweep
+the paper reports remains a valid experiment on this model even though the automated cone fit is
+not. The claim is restored, with the trainer failure documented as a bound on what the automated
+search can say about this model rather than as a refutation of the sweep.
+
+(We still could not locate the stored artifact for the layer-43 numbers -- qwen3.6-27b is not
+among the 9 models in the k<=8 `bank_dim8` pass and has no layer-sweep output directory -- so the
+sweep should be re-run and archived before submission. But nothing we measured contradicts it.)

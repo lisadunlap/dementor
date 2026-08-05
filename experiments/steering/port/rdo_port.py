@@ -50,6 +50,9 @@ PATIENCE = 5
 N_LR_REDUCE = 2
 EPOCHS = 1
 CLIPNORM = 10.0
+# Abort cone training when this fraction of ablation targets come back empty. Empty targets make
+# the ablation cross-entropy NaN, which silently yields an untrained cone (see build_targets).
+EMPTY_TARGET_ABORT = float(os.environ.get("RDO_EMPTY_TARGET_ABORT", "0.5"))
 
 # rdo.py hardcoded chat templates (verbatim) -----------------------------------------------------
 GEMMA_T = "<start_of_turn>user\n{instruction}<end_of_turn>\n<start_of_turn>model\n"
@@ -458,6 +461,27 @@ def build_targets(model, tokenizer, ops, render, dim_dir, refusal_toks, device, 
     log(f"[targets] generating retain targets (n={len(harmless_p)})")
     ret = gen_batch(model, tokenizer, ops, harmless_p, NUM_TARGET_TOKENS - 1, device, batch_size, "off")
 
+    # An ablation target is the text the cone is trained to REPRODUCE.  If the model emits nothing
+    # under dim-ablation, every label is -100, F.cross_entropy(ignore_index=-100) over an all-
+    # ignored batch returns NaN, and from then on: total is NaN -> `total < lowest` is False for
+    # NaN -> `lowest` stays inf -> NO step is ever recorded as best -> the saved "cone" is the
+    # random initialisation.  The run still writes cone_dim_*.pt and exits 0, so downstream the
+    # model looks merely refusal-RESISTANT rather than untrained.  qwen3.6-27b hit exactly this:
+    # ablating the dim direction makes it emit a single <|im_end|> token, so 861/861 of its
+    # ablation targets were empty.  Refuse to continue instead of manufacturing a null result.
+    n_empty = sum(1 for t in abl if not t.strip())
+    if n_empty:
+        frac = n_empty / max(1, len(abl))
+        log(f"[targets] WARNING {n_empty}/{len(abl)} ({frac:.0%}) ablation targets are EMPTY -- the "
+            f"model produces no text under dim-ablation")
+        if frac >= EMPTY_TARGET_ABORT:
+            raise RuntimeError(
+                f"{n_empty}/{len(abl)} ({frac:.0%}) ablation targets are empty (threshold "
+                f"{EMPTY_TARGET_ABORT:.0%}). The cone cannot be trained: cross-entropy over an "
+                f"all-ignored label batch is NaN, so no checkpoint would ever improve and the "
+                f"saved cone would be the initialisation. This model is UNTESTABLE under the "
+                f"standard protocol -- report it as such rather than as refusal-resistant.")
+
     harmful_targets = [{"prompt": harmful_p[i], "ablation": abl[i]} for i in range(len(harmful_p))]
     harmless_targets = [{"prompt": harmless_p[i], "addition": add[i].split(".")[0], "retain": ret[i]}
                         for i in range(len(harmless_p))]
@@ -495,6 +519,23 @@ def train_cone(model, tokenizer, ops, render, refusal_toks, device, hidden, best
     vectors, train_losses, refusal_hist = [], [], []
     lowest = float("inf"); patience_c = 0; lr_reduce_c = 0; step = 0
     bucket = dict(sa=0.0, sad=0.0, sr=0.0, ba=0.0, bad=0.0, br=0.0)
+    # A single non-finite loss term poisons the whole step: `total` becomes NaN, `total < lowest`
+    # is False for NaN, so `lowest` stays inf, NO checkpoint is ever recorded as best, and the
+    # saved "cone" is whatever the initialisation produced -- while the run still exits 0 and
+    # writes a cone file. That is exactly how qwen3.6-27b produced a cone that had never trained
+    # and a PC_FAILS verdict that looked like refusal-resistance. Name the offending term the
+    # first time it appears so the failure is legible instead of silent.
+    nonfinite_seen = set()
+
+    def _acc(name, t):
+        """Accumulate one loss term, reporting the first non-finite occurrence per term."""
+        v = t.item()
+        if v != v or v in (float("inf"), float("-inf")):
+            if name not in nonfinite_seen:
+                nonfinite_seen.add(name)
+                log(f"    !! loss term {name!r} is non-finite ({v}) -- the cone cannot train; "
+                    f"every subsequent step's total will be NaN and lowest_loss will stay inf")
+        bucket[name] += v
     t0 = time.time()
 
     def forward_logits(ids, n=1):
@@ -527,14 +568,14 @@ def train_cone(model, tokenizer, ops, render, refusal_toks, device, hidden, best
                 ops.set_directions(stack_samples(samples))
                 logits = forward_logits(d["abl_ids"], n_sample)[:, :-1]
                 la = compute_ce_loss_batched(logits, d["abl_lab"])
-                (ABLATION_LAMBDA * la).backward(); bucket["sa"] += la.item()
+                (ABLATION_LAMBDA * la).backward(); _acc("sa", la)
                 # addition CE
                 if ADDITION_LAMBDA > 0:
                     ops.ablate_on = False; ops.add_on = True
                     ops.set_directions(stack_samples(samples))
                     logits = forward_logits(d["add_ids"], n_sample)[:, :-1]
                     lad = compute_ce_loss_batched(logits, d["add_lab"])
-                    (ADDITION_LAMBDA * lad).backward(); bucket["sad"] += lad.item()
+                    (ADDITION_LAMBDA * lad).backward(); _acc("sad", lad)
                 # retain KL  (baseline is direction-independent -> compute once, broadcast to rows)
                 ops.ablate_on = False; ops.add_on = False
                 with torch.no_grad():
@@ -543,20 +584,20 @@ def train_cone(model, tokenizer, ops, render, refusal_toks, device, hidden, best
                 ops.set_directions(stack_samples(samples))
                 ret = forward_logits(d["ret_ids"], n_sample)[:, -NUM_TARGET_TOKENS:]
                 lr_ = kl_div_fn(base.expand(n_sample, -1, -1), ret)
-                (RETAIN_LAMBDA * lr_).backward(); bucket["sr"] += lr_.item()
+                (RETAIN_LAMBDA * lr_).backward(); _acc("sr", lr_)
                 ops.ablate_on = False
             # ---- basis vectors directly: all cone_dim basis vectors in one batch ----
             ops.ablate_on = True; ops.add_on = False
             ops.set_directions(stack_basis())
             logits = forward_logits(d["abl_ids"], cone_dim)[:, :-1]
             ba = compute_ce_loss_batched(logits, d["abl_lab"])
-            (ABLATION_LAMBDA * ba).backward(); bucket["ba"] += ba.item()
+            (ABLATION_LAMBDA * ba).backward(); _acc("ba", ba)
             if ADDITION_LAMBDA > 0:
                 ops.ablate_on = False; ops.add_on = True
                 ops.set_directions(stack_basis())
                 logits = forward_logits(d["add_ids"], cone_dim)[:, :-1]
                 bad = compute_ce_loss_batched(logits, d["add_lab"])
-                (ADDITION_LAMBDA * bad).backward(); bucket["bad"] += bad.item()
+                (ADDITION_LAMBDA * bad).backward(); _acc("bad", bad)
             ops.ablate_on = False; ops.add_on = False
             with torch.no_grad():
                 base = forward_logits(d["ret_ids"], 1)[:, -NUM_TARGET_TOKENS:].detach()
@@ -564,7 +605,7 @@ def train_cone(model, tokenizer, ops, render, refusal_toks, device, hidden, best
             ops.set_directions(stack_basis())
             ret = forward_logits(d["ret_ids"], cone_dim)[:, -NUM_TARGET_TOKENS:]
             br = kl_div_fn(base.expand(cone_dim, -1, -1), ret)
-            (RETAIN_LAMBDA * br).backward(); bucket["br"] += br.item()
+            (RETAIN_LAMBDA * br).backward(); _acc("br", br)
             ops.ablate_on = False
 
             step += 1
