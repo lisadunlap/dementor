@@ -567,37 +567,111 @@ Companion result, same task: **qwen3-30b-a3b re-evaluated with its better k=5 re
 training objective's score again fails to predict the benchmark control. Remaining benchmarks
 for that model are still running.
 
-## qwen3.6-27b's "refusal resistance" is a cone-training failure (2026-08-04)
+## Degenerate ablation targets silently untrain four cones (2026-08-04)
 
-qwen3.6-27b was the one resistant model the k<=5 retry never covered, and the only one whose
-cone-training score never rose above noise (best 1.30 against ~12 for models whose cone fits).
-Training it over the full k in {2,...,8} with betas extended to 3.0 does not change that:
+Chasing why qwen3.6-27b's cone never trains exposed a failure mode that affects **four** roster
+runs, one of which is inside the reported dissociation roster.
 
-| k | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| erosion | +0.44 | +1.48 | -0.60 | +1.10 | -0.06 | +1.32 | +0.50 |
+**The mechanism.** The cone trainer bootstraps its regression targets by generating under
+all-layer ablation of the difference-in-means direction. Some models answer that intervention with
+degenerate text. The cone is then optimised to reproduce that degenerate text, and nothing
+downstream notices:
 
-No value of k reaches even a sixth of a normal model's score, and the sequence is flat noise
-rather than a rising curve truncated too early.
+| model | ablation target under all-layer dim-ablation | first-step loss |
+| --- | --- | --- |
+| qwen3.6-27b | `''` -- a single `<|im_end|>` token | **NaN** |
+| gemma-4-31b | `//(//-//-//-//-//-//-...` | **1297** |
+| gemma-4-e4b | `<start_of_turn>model\n<start_of_turn>model\n...` | **499** |
+| every other model | real prose, ~140-160 chars | 4.5 - 23 |
 
-**The reason is that the cone never trains.** Every step of every dim reports `loss=nan`, and
-every checkpoint saves with `lowest_loss=inf` -- meaning no step ever improved on the initial
-value, so the saved "cone" is whatever the initialisation produced. This is true in the new
-k in {2..8} run *and* in the canonical k in {2,3,4} run (9 `loss=nan` lines in its `rdo_run.log`),
-so it is a persistent property of this model in this pipeline, not a transient. The model is a
-27B mamba-hybrid, and bf16 NaN in SSM layers is a failure mode this project has hit before.
+All three are 100% degenerate (1184/1184, 1184/1184, 861/861) against 0.0-0.2% for the other 26.
+qwen3.6-27b's empty targets give an all-ignored label batch, so `F.cross_entropy` returns NaN,
+`total < lowest` is False for NaN, `lowest` stays `inf`, and the saved cone is the random
+initialisation. The other two are *non-empty*, so their loss is finite and they train happily --
+against noise.
 
-The consequence is that **qwen3.6-27b's PC_FAILS verdict carries no information about the model**.
-It belongs with gemma-4-31b as a measurement failure -- there, coherence collapse made the
-positive control untestable; here, the optimiser producing NaN means no positive control was ever
-constructed. Neither is evidence that the model resists refusal ablation. Both are already outside
-the 24-model dissociation roster, so no reported result changes; what changes is what may be said
-about *why* they are outside it.
+**What this explains.** gemma-4-31b's cone drives the model into `не не не...` repetition at
+evaluation. That was previously written up as the VLM being fragile under ablation. It is simpler
+than that: the cone was trained to emit punctuation spam, so it does.
 
-**Unverified claim flagged.** The appendix states that "a wider cone reaches refusal in at least
-one resistant case (Qwen 3.6 27B, k=8, beta=2.0, refusal 1.00 -> 0.00 by layer 43)". We could not
-locate the artifact behind that number: qwen3.6-27b is not among the 9 models in the k<=8
-`bank_dim8` pass, there is no layer-sweep output directory for it, and the k=8 cone we trained
-here is untrained in the sense above (erosion +0.50). The claim may rest on a run we cannot see;
-it should be re-derived or removed before submission, since it is currently the paper's only
-evidence that resistance is not a model property.
+**The consequence for the roster.** gemma-4-e4b is *inside* the 24-model dissociation roster and
+the 10 CLEAN sources. Its positive control fires on exactly one of its seven benchmarks --
+harmbench at +10.2 pp, barely over the 10 pp bar -- and the cone that produces it was fit entirely
+on `<start_of_turn>model` repetition. Treating it as untestable:
+
+| quantity | as published | corrected |
+| --- | --- | --- |
+| models admitted | 24 of 28 | **23 of 28** |
+| contributing (model, benchmark) cells | 111 | **110** |
+| CLEAN sources on the 13-model grid | 10 | **9** |
+
+The paper already flags gemma-4-e4b as "the marginal member ... its inclusion is what the rule
+decides rather than something the data makes obvious". This supplies the mechanism: it is marginal
+because its cone never had a real training signal. Its downstream numbers agree -- 31.7% of its
+fingerprint-arm generations are DEGENERATE_LOOP (highest in the roster) and its over-refusal jumps
++82.8 pp under fingerprint ablation, both symptoms of a setup that is not measuring what it claims.
+
+**Guard (rdo_port.py).** `target_is_usable` rejects a target that is empty, that repeats a short
+unit (distinct-4-gram ratio below 0.35), or that reduces to nothing once chat markup and role
+words are stripped. Deliberately not a per-model tag blacklist -- the three failures use three
+different templates and a fourth model would use a fourth. `build_targets` retries once with EOS
+blocked (keeping the intervention identical, only denying the model the option of ending the turn)
+and aborts if a majority are still unusable, saying the model is untestable rather than
+manufacturing a null. Validated against all 30 roster runs: flags exactly the four known-bad runs
+at 100%, gpt-oss-120b at 9.2% (warn only), and every other model at or below 0.2%.
+
+Blocking EOS does **not** rescue qwen3.6-27b: forced to continue, it emits `'\n\n\n\n666666'`
+and `'</think>\nassistant\n<think>'`. It has nothing to say under this intervention, so the abort
+path is correct for it.
+
+**Are these collapses refusal-specific?** Ablating a random unit direction at every layer is the
+control that separates "the model responds to losing its refusal direction" from "the model cannot
+tolerate this intervention at all". The two failures answer differently:
+
+| model | unablated | all-layer DIM ablation | all-layer RANDOM ablation |
+| --- | --- | --- | --- |
+| qwen3.6-27b | 30 tok, normal prose | **1 tok, a single `<\|im_end\|>`** | 30 tok, normal prose |
+| gemma-4-e4b | 23.5 tok | `<start_of_turn>model` repeated | **`<end_of_turn>` repeated** |
+
+For **qwen3.6-27b the collapse is direction-specific**: a random direction ablated across all 64
+layers does nothing at all, while the refusal direction silences the model completely. That is a
+real behavioural response -- removing this model's refusal direction produces *silence* rather than
+compliance -- and it is why the RDO method cannot be applied to it. The method bootstraps its
+regression targets from what the model says under dim-ablation; this model says nothing. That is
+the method being inapplicable for a substantive reason, not the pipeline malfunctioning.
+
+For **gemma-4-e4b the collapse is generic**: dim and random ablation degrade it into template
+loops alike. It simply cannot tolerate all-layer ablation, so no direction-specific conclusion can
+be drawn from it either.
+
+Both are therefore **untestable rather than refusal-resistant**, which is a different claim from
+"failed the positive control". A model that fails the control has been measured and did not erode;
+a model that is untestable never had a valid control constructed, and its verdict is not a
+datum. gemma-4-31b and gemma-4-e4b should be dropped from the roster rather than reported as
+resistance cases; qwen3.6-27b likewise, though its underlying behaviour is a real finding worth
+one sentence.
+
+(Method note: this control was first run with prompts taken from another model's targets file.
+Feeding Qwen-templated prompts to a Gemma model produced identical degenerate output in *every*
+arm -- including the unablated one -- which is what exposed the error. Prompts are pre-rendered
+per model and must come from that model's own targets file.)
+
+**Scope -- and a correction we made along the way.** We briefly withdrew the appendix claim that
+"a wider cone reaches refusal in at least one resistant case (Qwen 3.6 27B, k=8, beta=2.0, refusal
+1.00 -> 0.00 by layer 43)". That was wrong: the claim describes a **single-layer** depth sweep, and
+the collapse is specific to ablating every layer at once.
+
+| ablation | empty generations | mean new tokens |
+| --- | --- | --- |
+| unablated | 0/6 | 40.0 |
+| single layer 14 / 27 / 39 / 43 / 55 | 0/6 | 40.0 |
+| all 64 layers | 6/6 | 1.0 |
+
+Single-layer ablation leaves the model generating at full length, so the depth sweep remains a
+valid experiment even where the automated all-layer fit is not. The claim is restored. We could
+still not locate its stored artifact, so it should be re-run and archived before submission.
+
+Training the full k in {2,...,8} for qwen3.6-27b confirms the fit is the problem, not the range:
+erosion +0.44 / +1.48 / -0.60 / +1.10 / -0.06 / +1.32 / +0.50 -- flat noise against ~12 for models
+whose cone fits, at every k. The model forward is healthy throughout (all 64 layers finite, peak
+activation 482 against a bf16 ceiling of 3.4e38); the pipeline simply had nothing to train on.

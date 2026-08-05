@@ -25,7 +25,7 @@ CLI:  rdo_port.py --model <path> --dim-dir <dir with direction.pt+metadata> --ou
                   --min-cone-dim 2 --max-cone-dim 4 [--family qwen2.5|gemma|llama3|auto]
                   [--splits-dir <saladbench_splits>] [--max-train N] [--reuse-targets <json dir>]
 """
-import os, sys, json, time, argparse, random
+import os, sys, json, time, argparse, random, re
 import torch
 import torch.nn.functional as F
 
@@ -50,6 +50,54 @@ PATIENCE = 5
 N_LR_REDUCE = 2
 EPOCHS = 1
 CLIPNORM = 10.0
+# Abort cone training when this fraction of ablation targets come back empty. Empty targets make
+# the ablation cross-entropy NaN, which silently yields an untrained cone (see build_targets).
+EMPTY_TARGET_ABORT = float(os.environ.get("RDO_EMPTY_TARGET_ABORT", "0.5"))
+# A generated ablation target must carry real, non-repetitive content. See target_is_usable.
+MIN_TARGET_CONTENT = int(os.environ.get("RDO_MIN_TARGET_CONTENT", "12"))
+MIN_TARGET_DIVERSITY = float(os.environ.get("RDO_MIN_TARGET_DIVERSITY", "0.35"))
+
+
+_TAG_RE = re.compile(r"<\|?[^<>]{0,40}?\|?>")
+_ROLE_RE = re.compile(r"\b(assistant|user|system|model)\b", re.I)
+
+
+def _distinct_ngram_ratio(s, n=4):
+    """Fraction of character n-grams that are distinct. Near 0 for a repeated short unit."""
+    if len(s) <= n:
+        return 1.0
+    grams = [s[i:i + n] for i in range(len(s) - n + 1)]
+    return len(set(grams)) / len(grams)
+
+
+def target_is_usable(t):
+    """True when a generated ablation target carries real content for the cone to regress onto.
+
+    Emptiness is not a sufficient test, and neither is a per-model tag blacklist. Three roster
+    models degenerate under all-layer dim-ablation, each in a different surface form:
+
+        qwen3.6-27b   ''  (a single <|im_end|>), or '</think>\nassistant\n<think>' with EOS blocked
+        gemma-4-31b   '//(//-//-//-//-//-//-...'
+        gemma-4-e4b   '<start_of_turn>model\n<start_of_turn>model\n...'
+
+    Only the first is empty; the other two are non-empty and yield a FINITE cross-entropy, so the
+    cone trains happily against noise -- gemma-4-31b's first-step loss is 1297 and gemma-4-e4b's
+    is 499, against 4.5-23 for every model that produces real text. What the three share is
+    extreme repetition of a short unit, so test for that directly rather than blacklisting each
+    model's chat template."""
+    s = str(t or "")
+    if not s.strip():
+        return False
+    if _distinct_ngram_ratio(s) < MIN_TARGET_DIVERSITY:
+        return False                      # a short unit repeated (punctuation or one tag)
+    # Strip chat markup generically -- any <...> or <|...|> span, then the bare role words that
+    # survive it -- so a target built only from alternating template tokens reduces to nothing.
+    # This is deliberately not a per-model tag list: the three degenerate models use three
+    # different templates and a fourth would use a fourth.
+    stripped = _TAG_RE.sub(" ", s)
+    stripped = _ROLE_RE.sub(" ", stripped)
+    return len("".join(ch for ch in stripped if ch.isalnum())) >= MIN_TARGET_CONTENT
+
 
 # rdo.py hardcoded chat templates (verbatim) -----------------------------------------------------
 GEMMA_T = "<start_of_turn>user\n{instruction}<end_of_turn>\n<start_of_turn>model\n"
@@ -395,8 +443,15 @@ def sample_hypersphere(n, dim, device):
 
 # ============================================================================= generation w/ intervention
 @torch.no_grad()
-def gen_batch(model, tokenizer, ops, prompts, max_new_tokens, device, batch_size, mode, direction=None):
-    """mode in {'off','ablate','add'}. Returns decoded continuations (prompt stripped)."""
+def gen_batch(model, tokenizer, ops, prompts, max_new_tokens, device, batch_size, mode,
+              direction=None, min_new_tokens=0):
+    """mode in {'off','ablate','add'}. Returns decoded continuations (prompt stripped).
+
+    `min_new_tokens` blocks EOS for that many steps. Needed because some models answer ablation
+    by ending the turn immediately rather than by saying anything: qwen3.6-27b emits a single
+    <|im_end|> under all-layer dim-ablation, which yields an empty target, an all-ignored label
+    batch, and a NaN training loss. Forcing a floor on the generation length recovers a usable
+    target under the SAME intervention, rather than weakening the intervention to get one."""
     ops.ablate_on = (mode == "ablate")
     ops.add_on = (mode == "add")
     if direction is not None:
@@ -407,7 +462,8 @@ def gen_batch(model, tokenizer, ops, prompts, max_new_tokens, device, batch_size
         batch = prompts[s:s + batch_size]
         enc = tokenizer(batch, return_tensors="pt", padding=True, add_special_tokens=True).to(device)
         g = model.generate(**enc, max_new_tokens=max_new_tokens, do_sample=False,
-                           use_cache=False, pad_token_id=tokenizer.pad_token_id)
+                           use_cache=False, pad_token_id=tokenizer.pad_token_id,
+                           **({"min_new_tokens": min_new_tokens} if min_new_tokens else {}))
         for j, t in enumerate(tokenizer.batch_decode(g[:, enc["input_ids"].shape[1]:],
                                                      skip_special_tokens=True)):
             out[s + j] = fix_bytelevel(t)
@@ -458,6 +514,39 @@ def build_targets(model, tokenizer, ops, render, dim_dir, refusal_toks, device, 
     log(f"[targets] generating retain targets (n={len(harmless_p)})")
     ret = gen_batch(model, tokenizer, ops, harmless_p, NUM_TARGET_TOKENS - 1, device, batch_size, "off")
 
+    # An ablation target is the text the cone is trained to REPRODUCE.  If the model emits nothing
+    # under dim-ablation, every label is -100, F.cross_entropy(ignore_index=-100) over an all-
+    # ignored batch returns NaN, and from then on: total is NaN -> `total < lowest` is False for
+    # NaN -> `lowest` stays inf -> NO step is ever recorded as best -> the saved "cone" is the
+    # random initialisation.  The run still writes cone_dim_*.pt and exits 0, so downstream the
+    # model looks merely refusal-RESISTANT rather than untrained.  qwen3.6-27b hit exactly this:
+    # ablating the dim direction makes it emit a single <|im_end|> token, so 861/861 of its
+    # ablation targets were empty.  Refuse to continue instead of manufacturing a null result.
+    n_empty = sum(1 for t in abl if not target_is_usable(t))
+    if n_empty / max(1, len(abl)) >= EMPTY_TARGET_ABORT:
+        # Retry under the SAME ablation with EOS blocked for a floor of tokens. This keeps the
+        # intervention intact (still all-layer, still the dim direction) and only denies the model
+        # the option of answering by ending the turn. Weakening the ablation instead would train
+        # the cone against a different intervention than the one being measured.
+        floor = max(8, NUM_TARGET_TOKENS // 2)
+        log(f"[targets] {n_empty}/{len(abl)} ablation targets empty -- retrying with "
+            f"min_new_tokens={floor} (EOS blocked, ablation unchanged)")
+        abl = gen_batch(model, tokenizer, ops, harmful_p, NUM_TARGET_TOKENS, device, batch_size,
+                        "ablate", direction=dim, min_new_tokens=floor)
+        n_empty = sum(1 for t in abl if not target_is_usable(t))
+        log(f"[targets] after retry: {n_empty}/{len(abl)} still unusable")
+    if n_empty:
+        frac = n_empty / max(1, len(abl))
+        log(f"[targets] WARNING {n_empty}/{len(abl)} ({frac:.0%}) ablation targets are UNUSABLE "
+            f"(empty or template spam) -- the model produces no content under dim-ablation")
+        if frac >= EMPTY_TARGET_ABORT:
+            raise RuntimeError(
+                f"{n_empty}/{len(abl)} ({frac:.0%}) ablation targets are unusable (threshold "
+                f"{EMPTY_TARGET_ABORT:.0%}). The cone cannot be trained: cross-entropy over an "
+                f"all-ignored label batch is NaN, so no checkpoint would ever improve and the "
+                f"saved cone would be the initialisation. This model is UNTESTABLE under the "
+                f"standard protocol -- report it as such rather than as refusal-resistant.")
+
     harmful_targets = [{"prompt": harmful_p[i], "ablation": abl[i]} for i in range(len(harmful_p))]
     harmless_targets = [{"prompt": harmless_p[i], "addition": add[i].split(".")[0], "retain": ret[i]}
                         for i in range(len(harmless_p))]
@@ -495,6 +584,23 @@ def train_cone(model, tokenizer, ops, render, refusal_toks, device, hidden, best
     vectors, train_losses, refusal_hist = [], [], []
     lowest = float("inf"); patience_c = 0; lr_reduce_c = 0; step = 0
     bucket = dict(sa=0.0, sad=0.0, sr=0.0, ba=0.0, bad=0.0, br=0.0)
+    # A single non-finite loss term poisons the whole step: `total` becomes NaN, `total < lowest`
+    # is False for NaN, so `lowest` stays inf, NO checkpoint is ever recorded as best, and the
+    # saved "cone" is whatever the initialisation produced -- while the run still exits 0 and
+    # writes a cone file. That is exactly how qwen3.6-27b produced a cone that had never trained
+    # and a PC_FAILS verdict that looked like refusal-resistance. Name the offending term the
+    # first time it appears so the failure is legible instead of silent.
+    nonfinite_seen = set()
+
+    def _acc(name, t):
+        """Accumulate one loss term, reporting the first non-finite occurrence per term."""
+        v = t.item()
+        if v != v or v in (float("inf"), float("-inf")):
+            if name not in nonfinite_seen:
+                nonfinite_seen.add(name)
+                log(f"    !! loss term {name!r} is non-finite ({v}) -- the cone cannot train; "
+                    f"every subsequent step's total will be NaN and lowest_loss will stay inf")
+        bucket[name] += v
     t0 = time.time()
 
     def forward_logits(ids, n=1):
@@ -527,14 +633,14 @@ def train_cone(model, tokenizer, ops, render, refusal_toks, device, hidden, best
                 ops.set_directions(stack_samples(samples))
                 logits = forward_logits(d["abl_ids"], n_sample)[:, :-1]
                 la = compute_ce_loss_batched(logits, d["abl_lab"])
-                (ABLATION_LAMBDA * la).backward(); bucket["sa"] += la.item()
+                (ABLATION_LAMBDA * la).backward(); _acc("sa", la)
                 # addition CE
                 if ADDITION_LAMBDA > 0:
                     ops.ablate_on = False; ops.add_on = True
                     ops.set_directions(stack_samples(samples))
                     logits = forward_logits(d["add_ids"], n_sample)[:, :-1]
                     lad = compute_ce_loss_batched(logits, d["add_lab"])
-                    (ADDITION_LAMBDA * lad).backward(); bucket["sad"] += lad.item()
+                    (ADDITION_LAMBDA * lad).backward(); _acc("sad", lad)
                 # retain KL  (baseline is direction-independent -> compute once, broadcast to rows)
                 ops.ablate_on = False; ops.add_on = False
                 with torch.no_grad():
@@ -543,20 +649,20 @@ def train_cone(model, tokenizer, ops, render, refusal_toks, device, hidden, best
                 ops.set_directions(stack_samples(samples))
                 ret = forward_logits(d["ret_ids"], n_sample)[:, -NUM_TARGET_TOKENS:]
                 lr_ = kl_div_fn(base.expand(n_sample, -1, -1), ret)
-                (RETAIN_LAMBDA * lr_).backward(); bucket["sr"] += lr_.item()
+                (RETAIN_LAMBDA * lr_).backward(); _acc("sr", lr_)
                 ops.ablate_on = False
             # ---- basis vectors directly: all cone_dim basis vectors in one batch ----
             ops.ablate_on = True; ops.add_on = False
             ops.set_directions(stack_basis())
             logits = forward_logits(d["abl_ids"], cone_dim)[:, :-1]
             ba = compute_ce_loss_batched(logits, d["abl_lab"])
-            (ABLATION_LAMBDA * ba).backward(); bucket["ba"] += ba.item()
+            (ABLATION_LAMBDA * ba).backward(); _acc("ba", ba)
             if ADDITION_LAMBDA > 0:
                 ops.ablate_on = False; ops.add_on = True
                 ops.set_directions(stack_basis())
                 logits = forward_logits(d["add_ids"], cone_dim)[:, :-1]
                 bad = compute_ce_loss_batched(logits, d["add_lab"])
-                (ADDITION_LAMBDA * bad).backward(); bucket["bad"] += bad.item()
+                (ADDITION_LAMBDA * bad).backward(); _acc("bad", bad)
             ops.ablate_on = False; ops.add_on = False
             with torch.no_grad():
                 base = forward_logits(d["ret_ids"], 1)[:, -NUM_TARGET_TOKENS:].detach()
@@ -564,7 +670,7 @@ def train_cone(model, tokenizer, ops, render, refusal_toks, device, hidden, best
             ops.set_directions(stack_basis())
             ret = forward_logits(d["ret_ids"], cone_dim)[:, -NUM_TARGET_TOKENS:]
             br = kl_div_fn(base.expand(cone_dim, -1, -1), ret)
-            (RETAIN_LAMBDA * br).backward(); bucket["br"] += br.item()
+            (RETAIN_LAMBDA * br).backward(); _acc("br", br)
             ops.ablate_on = False
 
             step += 1
