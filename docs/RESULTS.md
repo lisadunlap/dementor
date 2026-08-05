@@ -624,6 +624,38 @@ Blocking EOS does **not** rescue qwen3.6-27b: forced to continue, it emits `'\n\
 and `'</think>\nassistant\n<think>'`. It has nothing to say under this intervention, so the abort
 path is correct for it.
 
+**Are these collapses refusal-specific?** Ablating a random unit direction at every layer is the
+control that separates "the model responds to losing its refusal direction" from "the model cannot
+tolerate this intervention at all". The two failures answer differently:
+
+| model | unablated | all-layer DIM ablation | all-layer RANDOM ablation |
+| --- | --- | --- | --- |
+| qwen3.6-27b | 30 tok, normal prose | **1 tok, a single `<\|im_end\|>`** | 30 tok, normal prose |
+| gemma-4-e4b | 23.5 tok | `<start_of_turn>model` repeated | **`<end_of_turn>` repeated** |
+
+For **qwen3.6-27b the collapse is direction-specific**: a random direction ablated across all 64
+layers does nothing at all, while the refusal direction silences the model completely. That is a
+real behavioural response -- removing this model's refusal direction produces *silence* rather than
+compliance -- and it is why the RDO method cannot be applied to it. The method bootstraps its
+regression targets from what the model says under dim-ablation; this model says nothing. That is
+the method being inapplicable for a substantive reason, not the pipeline malfunctioning.
+
+For **gemma-4-e4b the collapse is generic**: dim and random ablation degrade it into template
+loops alike. It simply cannot tolerate all-layer ablation, so no direction-specific conclusion can
+be drawn from it either.
+
+Both are therefore **untestable rather than refusal-resistant**, which is a different claim from
+"failed the positive control". A model that fails the control has been measured and did not erode;
+a model that is untestable never had a valid control constructed, and its verdict is not a
+datum. gemma-4-31b and gemma-4-e4b should be dropped from the roster rather than reported as
+resistance cases; qwen3.6-27b likewise, though its underlying behaviour is a real finding worth
+one sentence.
+
+(Method note: this control was first run with prompts taken from another model's targets file.
+Feeding Qwen-templated prompts to a Gemma model produced identical degenerate output in *every*
+arm -- including the unablated one -- which is what exposed the error. Prompts are pre-rendered
+per model and must come from that model's own targets file.)
+
 **Scope -- and a correction we made along the way.** We briefly withdrew the appendix claim that
 "a wider cone reaches refusal in at least one resistant case (Qwen 3.6 27B, k=8, beta=2.0, refusal
 1.00 -> 0.00 by layer 43)". That was wrong: the claim describes a **single-layer** depth sweep, and
