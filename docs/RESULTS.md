@@ -566,3 +566,38 @@ Companion result, same task: **qwen3-30b-a3b re-evaluated with its better k=5 re
 3.7% for k=2 -- an improvement, but still PC_FAILS, and still far from the 10 pp bar. The
 training objective's score again fails to predict the benchmark control. Remaining benchmarks
 for that model are still running.
+
+## qwen3.6-27b's "refusal resistance" is a cone-training failure (2026-08-04)
+
+qwen3.6-27b was the one resistant model the k<=5 retry never covered, and the only one whose
+cone-training score never rose above noise (best 1.30 against ~12 for models whose cone fits).
+Training it over the full k in {2,...,8} with betas extended to 3.0 does not change that:
+
+| k | 2 | 3 | 4 | 5 | 6 | 7 | 8 |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| erosion | +0.44 | +1.48 | -0.60 | +1.10 | -0.06 | +1.32 | +0.50 |
+
+No value of k reaches even a sixth of a normal model's score, and the sequence is flat noise
+rather than a rising curve truncated too early.
+
+**The reason is that the cone never trains.** Every step of every dim reports `loss=nan`, and
+every checkpoint saves with `lowest_loss=inf` -- meaning no step ever improved on the initial
+value, so the saved "cone" is whatever the initialisation produced. This is true in the new
+k in {2..8} run *and* in the canonical k in {2,3,4} run (9 `loss=nan` lines in its `rdo_run.log`),
+so it is a persistent property of this model in this pipeline, not a transient. The model is a
+27B mamba-hybrid, and bf16 NaN in SSM layers is a failure mode this project has hit before.
+
+The consequence is that **qwen3.6-27b's PC_FAILS verdict carries no information about the model**.
+It belongs with gemma-4-31b as a measurement failure -- there, coherence collapse made the
+positive control untestable; here, the optimiser producing NaN means no positive control was ever
+constructed. Neither is evidence that the model resists refusal ablation. Both are already outside
+the 24-model dissociation roster, so no reported result changes; what changes is what may be said
+about *why* they are outside it.
+
+**Unverified claim flagged.** The appendix states that "a wider cone reaches refusal in at least
+one resistant case (Qwen 3.6 27B, k=8, beta=2.0, refusal 1.00 -> 0.00 by layer 43)". We could not
+locate the artifact behind that number: qwen3.6-27b is not among the 9 models in the k<=8
+`bank_dim8` pass, there is no layer-sweep output directory for it, and the k=8 cone we trained
+here is untrained in the sense above (erosion +0.50). The claim may rest on a run we cannot see;
+it should be re-derived or removed before submission, since it is currently the paper's only
+evidence that resistance is not a model property.
