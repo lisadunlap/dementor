@@ -25,7 +25,7 @@ CLI:  rdo_port.py --model <path> --dim-dir <dir with direction.pt+metadata> --ou
                   --min-cone-dim 2 --max-cone-dim 4 [--family qwen2.5|gemma|llama3|auto]
                   [--splits-dir <saladbench_splits>] [--max-train N] [--reuse-targets <json dir>]
 """
-import os, sys, json, time, argparse, random
+import os, sys, json, time, argparse, random, re
 import torch
 import torch.nn.functional as F
 
@@ -53,6 +53,51 @@ CLIPNORM = 10.0
 # Abort cone training when this fraction of ablation targets come back empty. Empty targets make
 # the ablation cross-entropy NaN, which silently yields an untrained cone (see build_targets).
 EMPTY_TARGET_ABORT = float(os.environ.get("RDO_EMPTY_TARGET_ABORT", "0.5"))
+# A generated ablation target must carry real, non-repetitive content. See target_is_usable.
+MIN_TARGET_CONTENT = int(os.environ.get("RDO_MIN_TARGET_CONTENT", "12"))
+MIN_TARGET_DIVERSITY = float(os.environ.get("RDO_MIN_TARGET_DIVERSITY", "0.35"))
+
+
+_TAG_RE = re.compile(r"<\|?[^<>]{0,40}?\|?>")
+_ROLE_RE = re.compile(r"\b(assistant|user|system|model)\b", re.I)
+
+
+def _distinct_ngram_ratio(s, n=4):
+    """Fraction of character n-grams that are distinct. Near 0 for a repeated short unit."""
+    if len(s) <= n:
+        return 1.0
+    grams = [s[i:i + n] for i in range(len(s) - n + 1)]
+    return len(set(grams)) / len(grams)
+
+
+def target_is_usable(t):
+    """True when a generated ablation target carries real content for the cone to regress onto.
+
+    Emptiness is not a sufficient test, and neither is a per-model tag blacklist. Three roster
+    models degenerate under all-layer dim-ablation, each in a different surface form:
+
+        qwen3.6-27b   ''  (a single <|im_end|>), or '</think>\nassistant\n<think>' with EOS blocked
+        gemma-4-31b   '//(//-//-//-//-//-//-...'
+        gemma-4-e4b   '<start_of_turn>model\n<start_of_turn>model\n...'
+
+    Only the first is empty; the other two are non-empty and yield a FINITE cross-entropy, so the
+    cone trains happily against noise -- gemma-4-31b's first-step loss is 1297 and gemma-4-e4b's
+    is 499, against 4.5-23 for every model that produces real text. What the three share is
+    extreme repetition of a short unit, so test for that directly rather than blacklisting each
+    model's chat template."""
+    s = str(t or "")
+    if not s.strip():
+        return False
+    if _distinct_ngram_ratio(s) < MIN_TARGET_DIVERSITY:
+        return False                      # a short unit repeated (punctuation or one tag)
+    # Strip chat markup generically -- any <...> or <|...|> span, then the bare role words that
+    # survive it -- so a target built only from alternating template tokens reduces to nothing.
+    # This is deliberately not a per-model tag list: the three degenerate models use three
+    # different templates and a fourth would use a fourth.
+    stripped = _TAG_RE.sub(" ", s)
+    stripped = _ROLE_RE.sub(" ", stripped)
+    return len("".join(ch for ch in stripped if ch.isalnum())) >= MIN_TARGET_CONTENT
+
 
 # rdo.py hardcoded chat templates (verbatim) -----------------------------------------------------
 GEMMA_T = "<start_of_turn>user\n{instruction}<end_of_turn>\n<start_of_turn>model\n"
@@ -398,8 +443,15 @@ def sample_hypersphere(n, dim, device):
 
 # ============================================================================= generation w/ intervention
 @torch.no_grad()
-def gen_batch(model, tokenizer, ops, prompts, max_new_tokens, device, batch_size, mode, direction=None):
-    """mode in {'off','ablate','add'}. Returns decoded continuations (prompt stripped)."""
+def gen_batch(model, tokenizer, ops, prompts, max_new_tokens, device, batch_size, mode,
+              direction=None, min_new_tokens=0):
+    """mode in {'off','ablate','add'}. Returns decoded continuations (prompt stripped).
+
+    `min_new_tokens` blocks EOS for that many steps. Needed because some models answer ablation
+    by ending the turn immediately rather than by saying anything: qwen3.6-27b emits a single
+    <|im_end|> under all-layer dim-ablation, which yields an empty target, an all-ignored label
+    batch, and a NaN training loss. Forcing a floor on the generation length recovers a usable
+    target under the SAME intervention, rather than weakening the intervention to get one."""
     ops.ablate_on = (mode == "ablate")
     ops.add_on = (mode == "add")
     if direction is not None:
@@ -410,7 +462,8 @@ def gen_batch(model, tokenizer, ops, prompts, max_new_tokens, device, batch_size
         batch = prompts[s:s + batch_size]
         enc = tokenizer(batch, return_tensors="pt", padding=True, add_special_tokens=True).to(device)
         g = model.generate(**enc, max_new_tokens=max_new_tokens, do_sample=False,
-                           use_cache=False, pad_token_id=tokenizer.pad_token_id)
+                           use_cache=False, pad_token_id=tokenizer.pad_token_id,
+                           **({"min_new_tokens": min_new_tokens} if min_new_tokens else {}))
         for j, t in enumerate(tokenizer.batch_decode(g[:, enc["input_ids"].shape[1]:],
                                                      skip_special_tokens=True)):
             out[s + j] = fix_bytelevel(t)
@@ -469,14 +522,26 @@ def build_targets(model, tokenizer, ops, render, dim_dir, refusal_toks, device, 
     # model looks merely refusal-RESISTANT rather than untrained.  qwen3.6-27b hit exactly this:
     # ablating the dim direction makes it emit a single <|im_end|> token, so 861/861 of its
     # ablation targets were empty.  Refuse to continue instead of manufacturing a null result.
-    n_empty = sum(1 for t in abl if not t.strip())
+    n_empty = sum(1 for t in abl if not target_is_usable(t))
+    if n_empty / max(1, len(abl)) >= EMPTY_TARGET_ABORT:
+        # Retry under the SAME ablation with EOS blocked for a floor of tokens. This keeps the
+        # intervention intact (still all-layer, still the dim direction) and only denies the model
+        # the option of answering by ending the turn. Weakening the ablation instead would train
+        # the cone against a different intervention than the one being measured.
+        floor = max(8, NUM_TARGET_TOKENS // 2)
+        log(f"[targets] {n_empty}/{len(abl)} ablation targets empty -- retrying with "
+            f"min_new_tokens={floor} (EOS blocked, ablation unchanged)")
+        abl = gen_batch(model, tokenizer, ops, harmful_p, NUM_TARGET_TOKENS, device, batch_size,
+                        "ablate", direction=dim, min_new_tokens=floor)
+        n_empty = sum(1 for t in abl if not target_is_usable(t))
+        log(f"[targets] after retry: {n_empty}/{len(abl)} still unusable")
     if n_empty:
         frac = n_empty / max(1, len(abl))
-        log(f"[targets] WARNING {n_empty}/{len(abl)} ({frac:.0%}) ablation targets are EMPTY -- the "
-            f"model produces no text under dim-ablation")
+        log(f"[targets] WARNING {n_empty}/{len(abl)} ({frac:.0%}) ablation targets are UNUSABLE "
+            f"(empty or template spam) -- the model produces no content under dim-ablation")
         if frac >= EMPTY_TARGET_ABORT:
             raise RuntimeError(
-                f"{n_empty}/{len(abl)} ({frac:.0%}) ablation targets are empty (threshold "
+                f"{n_empty}/{len(abl)} ({frac:.0%}) ablation targets are unusable (threshold "
                 f"{EMPTY_TARGET_ABORT:.0%}). The cone cannot be trained: cross-entropy over an "
                 f"all-ignored label batch is NaN, so no checkpoint would ever improve and the "
                 f"saved cone would be the initialisation. This model is UNTESTABLE under the "
