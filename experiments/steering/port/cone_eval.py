@@ -28,7 +28,12 @@ EXP = CFG.STEER_DATA.rstrip("/") + "/"  # AdvBench harmful300.csv data dir (env 
 BENCH_DIR = CFG.BENCH_DIR               # other benchmark CSVs (env DEMENTOR_STEER_BENCH_DIR)
 JUDGE_MODEL = "Qwen/Qwen3-8B"
 HARMBENCH_CLS = "cais/HarmBench-Llama-2-13b-cls"  # optional native HarmBench grader
-ABLATE_LAYER = 14
+# Which layer's fingerprint/random vectors to PULL from --vectors-ml, and (in the
+# default single-layer mode) where to ablate them. The depth-sweep robustness runs
+# override this to select vectors derived at 25/50/75% of model depth; combined
+# with --single-dir-all-layers the value then only selects the vector, since the
+# ablation site is every layer.
+ABLATE_LAYER = int(os.environ.get("DEMENTOR_ABLATE_LAYER", "14"))
 N_HARMFUL = 300
 MAXNEW = int(os.environ.get("DEMENTOR_CONE_MAX_NEW_TOKENS", "256"))
 
@@ -173,6 +178,19 @@ def stage_generate(args, od):
         VEC_single = {"fingerprint": ml["fingerprint"].float(), "random": ml["random"].float()}
 
     tok, model, dev = RP.load_model_mp_aware(args.model)  # MP-aware (device_map when DEMENTOR_MP=1)
+    if getattr(args, "adapter", None):
+        # Adapter-steering runs: apply a LoRA imitation adapter, then MERGE it so
+        # the model is a plain HF module again -- get_transformer_layers and every
+        # hook path work unchanged, and the merged weights are mathematically the
+        # fine-tuned model. The cone/fingerprint/random directions stay the STOCK
+        # model's: the question is whether the stock geometry still dissociates
+        # after imitation fine-tuning, so re-deriving them here would answer a
+        # different (and weaker) question. NB merging may fail on quantized bases
+        # (gpt-oss mxfp4); those adapters need a bf16 base copy.
+        from peft import PeftModel
+        log(f"[D] applying adapter {args.adapter} (merge_and_unload)")
+        model = PeftModel.from_pretrained(model, args.adapter)
+        model = model.merge_and_unload()
     model.requires_grad_(False)
     tlayers = get_transformer_layers(model)
     lidx = resolve_layer_index(ABLATE_LAYER, len(tlayers))
@@ -227,7 +245,10 @@ def stage_generate(args, od):
                 h.remove()
 
     def emit(direction, beta, resps):
-        df = pd.DataFrame({"direction": direction, "layer": (ABLATE_LAYER if direction in ("fingerprint", "random") else -1),
+        # layer = -1 means "applied at every layer" (always true for the cone, and
+        # for the single directions too under --single-dir-all-layers).
+        _sd_layer = -1 if args.single_dir_all_layers else ABLATE_LAYER
+        df = pd.DataFrame({"direction": direction, "layer": (_sd_layer if direction in ("fingerprint", "random") else -1),
                            "alpha": beta, "prompt": prompts, "model_response": resps, "ppl": perplexity(resps),
                            "label": meta_label, "expected": meta_expected, "category": meta_category})
         df["rep4"] = df["model_response"].map(rep4)
@@ -246,12 +267,27 @@ def stage_generate(args, od):
         df = emit("cone", beta, gen(lambda b=beta: register_cone(model, basis, b)))
         df.to_csv(p, index=False)
         log(f"[D] {tag:14s} median_ppl={df['ppl'].median():8.1f} mean_rep4={df['rep4'].mean():.3f}")
-    # single-direction controls (fingerprint, random) at ABLATE_LAYER
+    # single-direction controls (fingerprint, random): at ABLATE_LAYER by default,
+    # or at every layer under --single-dir-all-layers (same operator as the cone).
+    if args.single_dir_all_layers:
+        # Unit-normalise, then present as a k=1 orthonormal basis. make_ablation_hook
+        # normalises internally; make_subspace_hook does NOT (it assumes an
+        # orthonormal basis), so the normalisation must happen here or beta would be
+        # scaled by ||v|| and the arms would no longer be comparable.
+        VEC_basis = {d: (v / v.norm()).unsqueeze(0) for d, v in VEC_single.items()}
+        log(f"[D] single-dir arms use the CONE operator (all {len(tlayers)} layers), "
+            f"not layer {ABLATE_LAYER}")
+
+    def _single_hooks(d, b):
+        if args.single_dir_all_layers:
+            return register_cone(model, VEC_basis[d], b)
+        return [tlayers[lidx].register_forward_hook(make_ablation_hook(VEC_single[d], b))]
+
     for direction, beta in itertools.product(list(VEC_single), betas):
         tag = f"{direction}_b{beta}"; p = os.path.join(parts, tag + ".csv")
         if os.path.exists(p):
             log(f"[D] cached {tag}"); continue
-        df = emit(direction, beta, gen(lambda d=direction, b=beta: [tlayers[lidx].register_forward_hook(make_ablation_hook(VEC_single[d], b))]))
+        df = emit(direction, beta, gen(lambda d=direction, b=beta: _single_hooks(d, b)))
         df.to_csv(p, index=False)
         log(f"[D] {tag:14s} median_ppl={df['ppl'].median():8.1f} mean_rep4={df['rep4'].mean():.3f}")
     del model, tok
@@ -606,6 +642,19 @@ def main():
                     help="benchmark NAME (advbench,sorrybench,sgbench,harmbench,strongreject,"
                          "orbench_hard,orbench_80k,orbench_toxic,xstest,...) or a .csv path in the pipeline format")
     ap.add_argument("--max-prompts", type=int, default=0, help="cap #prompts (0 = use all)")
+    ap.add_argument("--adapter", default=None,
+                    help="path or HF id of a LoRA adapter to merge into --model before "
+                         "steering (adapter-steering runs: stock directions applied to "
+                         "imitation-fine-tuned weights)")
+    ap.add_argument("--single-dir-all-layers", action="store_true",
+                    help="ablate the fingerprint/random single directions with the SAME operator "
+                         "the cone uses -- every decoder layer (input + attn out + mlp out) -- "
+                         "instead of only at ABLATE_LAYER. Removes the strength asymmetry between "
+                         "the treatment arm and the positive control: with a normalised [1,hidden] "
+                         "basis, make_subspace_hook computes h - beta*(h.v)v, identical to "
+                         "make_ablation_hook, so ONLY the set of application sites changes. "
+                         "Write these runs to a separate --out dir; they are not comparable "
+                         "cell-for-cell with the fixed-layer campaign.")
     ap.add_argument("--harmbench-grader", action="store_true",
                     help="also run the native cais/HarmBench-Llama-2-13b-cls judge (GPU)")
     ap.add_argument("--strongreject-grader", action="store_true",
