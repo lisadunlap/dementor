@@ -353,13 +353,43 @@ def family_of(model_path, override):
     return "generic"
 
 
+def hardcoded_template_matches(hard, tokenizer):
+    """Does this checkpoint's own chat template actually use the hardcoded family markup?
+
+    family_of() keys off the model PATH, so every "gemma*" checkpoint gets GEMMA_T -- which is the
+    gemma-2 markup, inherited verbatim from rdo.py. gemma-4 uses a different scheme entirely
+    (`<|turn>user ... <turn|>`, and the 31B additionally opens a `<|channel>thought` block), so
+    gemma-4 checkpoints were being trained on prompts they cannot parse. The model then emits
+    garbage, every ablation target is degenerate, and the cone trains on noise -- which is exactly
+    how gemma-4-31b and gemma-4-e4b ended up with unusable cones while their EVAL numbers (which
+    render through the tokenizer, not through this table) looked perfectly sane.
+
+    Compare the special-token MARKUP, not the literal prefix. The hardcoded templates are
+    deliberate simplifications -- LLAMA3_T omits the system block that Llama-3.1's own template
+    injects -- so a prefix-substring test would reject them and silently switch working models to
+    a different rendering. What actually matters is whether the checkpoint speaks the same turn
+    markers at all: gemma-2 emits `<start_of_turn>`, gemma-4 emits `<|turn>`, and a template built
+    from the wrong one is unparseable rather than merely differently-worded.
+    """
+    tags = set(re.findall(r"<\|?[^<>{}]+?\|?>", hard))
+    if not tags:
+        return True
+    try:
+        ref = tokenizer.apply_chat_template([{"role": "user", "content": "PROBE"}],
+                                            tokenize=False, add_generation_prompt=True)
+    except Exception:
+        return True          # no usable template to check against -- keep the historical behaviour
+    return all(t in ref for t in tags)
+
+
 def make_render(family, tokenizer):
-    if family == "gemma":
-        return lambda ins: GEMMA_T.format(instruction=ins)
-    if family == "qwen2.5":
-        return lambda ins: QWEN25_T.format(instruction=ins)
-    if family == "llama3":
-        return lambda ins: LLAMA3_T.format(instruction=ins)
+    hard = {"gemma": GEMMA_T, "qwen2.5": QWEN25_T, "llama3": LLAMA3_T}.get(family)
+    if hard is not None and hardcoded_template_matches(hard, tokenizer):
+        return lambda ins: hard.format(instruction=ins)
+    if hard is not None:
+        log(f"[render] hardcoded {family!r} template does NOT match this checkpoint's chat "
+            f"template -- falling back to the tokenizer's own. Training on the wrong markup "
+            f"produces degenerate ablation targets and an untrained cone.")
     def generic(ins):
         msgs = [{"role": "user", "content": ins}]
         r = None
