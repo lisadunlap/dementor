@@ -64,6 +64,17 @@ ME = os.environ.get("USER", "ethantsliu")
 # GPU4 is compute-prohibited on OUR box; NEVER usable. Env DEMENTOR_FORBIDDEN_GPUS (default "4");
 # a partner with no banned card sets it empty.
 FORBIDDEN_GPUS = _gpu_set("DEMENTOR_FORBIDDEN_GPUS", "4")
+
+# Hard per-daemon card allocation. Env DEMENTOR_ONLY_GPUS; unset OR empty -> no restriction, so a
+# single-daemon box behaves byte-identically to before.
+#
+# Set this whenever SEVERAL daemons share one box. DEMENTOR_GPUS (LEASE_GPUS) only governs lease
+# ARBITRATION, and gpu_usability() enumerates every card nvidia-smi reports, so the launch path
+# ("which cards are free right now") was never scoped to a daemon's allocation. Four per-dataset
+# daemons each therefore saw all four cards and each launched baseline generators on all of them --
+# 16 competing processes on 4 GPUs. Worse, lease_claim() is a documented no-op when SEQ_COEXIST=0,
+# so with coexistence off there was NO arbitration left to catch it.
+ONLY_GPUS = _gpu_set("DEMENTOR_ONLY_GPUS", "") or None
 # Slugs whose LOCAL training must shard across 2 GPUs (device_map model-parallel) because the
 # student is too big for one 80GB card. gemma-4-31b (256K-vocab, untied lm_head VLM text tower)
 # needs it. granite-4-h-small (32B-A9B) is INTENTIONALLY single-GPU: bf16 ~65GB fits one 80GB H100
