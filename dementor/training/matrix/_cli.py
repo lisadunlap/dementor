@@ -134,6 +134,15 @@ def main() -> int:
     sft_p.add_argument("--max-jobs", type=int, default=None)
     sft_p.add_argument("--manifest-out", type=Path, default=None)
     sft_p.add_argument("--parallel", type=int, default=1, help="Number of concurrent SFT jobs (ThreadPoolExecutor)")
+    # Cell filters. Without these launch-sft submits the WHOLE matrix (18 sources x 17 targets x
+    # 3 seeds x 4 datasets), which on a two-box campaign means paying Tinker for the other box's
+    # shard and for seeds nobody asked for. --only-llama already exists above, so these mirror
+    # _add_cell_filter_args minus that flag.
+    sft_p.add_argument("--source", default=None, help="Source model id or slug (shard by source)")
+    sft_p.add_argument("--target", default=None, help="Target model id or slug")
+    sft_p.add_argument("--dataset", choices=list(TRAIN_DATASETS), default=None)
+    sft_p.add_argument("--seed", type=int, default=None)
+    sft_p.add_argument("--max-cells", type=int, default=None)
 
     self_sft_p = sub.add_parser("launch-self-sft", help="Submit self-SFT drift-control jobs to Tinker.")
     self_sft_p.add_argument("--dry-run", action="store_true")
@@ -270,7 +279,9 @@ def main() -> int:
         return 0
 
     if args.cmd == "launch-sft":
-        cells = list(iter_cells())
+        cells = _filtered_cells_from_args(args)
+        print(f"launch-sft: {len(cells)} cells after filters "
+              f"(source={args.source} target={args.target} dataset={args.dataset} seed={args.seed})")
         manifest = launch_sft(
             cells=cells,
             dry_run=args.dry_run,
