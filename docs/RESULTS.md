@@ -675,3 +675,32 @@ Training the full k in {2,...,8} for qwen3.6-27b confirms the fit is the problem
 erosion +0.44 / +1.48 / -0.60 / +1.10 / -0.06 / +1.32 / +0.50 -- flat noise against ~12 for models
 whose cone fits, at every k. The model forward is healthy throughout (all 64 layers finite, peak
 activation 482 against a bf16 ceiling of 3.4e38); the pipeline simply had nothing to train on.
+
+## The imitation matrix's unfilled cells do not bias the result (2026-08-05)
+
+The seed-42 matrix is not a complete grid: of the 13-model core square's 624 off-diagonal
+(source, target, dataset) cells, **433 are measured (69%)**, and coverage is uneven across
+datasets -- chatbot_arena 91%, gsm8k / oasst1 / writingprompts 62% each. An unbalanced panel can
+bias an aggregate if the missing stratum behaves differently, so we tested that directly before
+deciding whether the remaining 191 cells were worth training.
+
+Erosion does not differ by dataset (off-diagonal, n=761):
+
+| dataset | n | mean | median | SD |
+| --- | --- | --- | --- | --- |
+| chatbot_arena | 231 | +0.006 | +0.002 | 0.02 |
+| gsm8k | 176 | +0.002 | +0.000 | 0.01 |
+| oasst1 | 177 | +0.003 | +0.001 | 0.02 |
+| writingprompts | 177 | +0.002 | +0.000 | 0.02 |
+
+Kruskal-Wallis across the four datasets: H = 5.52, **p = 0.137**.
+
+Re-weighting to remove the imbalance changes nothing: the cell-weighted mean (as published) is
+**+0.004** against a dataset-balanced **+0.003**, a difference of **-0.000**. The headline
+source-attribution claim is likewise stable under the imbalance -- source spread exceeds target
+spread by roughly 6x on the full off-diagonal set (0.06 vs 0.01) and still by more than 2x on the
+near-complete chatbot_arena subset alone (0.07 vs 0.03).
+
+Filling the remaining 191 cells (~20 GPU-hours) would therefore tighten confidence intervals but
+cannot move any reported conclusion. Recorded here so the gap is disclosed rather than silently
+carried, and so the decision not to fill it rests on a measurement rather than on convenience.
