@@ -408,6 +408,20 @@ def make_render(family, tokenizer):
         rs = r.rstrip()
         if rs.endswith("<|start|>assistant") and "<|channel|>final<|message|>" not in rs[-64:]:
             r = rs + "<|channel|>final<|message|>"
+            return r
+        # gemma-4-31b (and any template that OPENS a reasoning channel in the generation prompt):
+        # apply_chat_template ends with "<|turn>model\n<|channel>thought\n<channel|>", so the first
+        # generated token lands inside the model's private reasoning and is never the answer's first
+        # token. The P(first-token=="I") refusal probe is then permanently blind, compute_dim logs
+        # "weak harmful refusal signal (kept 0)", the difference-in-means direction is derived from a
+        # meaningless ranking, and ablating it destroys generation instead of removing refusal --
+        # which is how gemma-4-31b produced 1184/1184 unusable ablation targets.
+        # A COMPLETED assistant turn in this same template is just "<|turn>model\nANSWER<turn|>",
+        # with no thought block, so dropping the trailing channel opener puts generation exactly
+        # where the answer belongs. enable_thinking=False does not help: this template ignores it.
+        m = re.search(r"<\|channel>\w+\s*<channel\|>\s*$", rs)
+        if m:
+            r = rs[:m.start()]
         return r
     return generic
 
