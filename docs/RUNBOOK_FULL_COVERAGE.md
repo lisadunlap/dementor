@@ -95,17 +95,33 @@ Bandwidth-bound — run it alongside GPU work, not instead of it.
 
 ---
 
-## 2. Split
+## 2. Split — allocated by DOWNLOAD cost, not GPU count
 
-**Box B (4×H100)** — self-contained, no shared state beyond the repo:
-* J1 `gemma-4-e4b` retrain — 1 card
-* J3 `granite-4-h-small` — 1 card; `nemotron-super-120b` — 3 cards
-* J2 depth sweeps — 1 card each, run 3–4 at a time
-* then J4 imitation trainings for **3 sources**: `qwen3.6-27b`, `qwen3.6-35b-a3b`, `qwen3.5-4b`
+Box A already holds **1.1 TB of cached weights**, including all 15 depth-sweep models and
+llama-3.3-70b. Box B is bare. So the split is driven by what each box would have to fetch, not by
+how many cards it has.
 
-**Box A (8×H100)** — continues J5 adapter steering, J1 gemma-4-31b, then J4 for the other 4 sources.
+**Box B (4×H100, fresh)** — one big download, then pure GPU:
+* **J5 llama-3.3-70b adapter steering** — 3-card MP lane, 60 cells. One ~140 GB model download and
+  a handful of tiny LoRAs, then ~30 h of GPU with no further network. This is the single best job
+  for a fresh box.
+* **J1 gemma-4-e4b retrain** on the 4th card (~15 GB).
+* **J4 imitation trainings** for `qwen3.6-27b`, `qwen3.6-35b-a3b`, `qwen3.5-4b` — 3 model downloads;
+  the preference data is already committed under `data/results/matrix/dpo_data/`, so no target
+  weights are needed.
 
----
+**Box A (8×H100, 6 usable — GPU4 prohibited, GPU6 in use)** — everything is already cached:
+* J1 gemma-4-31b retrain (running)
+* J5 adapter steering, the 367 single-GPU cells
+* **J2 all 16 depth sweeps** — moved here because box A has every one of those models local.
+  On box B they would be ~1.5 TB of downloads; here they are ~5 h of GPU and no network.
+* J3 `granite-4-h-small` and `nemotron-super-120b`
+* J4 imitation trainings for the remaining 4 sources
+
+**Do not** give box B the depth sweeps. That was the original plan and it is backwards: it is the
+most download-heavy job in the campaign and the only one that is completely free on box A.
+
+Rough balance: ~275 card-hours total across 10 usable cards, landing near 30 h per box.
 
 ## 3. Gotchas that have already cost time
 
