@@ -8,6 +8,7 @@ in training dependencies.
 from __future__ import annotations
 
 import functools
+import os
 from pathlib import Path
 from typing import Any
 
@@ -43,11 +44,40 @@ def registry_path() -> Path:
 
 # --- roster -----------------------------------------------------------------
 
+def _local_backend_overrides() -> set[str]:
+    """Slugs/ids this BOX should train locally regardless of config.yaml's backend.
+
+    Env: DEMENTOR_LOCAL_BACKENDS="qwen3.5-4b,qwen3.6-27b,qwen3.6-35b-a3b"
+
+    config.yaml is shared by both boxes on one branch, so its per-model ``backend`` cannot express
+    "this model is Tinker-backed on the box with no weights for it, but local on the box that has
+    downloaded them". Editing the shared value to use a box's idle cards would silently retarget the
+    other box's workers too. Everything else in this codebase is env-overridable per box
+    (experiments/_paths.py, experiments/steering/steer_config.py); the roster was the gap.
+
+    Overriding only flips the backend. It does not invent weights: the local trainer still resolves
+    the model's ``id`` through the HF cache, so the box must actually hold or be able to fetch it.
+    """
+    raw = os.environ.get("DEMENTOR_LOCAL_BACKENDS", "")
+    return {s.strip() for s in raw.split(",") if s.strip()}
+
+
 def roster(include_legacy: bool = False) -> list[dict[str, Any]]:
     cfg = load_config()
     models = list(cfg.get("roster", []))
     if include_legacy:
         models += list(cfg.get("roster_legacy", []))
+    forced_local = _local_backend_overrides()
+    if forced_local:
+        out = []
+        for m in models:
+            if m.get("slug") in forced_local or m.get("id") in forced_local:
+                m = dict(m)
+                m["backend"] = "local"
+                out.append(m)
+            else:
+                out.append(m)
+        return out
     return models
 
 
