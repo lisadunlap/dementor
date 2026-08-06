@@ -33,11 +33,23 @@ TARGETS = [
     ("microsoft/phi-4", False),
 ]
 
-# Opt-in, named-only targets: too large to belong in the default sweep. Fetch with
+# Opt-in, named-only targets: too large (or too situational) for the default sweep. Fetch with
 #   python download_weights.py llama-3.3-70b
-# Needed to bootstrap a bare box for J5 adapter steering (~140 GB, gated: needs HF_TOKEN).
+#   python download_weights.py j4-qwen          # the three J4 imitation sources, all ungated
+# llama-3.3-70b bootstraps a bare box for J5 adapter steering (~140 GB, GATED: needs HF_TOKEN).
+# The J4 Qwen sources are UNGATED, so a box with no token can still fetch them and run J4 locally
+# (config.yaml marks them backend=tinker only because no box held local weights; see
+# dementor.config._local_backend_overrides).
 EXTRA = {
     "llama-3.3-70b": ("meta-llama/Llama-3.3-70B-Instruct", True),
+    "qwen3.5-4b": ("Qwen/Qwen3.5-4B", False),
+    "qwen3.6-27b": ("Qwen/Qwen3.6-27B", False),
+    "qwen3.6-35b-a3b": ("Qwen/Qwen3.6-35B-A3B", False),
+}
+
+# Named bundles, expanded by _selected().
+GROUPS = {
+    "j4-qwen": ["qwen3.5-4b", "qwen3.6-27b", "qwen3.6-35b-a3b"],
 }
 
 FALLBACKS = {
@@ -59,12 +71,16 @@ def dl(repo_id, gated):
         return False
 
 def _selected(argv):
-    """No args -> the default TARGETS sweep (unchanged). Args -> only those, by EXTRA key or repo id."""
+    """No args -> the default TARGETS sweep (unchanged). Args -> only those, by GROUPS bundle,
+    EXTRA key, default-target repo id, or bare repo id."""
     if not argv:
         return list(TARGETS)
+    names = []
+    for a in argv:
+        names.extend(GROUPS.get(a, [a]))
     picked = []
     known = {r: g for r, g in TARGETS}
-    for name in argv:
+    for name in names:
         if name in EXTRA:
             picked.append(EXTRA[name])
         elif name in known:
