@@ -43,7 +43,7 @@ POLL_SECONDS = 900  # 15 min
 COMPLETED_STEP = 15
 SUBMIT_MILESTONES = [25, 50, 75]
 N_LOCAL_BASELINES = 5
-DATASET = "chatbot_arena"
+DATASET = os.environ.get("IMIT_DATASET", "chatbot_arena")  # must match the daemon's IMIT_DATASET
 SEED = 42
 ME = os.environ.get("USER", "ethantsliu")
 

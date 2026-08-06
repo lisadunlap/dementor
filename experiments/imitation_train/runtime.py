@@ -46,7 +46,15 @@ REGISTRY_PATH = DATA_ROOT / "tinker_adapters.json"
 REGISTRY_BACKUP_MARKER = STATE_DIR / "registry_backup_done.marker"
 LOCAL_LOG_DIR = STATE_DIR / "local_logs"
 
-DATASET = "chatbot_arena"
+# Which dataset THIS daemon instance trains. Default chatbot_arena, so an unset env reproduces the
+# previous behaviour byte-for-byte. Overridable because the 16x16 grid target is 960 cells = 16
+# sources x 15 targets x **4 datasets**, while this daemon only ever queued one of the four: the J4
+# gap is precisely the gsm8k/oasst1/writingprompts cells that a chatbot_arena-only queue can never
+# see (with the override unset, compute_queue() returns 6 cells; the real gap is ~200). The
+# preference data for all four is already on disk under DPO_OUTPUT_DIR/<dataset>, and a cell only
+# launches once its sft/dpo csv exist, so pointing an instance at another dataset cannot invent work.
+# Run one instance per dataset, each with its own IMIT_DATASET.
+DATASET = os.environ.get("IMIT_DATASET", "chatbot_arena")
 SEED = int(os.environ.get("SEED", "42"))  # multi-seed: wrapper sets SEED=43,44 for robustness expansion
 TINKER_PARALLEL = 4
 GPU_POLL_INTERVAL = 30.0
