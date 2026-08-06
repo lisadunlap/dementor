@@ -20,7 +20,9 @@ self-contained for cone training default to the in-repo experiments/steering/dat
 Other roots (DEMENTOR_STEER_ROOT / DEMENTOR_STEER_WORK / DEMENTOR_RTL_JUDGE_DIR / DEMENTOR_JUDGE_ALL /
 DEMENTOR_STEER_BENCH_DIR) point at the larger eval/benchmark tree and are documented below.
 """
+import glob
 import os
+import re
 import sys
 import json
 
@@ -149,15 +151,62 @@ def worklist_path():
         f"rdo_worklist.json not found in DEMENTOR_STEER_WORK ({WORK_ROOT}) or the repo ({_HERE})")
 
 
+def _repo_id_from_hub_path(path):
+    """Recover the HF repo id from a hub-cache path, else None.
+
+    ".../hub/models--meta-llama--Llama-3.3-70B-Instruct/snapshots/<sha>"
+        -> "meta-llama/Llama-3.3-70B-Instruct"
+    The org/name separator is the FIRST "--" after the "models--" prefix, so org names that
+    themselves contain single hyphens ("meta-llama") survive the split.
+    """
+    m = re.search(r"models--([^/\\]+)", path or "")
+    if not m:
+        return None
+    tail = m.group(1)
+    return tail.replace("--", "/", 1) if "--" in tail else None
+
+
+def _local_snapshot(repo_id):
+    """A usable snapshot dir for repo_id inside THIS box's HF_HUB_CACHE, else None.
+
+    Prefers the newest snapshot that actually carries weights, so a weightless config-only
+    cache entry (the failure mode _resolve_rtl_judge() documents for Qwen3-8B under
+    HF_HUB_OFFLINE=1) is skipped rather than returned.
+    """
+    folder = "models--" + repo_id.replace("/", "--")
+    snaps = sorted(glob.glob(os.path.join(HF_HUB_CACHE, folder, "snapshots", "*")))
+    for snap in reversed(snaps):
+        if glob.glob(os.path.join(snap, "*.safetensors")) or glob.glob(
+            os.path.join(snap, "*.bin")
+        ):
+            return snap
+    return None
+
+
 def resolve_model_path(slug, path):
     """Point a worklist entry at THIS box's weights. Keep the literal path when it exists (our-box
     absolutes / local HF snapshots), else repoint to MODELS_DIR/<slug> if that exists (partner box),
-    else leave unchanged (an HF repo id resolved from the HF cache)."""
+    else re-resolve a stale hub-cache absolute against THIS box's HF cache, else leave unchanged.
+
+    The third step matters because the worklist pins some entries to an absolute hub-cache snapshot
+    from the box that downloaded them (e.g. llama-3.3-70b at
+    /data/ethantsliu/huggingface/hub/models--meta-llama--Llama-3.3-70B-Instruct/snapshots/<sha>).
+    On a box without that layout the literal is absent and MODELS_DIR/<slug> may be too, and
+    returning the dead absolute made transformers treat it as a repo id and raise
+    "Repo id must be ..." BEFORE model load -- which idled the GPUs even though HF_HOME /
+    HF_HUB_CACHE were pointing at a perfectly good cache. So: recover the repo id from the path and
+    prefer a real snapshot in the live cache; failing that hand back the repo id itself, which HF
+    resolves from the cache (or downloads, when not offline). Both are portable; the dead absolute
+    never was.
+    """
     if path and os.path.exists(path):
         return path
     cand = os.path.join(MODELS_DIR, slug)
     if os.path.isdir(cand):
         return cand
+    repo_id = _repo_id_from_hub_path(path)
+    if repo_id:
+        return _local_snapshot(repo_id) or repo_id
     return path
 
 

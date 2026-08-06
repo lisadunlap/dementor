@@ -22,12 +22,23 @@ from huggingface_hub import snapshot_download
 
 TOKEN = os.environ.get("HF_TOKEN")
 
+# A download script cannot honour an ambient HF_HUB_OFFLINE=1 (the steering pipeline's default via
+# steer_config.hf_env()); offline would turn every fetch below into a cache-miss error.
+os.environ["HF_HUB_OFFLINE"] = "0"
+
 TARGETS = [
     ("meta-llama/Llama-3.1-8B-Instruct", True),
     ("allenai/OLMo-3-7B-Instruct", False),
     ("adamo1139/aya-expanse-8b-ungated", False),
     ("microsoft/phi-4", False),
 ]
+
+# Opt-in, named-only targets: too large to belong in the default sweep. Fetch with
+#   python download_weights.py llama-3.3-70b
+# Needed to bootstrap a bare box for J5 adapter steering (~140 GB, gated: needs HF_TOKEN).
+EXTRA = {
+    "llama-3.3-70b": ("meta-llama/Llama-3.3-70B-Instruct", True),
+}
 
 FALLBACKS = {
     "meta-llama/Llama-3.1-8B-Instruct": "NousResearch/Meta-Llama-3.1-8B-Instruct",
@@ -47,7 +58,23 @@ def dl(repo_id, gated):
         print(f"[{time.strftime('%H:%M:%S')}] FAILED {repo_id}: {type(e).__name__}: {e}", flush=True)
         return False
 
-for repo_id, gated in TARGETS:
+def _selected(argv):
+    """No args -> the default TARGETS sweep (unchanged). Args -> only those, by EXTRA key or repo id."""
+    if not argv:
+        return list(TARGETS)
+    picked = []
+    known = {r: g for r, g in TARGETS}
+    for name in argv:
+        if name in EXTRA:
+            picked.append(EXTRA[name])
+        elif name in known:
+            picked.append((name, known[name]))
+        else:
+            picked.append((name, True))  # unknown repo id: try it gated (token is used if present)
+    return picked
+
+
+for repo_id, gated in _selected(sys.argv[1:]):
     ok = dl(repo_id, gated)
     if not ok and repo_id in FALLBACKS:
         mirror = FALLBACKS[repo_id]
