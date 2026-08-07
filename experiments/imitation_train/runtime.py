@@ -80,7 +80,16 @@ ONLY_GPUS = _gpu_set("DEMENTOR_ONLY_GPUS", "") or None
 # needs it. granite-4-h-small (32B-A9B) is INTENTIONALLY single-GPU: bf16 ~65GB fits one 80GB H100
 # with gradient_checkpointing -- like the other 32B locals. If it ever OOMs on one card, add
 # "granite-4-h-small" here to give its cells the 2-GPU model-parallel path.
-MP_SOURCE_SLUGS = {"gemma-4-31b", "llama-3.3-70b"}
+MP_SOURCE_SLUGS = {"gemma-4-31b", "llama-3.3-70b"} | {
+    s.strip() for s in os.environ.get("DEMENTOR_MP_SLUGS", "").split(",") if s.strip()
+}
+# DEMENTOR_MP_SLUGS ADDS to the set above (never removes), because which students need the 2-GPU
+# path is a property of the BOX, not of the campaign: a card that is shared, or holds a little
+# resident memory, OOMs on a student that fits cleanly on an empty one. That is a per-box fact, and
+# this set is shared by both boxes on one branch -- editing the literal to rescue one box would put
+# every other box's cells for that slug onto the 2-GPU path too, silently halving its concurrency.
+# Unset, the set is byte-identical. Cost when used: MP cells need TWO free cards and both leases,
+# so a 4-card box runs two concurrent cells instead of four.
 MEM_FREE_THRESHOLD_MIB = 1500.0
 
 # --- disk pressure policy -------------------------------------------------------
