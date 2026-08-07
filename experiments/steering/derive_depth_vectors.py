@@ -27,6 +27,15 @@ import torch
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
+sys.path.insert(0, os.path.join(HERE, "port"))
+# This script LOADS MODELS, so it needs the same compat shims as every other model-loading entry
+# point (rdo_port / cone_eval / compute_dim / run_rdo_model). Its wire-in list simply missed this
+# file. Without it: gpt-oss-20b ships no chat_template and apply_chat_template hard-fails
+# ("tokenizer.chat_template is not set"), granite-4-h-small's Mamba-2 mixer tries to resolve fused
+# kernels from the hub and raises OfflineModeIsEnabled under HF_HUB_OFFLINE=1, and nemotron-nano's
+# generate() indexes a None cache_position. Must precede the first from_pretrained call, which it
+# does -- the shims hook the AutoTokenizer/AutoModel classmethods at call time.
+import rdo_compat                   # noqa: E402,F401  (chat_template / kernel / generation shims)
 import steer_config as CFG          # noqa: E402
 import run_model as RM              # noqa: E402  (LAYERS, batch_sizes, EXP)
 sys.path.insert(0, os.path.join(CFG.REPO, ""))
@@ -114,7 +123,11 @@ def main():
             columns={"model_response": "ref"})
         m = mben.merge(ref, on="prompt").dropna().drop_duplicates("prompt").reset_index(drop=True)
         prompts = m["prompt"].astype(str).tolist()
-        bs = RM.batch_sizes(spec["params_b"])["derive"]
+        # DEMENTOR_DERIVE_BS overrides the params_b-derived batch. The table is a per-family
+        # heuristic, and a MoE with all experts resident (gpt-oss-20b: 20B -> bs=4) can still fill an
+        # 80GB card and OOM during pooling. Lowering the batch only costs wall-clock: the derivation
+        # is a one-off, and pooling is order-independent, so the vectors are unchanged.
+        bs = int(os.environ.get("DEMENTOR_DERIVE_BS") or RM.batch_sizes(spec["params_b"])["derive"])
         print(f"[depths]   deriving L{missing} (n={len(prompts)}, bs={bs})")
         vl = derive_steering_vector(spec["path"], None, prompts,
                                     source_responses=m["m"].astype(str).tolist(),

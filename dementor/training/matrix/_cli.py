@@ -289,7 +289,20 @@ def main() -> int:
             max_jobs=args.max_jobs,
             parallel=args.parallel,
         )
-        out_path = args.manifest_out or (DATA / "results" / "matrix" / "sft_manifest.json")
+        # A FILTERED or dry run must not clobber the canonical manifest: that file is the
+        # campaign-wide plan (3672 rows) other tooling reads to compute what is still pending, and
+        # overwriting it with a 17-row shard silently makes the campaign look almost finished.
+        # An explicit --manifest-out always wins; otherwise a scoped run gets a scoped filename.
+        _scope = [p for p in (args.source, args.target, args.dataset,
+                              str(args.seed) if args.seed is not None else None) if p]
+        if args.manifest_out:
+            out_path = args.manifest_out
+        elif _scope or args.dry_run:
+            tag = "-".join(str(s).replace("/", "__") for s in _scope) or "all"
+            suffix = "dryrun" if args.dry_run else "shard"
+            out_path = DATA / "results" / "matrix" / f"sft_manifest.{suffix}.{tag}.json"
+        else:
+            out_path = DATA / "results" / "matrix" / "sft_manifest.json"
         out_path.parent.mkdir(parents=True, exist_ok=True)
         with out_path.open("w") as f:
             json.dump(manifest, f, indent=2, default=str)
