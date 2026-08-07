@@ -33,7 +33,27 @@ sys.path.insert(0, os.path.join(CFG.REPO, ""))
 from dementor.steering.steering_rung import derive_steering_vector  # noqa: E402
 
 RDO = os.environ.get("DEMENTOR_STEER_WORK", "/data/ethantsliu/exp_steer_safety/repl80_rdo")
-REPL80 = "/data/ethantsliu/exp_steer_safety/repl80"
+REPL80 = os.environ.get("DEMENTOR_STEER_REPL80", "/data/ethantsliu/exp_steer_safety/repl80")
+
+
+def _benign_csv(slug: str) -> str:
+    """Locate <slug>/benign.csv, preferring the repl80 tree and falling back to the RDO tree.
+
+    repl80 holds benign.csv for only 15 models; repl80_rdo holds 40, including llama-3.3-70b -- the
+    model where the depth sweep matters most (fixed layer 14 lands in its first third). Where both
+    trees have the file they are BYTE-IDENTICAL for all 15 overlapping models, so the fallback picks
+    up the same authoritative artifact rather than a regenerated one: no provenance change.
+    """
+    primary = os.path.join(REPL80, slug, "benign.csv")
+    if os.path.exists(primary):
+        return primary
+    fallback = os.path.join(RDO, slug, "benign.csv")
+    if os.path.exists(fallback):
+        print(f"[depths] benign.csv not in repl80; using identical RDO-tree copy: {fallback}")
+        return fallback
+    raise FileNotFoundError(
+        f"no benign.csv for {slug} in {REPL80} or {RDO} -- it is a recorded derivation input and "
+        f"must be transferred, never regenerated (that would change the fingerprint's provenance)")
 DEPTH_FRACS = (0.25, 0.50, 0.75)
 
 
@@ -88,7 +108,7 @@ def main():
 
     if missing:
         ref_csv = {"llama": "gen/llama_benign.csv", "qwen": "train_benign.csv"}[spec["ref"]]
-        mben = pd.read_csv(os.path.join(REPL80, slug, "benign.csv"))[
+        mben = pd.read_csv(_benign_csv(slug))[
             ["prompt", "model_response"]].rename(columns={"model_response": "m"})
         ref = pd.read_csv(RM.EXP + ref_csv)[["prompt", "model_response"]].rename(
             columns={"model_response": "ref"})
