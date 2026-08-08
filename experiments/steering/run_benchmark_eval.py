@@ -76,6 +76,15 @@ def main():
                          "retry fit -- without overwriting the canonical roster cell.")
     ap.add_argument("--vectors-ml", dest="vectors_ml", default=None,
                     help="override vectors_ml.pt (default: WORK_ROOT/<slug>/vectors_ml.pt)")
+    ap.add_argument("--no-controls", action="store_true",
+                    help="Cone + baseline arms ONLY: skip the fingerprint/random single-direction "
+                         "controls. Those are the only arms that depend on DEMENTOR_ABLATE_LAYER "
+                         "(the cone is ablated at EVERY layer), so when the derivation depth is "
+                         "still undecided they are the only arms that would have to be redone. "
+                         "Emits the 4 layer-independent arms now and defers the 6 layer-dependent "
+                         "ones to a single pass at the chosen depth, in a SEPARATE --outdir (parts "
+                         "are cached as '<direction>_b<beta>.csv' with no layer tag, so reusing an "
+                         "outdir would silently serve stale-layer controls).")
     ap.add_argument("--outdir", default=None,
                     help="base output dir for eval_<bench>/ (default: WORK_ROOT/<slug>). "
                          "Cone and vectors are still read from WORK_ROOT/<slug>.")
@@ -94,7 +103,8 @@ def main():
     vml = args.vectors_ml or os.path.join(src, "vectors_ml.pt")
     if (args.cone or args.vectors_ml) and not args.outdir:
         sys.exit("--cone/--vectors-ml require --outdir (do not overwrite the canonical cell)")
-    for f in (cone, vml):
+    prereqs = (cone,) if args.no_controls else (cone, vml)
+    for f in prereqs:
         if not os.path.exists(f):
             sys.exit(f"missing prerequisite {f} (run run_rdo_model.py {args.slug} first)")
 
@@ -108,7 +118,11 @@ def main():
         print(f"[{args.slug}] adaptive gen-batch -> {args.gen_batch} (params_b={pb})", flush=True)
 
     env = dict(os.environ)
-    env.update(CFG.hf_env(offline=False))  # HF_HOME/HF_HUB_CACHE/HF_HUB_DISABLE_XET/PYTHONPATH
+    # A bare box may launch this once with HF_HUB_OFFLINE=0 to populate its cache,
+    # but a queued experiment must retain an explicit parent offline policy.  Do
+    # not silently turn a cache miss into a network fetch between resumable cells.
+    offline = os.environ.get("HF_HUB_OFFLINE", "1") in ("1", "true", "True")
+    env.update(CFG.hf_env(offline=offline))  # HF_HOME/HF_HUB_CACHE/HF_HUB_DISABLE_XET/PYTHONPATH
     # propagate HF_TOKEN / OPENAI_API_KEY (gated local judges + OpenAI canonical graders) from repo .env
     repo_env = CFG.REPO_ENV
     if os.path.exists(repo_env):
@@ -126,8 +140,10 @@ def main():
             print(f"[{args.slug}] {bench}: cached", flush=True)
             results[bench] = json.load(open(mp)); continue
         cmd = [PY, os.path.join(PORT, "cone_eval.py"), "--model", spec["path"], "--cone", cone,
-               "--out", out, "--vectors-ml", vml, "--betas", args.betas,
+               "--out", out, "--betas", args.betas,
                "--benchmark", bench, "--gen-batch", str(args.gen_batch)]
+        if not args.no_controls:
+            cmd += ["--vectors-ml", vml]
         if args.adapter:
             cmd += ["--adapter", args.adapter]
         if args.max_prompts:

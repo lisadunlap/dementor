@@ -2,9 +2,10 @@
 """GPU visibility, usability policy, and shared-lease arbitration.
 
 `gpu_usability()` is the single "which cards may we launch on right now" oracle. A card is usable
-iff: it isn't compute-prohibited (FORBIDDEN_GPUS), it isn't inside js_park's active 0-3 block (unless
-that block has been sustained-clear long enough), no foreign user holds a compute process on it, and
-its memory is below the free threshold.
+iff: it is inside this daemon's allocation (ONLY_GPUS, when set), it isn't compute-prohibited
+(FORBIDDEN_GPUS), it isn't inside js_park's active 0-3 block (unless that block has been
+sustained-clear long enough), no foreign user holds a compute process on it, and its memory is below
+the free threshold.
 
 `lease_claim` / `lease_release` wrap the shared atomic GPU lease (gpu_lease, imported from the sibling
 imitation_safety package) so this training daemon shares ONE lease namespace with the erosion daemons
@@ -25,6 +26,7 @@ from runtime import (
     LEASE_HOLDER,
     ME,
     MEM_FREE_THRESHOLD_MIB,
+    ONLY_GPUS,
     REPO,
     log,
 )
@@ -112,7 +114,9 @@ def gpu_usability() -> dict:
 
     result = {}
     for idx, used in sorted(mem_used.items()):
-        if idx in FORBIDDEN_GPUS:
+        if ONLY_GPUS is not None and idx not in ONLY_GPUS:
+            result[idx] = (False, "not-in-allocation")
+        elif idx in FORBIDDEN_GPUS:
             result[idx] = (False, "prohibited")
         elif idx in BLOCK_GPUS and not block_allowed:
             if block_has_foreign:

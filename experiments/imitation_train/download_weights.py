@@ -22,12 +22,35 @@ from huggingface_hub import snapshot_download
 
 TOKEN = os.environ.get("HF_TOKEN")
 
+# A download script cannot honour an ambient HF_HUB_OFFLINE=1 (the steering pipeline's default via
+# steer_config.hf_env()); offline would turn every fetch below into a cache-miss error.
+os.environ["HF_HUB_OFFLINE"] = "0"
+
 TARGETS = [
     ("meta-llama/Llama-3.1-8B-Instruct", True),
     ("allenai/OLMo-3-7B-Instruct", False),
     ("adamo1139/aya-expanse-8b-ungated", False),
     ("microsoft/phi-4", False),
 ]
+
+# Opt-in, named-only targets: too large (or too situational) for the default sweep. Fetch with
+#   python download_weights.py llama-3.3-70b
+#   python download_weights.py j4-qwen          # the three J4 imitation sources, all ungated
+# llama-3.3-70b bootstraps a bare box for J5 adapter steering (~140 GB, GATED: needs HF_TOKEN).
+# The J4 Qwen sources are UNGATED, so a box with no token can still fetch them and run J4 locally
+# (config.yaml marks them backend=tinker only because no box held local weights; see
+# dementor.config._local_backend_overrides).
+EXTRA = {
+    "llama-3.3-70b": ("meta-llama/Llama-3.3-70B-Instruct", True),
+    "qwen3.5-4b": ("Qwen/Qwen3.5-4B", False),
+    "qwen3.6-27b": ("Qwen/Qwen3.6-27B", False),
+    "qwen3.6-35b-a3b": ("Qwen/Qwen3.6-35B-A3B", False),
+}
+
+# Named bundles, expanded by _selected().
+GROUPS = {
+    "j4-qwen": ["qwen3.5-4b", "qwen3.6-27b", "qwen3.6-35b-a3b"],
+}
 
 FALLBACKS = {
     "meta-llama/Llama-3.1-8B-Instruct": "NousResearch/Meta-Llama-3.1-8B-Instruct",
@@ -47,7 +70,27 @@ def dl(repo_id, gated):
         print(f"[{time.strftime('%H:%M:%S')}] FAILED {repo_id}: {type(e).__name__}: {e}", flush=True)
         return False
 
-for repo_id, gated in TARGETS:
+def _selected(argv):
+    """No args -> the default TARGETS sweep (unchanged). Args -> only those, by GROUPS bundle,
+    EXTRA key, default-target repo id, or bare repo id."""
+    if not argv:
+        return list(TARGETS)
+    names = []
+    for a in argv:
+        names.extend(GROUPS.get(a, [a]))
+    picked = []
+    known = {r: g for r, g in TARGETS}
+    for name in names:
+        if name in EXTRA:
+            picked.append(EXTRA[name])
+        elif name in known:
+            picked.append((name, known[name]))
+        else:
+            picked.append((name, True))  # unknown repo id: try it gated (token is used if present)
+    return picked
+
+
+for repo_id, gated in _selected(sys.argv[1:]):
     ok = dl(repo_id, gated)
     if not ok and repo_id in FALLBACKS:
         mirror = FALLBACKS[repo_id]

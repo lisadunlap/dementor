@@ -308,7 +308,10 @@ def stage_judge(od):
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
     env = dict(os.environ)
-    env.update(CFG.hf_env(offline=False))  # HF_HOME/HF_HUB_CACHE/HF_HUB_DISABLE_XET/PYTHONPATH
+    # Preserve an explicit parent offline setting for judge subprocesses too.
+    # Downloads are an intentional setup action, never an accidental evaluation side effect.
+    offline = os.environ.get("HF_HUB_OFFLINE", "1") in ("1", "true", "True")
+    env.update(CFG.hf_env(offline=offline))  # HF_HOME/HF_HUB_CACHE/HF_HUB_DISABLE_XET/PYTHONPATH
     env.update(RTL_JUDGE_MODEL=JUDGE_MODEL, IN_CSV=IN, OUT_CSV=OUT)
     log(f"[E] launching RTL judge ({JUDGE_MODEL})")
     r = subprocess.run([sys.executable, CFG.JUDGE_ALL], env=env,

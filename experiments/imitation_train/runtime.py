@@ -46,7 +46,15 @@ REGISTRY_PATH = DATA_ROOT / "tinker_adapters.json"
 REGISTRY_BACKUP_MARKER = STATE_DIR / "registry_backup_done.marker"
 LOCAL_LOG_DIR = STATE_DIR / "local_logs"
 
-DATASET = "chatbot_arena"
+# Which dataset THIS daemon instance trains. Default chatbot_arena, so an unset env reproduces the
+# previous behaviour byte-for-byte. Overridable because the 16x16 grid target is 960 cells = 16
+# sources x 15 targets x **4 datasets**, while this daemon only ever queued one of the four: the J4
+# gap is precisely the gsm8k/oasst1/writingprompts cells that a chatbot_arena-only queue can never
+# see (with the override unset, compute_queue() returns 6 cells; the real gap is ~200). The
+# preference data for all four is already on disk under DPO_OUTPUT_DIR/<dataset>, and a cell only
+# launches once its sft/dpo csv exist, so pointing an instance at another dataset cannot invent work.
+# Run one instance per dataset, each with its own IMIT_DATASET.
+DATASET = os.environ.get("IMIT_DATASET", "chatbot_arena")
 SEED = int(os.environ.get("SEED", "42"))  # multi-seed: wrapper sets SEED=43,44 for robustness expansion
 TINKER_PARALLEL = 4
 GPU_POLL_INTERVAL = 30.0
@@ -56,12 +64,31 @@ ME = os.environ.get("USER", "ethantsliu")
 # GPU4 is compute-prohibited on OUR box; NEVER usable. Env DEMENTOR_FORBIDDEN_GPUS (default "4");
 # a partner with no banned card sets it empty.
 FORBIDDEN_GPUS = _gpu_set("DEMENTOR_FORBIDDEN_GPUS", "4")
+
+# Hard per-daemon card allocation. Env DEMENTOR_ONLY_GPUS; unset OR empty -> no restriction, so a
+# single-daemon box behaves byte-identically to before.
+#
+# Set this whenever SEVERAL daemons share one box. DEMENTOR_GPUS (LEASE_GPUS) only governs lease
+# ARBITRATION, and gpu_usability() enumerates every card nvidia-smi reports, so the launch path
+# ("which cards are free right now") was never scoped to a daemon's allocation. Four per-dataset
+# daemons each therefore saw all four cards and each launched baseline generators on all of them --
+# 16 competing processes on 4 GPUs. Worse, lease_claim() is a documented no-op when SEQ_COEXIST=0,
+# so with coexistence off there was NO arbitration left to catch it.
+ONLY_GPUS = _gpu_set("DEMENTOR_ONLY_GPUS", "") or None
 # Slugs whose LOCAL training must shard across 2 GPUs (device_map model-parallel) because the
 # student is too big for one 80GB card. gemma-4-31b (256K-vocab, untied lm_head VLM text tower)
 # needs it. granite-4-h-small (32B-A9B) is INTENTIONALLY single-GPU: bf16 ~65GB fits one 80GB H100
 # with gradient_checkpointing -- like the other 32B locals. If it ever OOMs on one card, add
 # "granite-4-h-small" here to give its cells the 2-GPU model-parallel path.
-MP_SOURCE_SLUGS = {"gemma-4-31b", "llama-3.3-70b"}
+_DEFAULT_MP_SOURCE_SLUGS = {"gemma-4-31b", "llama-3.3-70b"}
+# A student's memory footprint can differ between boxes (for example because a
+# different CUDA/transformers combination leaves less activation headroom).
+# Extend, rather than replace, the campaign defaults at launch time so a
+# box-specific OOM remediation does not change another box's concurrency.
+_mp_source_override = os.environ.get("DEMENTOR_MP_SLUGS", "")
+MP_SOURCE_SLUGS = _DEFAULT_MP_SOURCE_SLUGS | {
+    slug.strip() for slug in _mp_source_override.split(",") if slug.strip()
+}
 MEM_FREE_THRESHOLD_MIB = 1500.0
 
 # --- disk pressure policy -------------------------------------------------------

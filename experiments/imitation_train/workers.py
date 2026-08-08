@@ -217,12 +217,23 @@ def baseline_path(model_id: str) -> Path:
     return matrix.baseline_path(model_id, DATASET)
 
 
-def local_core_model_ids() -> list[str]:
-    return [m["id"] for m in worklist.core_models() if m["backend"] == "local"]
+def local_source_model_ids() -> list[str]:
+    """Return only local *sources* with cells in this daemon's current queue.
+
+    Baselines are generated for student/source models.  The SFT and DPO CSVs already
+    contain the target-side supervision, so treating every model with a local backend
+    as a baseline requirement makes a per-box backend override download unrelated
+    target weights before it can train any assigned cell.
+    """
+    return sorted({
+        rec["source"]
+        for rec in worklist.compute_queue().values()
+        if rec["backend"] == "local"
+    })
 
 
 def missing_baselines() -> list[str]:
-    return [mid for mid in local_core_model_ids() if not baseline_path(mid).exists()]
+    return [mid for mid in local_source_model_ids() if not baseline_path(mid).exists()]
 
 
 def launch_baseline_subprocess(gpu_idx: int, model_id: str) -> subprocess.Popen:
