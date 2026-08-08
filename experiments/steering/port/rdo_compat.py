@@ -237,13 +237,48 @@ def _install_from_pretrained_patches():
 
 
 # --------------------------------------------------------------------------- 3b. offline kernel shim
+def _prime_hub_kernels_offline():
+    """Resolve the Mamba fused kernels from the LOCAL snapshot so the fast path stays available offline.
+
+    Why this must run before the None-returning shim below: returning None is NOT harmless for
+    GraniteMoeHybrid. With no kernels, `is_fast_path_available` is False and the Mamba-2 mixer routes
+    to `torch_forward` (modeling_granitemoehybrid.py:721) -- and that naive path produces NaN in bf16.
+    granite-4-h-small's RDO run on 2026-08-07 died with all six loss terms non-finite on step 1 for
+    exactly this reason, which is why that model still has no cone and no steering verdict.
+
+    `get_kernel(repo_id)` WITHOUT a version spec reads the cached snapshot and makes no network call,
+    so it sidesteps the /refs lookup that HF_HUB_OFFLINE blocks (which is what USE_HUB_KERNELS=NO was
+    set to avoid in the first place). Seeding _KERNEL_MODULE_MAPPING makes lazy_load_kernel return on
+    its first branch and never reach the failing lookup. Requires the kernels to be in HF_HOME
+    already; if they are not we leave them unprimed and the shim below keeps the load alive.
+    """
+    try:
+        from transformers.integrations import hub_kernels as HK
+        from kernels import get_kernel
+    except Exception:
+        return
+    from types import ModuleType
+    for name in ("causal-conv1d", "mamba-ssm"):
+        if isinstance(HK._KERNEL_MODULE_MAPPING.get(name), ModuleType):
+            continue
+        spec = HK._HUB_KERNEL_MAPPING.get(name)
+        if not spec:
+            continue
+        try:
+            HK._KERNEL_MODULE_MAPPING[name] = get_kernel(spec["repo_id"])  # no version= -> no /refs
+        except Exception:
+            pass  # leave unprimed; the shim keeps the load alive on the naive path
+
+
 def _install_kernels_offline_shim():
-    """Wrap transformers.integrations.hub_kernels.lazy_load_kernel so an offline / unreachable hub
-    lookup returns None (native fallback) instead of raising. GraniteMoeHybrid's Mamba-2 mixer calls
-    lazy_load_kernel('causal-conv1d') / ('mamba-ssm') during __init__; the underlying kernels
-    get_kernel() hits the hub for version resolution and raises OfflineModeIsEnabled here, which
-    lazy_load_kernel does not catch (only FileNotFoundError/AssertionError). Returning None triggers
-    the model's documented naive PyTorch path -- same math, no network."""
+    """Wrap lazy_load_kernel so an offline / unreachable hub lookup returns None instead of raising.
+
+    This is the LAST resort, not the first: _prime_hub_kernels_offline() runs first and, when the
+    kernels are cached, keeps the Mamba fast path available so granite-class models train in bf16
+    without NaNs. Only when priming fails does returning None apply, and then the caller gets the
+    naive PyTorch path -- which keeps the load alive but is numerically unsafe for Mamba-2 in bf16.
+    """
+    _prime_hub_kernels_offline()
     try:
         from transformers.integrations import hub_kernels
     except Exception:
