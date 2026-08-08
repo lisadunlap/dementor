@@ -183,6 +183,32 @@ def _local_snapshot(repo_id):
     return None
 
 
+# --- slug aliases across the two rosters ---------------------------------------
+# The steering roster (rdo_worklist.json) and the imitation roster (dementor.training.matrix
+# MODEL_SLUG) name two checkpoints differently -- the steering side drops the active-parameter
+# suffix. Same weights, so any join keyed on slug silently drops these models: nemotron-nano is
+# CLEAN with a 0.843 cone AND has 32 imitation adapters, but nothing connected the two halves.
+#
+# Aliased rather than renamed on purpose: repl80_rdo/<steering slug>/ already holds each model's
+# cone, vectors_ml, vectors_depths and depth sweep, and renaming those directories mid-campaign
+# would orphan the artifacts every existing path expects.
+SLUG_ALIASES = {
+    "nemotron-nano": "nemotron-nano-30b-a3b",   # NVIDIA-Nemotron-3-Nano-30B-A3B-BF16
+    "qwen3.6-35b": "qwen3.6-35b-a3b",           # Qwen3.6-35B-A3B
+}
+_SLUG_ALIASES_REV = {v: k for k, v in SLUG_ALIASES.items()}
+
+
+def canonical_slug(slug):
+    """Imitation-side (canonical) name for a slug. Unknown slugs pass through unchanged."""
+    return SLUG_ALIASES.get(slug, slug)
+
+
+def steering_slug(slug):
+    """Steering-roster name for a slug -- i.e. the repl80_rdo/<dir> that holds its cone."""
+    return _SLUG_ALIASES_REV.get(slug, slug)
+
+
 def resolve_model_path(slug, path):
     """Point a worklist entry at THIS box's weights. Keep the literal path when it exists (our-box
     absolutes / local HF snapshots), else repoint to MODELS_DIR/<slug> if that exists (partner box),

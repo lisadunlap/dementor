@@ -86,6 +86,19 @@ def eroder_absolute_harm(long_df: pd.DataFrame, source: str) -> dict:
 def main() -> None:
     df = pd.read_csv(SUMMARY_CSV)
     df = df[df["baseline_available"] == True].copy()  # noqa: E712
+    # Drop self-imitation. The summary CSV carries 8 self-DPO cells (aya-expanse-8b and
+    # ministral-8b x 4 datasets) but a model imitating ITSELF is not a disguise: the DPO
+    # preference pairs are chosen-vs-rejected drawn from the same model, so the signal is
+    # null by construction -- which is why the method section calls self-DPO degenerate and
+    # says it is omitted, and why iter_cells() enumerates s != t. Including them pulled the
+    # headline toward zero (aya's four cells run -3.0 to -4.1pt): mean erosion +0.334 ->
+    # +0.358pt, and source variance 57.5% -> 59.1%. Both corrections are unfavourable to a
+    # "no erosion" reading and favourable to the base-conditioning claim, i.e. they move the
+    # numbers the honest way.
+    self_pairs = int((df["source"] == df["target"]).sum())
+    if self_pairs:
+        print(f"[filter] dropping {self_pairs} self-imitation cells (source == target)")
+        df = df[df["source"] != df["target"]].copy()
 
     y = df[METRIC].to_numpy(dtype=float)
     n = int(len(df))
