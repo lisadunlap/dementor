@@ -1,0 +1,24 @@
+
+=== launch 2026-08-06T18:36:44.186378 on GPU0 ===
+
+=== launch 2026-08-06T18:36:44.267065 on GPU0 ===
+
+=== launch 2026-08-06T18:36:44.276075 on GPU0 ===
+
+=== launch 2026-08-06T18:36:44.282045 on GPU0 ===
+  [gen] Qwen/Qwen3.5-4B on gsm8k: 500 prompts (renderer=qwen3)
+  [gen] Qwen/Qwen3.5-4B on chatbot_arena: 500 prompts (renderer=qwen3)
+  [gen] Qwen/Qwen3.5-4B on oasst1: 500 prompts (renderer=qwen3)
+  [gen] Qwen/Qwen3.5-4B on writingprompts: 500 prompts (renderer=qwen3)
+The fast path is not available because one of the required library is not installed. Falling back to torch implementation. To install follow https://github.com/fla-org/flash-linear-attention#installation and https://github.com/Dao-AILab/causal-conv1d
+The fast path is not available because one of the required library is not installed. Falling back to torch implementation. To install follow https://github.com/fla-org/flash-linear-attention#installation and https://github.com/Dao-AILab/causal-conv1d
+The fast path is not available because one of the required library is not installed. Falling back to torch implementation. To install follow https://github.com/fla-org/flash-linear-attention#installation and https://github.com/Dao-AILab/causal-conv1d
+The fast path is not available because one of the required library is not installed. Falling back to torch implementation. To install follow https://github.com/fla-org/flash-linear-attention#installation and https://github.com/Dao-AILab/causal-conv1d
+Loading weights:   0%|          | 0/426 [00:00<?, ?it/s]Loading weights:   0%|          | 0/426 [00:00<?, ?it/s]Loading weights: 100%|██████████| 426/426 [00:00<00:00, 8927.13it/s]
+Loading weights:   0%|          | 0/426 [00:00<?, ?it/s]Loading weights:   0%|          | 0/426 [00:00<?, ?it/s]Loading weights: 100%|██████████| 426/426 [00:00<00:00, 9262.65it/s]
+Loading weights: 100%|██████████| 426/426 [00:00<00:00, 10694.63it/s]
+Loading weights: 100%|██████████| 426/426 [00:00<00:00, 8123.95it/s]
+Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.
+Setting `pad_token_id` to `eos_token_id`:248044 for open-end generation.

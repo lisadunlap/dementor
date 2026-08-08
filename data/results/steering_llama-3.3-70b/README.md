@@ -76,3 +76,28 @@ Each skips cells with a `.done` marker, so re-running a lane is safe. `queue_sta
 
 Parts cache by name with no layer tag (`<direction>_b<beta>.csv`), and resume is existence-based —
 a truncated part would be reused silently. Verify row counts (300) before trusting a resumed cell.
+
+## Known blocker for the remaining 87 imitation trainings
+
+`box_b_orchestration/baseline_logs/` holds the failed runs. Both missing baselines —
+`Qwen/Qwen3.6-27B` and `Qwen/Qwen3.6-35B-A3B` — died with `torch.OutOfMemoryError`, and the
+tracebacks show why:
+
+```
+GPU 0 has a total capacity of 79.18 GiB of which 5.44 MiB is free.
+Process 127124 has 21.31 GiB memory in use.
+Process 126868 has 18.70 GiB memory in use.
+Process 127132 has 17.82 GiB memory in use.
+```
+
+**They did not fail because the models are too large.** Four baseline generations were launched
+onto the same card; each needs ~20-28 GB and four do not fit in 79 GB. `qwen3.5-4b` succeeded from
+the same batch only because it is small enough to survive the contention.
+
+Whoever runs the 87 trainings must generate these **one baseline per GPU** — same rule the runbook
+already states for steering workers. Budget ~70 min per model per dataset, so 2 models x 4 datasets
+= 8 generations. Without them `matrix.build_dpo_data()` has no source-side responses and the local
+queue reports every cell as `[missing] source or target baseline missing`.
+
+The preference pairs themselves are **not** blocked on this: all 1026 are already published at
+`dementor-research/dementor-dpo-pairs` and download in a few minutes.

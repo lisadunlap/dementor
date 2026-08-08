@@ -1,0 +1,168 @@
+
+=== launch 2026-08-06T18:36:44.187335 on GPU2 ===
+
+=== launch 2026-08-06T18:36:44.275715 on GPU2 ===
+
+=== launch 2026-08-06T18:36:44.283041 on GPU2 ===
+
+=== launch 2026-08-06T18:36:44.294735 on GPU2 ===
+  [gen] Qwen/Qwen3.6-35B-A3B on writingprompts: 500 prompts (renderer=qwen3)
+  [gen] Qwen/Qwen3.6-35B-A3B on gsm8k: 500 prompts (renderer=qwen3)
+  [gen] Qwen/Qwen3.6-35B-A3B on oasst1: 500 prompts (renderer=qwen3)
+  [gen] Qwen/Qwen3.6-35B-A3B on chatbot_arena: 500 prompts (renderer=qwen3)
+The fast path is not available because one of the required library is not installed. Falling back to torch implementation. To install follow https://github.com/fla-org/flash-linear-attention#installation and https://github.com/Dao-AILab/causal-conv1d
+Loading weights:   0%|          | 0/693 [00:00<?, ?it/s]Loading weights: 100%|██████████| 693/693 [00:00<00:00, 9373.70it/s]
+The fast path is not available because one of the required library is not installed. Falling back to torch implementation. To install follow https://github.com/fla-org/flash-linear-attention#installation and https://github.com/Dao-AILab/causal-conv1d
+Loading weights:   0%|          | 0/693 [00:00<?, ?it/s]The fast path is not available because one of the required library is not installed. Falling back to torch implementation. To install follow https://github.com/fla-org/flash-linear-attention#installation and https://github.com/Dao-AILab/causal-conv1d
+Loading weights: 100%|██████████| 693/693 [00:00<00:00, 9259.39it/s]
+The fast path is not available because one of the required library is not installed. Falling back to torch implementation. To install follow https://github.com/fla-org/flash-linear-attention#installation and https://github.com/Dao-AILab/causal-conv1d
+Loading weights:   0%|          | 0/693 [00:00<?, ?it/s]Loading weights:   0%|          | 0/693 [00:00<?, ?it/s]Loading weights: 100%|██████████| 693/693 [00:00<00:00, 8636.79it/s]
+Loading weights: 100%|██████████| 693/693 [00:00<00:00, 8199.02it/s]
+[W806 18:36:58.769546404 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 536870912 bytes (free: 110559232, total: 85017624576).
+[W806 18:36:58.769725643 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 536870912 bytes (free: 110559232, total: 85017624576).
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/ubuntu/dementor/dementor/training/matrix/__main__.py", line 6, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/ubuntu/dementor/dementor/training/matrix/_cli.py", line 253, in main
+    n = generate_target_responses(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/dementor/training/matrix/_target_responses.py", line 68, in generate_target_responses
+    replies = generate_local_responses(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/dementor/training/local_backend.py", line 388, in generate_local_responses
+    mdl.to(dev).eval()
+    ^^^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/transformers/modeling_utils.py", line 3574, in to
+    return super().to(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1383, in to
+    return self._apply(convert)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+  [Previous line repeated 2 more times]
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 964, in _apply
+    param_applied = fn(param)
+                    ^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1369, in convert
+    return t.to(
+           ^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 79.18 GiB of which 105.44 MiB is free. Process 127133 has 27.58 GiB memory in use. Including non-PyTorch memory, this process has 18.20 GiB memory in use. Process 126869 has 16.63 GiB memory in use. Process 127129 has 16.63 GiB memory in use. Of the allocated memory 17.68 GiB is allocated by PyTorch, and 8.06 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
+[W806 18:36:58.907269336 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 536870912 bytes (free: 110559232, total: 85017624576).
+[W806 18:36:58.907452454 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 536870912 bytes (free: 110559232, total: 85017624576).
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/ubuntu/dementor/dementor/training/matrix/__main__.py", line 6, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/ubuntu/dementor/dementor/training/matrix/_cli.py", line 253, in main
+    n = generate_target_responses(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/dementor/training/matrix/_target_responses.py", line 68, in generate_target_responses
+    replies = generate_local_responses(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/dementor/training/local_backend.py", line 388, in generate_local_responses
+    mdl.to(dev).eval()
+    ^^^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/transformers/modeling_utils.py", line 3574, in to
+    return super().to(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1383, in to
+    return self._apply(convert)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+  [Previous line repeated 2 more times]
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 964, in _apply
+    param_applied = fn(param)
+                    ^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1369, in convert
+    return t.to(
+           ^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 79.18 GiB of which 105.44 MiB is free. Process 127133 has 27.58 GiB memory in use. Process 127125 has 18.20 GiB memory in use. Process 126869 has 16.63 GiB memory in use. Including non-PyTorch memory, this process has 16.63 GiB memory in use. Of the allocated memory 16.11 GiB is allocated by PyTorch, and 15.38 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
+[W806 18:36:58.959754901 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 536870912 bytes (free: 110559232, total: 85017624576).
+[W806 18:36:58.959937682 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 536870912 bytes (free: 110559232, total: 85017624576).
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/ubuntu/dementor/dementor/training/matrix/__main__.py", line 6, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/ubuntu/dementor/dementor/training/matrix/_cli.py", line 253, in main
+    n = generate_target_responses(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/dementor/training/matrix/_target_responses.py", line 68, in generate_target_responses
+    replies = generate_local_responses(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/dementor/training/local_backend.py", line 388, in generate_local_responses
+    mdl.to(dev).eval()
+    ^^^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/transformers/modeling_utils.py", line 3574, in to
+    return super().to(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1383, in to
+    return self._apply(convert)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+  [Previous line repeated 2 more times]
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 964, in _apply
+    param_applied = fn(param)
+                    ^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1369, in convert
+    return t.to(
+           ^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 79.18 GiB of which 105.44 MiB is free. Including non-PyTorch memory, this process has 27.58 GiB memory in use. Process 127125 has 18.20 GiB memory in use. Process 126869 has 16.63 GiB memory in use. Process 127129 has 16.63 GiB memory in use. Of the allocated memory 27.08 GiB is allocated by PyTorch, and 744.50 KiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
+[W806 18:36:58.016922790 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 536870912 bytes (free: 110559232, total: 85017624576).
+[W806 18:36:58.017101287 CUDACachingAllocator.cpp:3933] memory allocation failed with OOM on device 0 while trying to allocate 536870912 bytes (free: 110559232, total: 85017624576).
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/ubuntu/dementor/dementor/training/matrix/__main__.py", line 6, in <module>
+    sys.exit(main())
+             ^^^^^^
+  File "/home/ubuntu/dementor/dementor/training/matrix/_cli.py", line 253, in main
+    n = generate_target_responses(
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/dementor/training/matrix/_target_responses.py", line 68, in generate_target_responses
+    replies = generate_local_responses(
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/dementor/training/local_backend.py", line 388, in generate_local_responses
+    mdl.to(dev).eval()
+    ^^^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/transformers/modeling_utils.py", line 3574, in to
+    return super().to(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1383, in to
+    return self._apply(convert)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 933, in _apply
+    module._apply(fn)
+  [Previous line repeated 2 more times]
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 964, in _apply
+    param_applied = fn(param)
+                    ^^^^^^^^^
+  File "/home/ubuntu/dementor/.venv/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1369, in convert
+    return t.to(
+           ^^^^^
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 512.00 MiB. GPU 0 has a total capacity of 79.18 GiB of which 105.44 MiB is free. Process 127133 has 27.58 GiB memory in use. Process 127125 has 18.20 GiB memory in use. Including non-PyTorch memory, this process has 16.63 GiB memory in use. Process 127129 has 16.63 GiB memory in use. Of the allocated memory 16.11 GiB is allocated by PyTorch, and 15.38 MiB is reserved by PyTorch but unallocated. If reserved but unallocated memory is large try setting PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True to avoid fragmentation.  See documentation for Memory Management  (https://docs.pytorch.org/docs/stable/notes/cuda.html#optimizing-memory-usage-with-pytorch-cuda-alloc-conf)
