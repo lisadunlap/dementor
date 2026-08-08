@@ -4,6 +4,11 @@ Master map of where Dementor's result artifacts live. Three locations, each tied
 experiment. Read this first, then follow the pointer to the location you need. The authoritative
 framing for every number is [`RESULTS.md`](RESULTS.md).
 
+> **Coverage audit:** [`INVENTORY.md`](INVENTORY.md) walks every CSV in both trees and reports what was
+> actually measured, on which models, by which metric. Read it before concluding an experiment "wasn't
+> run" — the legacy tree holds a complete fidelity ladder (5 rungs) and a partial safety ladder that a
+> filename-level check misses entirely.
+
 | # | Location | Experiment | Status |
 |---|---|---|---|
 | (a) | [`data/results/safety/`](../data/results/safety/) | Imitation safety-erosion matrix (Exp 1) | **CURRENT** |
