@@ -1,0 +1,487 @@
+Accessing `lazy_load_kernel` from `.models.aria.image_processing_aria`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.aria.image_processing_pil_aria`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.auto.image_processing_auto`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.beit.image_processing_beit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.beit.image_processing_pil_beit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.bit.image_processing_bit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.bit.image_processing_pil_bit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.blip.image_processing_blip`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.blip.image_processing_pil_blip`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.bridgetower.image_processing_bridgetower`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.bridgetower.image_processing_pil_bridgetower`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.chameleon.image_processing_chameleon`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.chameleon.image_processing_pil_chameleon`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.chinese_clip.image_processing_chinese_clip`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.chinese_clip.image_processing_chinese_pil_clip`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.chmv2.image_processing_chmv2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.clip.image_processing_clip`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.clip.image_processing_pil_clip`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.cohere2_vision.image_processing_cohere2_vision`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.conditional_detr.image_processing_conditional_detr`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.conditional_detr.image_processing_pil_conditional_detr`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.convnext.image_processing_convnext`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.convnext.image_processing_pil_convnext`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.deepseek_vl.image_processing_deepseek_vl`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.deepseek_vl.image_processing_pil_deepseek_vl`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.deepseek_vl_hybrid.image_processing_deepseek_vl_hybrid`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.deepseek_vl_hybrid.image_processing_pil_deepseek_vl_hybrid`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.deformable_detr.image_processing_deformable_detr`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.deformable_detr.image_processing_pil_deformable_detr`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.deit.image_processing_deit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.deit.image_processing_pil_deit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.depth_pro.image_processing_depth_pro`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.detr.image_processing_detr`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.detr.image_processing_pil_detr`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.dinov3_vit.image_processing_dinov3_vit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.donut.image_processing_donut`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.donut.image_processing_pil_donut`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.dpt.image_processing_dpt`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.dpt.image_processing_pil_dpt`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.efficientloftr.image_processing_efficientloftr`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.efficientloftr.image_processing_pil_efficientloftr`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.efficientnet.image_processing_efficientnet`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.efficientnet.image_processing_pil_efficientnet`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.emu3.image_processing_emu3`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.eomt.image_processing_eomt`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.eomt.image_processing_pil_eomt`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.ernie4_5_vl_moe.image_processing_ernie4_5_vl_moe`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.ernie4_5_vl_moe.image_processing_pil_ernie4_5_vl_moe`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.flava.image_processing_flava`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.flava.image_processing_pil_flava`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.fuyu.image_processing_fuyu`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.fuyu.image_processing_pil_fuyu`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.gemma3.image_processing_gemma3`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.gemma3.image_processing_pil_gemma3`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.gemma4.image_processing_gemma4`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.gemma4.image_processing_pil_gemma4`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.glm46v.image_processing_glm46v`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.glm46v.image_processing_pil_glm46v`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.glm4v.image_processing_glm4v`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.glm4v.image_processing_pil_glm4v`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.glm_image.image_processing_glm_image`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.glm_image.image_processing_pil_glm_image`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.glpn.image_processing_glpn`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.glpn.image_processing_pil_glpn`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.got_ocr2.image_processing_got_ocr2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.got_ocr2.image_processing_pil_got_ocr2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.grounding_dino.image_processing_grounding_dino`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.grounding_dino.image_processing_pil_grounding_dino`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.idefics.image_processing_idefics`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.idefics.image_processing_pil_idefics`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.idefics2.image_processing_idefics2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.idefics2.image_processing_pil_idefics2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.idefics3.image_processing_idefics3`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.idefics3.image_processing_pil_idefics3`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.imagegpt.image_processing_imagegpt`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.imagegpt.image_processing_pil_imagegpt`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.janus.image_processing_janus`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.janus.image_processing_pil_janus`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.kosmos2_5.image_processing_kosmos2_5`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.kosmos2_5.image_processing_pil_kosmos2_5`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.layoutlmv2.image_processing_layoutlmv2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.layoutlmv2.image_processing_pil_layoutlmv2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.layoutlmv3.image_processing_layoutlmv3`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.layoutlmv3.image_processing_pil_layoutlmv3`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.levit.image_processing_levit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.levit.image_processing_pil_levit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.lfm2_vl.image_processing_lfm2_vl`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.lightglue.image_processing_lightglue`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.lightglue.image_processing_pil_lightglue`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.llama4.image_processing_llama4`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.llava.image_processing_llava`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.llava.image_processing_pil_llava`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.llava_next.image_processing_llava_next`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.llava_next.image_processing_pil_llava_next`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.llava_onevision.image_processing_llava_onevision`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.llava_onevision.image_processing_pil_llava_onevision`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.mask2former.image_processing_mask2former`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.mask2former.image_processing_pil_mask2former`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.maskformer.image_processing_maskformer`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.maskformer.image_processing_pil_maskformer`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.mllama.image_processing_mllama`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.mllama.image_processing_pil_mllama`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.mobilenet_v1.image_processing_mobilenet_pil_v1`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.mobilenet_v1.image_processing_mobilenet_v1`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.mobilenet_v2.image_processing_mobilenet_v2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.mobilenet_v2.image_processing_pil_mobilenet_v2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.mobilevit.image_processing_mobilevit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.mobilevit.image_processing_pil_mobilevit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.nougat.image_processing_nougat`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.nougat.image_processing_pil_nougat`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.oneformer.image_processing_oneformer`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.oneformer.image_processing_pil_oneformer`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.ovis2.image_processing_ovis2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.ovis2.image_processing_pil_ovis2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.owlv2.image_processing_owlv2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.owlv2.image_processing_pil_owlv2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.owlvit.image_processing_owlvit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.owlvit.image_processing_pil_owlvit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.paddleocr_vl.image_processing_paddleocr_vl`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.paddleocr_vl.image_processing_pil_paddleocr_vl`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.perceiver.image_processing_perceiver`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.perceiver.image_processing_pil_perceiver`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.perception_lm.image_processing_perception_lm`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.phi4_multimodal.image_processing_phi4_multimodal`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.pi0.image_processing_pi0`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.pix2struct.image_processing_pil_pix2struct`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.pix2struct.image_processing_pix2struct`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.pixtral.image_processing_pil_pixtral`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.pixtral.image_processing_pixtral`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.poolformer.image_processing_pil_poolformer`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.poolformer.image_processing_poolformer`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.pp_chart2table.image_processing_pil_pp_chart2table`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.pp_chart2table.image_processing_pp_chart2table`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.pp_doclayout_v2.image_processing_pp_doclayout_v2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.pp_doclayout_v3.image_processing_pp_doclayout_v3`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.pp_lcnet.image_processing_pp_lcnet`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.pp_ocrv5_server_det.image_processing_pp_ocrv5_server_det`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.pp_ocrv5_server_rec.image_processing_pp_ocrv5_server_rec`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.prompt_depth_anything.image_processing_pil_prompt_depth_anything`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.prompt_depth_anything.image_processing_prompt_depth_anything`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.pvt.image_processing_pil_pvt`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.pvt.image_processing_pvt`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.qwen2_vl.image_processing_pil_qwen2_vl`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.qwen2_vl.image_processing_qwen2_vl`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.rt_detr.image_processing_pil_rt_detr`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.rt_detr.image_processing_rt_detr`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.sam.image_processing_pil_sam`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.sam.image_processing_sam`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.sam2.image_processing_sam2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.sam3.image_processing_sam3`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.segformer.image_processing_pil_segformer`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.segformer.image_processing_segformer`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.seggpt.image_processing_pil_seggpt`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.seggpt.image_processing_seggpt`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.siglip.image_processing_pil_siglip`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.siglip.image_processing_siglip`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.siglip2.image_processing_pil_siglip2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.siglip2.image_processing_siglip2`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.slanext.image_processing_slanext`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.smolvlm.image_processing_pil_smolvlm`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.smolvlm.image_processing_smolvlm`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.superglue.image_processing_pil_superglue`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.superglue.image_processing_superglue`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.superpoint.image_processing_pil_superpoint`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.superpoint.image_processing_superpoint`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.swin2sr.image_processing_pil_swin2sr`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.swin2sr.image_processing_swin2sr`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.textnet.image_processing_pil_textnet`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.textnet.image_processing_textnet`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.timm_wrapper.image_processing_timm_wrapper`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.tvp.image_processing_pil_tvp`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.tvp.image_processing_tvp`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.uvdoc.image_processing_uvdoc`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.video_llama_3.image_processing_pil_video_llama_3`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.video_llama_3.image_processing_video_llama_3`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.video_llava.image_processing_video_llava`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.videomae.image_processing_pil_videomae`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.videomae.image_processing_videomae`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.vilt.image_processing_pil_vilt`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.vilt.image_processing_vilt`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.vit.image_processing_pil_vit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.vit.image_processing_vit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.vitmatte.image_processing_pil_vitmatte`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.vitmatte.image_processing_vitmatte`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.vitpose.image_processing_pil_vitpose`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.vitpose.image_processing_vitpose`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.vivit.image_processing_vivit`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.yolos.image_processing_pil_yolos`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.yolos.image_processing_yolos`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.zoedepth.image_processing_pil_zoedepth`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+Accessing `lazy_load_kernel` from `.models.zoedepth.image_processing_zoedepth`. Returning `lazy_load_kernel` instead. Behavior may be different and this alias will be removed in future versions.
+[23:03:55] [D] benchmark=advbench n_prompts=300 (harmful=300 benign=0)
+[23:03:55] [D] cone_dim=4 betas=[0.6, 1.0, 1.4]
+
+Loading weights:   0%|          | 0/723 [00:00<?, ?it/s]
+Loading weights:   0%|          | 1/723 [00:00<02:52,  4.19it/s]
+Loading weights:   1%|          | 4/723 [00:00<01:11, 10.08it/s]
+Loading weights:   2%|▏         | 13/723 [00:00<00:22, 31.71it/s]
+Loading weights:   2%|▏         | 18/723 [00:00<00:21, 32.11it/s]
+Loading weights:   3%|▎         | 23/723 [00:00<00:21, 32.36it/s]
+Loading weights:   4%|▎         | 27/723 [00:00<00:20, 33.78it/s]
+Loading weights:   4%|▍         | 32/723 [00:01<00:19, 34.98it/s]
+Loading weights:   5%|▌         | 37/723 [00:01<00:17, 38.21it/s]
+Loading weights:   6%|▌         | 42/723 [00:01<00:21, 31.39it/s]
+Loading weights:   7%|▋         | 50/723 [00:01<00:17, 37.70it/s]
+Loading weights:   8%|▊         | 55/723 [00:01<00:16, 39.88it/s]
+Loading weights:   8%|▊         | 60/723 [00:01<00:19, 34.20it/s]
+Loading weights:   9%|▉         | 67/723 [00:01<00:15, 41.16it/s]
+Loading weights:  10%|▉         | 72/723 [00:02<00:16, 38.73it/s]
+Loading weights:  11%|█         | 77/723 [00:02<00:19, 32.54it/s]
+Loading weights:  12%|█▏        | 85/723 [00:02<00:15, 41.55it/s]
+Loading weights:  12%|█▏        | 90/723 [00:02<00:16, 38.96it/s]
+Loading weights:  13%|█▎        | 95/723 [00:02<00:19, 32.73it/s]
+Loading weights:  14%|█▍        | 103/723 [00:02<00:14, 41.67it/s]
+Loading weights:  15%|█▍        | 108/723 [00:03<00:16, 37.54it/s]
+Loading weights:  16%|█▌        | 113/723 [00:03<00:16, 37.56it/s]
+Loading weights:  16%|█▋        | 118/723 [00:03<00:15, 39.73it/s]
+Loading weights:  17%|█▋        | 123/723 [00:03<00:17, 34.23it/s]
+Loading weights:  18%|█▊        | 130/723 [00:03<00:21, 27.40it/s]
+Loading weights:  20%|█▉        | 141/723 [00:04<00:14, 39.27it/s]
+Loading weights:  20%|██        | 148/723 [00:04<00:13, 44.19it/s]
+Loading weights:  21%|██▏       | 154/723 [00:04<00:13, 41.45it/s]
+Loading weights:  22%|██▏       | 159/723 [00:04<00:15, 36.00it/s]
+Loading weights:  23%|██▎       | 166/723 [00:04<00:13, 42.22it/s]
+Loading weights:  24%|██▎       | 171/723 [00:04<00:16, 33.76it/s]
+Loading weights:  24%|██▍       | 177/723 [00:04<00:14, 36.64it/s]
+Loading weights:  25%|██▌       | 184/723 [00:05<00:12, 42.84it/s]
+Loading weights:  26%|██▌       | 189/723 [00:05<00:13, 40.06it/s]
+Loading weights:  27%|██▋       | 194/723 [00:05<00:13, 37.86it/s]
+Loading weights:  28%|██▊       | 199/723 [00:05<00:12, 40.33it/s]
+Loading weights:  28%|██▊       | 204/723 [00:05<00:15, 33.09it/s]
+Loading weights:  29%|██▉       | 212/723 [00:05<00:13, 38.90it/s]
+Loading weights:  30%|███       | 217/723 [00:05<00:12, 40.83it/s]
+Loading weights:  31%|███       | 222/723 [00:06<00:14, 35.03it/s]
+Loading weights:  32%|███▏      | 229/723 [00:06<00:11, 41.72it/s]
+Loading weights:  32%|███▏      | 234/723 [00:06<00:12, 37.67it/s]
+Loading weights:  33%|███▎      | 239/723 [00:06<00:12, 37.76it/s]
+Loading weights:  34%|███▎      | 244/723 [00:06<00:11, 39.94it/s]
+Loading weights:  34%|███▍      | 249/723 [00:06<00:13, 34.20it/s]
+Loading weights:  35%|███▌      | 256/723 [00:07<00:14, 31.33it/s]
+Loading weights:  37%|███▋      | 266/723 [00:07<00:11, 40.52it/s]
+Loading weights:  37%|███▋      | 271/723 [00:07<00:10, 42.02it/s]
+Loading weights:  38%|███▊      | 276/723 [00:07<00:12, 36.25it/s]
+Loading weights:  39%|███▉      | 283/723 [00:07<00:10, 42.51it/s]
+Loading weights:  40%|███▉      | 288/723 [00:07<00:11, 38.03it/s]
+Loading weights:  41%|████      | 293/723 [00:08<00:12, 33.49it/s]
+Loading weights:  42%|████▏     | 301/723 [00:08<00:09, 42.34it/s]
+Loading weights:  42%|████▏     | 306/723 [00:08<00:10, 38.11it/s]
+Loading weights:  43%|████▎     | 311/723 [00:08<00:10, 37.95it/s]
+Loading weights:  44%|████▎     | 316/723 [00:08<00:10, 40.14it/s]
+Loading weights:  44%|████▍     | 321/723 [00:08<00:11, 34.43it/s]
+Loading weights:  45%|████▌     | 328/723 [00:08<00:09, 41.45it/s]
+Loading weights:  46%|████▌     | 333/723 [00:09<00:10, 38.82it/s]
+Loading weights:  47%|████▋     | 338/723 [00:09<00:10, 36.95it/s]
+Loading weights:  47%|████▋     | 342/723 [00:09<00:10, 37.19it/s]
+Loading weights:  48%|████▊     | 347/723 [00:09<00:10, 37.19it/s]
+Loading weights:  49%|████▊     | 351/723 [00:09<00:09, 37.36it/s]
+Loading weights:  49%|████▉     | 356/723 [00:09<00:09, 37.28it/s]
+Loading weights:  50%|████▉     | 360/723 [00:09<00:09, 37.36it/s]
+Loading weights:  50%|█████     | 365/723 [00:09<00:09, 39.69it/s]
+Loading weights:  51%|█████     | 370/723 [00:10<00:12, 27.47it/s]
+Loading weights:  53%|█████▎    | 382/723 [00:10<00:07, 45.08it/s]
+Loading weights:  54%|█████▎    | 388/723 [00:10<00:07, 41.95it/s]
+Loading weights:  54%|█████▍    | 394/723 [00:10<00:08, 37.95it/s]
+Loading weights:  55%|█████▌    | 400/723 [00:10<00:07, 41.74it/s]
+Loading weights:  56%|█████▌    | 405/723 [00:10<00:08, 39.12it/s]
+Loading weights:  57%|█████▋    | 410/723 [00:11<00:09, 33.25it/s]
+Loading weights:  58%|█████▊    | 418/723 [00:11<00:07, 42.01it/s]
+Loading weights:  59%|█████▊    | 423/723 [00:11<00:07, 39.23it/s]
+Loading weights:  59%|█████▉    | 428/723 [00:11<00:07, 37.32it/s]
+Loading weights:  60%|█████▉    | 433/723 [00:11<00:07, 39.87it/s]
+Loading weights:  61%|██████    | 438/723 [00:11<00:08, 34.25it/s]
+Loading weights:  62%|██████▏   | 445/723 [00:11<00:06, 41.25it/s]
+Loading weights:  62%|██████▏   | 450/723 [00:12<00:07, 37.40it/s]
+Loading weights:  63%|██████▎   | 455/723 [00:12<00:07, 37.42it/s]
+Loading weights:  63%|██████▎   | 459/723 [00:12<00:07, 37.59it/s]
+Loading weights:  64%|██████▍   | 464/723 [00:12<00:06, 37.53it/s]
+Loading weights:  65%|██████▍   | 469/723 [00:12<00:06, 40.03it/s]
+Loading weights:  66%|██████▌   | 474/723 [00:12<00:07, 33.99it/s]
+Loading weights:  67%|██████▋   | 481/723 [00:12<00:05, 41.32it/s]
+Loading weights:  67%|██████▋   | 486/723 [00:13<00:06, 36.90it/s]
+Loading weights:  68%|██████▊   | 491/723 [00:13<00:06, 37.19it/s]
+Loading weights:  69%|██████▊   | 496/723 [00:13<00:05, 39.64it/s]
+Loading weights:  69%|██████▉   | 501/723 [00:13<00:06, 32.62it/s]
+Loading weights:  70%|███████   | 508/723 [00:13<00:06, 32.49it/s]
+Loading weights:  72%|███████▏  | 517/723 [00:13<00:05, 34.48it/s]
+Loading weights:  73%|███████▎  | 526/723 [00:14<00:05, 35.59it/s]
+Loading weights:  74%|███████▍  | 535/723 [00:14<00:04, 44.32it/s]
+Loading weights:  75%|███████▍  | 541/723 [00:14<00:04, 41.80it/s]
+Loading weights:  76%|███████▌  | 546/723 [00:14<00:05, 35.13it/s]
+Loading weights:  77%|███████▋  | 554/723 [00:14<00:04, 39.64it/s]
+Loading weights:  77%|███████▋  | 559/723 [00:14<00:03, 41.27it/s]
+Loading weights:  78%|███████▊  | 564/723 [00:15<00:04, 35.63it/s]
+Loading weights:  79%|███████▉  | 571/723 [00:15<00:03, 42.03it/s]
+Loading weights:  80%|███████▉  | 576/723 [00:15<00:03, 37.86it/s]
+Loading weights:  80%|████████  | 581/723 [00:15<00:03, 37.73it/s]
+Loading weights:  81%|████████  | 586/723 [00:15<00:03, 39.84it/s]
+Loading weights:  82%|████████▏ | 591/723 [00:15<00:03, 34.50it/s]
+Loading weights:  83%|████████▎ | 598/723 [00:15<00:03, 41.55it/s]
+Loading weights:  83%|████████▎ | 603/723 [00:16<00:03, 37.31it/s]
+Loading weights:  84%|████████▍ | 608/723 [00:16<00:03, 37.45it/s]
+Loading weights:  85%|████████▍ | 612/723 [00:16<00:02, 37.52it/s]
+Loading weights:  85%|████████▌ | 617/723 [00:16<00:02, 37.54it/s]
+Loading weights:  86%|████████▌ | 622/723 [00:16<00:02, 39.98it/s]
+Loading weights:  87%|████████▋ | 627/723 [00:16<00:02, 34.00it/s]
+Loading weights:  87%|████████▋ | 631/723 [00:16<00:02, 34.77it/s]
+Loading weights:  88%|████████▊ | 636/723 [00:17<00:02, 35.87it/s]
+Loading weights:  89%|████████▉ | 643/723 [00:17<00:01, 43.38it/s]
+Loading weights:  90%|████████▉ | 648/723 [00:17<00:01, 39.86it/s]
+Loading weights:  90%|█████████ | 653/723 [00:17<00:01, 37.59it/s]
+Loading weights:  91%|█████████ | 658/723 [00:17<00:01, 40.09it/s]
+Loading weights:  92%|█████████▏| 663/723 [00:17<00:02, 28.15it/s]
+Loading weights:  93%|█████████▎| 672/723 [00:18<00:01, 37.82it/s]
+Loading weights:  94%|█████████▍| 679/723 [00:18<00:01, 43.74it/s]
+Loading weights:  95%|█████████▍| 685/723 [00:18<00:00, 40.96it/s]
+Loading weights:  95%|█████████▌| 690/723 [00:18<00:00, 35.22it/s]
+Loading weights:  96%|█████████▋| 697/723 [00:18<00:00, 41.88it/s]
+Loading weights:  97%|█████████▋| 702/723 [00:18<00:00, 37.82it/s]
+Loading weights:  98%|█████████▊| 707/723 [00:18<00:00, 37.83it/s]
+Loading weights:  98%|█████████▊| 712/723 [00:19<00:00, 40.04it/s]
+Loading weights:  99%|█████████▉| 717/723 [00:19<00:00, 34.37it/s]
+Loading weights: 100%|██████████| 723/723 [00:19<00:00, 37.54it/s]
+[23:04:18] [MP] device_map sharded across 2 GPUs ['0', '1']; input/cone device=cuda:0
+[23:04:18] [D] applying adapter /home/ubuntu/dementor-runtime/dpo_runs/oasst1/llama-3.3-70b_as_llama-3.1-8b_seed42 (merge_and_unload)
+[23:04:23] [D] gen_batch=8 use_kv_cache=True
+The following generation flags are not valid and may be ignored: ['temperature', 'top_p']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+[23:04:33] [D] generated 8/300
+[23:04:59] [D] generated 16/300
+[23:05:18] [D] generated 24/300
+[23:05:36] [D] generated 32/300
+[23:05:53] [D] generated 40/300
+[23:05:59] [D] generated 48/300
+[23:06:17] [D] generated 56/300
+[23:06:23] [D] generated 64/300
+[23:06:30] [D] generated 72/300
+[23:06:48] [D] generated 80/300
+[23:07:06] [D] generated 88/300
+[23:07:25] [D] generated 96/300
+[23:07:43] [D] generated 104/300
+[23:08:01] [D] generated 112/300
+[23:08:19] [D] generated 120/300
+[23:08:37] [D] generated 128/300
+[23:08:55] [D] generated 136/300
+[23:09:13] [D] generated 144/300
+[23:09:31] [D] generated 152/300
+[23:09:49] [D] generated 160/300
+[23:10:07] [D] generated 168/300
+[23:10:25] [D] generated 176/300
+[23:10:32] [D] generated 184/300
+[23:10:50] [D] generated 192/300
+[23:11:08] [D] generated 200/300
+[23:11:09] [D] generated 208/300
+[23:11:11] [D] generated 216/300
+[23:11:29] [D] generated 224/300
+[23:11:31] [D] generated 232/300
+[23:11:43] [D] generated 240/300
+[23:11:45] [D] generated 248/300
+[23:11:51] [D] generated 256/300
+[23:11:56] [D] generated 264/300
+[23:12:00] [D] generated 272/300
+[23:12:02] [D] generated 280/300
+[23:12:15] [D] generated 288/300
+[23:12:34] [D] generated 296/300
+[23:12:35] [D] generated 300/300
+[23:12:56] [D] baseline done
+[23:13:28] [D] generated 8/300
+[23:14:01] [D] generated 16/300
+[23:14:33] [D] generated 24/300
+[23:15:06] [D] generated 32/300
+[23:15:38] [D] generated 40/300
+[23:16:11] [D] generated 48/300
+[23:16:44] [D] generated 56/300
+[23:17:16] [D] generated 64/300
+[23:17:49] [D] generated 72/300
+[23:18:21] [D] generated 80/300
+[23:18:55] [D] generated 88/300
+[23:19:27] [D] generated 96/300
+[23:20:00] [D] generated 104/300
+[23:20:32] [D] generated 112/300
+[23:21:05] [D] generated 120/300
+[23:21:38] [D] generated 128/300
+[23:22:10] [D] generated 136/300
+[23:22:42] [D] generated 144/300
+[23:23:15] [D] generated 152/300
+[23:23:47] [D] generated 160/300
+[23:24:20] [D] generated 168/300
+[23:24:52] [D] generated 176/300
+[23:25:24] [D] generated 184/300
+[23:25:57] [D] generated 192/300
+[23:26:29] [D] generated 200/300
+[23:27:02] [D] generated 208/300
+[23:27:35] [D] generated 216/300
+[23:28:08] [D] generated 224/300
+[23:28:40] [D] generated 232/300
+[23:29:13] [D] generated 240/300
+[23:29:46] [D] generated 248/300
+[23:30:19] [D] generated 256/300
+[23:30:51] [D] generated 264/300
+[23:31:24] [D] generated 272/300
+[23:31:57] [D] generated 280/300
+[23:32:31] [D] generated 288/300
+[23:33:04] [D] generated 296/300
+[23:33:50] [D] generated 300/300
+[W807 23:34:07.375654109 CUDACachingAllocator.cpp:508] expandable_segments: memory mapping failed with OOM on device 0 while trying to map 20971520 bytes (free: 4521984, total: 85017624576).
+[23:34:14] [D] cone_b0.6      median_ppl=     1.2 mean_rep4=0.021
+[23:34:47] [D] generated 8/300
+[23:35:20] [D] generated 16/300
+[23:35:52] [D] generated 24/300
+[23:36:25] [D] generated 32/300
+[23:36:58] [D] generated 40/300
+[23:37:30] [D] generated 48/300
+[23:38:03] [D] generated 56/300
+[23:38:35] [D] generated 64/300
+[23:39:08] [D] generated 72/300
+[23:39:40] [D] generated 80/300
+[23:40:13] [D] generated 88/300
+[23:40:46] [D] generated 96/300
+[23:41:18] [D] generated 104/300
+[23:41:51] [D] generated 112/300
+[23:42:24] [D] generated 120/300
+[23:42:57] [D] generated 128/300
+[23:43:29] [D] generated 136/300
+[23:44:02] [D] generated 144/300
+[23:44:35] [D] generated 152/300
+[23:45:07] [D] generated 160/300
+[23:45:40] [D] generated 168/300
+[23:46:13] [D] generated 176/300
+[23:46:46] [D] generated 184/300
+[23:47:18] [D] generated 192/300
+[23:47:51] [D] generated 200/300
+[23:48:24] [D] generated 208/300
+[23:48:57] [D] generated 216/300
+[23:49:30] [D] generated 224/300
+[23:50:02] [D] generated 232/300
+[23:50:35] [D] generated 240/300
+[23:51:08] [D] generated 248/300
+[23:51:41] [D] generated 256/300
+[23:52:14] [D] generated 264/300
+[23:52:47] [D] generated 272/300
+[23:53:19] [D] generated 280/300
+[23:53:52] [D] generated 288/300
+[23:54:25] [D] generated 296/300
+[23:54:58] [D] generated 300/300
+[23:55:22] [D] cone_b1.0      median_ppl=     1.3 mean_rep4=0.020
+[23:55:54] [D] generated 8/300
+[23:56:27] [D] generated 16/300
+[23:56:59] [D] generated 24/300
+[23:57:32] [D] generated 32/300
+[23:58:05] [D] generated 40/300
+[23:58:37] [D] generated 48/300
+[23:59:10] [D] generated 56/300
+[23:59:43] [D] generated 64/300
+[00:00:15] [D] generated 72/300
+[00:00:48] [D] generated 80/300
+[00:01:21] [D] generated 88/300
+[00:01:54] [D] generated 96/300
+[00:02:26] [D] generated 104/300
+[00:02:59] [D] generated 112/300
+[00:03:31] [D] generated 120/300
+[00:04:04] [D] generated 128/300
+[00:04:36] [D] generated 136/300
+[00:05:09] [D] generated 144/300
+[00:05:41] [D] generated 152/300
+[00:06:14] [D] generated 160/300
+[00:06:47] [D] generated 168/300
+[00:07:19] [D] generated 176/300
+[00:07:52] [D] generated 184/300
+[00:08:24] [D] generated 192/300
+[00:08:57] [D] generated 200/300
+[00:09:30] [D] generated 208/300
+[00:10:02] [D] generated 216/300
+[00:10:35] [D] generated 224/300
+[00:11:08] [D] generated 232/300
+[00:11:41] [D] generated 240/300
+[00:12:13] [D] generated 248/300
+[00:12:46] [D] generated 256/300
+[00:13:19] [D] generated 264/300
+[00:13:52] [D] generated 272/300
+[00:14:24] [D] generated 280/300
+[00:14:57] [D] generated 288/300
+[00:15:30] [D] generated 296/300
+[00:16:03] [D] generated 300/300
+[00:16:27] [D] cone_b1.4      median_ppl=     1.3 mean_rep4=0.021
+[00:16:27] [D] wrote /home/ubuntu/dementor-runtime/steering-adapter-j5/cone_only_2gpu/oasst1__llama-3.3-70b_as_llama-3.1-8b_seed42/eval_advbench/all_gens.csv n=1200
+[00:16:28] [E] launching RTL judge (Qwen/Qwen3-8B)
+[00:18:16] [E] done
+[00:18:16] [F] benchmark=advbench axes=['harm'] verdict=CLEAN cone=0.63 fp=nan rnd=nan base_harm=0.056666666666666664 
