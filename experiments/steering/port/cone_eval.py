@@ -641,7 +641,13 @@ def main():
     ap.add_argument("--benchmark", default="advbench",
                     help="benchmark NAME (advbench,sorrybench,sgbench,harmbench,strongreject,"
                          "orbench_hard,orbench_80k,orbench_toxic,xstest,...) or a .csv path in the pipeline format")
-    ap.add_argument("--max-prompts", type=int, default=0, help="cap #prompts (0 = use all)")
+    # 300 = the steering standard (advbench and harmbench are 300/200 rows so this is the whole
+    # file; strongreject/sorrybench/sgbench cap down to it). Defaulting to 0 = "use all" meant a
+    # caller that invoked this worker DIRECTLY instead of through run_benchmark_eval silently ran
+    # sgbench at 1427 and sorrybench at 473, producing cells comparable to nothing. Pass 0
+    # explicitly if you genuinely want the full benchmark.
+    ap.add_argument("--max-prompts", type=int, default=300,
+                    help="cap #prompts (0 = use all; default 300 = the steering standard)")
     ap.add_argument("--adapter", default=None,
                     help="path or HF id of a LoRA adapter to merge into --model before "
                          "steering (adapter-steering runs: stock directions applied to "

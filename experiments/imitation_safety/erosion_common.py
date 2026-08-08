@@ -181,7 +181,13 @@ NEEDS_MP = {
 # gemma-4-31b/granite here -- that is what EROSION_EXTRA_MP used to do.
 NEEDS_MP |= {x.strip() for x in os.environ.get("EROSION_EXTRA_MP", "").split(",") if x.strip()}
 
-DEFAULT_MAX_PROMPTS = 300
+# 200 = the campaign standard, and the default is set TO the standard on purpose: all 783 live
+# erosion cells are at 200, and the 96 that were at 150 had to be quarantined and re-run because a
+# cap mismatch makes the SFT-vs-DPO contrast uninterpretable. When the default disagreed with the
+# standard (it was 300), forgetting --max-prompts silently produced a non-comparable cell. Now
+# forgetting it produces the right answer. Steering deliberately uses a LARGER cap -- see
+# cone_eval.py -- because it scores a threshold verdict rather than a continuous delta.
+DEFAULT_MAX_PROMPTS = 200
 DEFAULT_SUBSAMPLE_SEED = 42
 
 
