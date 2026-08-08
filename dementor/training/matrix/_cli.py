@@ -164,6 +164,14 @@ def main() -> int:
     dpo_p.add_argument("--max-jobs", type=int, default=None)
     dpo_p.add_argument("--manifest-out", type=Path, default=None)
     dpo_p.add_argument("--parallel", type=int, default=1)
+    # Cell filters, mirroring launch-sft. Without them launch-dpo submits the WHOLE matrix and the
+    # only thing stopping a re-submit is the registry skip -- which does not cover off-roster
+    # targets, so a roster-scoped campaign pays Tinker for cells it will never report.
+    dpo_p.add_argument("--source", default=None, help="Source model id or slug (shard by source)")
+    dpo_p.add_argument("--target", default=None, help="Target model id or slug")
+    dpo_p.add_argument("--dataset", choices=list(TRAIN_DATASETS), default=None)
+    dpo_p.add_argument("--seed", type=int, default=None)
+    dpo_p.add_argument("--max-cells", type=int, default=None)
 
     safety_list_p = sub.add_parser(
         "list-safety-cells",
@@ -351,7 +359,9 @@ def main() -> int:
         return 0
 
     if args.cmd == "launch-dpo":
-        cells = list(iter_cells())
+        cells = _filtered_cells_from_args(args)
+        print(f"launch-dpo: {len(cells)} cells after filters "
+              f"(source={args.source} target={args.target} dataset={args.dataset} seed={args.seed})")
         manifest = launch_dpo(
             cells=cells,
             dry_run=args.dry_run,
@@ -359,7 +369,16 @@ def main() -> int:
             max_jobs=args.max_jobs,
             parallel=args.parallel,
         )
-        out_path = args.manifest_out or (DATA / "results" / "matrix" / "dpo_manifest.json")
+        # Same rule as launch-sft: a FILTERED or dry run must not clobber the canonical manifest.
+        _scope = [p for p in (args.source, args.target, args.dataset,
+                              str(args.seed) if args.seed is not None else None) if p]
+        if args.manifest_out:
+            out_path = args.manifest_out
+        elif _scope or args.dry_run:
+            tag = "-".join(str(x).replace("/", "__") for x in _scope) or "all"
+            out_path = DATA / "results" / "matrix" / f"dpo_manifest.{'dryrun' if args.dry_run else 'shard'}.{tag}.json"
+        else:
+            out_path = DATA / "results" / "matrix" / "dpo_manifest.json"
         out_path.parent.mkdir(parents=True, exist_ok=True)
         with out_path.open("w") as f:
             json.dump(manifest, f, indent=2, default=str)
