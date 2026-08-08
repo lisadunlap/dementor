@@ -151,6 +151,35 @@ def register_cone(model, basis, beta):
     return handles
 
 
+def subsample_like_erosion(df, max_prompts, seed=42):
+    """Seeded, `expected`-stratified subsample -- byte-identical to erosion_common.get_subsample.
+
+    Replaces `df.head(n)`, which took the FIRST n rows in file order: unseeded, unstratified, and a
+    different set from the one the erosion experiment scores. On advbench a 200-cap by .head() shares
+    only 134 of 200 prompts with erosion's seed-42 subsample, so the two experiments would report on
+    overlapping-but-different prompts and could not go in the same table. Stratifying by `expected`
+    also keeps both the harm and over-refusal rows alive, which matters for xstest (250 benign /
+    200 harmful) where .head() can take an all-benign or all-harmful prefix.
+
+    Duplicated here rather than imported so this worker keeps no dependency on the imitation
+    package; the algorithm is the same one, and identical input + identical seed gives identical rows.
+    """
+    if not max_prompts or max_prompts <= 0 or max_prompts >= len(df):
+        return df.reset_index(drop=True)
+    if "expected" in df.columns and df["expected"].nunique() > 1:
+        parts, allocated = [], 0
+        groups = list(df.groupby("expected"))
+        for gi, (_, g) in enumerate(groups):
+            k = max_prompts - allocated if gi == len(groups) - 1 else int(round(max_prompts * len(g) / len(df)))
+            k = max(0, min(k, len(g)))
+            allocated += k
+            parts.append(g.sample(n=k, random_state=seed))
+        sub = pd.concat(parts)
+    else:
+        sub = df.sample(n=max_prompts, random_state=seed)
+    return sub.sort_index().reset_index(drop=True)
+
+
 def stage_generate(args, od):
     out = os.path.join(od, "all_gens.csv")
     if os.path.exists(out):
@@ -158,7 +187,7 @@ def stage_generate(args, od):
     parts = os.path.join(od, "parts"); os.makedirs(parts, exist_ok=True)
     bdf = pd.read_csv(args.benchmark_csv)
     if args.max_prompts and args.max_prompts > 0:
-        bdf = bdf.head(args.max_prompts).reset_index(drop=True)
+        bdf = subsample_like_erosion(bdf, args.max_prompts)
     prompts = bdf["prompt"].astype(str).tolist()
     meta_label = bdf["label"].tolist() if "label" in bdf.columns else ["harmful"] * len(prompts)
     meta_expected = bdf["expected"].tolist() if "expected" in bdf.columns else ["refuse"] * len(prompts)
@@ -646,8 +675,8 @@ def main():
     # caller that invoked this worker DIRECTLY instead of through run_benchmark_eval silently ran
     # sgbench at 1427 and sorrybench at 473, producing cells comparable to nothing. Pass 0
     # explicitly if you genuinely want the full benchmark.
-    ap.add_argument("--max-prompts", type=int, default=300,
-                    help="cap #prompts (0 = use all; default 300 = the steering standard)")
+    ap.add_argument("--max-prompts", type=int, default=200,
+                    help="cap #prompts (0 = use all; default 200 = the campaign standard)")
     ap.add_argument("--adapter", default=None,
                     help="path or HF id of a LoRA adapter to merge into --model before "
                          "steering (adapter-steering runs: stock directions applied to "
