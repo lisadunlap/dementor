@@ -236,6 +236,29 @@ def _install_from_pretrained_patches():
         AutoModelForCausalLM.from_pretrained = staticmethod(model_fp)
 
 
+# --------------------------------------------------------------------------- 3c. mamba-ssm hub-kernel build pin
+def _pin_mamba_ssm_kernel_build():
+    """RDO_MAMBA_SSM_KERNEL_VERSION=<n> repins the kernels-community/mamba-ssm hub build.
+
+    transformers 5.5.4's _HUB_KERNEL_MAPPING pins version 1. On torch 2.13/cu130 (triton 3.7.1)
+    that build's SSD triton kernels misbehave for GraniteMoeHybrid: every fast-path forward returns
+    nondeterministic garbage (filter bypass scores NaN; generations and all ablation targets come out
+    as '!!!!...' token salad), while the version-2 build is numerically identical to the naive
+    PyTorch path (verified on this stack: matching bypass scores to ~0.2, coherent generations,
+    finite cone-training losses). No-op unless the env var is set; must run before the first
+    lazy_load_kernel('mamba-ssm') caches the module, i.e. at rdo_compat import time."""
+    v = os.environ.get("RDO_MAMBA_SSM_KERNEL_VERSION")
+    if not v:
+        return
+    try:
+        from transformers.integrations import hub_kernels
+        entry = hub_kernels._HUB_KERNEL_MAPPING.get("mamba-ssm")
+        if entry is not None:
+            entry["version"] = int(v)
+    except Exception:
+        pass
+
+
 # --------------------------------------------------------------------------- 3b. offline kernel shim
 def _prime_hub_kernels_offline():
     """Resolve the Mamba fused kernels from the LOCAL snapshot so the fast path stays available offline.
@@ -329,5 +352,6 @@ def clamp_layers(layers, n_layers):
 
 # --------------------------------------------------------------------------- install on import
 _install_loss_kwargs_shim()
+_pin_mamba_ssm_kernel_build()
 _install_kernels_offline_shim()
 _install_from_pretrained_patches()

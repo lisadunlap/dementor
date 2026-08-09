@@ -217,6 +217,30 @@ def _maybe_patch_trl_model_parallel() -> None:
         return _mv(out, orig) if hasattr(out, "device") else out
 
     _sft._chunked_cross_entropy_loss = _wrapped
+
+    # TRL>=1.9's _patch_chunked_ce_lm_head does `inspect.signature(original_forward.__func__)`, which
+    # assumes model.forward is a bound method. Under device_map="auto" (DEMENTOR_MP) accelerate
+    # replaces it with a functools.partial(new_forward, module) -- no __func__ -- so SFTTrainer
+    # construction crashes with "AttributeError: 'functools.partial' object has no attribute
+    # '__func__'" before the first step. The captured forward is used ONLY for that signature
+    # (the chunked-CE compute runs through self.base_model, not the captured callable), so
+    # rebinding the partial as a plain bound method -- identical call semantics, introspectable
+    # __func__ -- is sufficient. The resulting (*args, **kwargs) signature only weakens
+    # generate-time kwarg validation, which the MP SFT path never invokes.
+    import functools as _functools
+    import types as _types
+    _orig_patch = getattr(_sft, "_patch_chunked_ce_lm_head", None)
+    if _orig_patch is not None and not getattr(_orig_patch, "_dementor_mp_patched", False):
+        def _patch_chunked_ce_lm_head_mp(model, *args, **kwargs):
+            fwd = getattr(model, "forward", None)
+            if fwd is not None and not hasattr(fwd, "__func__") and hasattr(fwd, "func"):
+                def _forward_as_method(self, *a, **kw):
+                    return fwd(*a, **kw)
+                model.forward = _types.MethodType(_forward_as_method, model)
+            return _orig_patch(model, *args, **kwargs)
+        _patch_chunked_ce_lm_head_mp._dementor_mp_patched = True
+        _sft._patch_chunked_ce_lm_head = _patch_chunked_ce_lm_head_mp
+
     _sft._dementor_mp_patched = True
 
 

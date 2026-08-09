@@ -45,6 +45,11 @@ MAX_TRAIN = int(os.environ.get("RDO_MAX_TRAIN", "0"))  # >0 caps rdo_port's filt
 # cuda_kernels_forward, and that path materializes a (b, c, l, s, h, n) intermediate whose size is
 # linear in the batch -- 64 GiB at the default batch of 16. Small batches keep it tractable.
 GEN_BATCH = int(os.environ.get("RDO_GEN_BATCH", "0"))
+# >0 overrides stage-5's bypass-scoring batch (default 16, the historical single-card value). The
+# hybrid-Mamba naive path (granite-4-h-small with hub kernels unavailable) materializes a
+# (b, c, l, s, h, n) fp32 intermediate per Mamba block -- 4.3 GiB/row/chunk -- so batch 16 needs
+# ~68 GiB on one shard and OOMs the selection pass even when training succeeded. 4 keeps it ~17 GiB.
+SEL_BATCH = int(os.environ.get("RDO_SELECT_BATCH", "16"))
 
 
 def log(od, msg):
@@ -155,15 +160,15 @@ def stage_select(spec, od):
     render = RP.make_render(family, tok); rtoks = RP.refusal_token_ids(family, tok)
     hvp = [render(x) for x in hv]; lvp = [render(x) for x in lv]
     from cone_eval import register_cone
-    base_h = RP.bypass_scores(model, tok, hvp, rtoks, dev, 16).mean().item()
+    base_h = RP.bypass_scores(model, tok, hvp, rtoks, dev, SEL_BATCH).mean().item()
     results = {}
     for f in sorted(glob.glob(os.path.join(od, "cones", "cone_dim_*.pt"))):
         k = int(os.path.basename(f).split("_")[-1].split(".")[0])
         basis = torch.load(f, map_location="cpu")["basis"].float()
         handles = register_cone(model, basis, 1.0)
         try:
-            hb = RP.bypass_scores(model, tok, hvp, rtoks, dev, 16).mean().item()
-            lb = RP.bypass_scores(model, tok, lvp, rtoks, dev, 16).mean().item()
+            hb = RP.bypass_scores(model, tok, hvp, rtoks, dev, SEL_BATCH).mean().item()
+            lb = RP.bypass_scores(model, tok, lvp, rtoks, dev, SEL_BATCH).mean().item()
         finally:
             for h in handles:
                 h.remove()
