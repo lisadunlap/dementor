@@ -50,6 +50,15 @@ PATIENCE = 5
 N_LR_REDUCE = 2
 EPOCHS = 1
 CLIPNORM = 10.0
+# >0 chunks the batched training forwards in forward_logits to at most this many rows (0 = off,
+# the historical single-call batching). GraniteMoeHybrid's naive (kernel-less) SSD path pads each
+# sequence to a full 256 chunk and materializes (b, c, l, s, h, n) fp32 intermediates -- ~4.3 GiB
+# per row per Mamba block -- so the n_sample=8-row ablation/addition/retain forwards need ~50+ GiB
+# on one shard and OOM a 2-card split before any loss is computed. Chunking to 4-row halves keeps
+# the per-forward peak at ~17 GiB. Numerics unchanged: the same rows with the same per-row cone
+# directions (the stack is sliced in lockstep), logits cat'ed before the loss, so CE/KL means and
+# accumulated cone-param grads are identical to the unchunked call.
+MAX_ROWS = int(os.environ.get("RDO_MAX_ROWS", "0"))
 # Abort cone training when this fraction of ablation targets come back empty. Empty targets make
 # the ablation cross-entropy NaN, which silently yields an untrained cone (see build_targets).
 EMPTY_TARGET_ABORT = float(os.environ.get("RDO_EMPTY_TARGET_ABORT", "0.5"))
@@ -270,13 +279,24 @@ class ConeOps:
                 return (self._ablate(h),) + tuple(output[1:])
             return self._ablate(output)
 
+        # RDO_ABLATE_SITES (default "pre,attn,mlp" == the roster-standard 3-site scheme): which
+        # ablation sites to register. gemma-4-31b's generation is destroyed specifically by the
+        # layer-INPUT (residual-stream) ablation at every layer (site-isolation diag: all-layer
+        # pre-only -> punctuation spam at 0/12 usable targets, while attn-only / mlp-only / single-
+        # layer stay coherent; attn+mlp-only with the real dim direction -> 11/12 usable). For that
+        # model RDO_ABLATE_SITES=attn,mlp is the only scheme under which a cone can train at all;
+        # every other model keeps the default. Any run with a non-default mask is a documented
+        # protocol deviation and its eval/selection must use the SAME mask (cone_eval register_cone
+        # honours the same env var).
+        sites = {s.strip() for s in os.environ.get("RDO_ABLATE_SITES", "pre,attn,mlp").split(",")}
         for L in self.layers:
-            self.handles.append(L.register_forward_pre_hook(pre_hook, with_kwargs=True))
+            if "pre" in sites:
+                self.handles.append(L.register_forward_pre_hook(pre_hook, with_kwargs=True))
             attn = getattr(L, "self_attn", None) or getattr(L, "attn", None)
-            if attn is not None:
+            if attn is not None and "attn" in sites:
                 self.handles.append(attn.register_forward_hook(out_hook))
             mlp = getattr(L, "mlp", None) or getattr(L, "feed_forward", None)
-            if mlp is not None:
+            if mlp is not None and "mlp" in sites:
                 self.handles.append(mlp.register_forward_hook(out_hook))
         # additive pre-hook lives on the add_layer only, added lazily in set_add_layer()
         self._add_pre_hook_fn = add_pre_hook
@@ -420,6 +440,14 @@ def make_render(family, tokenizer):
         # with no thought block, so dropping the trailing channel opener puts generation exactly
         # where the answer belongs. enable_thinking=False does not help: this template ignores it.
         m = re.search(r"<\|channel>\w+\s*<channel\|>\s*$", rs)
+        if m and os.environ.get("RDO_KEEP_CHANNEL_OPENER"):
+            # gemma-4-31b (this checkpoint revision): the model re-emits an EMPTY thought block
+            # (channel-thought open + close) and then answers. Stripping the opener makes the
+            # model generate the opener itself, so the first generated token is <|channel> and the
+            # refusal probe is blind; KEEPING the closed empty block puts generation at the answer
+            # (first token "I"), which is exactly what the 2dd944f strip was trying to achieve.
+            # Verified: keep-opener renders yield varied bypass scores and answer-first generations.
+            return rs
         if m:
             r = rs[:m.start()]
         return r
@@ -428,6 +456,28 @@ def make_render(family, tokenizer):
 
 def refusal_token_ids(family, tokenizer):
     if family == "gemma":
+        # 235285 is "I" on the gemma-2/3 vocab it was pinned against, but gemma-4's expanded vocab
+        # remapped it -- on gemma-4-31b it decodes to 'Dated', which never opens a refusal, so the
+        # bypass probe sits at the -18.42 floor (ln 1e-8) and every filter/selection ranking is
+        # noise. Detect the remap by decoding the pinned id; on a wrong decode fall back to this
+        # checkpoint's own "I"/"As" first tokens (the generic branch's derivation). No-op where the
+        # pinned id is still correct (gemma-2/3), so the historical roster values are unchanged.
+        try:
+            dec = tokenizer.decode([235285])
+        except Exception:
+            dec = ""
+        if dec.strip().startswith("I"):
+            return [235285]
+        ids = set()
+        for w in ("I", "As"):
+            for t in (w, " " + w):
+                enc = tokenizer.encode(t, add_special_tokens=False)
+                if enc:
+                    ids.add(enc[0])
+        if ids:
+            log(f"[render] gemma refusal probe token 235285 decodes to {dec!r} on this checkpoint; "
+                f"using derived refusal tokens {sorted(ids)} instead")
+            return sorted(ids)
         return [235285]
     if family == "qwen2.5":
         return [40, 2121]
@@ -653,6 +703,24 @@ def train_cone(model, tokenizer, ops, render, refusal_toks, device, hidden, best
         # directions (and the cone_dim basis vectors) collapses n_sample+cone_dim separate batch-1
         # forwards per loss term into a single batched forward -- the fix for the CPU/launch-bound
         # 100%-CPU / low-GPU regime. n=1 reproduces the original single-prompt forward exactly.
+        if MAX_ROWS and n > MAX_ROWS:
+            # Row-chunked variant (see MAX_ROWS): same rows, same per-row directions sliced in
+            # lockstep, logits cat'ed -- the loss and the grads the cone sees are unchanged; only
+            # the per-forward activation peak drops. Restoring ops.direction afterwards is safe
+            # because every loss term rebuilds its direction stack before calling this (and the
+            # chunk graphs already hold their own slice references for backward).
+            full_dirs = ops.direction
+            chunkable = torch.is_tensor(full_dirs) and full_dirs.dim() == 2 and full_dirs.shape[0] == n
+            outs = []
+            for s in range(0, n, MAX_ROWS):
+                m = min(MAX_ROWS, n - s)
+                if chunkable:
+                    ops.direction = full_dirs[s:s + m]
+                ids2d = ids.unsqueeze(0).expand(m, -1) if m > 1 else ids.unsqueeze(0)
+                outs.append(model(input_ids=ids2d, use_cache=False).logits)
+            if chunkable:
+                ops.direction = full_dirs
+            return torch.cat(outs, dim=0)
         ids2d = ids.unsqueeze(0).expand(n, -1) if n > 1 else ids.unsqueeze(0)
         return model(input_ids=ids2d, use_cache=False).logits
 

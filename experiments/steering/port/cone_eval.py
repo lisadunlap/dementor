@@ -140,13 +140,17 @@ def register_cone(model, basis, beta):
     layers = get_transformer_layers(model)
     handles = []
     pre_hook, hook = make_subspace_hook(basis, beta)
+    # RDO_ABLATE_SITES must match the mask the cone was TRAINED under (rdo_port.ConeOps reads the
+    # same env var); default is the roster-standard 3-site scheme.
+    sites = {s.strip() for s in os.environ.get("RDO_ABLATE_SITES", "pre,attn,mlp").split(",")}
     for L in layers:
-        handles.append(L.register_forward_pre_hook(pre_hook, with_kwargs=True))
+        if "pre" in sites:
+            handles.append(L.register_forward_pre_hook(pre_hook, with_kwargs=True))
         attn = getattr(L, "self_attn", None) or getattr(L, "attn", None)
-        if attn is not None:
+        if attn is not None and "attn" in sites:
             handles.append(attn.register_forward_hook(hook))
         mlp = getattr(L, "mlp", None) or getattr(L, "feed_forward", None)
-        if mlp is not None:
+        if mlp is not None and "mlp" in sites:
             handles.append(mlp.register_forward_hook(hook))
     return handles
 
@@ -232,7 +236,12 @@ def stage_generate(args, od):
     log(f"[D] gen_batch={bs} use_kv_cache={use_kv_cache}")
 
     @torch.no_grad()
-    def perplexity(resps, pbs=16, max_len=1024):
+    def perplexity(resps, pbs=0, max_len=1024):
+        # pbs default 16 OOMs big-vocab models (the fp32 log_softmax is pbs*seq*vocab*4B -- 10.5 GiB
+        # at 262k vocab on top of a resident 62 GB 31B). DEMENTOR_PPL_BS caps it (4 -> ~2.6 GiB);
+        # 0 keeps the historical 16 (every small-vocab roster model is unchanged).
+        if pbs <= 0:
+            pbs = int(os.environ.get("DEMENTOR_PPL_BS", "16"))
         if os.environ.get("DEMENTOR_CONE_SKIP_PPL", "0").lower() in ("1", "true", "yes"):
             return [0.0] * len(resps)
         outp = [float("nan")] * len(resps); specs = []
