@@ -51,8 +51,15 @@ GEN_BATCH_BY_BASE = {
 dlog = DC.make_dlog(os.path.join(HERE, "logs", "daemon.log"))
 
 
-def done(item_id, retry_errors=False):
+def generated(item_id, benchmarks):
     d = os.path.join(EC.WORK, item_id)
+    return all(os.path.exists(os.path.join(d, b, "all_gens.csv")) for b in benchmarks)
+
+
+def done(item_id, retry_errors=False, generation_only=False, benchmarks=EC.DEFAULT_BENCHMARKS):
+    d = os.path.join(EC.WORK, item_id)
+    if generation_only:
+        return generated(item_id, benchmarks)
     return os.path.exists(os.path.join(d, "metrics.json")) or (
         not retry_errors and os.path.exists(os.path.join(d, "ERROR.json"))
     )
@@ -150,6 +157,8 @@ def main():
                     help="generation batch size passed to run_erosion_item.py")
     ap.add_argument("--retry-errors", action="store_true",
                     help="retry pre-existing ERROR checkpoints once during this supervisor run")
+    ap.add_argument("--generate-only", action="store_true",
+                    help="checkpoint missing generations; use batched local judging afterward")
     args = ap.parse_args()
 
     adapters, baselines = EC.build_worklist(seed=args.seed, local_only=True)
@@ -158,15 +167,26 @@ def main():
     extra = ["--benchmarks", args.benchmarks, "--max-prompts", str(args.max_prompts),
              "--gen-batch", str(args.gen_batch),
              "--subsample-seed", str(args.subsample_seed)]
+    if args.generate_only:
+        extra.append("--generate-only")
+    selected_benchmarks = [b for b in args.benchmarks.split(",") if b]
+
+    def item_done(item_id):
+        return done(
+            item_id,
+            retry_errors=args.retry_errors,
+            generation_only=args.generate_only,
+            benchmarks=selected_benchmarks,
+        )
 
     if args.dry_run:
         print(f"worklist: {len(baselines)} baselines + {len(adapters)} adapters = {len(worklist)} items")
         nmp = [w["id"] for w in worklist if required_gpus(w) > 1]
         print(f"model-parallel items ({len(nmp)}): {nmp}")
-        todo = [w["id"] for w in worklist if not done(w["id"], args.retry_errors)]
+        todo = [w["id"] for w in worklist if not item_done(w["id"])]
         print(f"remaining (not done): {len(todo)}")
         for w in worklist[:12]:
-            print(f"  {'DONE' if done(w['id'], args.retry_errors) else 'todo':4s} {w['kind']:8s} {w['id']}")
+            print(f"  {'DONE' if item_done(w['id']) else 'todo':4s} {w['kind']:8s} {w['id']}")
         if len(worklist) > 12:
             print(f"  ... (+{len(worklist)-12} more)")
         print("GPU snapshot (5/6/7):")
@@ -204,7 +224,7 @@ def main():
         external = external_running_ids(worklist)
         inflight = {iid for _, iid in running.values()} | ({mp_job[1]} if mp_job else set()) | external
         todo = [w for w in worklist
-                if not done(w["id"], args.retry_errors)
+                if not item_done(w["id"])
                 and w["id"] not in inflight
                 and w["id"] not in failed_this_run]
         if not todo and not running and not mp_job and not external:

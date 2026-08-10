@@ -298,7 +298,7 @@ def judge_worker(item_ids, benchmarks, enabled, max_prompts, subsample_seed):
     if not items:
         EC.log("[judge] nothing to do in this batch", logf)
         return
-    batch_root = os.path.join(EC.WORK, f"_tinker_batch_{os.getpid()}")
+    batch_root = os.path.join(EC.WORK, f"_judge_batch_{os.getpid()}")
     os.makedirs(batch_root, exist_ok=True)
     ids = [it["id"] for it in items]
     EC.log(f"[judge] batch of {len(ids)}: {ids} CUDA={os.environ.get('CUDA_VISIBLE_DEVICES')}", logf)
@@ -360,9 +360,17 @@ def judge_worker(item_ids, benchmarks, enabled, max_prompts, subsample_seed):
                 "adapter_dir": it.get("adapter_dir"), "seed": it["seed"],
                 "subsample_max_prompts": max_prompts, "subsample_seed": subsample_seed,
                 "rtl_judge_model": EC.RTL_JUDGE_MODEL, "graders_enabled": sorted(enabled),
-                "backend": "tinker", "per_benchmark": per_bench,
+                "backend": "tinker" if "sampler_path" in it else "local",
+                "per_benchmark": per_bench,
             }
-            json.dump(result, open(os.path.join(od, "metrics.json"), "w"), indent=2)
+            final = os.path.join(od, "metrics.json")
+            final_tmp = final + f".tmp.{os.getpid()}"
+            with open(final_tmp, "w") as fh:
+                json.dump(result, fh, indent=2)
+            os.replace(final_tmp, final)
+            error_path = os.path.join(od, "ERROR.json")
+            if os.path.exists(error_path):
+                os.unlink(error_path)
             EC.log(f"[judge] DONE {it['id']}", logf)
     finally:
         shutil.rmtree(batch_root, ignore_errors=True)
@@ -445,7 +453,7 @@ def status(adapters, baselines, benchmarks):
     worklist = baselines + adapters
     n_done = sum(_done(it["id"]) for it in worklist)
     n_samp = sum(_sampled(it["id"], benchmarks) for it in worklist)
-    print(f"Tinker erosion worklist: {len(baselines)} baselines + {len(adapters)} adapters "
+    print(f"Erosion worklist: {len(baselines)} baselines + {len(adapters)} adapters "
           f"= {len(worklist)} items")
     print(f"  sampled (all_gens complete): {n_samp}/{len(worklist)}")
     print(f"  judged  (metrics.json):      {n_done}/{len(worklist)}")
@@ -477,6 +485,10 @@ def main():
                     help="'all' (default, multi-seed sweep) or a specific 'seedNN' to restrict")
     ap.add_argument("--stage", choices=("all", "sft", "dpo"), default="all",
                     help="restrict adapter work to one training rung (default: both)")
+    ap.add_argument("--source-backend", choices=("tinker", "local"), default="tinker",
+                    help="worklist backend; local is for batched judging of cached local generations")
+    ap.add_argument("--shard-count", type=int, default=1)
+    ap.add_argument("--shard-index", type=int, default=0)
     ap.add_argument("--benchmarks", default=",".join(EC.DEFAULT_BENCHMARKS))
     ap.add_argument("--max-prompts-per-benchmark", "--max-prompts", dest="max_prompts",
                     type=int, default=EC.DEFAULT_MAX_PROMPTS)
@@ -507,7 +519,12 @@ def main():
         judge_worker(ids, benchmarks, enabled, args.max_prompts, args.subsample_seed)
         return
 
-    adapters, baselines = tinker_worklist(args.seed)
+    if args.source_backend == "tinker":
+        adapters, baselines = tinker_worklist(args.seed)
+    else:
+        if args.mode in ("sample", "all"):
+            raise SystemExit("local source backend supports status/judge only; generate with erosion_daemon.py --generate-only")
+        adapters, baselines = EC.build_worklist(seed=args.seed, local_only=True)
     if args.stage != "all":
         adapters = [a for a in adapters if a["id"].startswith(args.stage + "_")]
         # Baselines are stage-independent. Give them to one side of a parallel SFT/DPO split so
@@ -518,6 +535,16 @@ def main():
         keep = {i.strip() for i in args.items.split(",") if i.strip()}
         adapters = [a for a in adapters if a["id"] in keep]
         baselines = [b for b in baselines if b["id"] in keep]
+    if args.shard_count < 1 or not 0 <= args.shard_index < args.shard_count:
+        raise SystemExit("require shard_count >= 1 and 0 <= shard_index < shard_count")
+    if args.shard_count > 1:
+        ordered = sorted(adapters + baselines, key=lambda item: item["id"])
+        keep = {
+            item["id"] for index, item in enumerate(ordered)
+            if index % args.shard_count == args.shard_index
+        }
+        adapters = [item for item in adapters if item["id"] in keep]
+        baselines = [item for item in baselines if item["id"] in keep]
     worklist = baselines + adapters
     if args.limit:
         worklist = worklist[:args.limit]

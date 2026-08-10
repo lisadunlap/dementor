@@ -47,6 +47,8 @@ def main():
                     help="comma list of native graders to run (default all)")
     ap.add_argument("--no-heavy-graders", action="store_true",
                     help="skip HarmBench-cls (13B) + Llama-Guard for a fast smoke")
+    ap.add_argument("--generate-only", action="store_true",
+                    help="stop after checkpointing all benchmark generations")
     args = ap.parse_args()
 
     it = EC.find_item(args.item_id)
@@ -106,6 +108,10 @@ def main():
                     torch.cuda.empty_cache()
             EC.log("[A] generation done, model freed", logf)
 
+        if args.generate_only:
+            EC.log(f"=== GENERATED {args.item_id} in {(time.time()-t0)/60:.1f}m ===", logf)
+            return
+
         # ---- B: ONE RTL judge pass over all benchmarks, then split ----------------------------
         need_judge = [b for b in benchmarks
                       if not os.path.exists(os.path.join(od, b, "all_judged.csv"))]
@@ -149,7 +155,13 @@ def main():
             "rtl_judge_model": EC.RTL_JUDGE_MODEL, "graders_enabled": sorted(enabled),
             "per_benchmark": per_bench,
         }
-        json.dump(result, open(final, "w"), indent=2)
+        final_tmp = final + f".tmp.{os.getpid()}"
+        with open(final_tmp, "w") as fh:
+            json.dump(result, fh, indent=2)
+        os.replace(final_tmp, final)
+        error_path = os.path.join(od, "ERROR.json")
+        if os.path.exists(error_path):
+            os.unlink(error_path)
         EC.log(f"=== DONE {args.item_id} in {(time.time()-t0)/60:.1f}m ===", logf)
     except Exception as e:
         import traceback

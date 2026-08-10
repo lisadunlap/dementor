@@ -40,3 +40,14 @@ def test_retry_errors_is_explicit_and_metrics_always_win(tmp_path, monkeypatch):
     assert not daemon.done("cell", retry_errors=True)
     (item / "metrics.json").write_text("{}")
     assert daemon.done("cell", retry_errors=True)
+
+
+def test_generation_only_uses_all_benchmark_checkpoints(tmp_path, monkeypatch):
+    daemon = daemon_module()
+    monkeypatch.setattr(daemon.EC, "WORK", str(tmp_path))
+    item = tmp_path / "cell"
+    for benchmark in ("a", "b"):
+        (item / benchmark).mkdir(parents=True)
+        (item / benchmark / "all_gens.csv").write_text("prompt,model_response\n")
+    assert daemon.done("cell", generation_only=True, benchmarks=("a", "b"))
+    assert not daemon.done("cell", generation_only=True, benchmarks=("a", "b", "c"))
