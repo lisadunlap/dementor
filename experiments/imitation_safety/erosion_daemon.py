@@ -1,18 +1,17 @@
 #!/usr/bin/env python
-"""Resumable, GPU-aware driver for the IMITATION safety-erosion sweep (GPUs 5/6/7 only).
+"""Resumable, GPU-aware driver for the IMITATION safety-erosion sweep.
 
 Models the steering roster_queue / retry-poller pattern: it is a POLITE, low-priority scheduler
 that coexists with the steering roster on the shared box.
 
-  * GPUs 5/6/7 only (GPU4 prohibited; 0-3 belong to others).
+  * Candidate cards come from ``DEMENTOR_GPUS``.
   * A card is claimed as soon as it is idle (mem.used < --mem-max AND util <= --util-max). This box
     is dedicated to the imitation-safety sweep, so the default gate is one 5s poll rather than the
     older shared-roster 3x30s sustained-idle delay.
   * BASELINES run first (each disguise adapter's erosion delta needs its base-model baseline).
-  * Big base models (granite-4 32B, gpt-oss-120b) run MODEL-PARALLEL on 2 idle cards (DEMENTOR_MP=1);
-    everything else is single-card.
-  * done(item) = work/<id>/metrics.json OR work/<id>/ERROR.json (an errored item is not retried
-    forever).  Fully resumable: re-running the daemon picks up where it left off.
+  * Llama-3.3-70B uses three 80 GB cards; other configured MP models use two.
+  * By default an ``ERROR.json`` is left for explicit inspection. ``--retry-errors`` retries each
+    such item at most once in the current supervisor process and reuses its stage checkpoints.
 
 Usage:
   erosion_daemon.py --dry-run                 # print worklist + GPU snapshot, launch nothing
@@ -52,9 +51,11 @@ GEN_BATCH_BY_BASE = {
 dlog = DC.make_dlog(os.path.join(HERE, "logs", "daemon.log"))
 
 
-def done(item_id):
+def done(item_id, retry_errors=False):
     d = os.path.join(EC.WORK, item_id)
-    return os.path.exists(os.path.join(d, "metrics.json")) or os.path.exists(os.path.join(d, "ERROR.json"))
+    return os.path.exists(os.path.join(d, "metrics.json")) or (
+        not retry_errors and os.path.exists(os.path.join(d, "ERROR.json"))
+    )
 
 
 gpu_stat = DC.gpu_stat
@@ -73,8 +74,50 @@ def external_running_ids(worklist):
     return {w["id"] for w in worklist if f"run_erosion_item.py {w['id']}" in out}
 
 
+def external_reserved_gpus():
+    """Cards declared by any live erosion worker, including workers from older supervisors.
+
+    Generation workers unload their base before judging. Memory-only idle detection otherwise sees
+    that transition as a free card and launches a colliding job. The worker's CUDA declaration is
+    the reservation for its entire process lifetime.
+    """
+    reserved = set()
+    try:
+        out = subprocess.run(
+            ["ps", "-eo", "pid=,cmd="], stdout=subprocess.PIPE, text=True, check=True
+        ).stdout
+    except Exception:
+        return reserved
+    for line in out.splitlines():
+        if "run_erosion_item.py" not in line:
+            continue
+        try:
+            pid = int(line.strip().split(None, 1)[0])
+            payload = open(f"/proc/{pid}/environ", "rb").read().split(b"\0")
+        except (OSError, ValueError, IndexError):
+            continue
+        for entry in payload:
+            if not entry.startswith(b"CUDA_VISIBLE_DEVICES="):
+                continue
+            for value in entry.split(b"=", 1)[1].decode().split(","):
+                try:
+                    reserved.add(int(value))
+                except ValueError:
+                    pass
+    return reserved
+
+
+def required_gpus(item):
+    """Physical 80 GB card count proven for the local generation backend."""
+    if item.get("base_model") == "meta-llama/Llama-3.3-70B-Instruct":
+        return 3
+    return 2 if item.get("needs_mp") else 1
+
+
 def launch(item, gpus, extra):
     env = dict(BASE_ENV, CUDA_VISIBLE_DEVICES=",".join(str(g) for g in gpus))
+    env.setdefault("RTL_JUDGE_BATCH_SIZE", "32")
+    env.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
     if len(gpus) > 1:
         env["DEMENTOR_MP"] = "1"
     lg = open(os.path.join(HERE, "logs", f"item_{item['id']}.log"), "a")
@@ -105,6 +148,8 @@ def main():
     ap.add_argument("--interval", type=int, default=5)
     ap.add_argument("--gen-batch", type=int, default=int(os.environ.get("DEMENTOR_EROSION_GEN_BATCH", "32")),
                     help="generation batch size passed to run_erosion_item.py")
+    ap.add_argument("--retry-errors", action="store_true",
+                    help="retry pre-existing ERROR checkpoints once during this supervisor run")
     args = ap.parse_args()
 
     adapters, baselines = EC.build_worklist(seed=args.seed, local_only=True)
@@ -116,12 +161,12 @@ def main():
 
     if args.dry_run:
         print(f"worklist: {len(baselines)} baselines + {len(adapters)} adapters = {len(worklist)} items")
-        nmp = [w["id"] for w in worklist if w["needs_mp"]]
+        nmp = [w["id"] for w in worklist if required_gpus(w) > 1]
         print(f"model-parallel items ({len(nmp)}): {nmp}")
-        todo = [w["id"] for w in worklist if not done(w["id"])]
+        todo = [w["id"] for w in worklist if not done(w["id"], args.retry_errors)]
         print(f"remaining (not done): {len(todo)}")
         for w in worklist[:12]:
-            print(f"  {'DONE' if done(w['id']) else 'todo':4s} {w['kind']:8s} {w['id']}")
+            print(f"  {'DONE' if done(w['id'], args.retry_errors) else 'todo':4s} {w['kind']:8s} {w['id']}")
         if len(worklist) > 12:
             print(f"  ... (+{len(worklist)-12} more)")
         print("GPU snapshot (5/6/7):")
@@ -139,25 +184,34 @@ def main():
     idle = {g: 0 for g in GPUS}
     running = {}   # gpu -> (Popen, id)
     mp_job = None  # (Popen, id, [g1,g2])
+    failed_this_run = set()
     while True:
         for g, (p, iid) in list(running.items()):
             if p.poll() is not None:
                 dlog(f"done {iid} on GPU{g} rc={p.returncode}")
+                if p.returncode:
+                    failed_this_run.add(iid)
                 del running[g]
                 gpu_lease.release(g, holder=LEASE_HOLDER)  # free the card's lease for other daemons
         if mp_job and mp_job[0].poll() is not None:
             dlog(f"done MP {mp_job[1]} rc={mp_job[0].returncode}")
+            if mp_job[0].returncode:
+                failed_this_run.add(mp_job[1])
             for g in mp_job[2]:
                 gpu_lease.release(g, holder=LEASE_HOLDER)
             mp_job = None
 
         external = external_running_ids(worklist)
         inflight = {iid for _, iid in running.values()} | ({mp_job[1]} if mp_job else set()) | external
-        todo = [w for w in worklist if not done(w["id"]) and w["id"] not in inflight]
+        todo = [w for w in worklist
+                if not done(w["id"], args.retry_errors)
+                and w["id"] not in inflight
+                and w["id"] not in failed_this_run]
         if not todo and not running and not mp_job and not external:
             dlog("ALL DONE"); break
 
-        busy = set(running) | (set(mp_job[2]) if mp_job else set())
+        busy = (set(running) | (set(mp_job[2]) if mp_job else set())
+                | external_reserved_gpus())
         for g in GPUS:
             if g in busy:
                 idle[g] = 0; continue
@@ -165,10 +219,10 @@ def main():
             idle[g] = idle[g] + 1 if (u <= args.util_max and m < args.mem_max) else 0
         avail = [g for g in GPUS if g not in busy and idle[g] >= args.sustained_polls]
 
-        # MP items first (need 2 sustained-idle cards). Must WIN the lease on BOTH before launching.
-        mp_todo = [w for w in todo if w["needs_mp"]]
-        if mp_job is None and len(avail) >= 2 and mp_todo:
-            g2 = avail[:2]
+        # MP items first. Must WIN every required lease before launching.
+        mp_todo = [w for w in todo if required_gpus(w) > 1]
+        if mp_job is None and mp_todo and len(avail) >= required_gpus(mp_todo[0]):
+            g2 = avail[:required_gpus(mp_todo[0])]
             claimed = []
             for g in g2:
                 if gpu_lease.try_claim(g, holder=LEASE_HOLDER):
@@ -186,7 +240,7 @@ def main():
                     gpu_lease.release(g, holder=LEASE_HOLDER)
         # single-card items -- claim the lease before launching; skip a card another daemon won.
         for g in avail:
-            single = [w for w in todo if not w["needs_mp"] and w["id"] not in inflight]
+            single = [w for w in todo if required_gpus(w) == 1 and w["id"] not in inflight]
             if not single:
                 break
             if not gpu_lease.try_claim(g, holder=LEASE_HOLDER):

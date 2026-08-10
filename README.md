@@ -38,7 +38,7 @@ completed safety cell. Audit the actual checkpoints before reporting coverage:
 ```bash
 python experiments/imitation_safety/audit_erosion_coverage.py \
   --work-root data/imitation_safety/work \
-  --output data/results/safety/coverage_core12.json \
+  --output data/results/safety/erosion_coverage.json \
   --strict
 ```
 
@@ -50,16 +50,10 @@ legacy n=300 checkpoints, and fail on unresolved conflicts.
 Once both stages reach 528/528:
 
 ```bash
-python experiments/imitation_safety/build_erosion_csv.py --seed seed42
-python experiments/imitation_safety/variance_decomp.py --stage sft
-python experiments/imitation_safety/variance_decomp.py --stage dpo
-python experiments/imitation_safety/plot_erosion.py --stage sft
-python experiments/imitation_safety/plot_erosion.py --stage dpo
-python experiments/imitation_safety/plot_erosion_paper.py --stage sft
-python experiments/imitation_safety/plot_erosion_paper.py --stage dpo
+python experiments/imitation_safety/regenerate_campaign.py
 ```
 
-The aggregated CSVs contain an explicit `stage` column. DPO headline statistics never pool SFT rows;
+The command refuses partial coverage. Its aggregated CSVs contain an explicit `stage` column. DPO headline statistics never pool SFT rows;
 the incremental SFT→DPO effect is paired on exact dataset/source/target/seed cells.
 
 ## Steering scope

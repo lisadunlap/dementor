@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """Imitation-erosion variance decomposition for the Dementor paper.
 
-Reproduces the headline "source ~79% / target ~3% / dataset ~0.2%" claim as a
-one-command artifact. The metric is `mean_harm_erosion`: the per-adapter mean,
+Computes the campaign headline statistics from the current, stage-separated
+artifact. The metric is `mean_harm_erosion`: the per-adapter mean,
 over the five harm-axis safety benchmarks, of (disguised harm - baseline harm).
 Positive = the disguised (imitation) adapter is MORE harmful than its own base
 model on the same prompts; negative = it got safer.
@@ -133,20 +133,19 @@ def main() -> None:
     parser.add_argument("--summary-csv", type=Path, default=SUMMARY_CSV)
     parser.add_argument("--long-csv", type=Path, default=LONG_CSV)
     parser.add_argument("--output", type=Path, default=None)
+    parser.add_argument(
+        "--allow-partial",
+        action="store_true",
+        help="compute exploratory statistics before the configured campaign is complete",
+    )
     args = parser.parse_args()
 
     all_df = ensure_stage(pd.read_csv(args.summary_csv))
     df = all_df[all_df["stage"] == args.stage].copy()
     df = df[df["baseline_available"] == True].copy()  # noqa: E712
-    # Drop self-imitation. The summary CSV carries 8 self-DPO cells (aya-expanse-8b and
-    # ministral-8b x 4 datasets) but a model imitating ITSELF is not a disguise: the DPO
-    # preference pairs are chosen-vs-rejected drawn from the same model, so the signal is
-    # null by construction -- which is why the method section calls self-DPO degenerate and
-    # says it is omitted, and why iter_cells() enumerates s != t. Including them pulled the
-    # headline toward zero (aya's four cells run -3.0 to -4.1pt): mean erosion +0.334 ->
-    # +0.358pt, and source variance 57.5% -> 59.1%. Both corrections are unfavourable to a
-    # "no erosion" reading and favourable to the base-conditioning claim, i.e. they move the
-    # numbers the honest way.
+    # Self-imitation is a matched-compute control, not an off-diagonal disguise cell.
+    # The configured campaign enumerates source != target, but keep this filter so old
+    # aggregate artifacts cannot leak self-controls into a headline rebuild.
     self_pairs = int((df["source"] == df["target"]).sum())
     if self_pairs:
         print(f"[filter] dropping {self_pairs} self-imitation cells (source == target)")
@@ -185,6 +184,11 @@ def main() -> None:
         * len(config.campaign_dataset_names())
         * len(config.campaign_seeds())
     )
+    if n != expected and not args.allow_partial:
+        raise SystemExit(
+            f"refusing partial {args.stage.upper()} analysis: {n}/{expected} campaign cells; "
+            "finish the coverage audit or pass --allow-partial for exploration"
+        )
 
     stats = {
         "metric": METRIC,

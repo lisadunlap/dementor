@@ -108,6 +108,12 @@ RESULTS_SAFETY = _env("DEMENTOR_RESULTS_SAFETY", os.path.join(DATA_ROOT, "result
 # subprocess env below as HF_HOME so the HF libraries pick it up.
 HF_HOME = _paths.HF_HOME
 HF_HUB_CACHE = _paths.HF_HUB_CACHE
+# Graders run partly in this process, not only in the subprocesses created below. Propagate the
+# resolved project cache through the standard Hugging Face variables immediately; otherwise a
+# caller that sets only DEMENTOR_HF_HOME can make an in-process grader download multi-GB weights
+# into ~/.cache while generation and RTL judging correctly use the big-disk cache.
+os.environ["HF_HOME"] = HF_HOME
+os.environ["HF_HUB_CACHE"] = HF_HUB_CACHE
 
 # Python interpreter for subprocess re-launches (runner / judge worker / judge_all). Default: the
 # interpreter running this process, so the child inherits the same venv.

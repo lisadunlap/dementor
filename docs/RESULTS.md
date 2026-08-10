@@ -23,7 +23,7 @@ SG-Bench), two over-refusal metrics (XSTest, OR-Bench-Hard), and the matching un
 baseline. All use the deterministic seed-42 200-row sample. XSTest's scored denominator is 111 benign
 rows within that sample.
 
-The generated coverage manifests under `data/results/safety/coverage_core12*.json` are the source of
+The generated coverage manifest at `data/results/safety/erosion_coverage.json` is the source of
 truth while evaluation is in progress. Headline numbers are regenerated only after both stages pass
 the strict gate.
 
@@ -79,12 +79,11 @@ use the cone-only 70B cells to extend the controlled adapter dissociation range.
 ## Reproduction
 
 ```bash
-python experiments/imitation_safety/audit_erosion_coverage.py --strict
-python experiments/imitation_safety/build_erosion_csv.py --seed seed42
-python experiments/imitation_safety/variance_decomp.py --stage sft
-python experiments/imitation_safety/variance_decomp.py --stage dpo
-python experiments/imitation_safety/plot_erosion_paper.py --stage sft
-python experiments/imitation_safety/plot_erosion_paper.py --stage dpo
+python experiments/imitation_safety/regenerate_campaign.py
 ```
+
+The regeneration command runs the strict coverage gate first and refuses to overwrite headline
+artifacts from a partial matrix. Pass repeated `--work-root` arguments when results remain on
+multiple machines.
 
 See `METHODS.md` for the canonical metric definitions and `docs/RESULTS_INDEX.md` for artifact paths.
