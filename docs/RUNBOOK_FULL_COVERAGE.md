@@ -37,6 +37,22 @@ Run only IDs listed as `missing` or `incomplete` by the audit, with
 `--max-prompts 200 --subsample-seed 42`. Per-benchmark generation, judging, grading, and final
 metrics are checkpointed, so a failed judge can reuse completed generations.
 
+For a large local backlog, generate first and then use the shared batched judge so the heavy graders
+are loaded once per batch instead of once per adapter:
+
+```bash
+python experiments/imitation_safety/erosion_daemon.py --generate-only \
+  --max-prompts 200 --subsample-seed 42
+
+# Run disjoint shards on distinct cards after generation finishes.
+python experiments/imitation_safety/tinker_erosion.py judge \
+  --source-backend local --seed seed42 --shard-count 6 --shard-index 0 \
+  --gpu 0 --batch-size 8 --max-prompts 200 --subsample-seed 42
+```
+
+Use shard indices 0--5 and a different reserved GPU for each process. The batched worker writes the
+same per-cell `metrics.json` schema as the single-cell runner.
+
 Do not schedule a card merely because its memory temporarily drops during another evaluator's
 generation-to-judge transition. Reserve cards for the full cell lifetime. Llama-3.3-70B source
 evaluations require a three-card model-parallel lane on 80 GB H100s.
