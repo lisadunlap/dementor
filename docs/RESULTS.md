@@ -83,7 +83,13 @@ python experiments/imitation_safety/regenerate_campaign.py
 ```
 
 The regeneration command runs the strict coverage gate first and refuses to overwrite headline
-artifacts from a partial matrix. Pass repeated `--work-root` arguments when results remain on
+artifacts from a partial matrix. It writes identical generated-result macros beside the documentation
+draft and the AAAI paper entry point. Pass repeated `--work-root` arguments when results remain on
 multiple machines.
+
+The canonical submission entry point is
+`paper/naz_aaai2027/aaai2027_identity_safety_main.tex`; it imports the single manuscript body from
+`docs/AAAI_DRAFT.tex`, preventing an older paper copy from retaining stale roster sizes or headline
+numbers. Compile it from `paper/naz_aaai2027/` after regeneration.
 
 See `METHODS.md` for the canonical metric definitions and `docs/RESULTS_INDEX.md` for artifact paths.

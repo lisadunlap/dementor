@@ -1,19 +1,23 @@
 % AAAI draft — core-12, stage-separated imitation-safety campaign.
 % Numeric safety macros are generated only after strict 528/528 SFT and DPO coverage.
 \documentclass[letterpaper]{article}
-\usepackage{aaai2026}
-\usepackage{times}
-\usepackage{helvet}
-\usepackage{courier}
+\usepackage[submission]{aaai2027}
 \usepackage[hyphens]{url}
 \usepackage{graphicx}
+\urlstyle{rm}
+\def\UrlFont{\rm}
+\usepackage{natbib}
+\usepackage{caption}
+\frenchspacing
 \usepackage{booktabs}
 \usepackage{amsmath,amssymb}
 \usepackage{xcolor}
 
-\IfFileExists{docs/generated_campaign_results.tex}
-  {\input{docs/generated_campaign_results.tex}}
-  {\PackageError{dementor}{Run regenerate_campaign.py after strict coverage}{}}
+\IfFileExists{generated_campaign_results.tex}
+  {\input{generated_campaign_results.tex}}
+  {\IfFileExists{docs/generated_campaign_results.tex}
+    {\input{docs/generated_campaign_results.tex}}
+    {\PackageError{dementor}{Run regenerate_campaign.py after strict coverage}{}}}
 
 \title{Behavioral Imitation and Safety Are Dissociable:\\
 A Stage-Separated Evaluation with Positive Controls}
@@ -219,6 +223,6 @@ Nemotron Nano & 30B (A3B) & hybrid/MoE \\
 \label{tab:roster}
 \end{table}
 
-\bibliographystyle{aaai}
-% \bibliography{dementor}
+\bibliographystyle{aaai2027}
+\bibliography{aaai2027}
 \end{document}

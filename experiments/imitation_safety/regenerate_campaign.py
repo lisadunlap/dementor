@@ -45,6 +45,11 @@ def main() -> int:
         type=Path,
         default=REPO / "docs" / "generated_campaign_results.tex",
     )
+    parser.add_argument(
+        "--paper-tex-output",
+        type=Path,
+        default=REPO / "paper" / "naz_aaai2027" / "generated_campaign_results.tex",
+    )
     args = parser.parse_args()
 
     roots = args.work_roots or [EC.WORK]
@@ -137,11 +142,14 @@ def main() -> int:
         macro("SFTEroderSources", len(sft["eroders"])),
         macro("DPOEroderSources", len(dpo["eroders"])),
     ]
-    args.tex_output.parent.mkdir(parents=True, exist_ok=True)
-    args.tex_output.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    generated_tex = "\n".join(lines) + "\n"
+    for tex_output in {args.tex_output, args.paper_tex_output}:
+        tex_output.parent.mkdir(parents=True, exist_ok=True)
+        tex_output.write_text(generated_tex, encoding="utf-8")
     print(f"[regenerate] wrote {coverage_path}")
     print(f"[regenerate] wrote {headline_path}")
     print(f"[regenerate] wrote {args.tex_output}")
+    print(f"[regenerate] wrote {args.paper_tex_output}")
     return 0
 
 
