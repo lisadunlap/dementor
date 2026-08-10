@@ -1,6 +1,7 @@
-"""Golden/regression tests for the two pure result-recompute functions:
-  * variance_decomp.eta_squared -- one-way eta^2 (SS_between / SS_total) behind the 79/3/0.2 split
-  * compute_overcount.summarize  -- the Guard-vs-genuine overcount summary (the 3.5x headline)
+"""Golden/regression tests for pure result-recompute functions:
+  * variance_decomp.eta_squared -- one-way eta^2 (SS_between / SS_total)
+  * variance_decomp.paired_stage_delta -- exact-cell SFT-to-DPO changes
+  * compute_overcount.summarize -- Guard-vs-genuine overcount arithmetic
 
 Both are exercised on tiny hand-computable fixtures so the arithmetic is pinned exactly, without
 depending on the committed data artifacts (which live under the /data symlink and may be absent).
