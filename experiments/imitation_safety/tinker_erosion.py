@@ -407,11 +407,19 @@ def phase_judge(args, adapters, baselines, benchmarks, enabled):
     dlog(f"[judge] start batch_size={args.batch_size} gpus={gpus} "
          f"graders={sorted(enabled)} (baselines first) "
          f"lease_root={gpu_lease.LOCK_ROOT} reaped_stale={reclaimed}")
+    failed_this_run = set()
     while True:
-        ready = [it for it in worklist if not _done(it["id"]) and _sampled(it["id"], benchmarks)]
+        ready = [it for it in worklist
+                 if not _done(it["id"])
+                 and it["id"] not in failed_this_run
+                 and _sampled(it["id"], benchmarks)]
         if not ready:
             remaining = [it["id"] for it in worklist if not _done(it["id"])]
             dlog(f"[judge] no ready-to-judge items; {len(remaining)} not-yet-sampled remain")
+            if failed_this_run:
+                dlog(f"[judge] deferred {len(failed_this_run)} items after a failed batch: "
+                     f"{sorted(failed_this_run)}")
+                return
             if args.once or not remaining:
                 dlog("[judge] done" if not remaining else "[judge] --once: exiting")
                 return
@@ -443,6 +451,8 @@ def phase_judge(args, adapters, baselines, benchmarks, enabled):
             if claimed:
                 gpu_lease.release(g, holder=LEASE_HOLDER)  # free the card for other sustained-idle daemons
         dlog(f"[judge] batch rc={rc} (done={sum(_done(it['id']) for it in batch)}/{len(batch)})")
+        if rc:
+            failed_this_run.update(it["id"] for it in batch if not _done(it["id"]))
         if args.once:
             dlog("[judge] --once: one batch launched, exiting")
             return
