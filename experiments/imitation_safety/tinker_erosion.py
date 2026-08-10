@@ -475,6 +475,8 @@ def main():
     ap.add_argument("worker_ids", nargs="?", default=None, help="(internal) comma ids for __judge_worker")
     ap.add_argument("--seed", default="all",
                     help="'all' (default, multi-seed sweep) or a specific 'seedNN' to restrict")
+    ap.add_argument("--stage", choices=("all", "sft", "dpo"), default="all",
+                    help="restrict adapter work to one training rung (default: both)")
     ap.add_argument("--benchmarks", default=",".join(EC.DEFAULT_BENCHMARKS))
     ap.add_argument("--max-prompts-per-benchmark", "--max-prompts", dest="max_prompts",
                     type=int, default=EC.DEFAULT_MAX_PROMPTS)
@@ -506,6 +508,12 @@ def main():
         return
 
     adapters, baselines = tinker_worklist(args.seed)
+    if args.stage != "all":
+        adapters = [a for a in adapters if a["id"].startswith(args.stage + "_")]
+        # Baselines are stage-independent. Give them to one side of a parallel SFT/DPO split so
+        # two samplers cannot write the same missing baseline checkpoint concurrently.
+        if args.stage == "sft":
+            baselines = []
     if args.items:
         keep = {i.strip() for i in args.items.split(",") if i.strip()}
         adapters = [a for a in adapters if a["id"] in keep]

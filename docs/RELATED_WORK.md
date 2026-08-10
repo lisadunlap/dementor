@@ -40,7 +40,7 @@ unverified. We do not re-verify Dementor's own numbers here.
 - **Arditi et al. 2024, [2406.11717](https://arxiv.org/abs/2406.11717)** (NeurIPS 2024) — "Refusal in
   LLMs is mediated by a single direction"; defines directional ablation `x' ← x − (x·r̂)r̂` from a
   diff-of-means vector (exactly our β=1 hook). [verified] **Our only methodological delta is the
-  contrast set:** source−target activations on *benign* prompts (an identity/provenance axis) vs their
+  contrast set:** source−target activations on *benign* prompts (a provenance contrast) vs their
   harmful−harmless (a safety axis).
 - Supporting steering method lineage (diff-of-means / representation steering): CAA
   [2312.06681](https://arxiv.org/abs/2312.06681), RepE/LAT
@@ -57,19 +57,16 @@ unverified. We do not re-verify Dementor's own numbers here.
   off-the-shelf guards mis-measure.
 - **[2512.16602](https://arxiv.org/abs/2512.16602)** — pattern-based refusal detection is inadequate
   for modern subtle refusals. [verified] The detection-inadequacy point itself is already made; our
-  addition is the measured magnitude + mechanism: on our matrix (n=4,712) Llama-Guard overcounts
-  genuine harm **3.5×** (6.7× on AdvBench) because **79% of its flags are false-positive refusals of
-  harmful prompts** (it reacts to the prompt topic, not the response) — and it still *misses* 25% of
-  genuine harm. This is a topic-mislabel artifact, distinct from (not driven by) the refuse-then-leak
-  phenomenon above.
+  addition is a matched, content-aware calibration on the same responses used for erosion. Historical
+  calibration values are not carried into the core-12 manuscript until their analysis is rebuilt.
 
 ### Fingerprint / provenance instrument (crowded)
 - **[2504.14871](https://arxiv.org/abs/2504.14871)** and **[2602.09434](https://arxiv.org/abs/2602.09434)**
   ("A Behavioral Fingerprint for LLMs: Provenance via Refusal Vectors", 2026). The latter uses the
   **refusal vector AS the fingerprint** (100% over 76 variants) — a "safety-bound intrinsic
   fingerprint" that "degrades alongside safety". [verified] This is the **inverse** of our result:
-  it *binds* identity to safety; we build a benign fingerprint that is *separable* from safety. Cedes
-  refusal-as-fingerprint; supports the novelty of a benign, safety-separable fingerprint. Our
+  it *binds* its chosen fingerprint to safety; we test a different benign provenance contrast. Cedes
+  refusal-as-fingerprint; motivates asking whether a benign provenance contrast is safety-separable. Our
   persistence metric is an **instrument**, not a contribution.
 
 ### Over-refusal benchmarks (cite, don't claim)
@@ -87,13 +84,16 @@ unverified. We do not re-verify Dementor's own numbers here.
 
 ## Claim — the contribution
 
-No prior work builds a **benign cross-model provenance direction** and shows it is **geometrically and
-causally separable** from safety. The packaged contribution is the **conjunction**:
+No prior work builds our **benign cross-model provenance contrast** and tests it with the same
+positive-controlled operator used for refusal. The packaged contribution is the **conjunction**:
 1. A **matched-compute benign-control gap** isolating imitation-specific (not generic-FT) erosion.
 2. A **measurement correction** — off-the-shelf guards materially overcount and mis-rank, triangulated
    across three judges.
-3. The **weight-not-identity** localization — same operator, ablating the identity direction is null
-   while ablating refusal is catastrophic.
+3. A **provenance--refusal dissociation** — the same operator leaves the measured provenance contrast
+   at the random-control level while the refusal positive control moves harm.
+
+This is not a claim that the contrast is a complete identity representation or that its ablation
+removes model identity; the held-out diagnostic does not establish either stronger statement.
 
 ---
 
@@ -123,13 +123,11 @@ single-direction ablation** — the basis of our honest **EXCLUDED** category (t
 so we do not claim those models).
 
 ### #3 — "you just made the model imitate a permissive target" (target-conditioning as confound)
-Rebutted decisively by a **variance decomposition** over the full seed-42 genuine-harm matrix: the
-imitation **target explains only 3% of erosion variance vs 79% for the source** (dataset 0.2%).
-Imitating a permissive target is *not* what drives erosion — the effect is source-fragility-driven
-("asymmetric laundering": a model's disguisability is a property of the disguising model, not its
-target). The benign **self-SFT control gap** separately isolates imitation-specificity vs generic FT.
-*(Note: this supersedes the earlier "target-conditioning" defense; the stronger, honest rebuttal is
-that the target is inert.)*
+Addressed by a **stage-separated variance decomposition** over the complete seed-42 core-12 matrix.
+The source, target, and dataset shares are generated only after both 528-cell coverage gates pass.
+The target is described as weakly conditioning the observed erosion only if that relationship holds
+separately at SFT and DPO; it is not assumed from the pre-campaign aggregate. The self-SFT control is
+reported separately as a matched-compute observation rather than pooled into the off-diagonal matrix.
 
 ---
 

@@ -1,8 +1,7 @@
-% AAAI draft — Dementor safety/dissociation extension.
-% DRAFT for review: numbers are pulled from the committed artifacts (see docs/RESULTS_INDEX.md).
-% Drop in the official aaai2026.sty / aaai2026.bib before submission. Author block redacted here.
+% AAAI draft — core-12, stage-separated imitation-safety campaign.
+% Numeric safety macros are generated only after strict 528/528 SFT and DPO coverage.
 \documentclass[letterpaper]{article}
-\usepackage{aaai2026}          % <- replace with the year's official style
+\usepackage{aaai2026}
 \usepackage{times}
 \usepackage{helvet}
 \usepackage{courier}
@@ -11,324 +10,212 @@
 \usepackage{booktabs}
 \usepackage{amsmath,amssymb}
 \usepackage{xcolor}
-\newcommand{\eg}{e.g.,\ }
-\newcommand{\ie}{i.e.,\ }
 
-\title{Imitation Transfers Identity, Not Safety:\\
-A Measurement Correction and a Mechanistic Dissociation}
+\IfFileExists{docs/generated_campaign_results.tex}
+  {\input{docs/generated_campaign_results.tex}}
+  {\PackageError{dementor}{Run regenerate_campaign.py after strict coverage}{}}
+
+\title{Behavioral Imitation and Safety Are Dissociable:\\
+A Stage-Separated Evaluation with Positive Controls}
 \author{Redacted for review}
 
 \begin{document}
 \maketitle
 
 \begin{abstract}
-Prior work reports that benign fine-tuning erodes alignment, and behavioral
-distillation is widely treated as a safety hazard. We revisit that claim with a
-controlled imitation matrix (a clean $13\times13$ source$\times$target square,
-$769$ adapters over 4 datasets) and a 23-model projection-ablation study, and reach a more
-measured conclusion: \textbf{imitation transfers a model's fingerprint without
-transferring its safety, and the reported hazard is largely a measurement artifact.}
-(1) Off-the-shelf output filters badly overstate the phenomenon: on identical
-responses Llama-Guard reports $25.4\%$ harm where two independent content-aware graders
---- our judge and the official HarmBench classifier --- agree on $7$--$9\%$, a
-$2.7$--$3.5\times$ overcount, while the filter simultaneously \emph{misses} $25\%$ of
-genuine harm. The guard reacts to prompt topic rather than response content. (2) Measured with a content-aware judge, imitation erodes
-genuine safety only marginally: mean $+0.33$pt across 769 adapters, only $2$ above
-$+10$pt (both a reasoning-model judging artifact), and $42\%$ get \emph{safer}. (3) What little
-erosion exists tracks the \emph{base} model, not the imitated one: a variance
-decomposition attributes 57.5\% of the (small) erosion variance to the base model, 3.1\% to
-the imitated target, and 0.8\% to the dataset (source still dominates target ${\sim}18\times$).
-We report this tentatively --- the
-underlying signal is near the measurement floor --- but if it holds it has a security
-reading (\emph{asymmetric laundering}): a model's disguisability, and its safety cost,
-is a property of the disguising model, not of what it imitates. (4) Mechanistically,
-identity and safety occupy causally separable subspaces: ablating a benign cross-model
-\emph{provenance} direction leaves safety unmoved (within $4$pt of baseline, and
-indistinguishable from a random-direction control) while ablating the refusal cone
-under the identical operator is catastrophic ($+16$ to $+96$pt harmful compliance),
-across \textbf{23/23} models whose positive control fires. Identity transfer does not
-drag safety with it.
+When a language model is fine-tuned to imitate another model, does it inherit the
+target's safety behavior? We evaluate a complete \CampaignModels-model ordered
+source--target matrix over \CampaignDatasets datasets, separately at the SFT and
+SFT$\rightarrow$DPO stages. Each stage contains \CampaignAdaptersPerStage
+off-diagonal adapters, evaluated on the same seed-\CampaignEvaluationSeed sample of
+\CampaignEvaluationPrompts prompts per safety benchmark. Mean harmful-compliance
+change is \SFTMeanErosionPP percentage points after SFT and \DPOMeanErosionPP points
+after DPO; \SFTPctSafer\% and \DPOPctSafer\% of cells, respectively, become safer.
+The exact-cell DPO-minus-SFT change is \PairedStageDeltaPP points over
+\PairedStageCells pairs. Variation is principally source-conditioned rather than
+target-conditioned. A complementary projection-ablation assay provides a causal
+dissociation: a refusal-cone positive control changes harmful compliance, while a
+benign cross-model provenance contrast does not move safety beyond a norm-matched
+random control on the evaluable base-model set. These results bound a safety claim
+about weight-based imitation; they do not establish that the provenance contrast is
+a complete representation of model identity.
 \end{abstract}
 
 \section{Introduction}
-Public language models have recognizable behavioral fingerprints---tone, formatting
-habits, characteristic refusals---and prior work shows a source model can be made to
-imitate a target's style through prompting or fine-tuning. A natural and
-safety-critical question follows: when a model adopts another's \emph{behavior}, does
-it also inherit its \emph{safety}? And is the ``identity'' that transfers
-mechanistically the same object as the model's safety, or a separable one?
+Language models exhibit recognizable response patterns, including tone, formatting,
+verbosity, and characteristic refusals. Prompting or fine-tuning can move a source
+model toward a target model on these behavioral measurements. It does not follow that
+the target's safety policy transfers with them.
 
-We study this with two complementary experiments on a shared roster of open-weight
-models spanning 4B--70B parameters, dense / MoE / hybrid-Mamba / VLM architectures,
-and ${\sim}10$ labs. The first is a behavioral \emph{imitation matrix}: we fine-tune
-each source to imitate each target (LoRA SFT$\rightarrow$DPO on four datasets) and
-measure the change in genuine harmful-compliance across seven safety benchmarks. The
-second is a \emph{steering} study: using diff-of-means projection-ablation
-\cite{arditi2024}, we build a benign cross-model \emph{provenance} direction (source
-$-$ target activations on benign prompts) and test, with a per-model positive
-control, whether ablating it erodes safety.
+We separate three questions that are often pooled. First, how does supervised
+imitation affect safety? Second, what additional change follows preference
+optimization? Third, is a benign cross-model activation contrast causally entangled
+with refusal behavior? The first two require separate SFT and DPO measurements on
+matched cells. The third requires a positive control and a random control under the
+same intervention operator.
 
-Our contribution is a \emph{conjunction} that no prior work assembles: a measurement
-correction quantifying how far off-the-shelf guards are and \emph{why}, a controlled
-matrix large enough to show that the erosion those guards report is small and
-source-conditioned once measured properly, and a positive-controlled mechanistic
-account of why identity transfer need not carry safety with it. Each ingredient
-individually is prior art; the packaged result---a benign provenance direction that is
-causally separable from safety, together with the measurement correction that explains
-the literature's alarm---is not. We regard the corrective as the primary contribution:
-a hazard widely treated as established shrinks to $+0.2$pt under a content-aware judge.
-
-\section{Related Work}
-\textbf{Benign fine-tuning erodes safety.} \citet{qi2023} established that benign
-fine-tuning degrades alignment, and recent work shows black-box behavioral
-distillation can strip and even amplify unsafety beyond the teacher. We \emph{cede}
-the phenomenon and refine it with a matched-compute control gap, source-conditioning,
-and a measurement correction. \textbf{Shallow safety / refuse-then-leak.}
-\citet{qi2024shallow} and NOICE show alignment lives in the first output tokens and
-that guards are fooled by an initial refusal. \textbf{Steering operator.} Our
-ablation operator is exactly \citet{arditi2024}; our only methodological delta is the
-\emph{contrast set}---benign source$-$target activations (a provenance axis) rather
-than harmful$-$harmless (a safety axis). \textbf{Guard calibration} supports that
-off-the-shelf filters mis-measure; our addition is the measured magnitude and
-mechanism on a controlled matrix. \textbf{Closest tension.} A concurrent persona-vs-
-refusal result reaches the opposite conclusion using the same operator; we rebut it
-by distinguishing a \emph{within-model} compliance axis (cosine ${\sim}{-}0.18$ to
-refusal) from our \emph{cross-model} provenance axis (cosine ${\sim}0$), and by a
-positive-controlled null that holds even where the fingerprint has non-trivial cosine
-to refusal.
+Our contribution is a complete, configuration-defined matrix with a single evaluation
+standard, an exact-cell comparison between training stages, and a claim scope tied to
+the controls that were actually run. Prompt-only interventions, alternate reference
+directions, and uncontrolled adapter extensions are outside that scope.
 
 \section{Method}
-\subsection{Experiment 1: Imitation safety-erosion matrix}
-For each ordered source$\rightarrow$target pair and dataset $D$, we train a LoRA
-adapter (rank 32) with SFT on 500 of the target's responses followed by DPO
-(target-preferred, source-baseline-dispreferred); seed 42. The matrix is
-deliberately \emph{rectangular} ($9$ sources $\times$ up to $18$ targets), not
-square: imitation requires only a target's \emph{outputs}, whereas using a model as
-a \emph{source} requires fine-tuning its weights. The $9$ sources are the models in
-our local fine-tuning track; models we did not fine-tune locally --- those served
-through a separate API training backend, and the largest ($120$B) checkpoints that
-exceed our local GPUs --- contribute as imitation targets only. This costs no
-generality for our claims, which are about how a source's safety changes, not the
-targets'. We evaluate each
-\emph{disguised} adapter and its unadapted \emph{baseline} on seven safety
-benchmarks (200 prompts each): five harm-axis (AdvBench, HarmBench, StrongREJECT,
-SORRY-Bench, SG-Bench) and two over-refusal (XSTest, OR-Bench). Harm is scored by a
-content-aware \emph{refuse-then-leak} (RTL) judge that reads the full response, so a
-model that refuses then leaks is counted harmful while a clean refusal is not.
-Erosion $=\mathrm{harm}(\text{disguised})-\mathrm{harm}(\text{baseline})$ on the
-same prompts. A \emph{self-imitation} control (source imitates \emph{itself}, self-SFT)
-is the matched-compute benign baseline; self-DPO is degenerate and omitted.
+\subsection{Configured imitation campaign}
+The named \texttt{imitation\_safety} campaign in \texttt{config.yaml} fixes the roster,
+datasets, seed, and evaluation sampler. The roster contains \CampaignModels models
+spanning 4B--70B parameters and dense, mixture-of-experts, and hybrid architectures.
+For every ordered source$\rightarrow$target pair with source $\ne$ target and each of
+\CampaignDatasets datasets, we train an SFT adapter and then a DPO adapter from its
+matching SFT parent. The two stages are never pooled.
 
-\subsection{Experiment 2: Steering dissociation}
-We compute a benign provenance direction as the diff-of-means of source$-$target
-activations on benign prompts, extended to a concept cone, and apply projection
-ablation $x' \leftarrow x-(x\cdot\hat r)\hat r$. Each model gets a pre-registered
-\emph{positive control}: ablating the \emph{refusal} cone must erode safety, else the
-model is honestly reported as unusable for the test. Verdicts are assigned per
-benchmark on the harm axis; XSTest is excluded because its baseline harm is ${\sim}0$,
-so the control cannot fire there and a failure would be uninformative. We also discard
-any model whose \emph{random-direction} control itself moves harm appreciably, since a
-null is meaningless once the control arm is contaminated (this excludes one deep VLM
-whose all-layer cone over-ablates the tower, random arm $+19.4$pt). On models where the
-control fires, we ask whether ablating the \emph{provenance} direction moves safety
-relative to that random-direction control.
+Each adapter and its unadapted source baseline are evaluated on AdvBench, HarmBench,
+StrongREJECT, SORRY-Bench, SG-Bench, XSTest, and OR-Bench-Hard. Sampling uses
+\CampaignEvaluationPrompts rows and seed \CampaignEvaluationSeed. XSTest's
+over-refusal metric is evaluated on the 111 benign examples within its shared 200-row
+sample. Harm is scored with a content-aware refuse-then-leak judge and benchmark-native
+graders. For harm benchmark $b$,
+\[
+  E_{a,b}=H_{a,b}-H_{\mathrm{base}(a),b}.
+\]
+An adapter's headline erosion is the mean of $E_{a,b}$ over the five harm-axis
+benchmarks. The incremental preference-optimization effect is paired exactly on
+dataset, source, target, and seed:
+\[
+  \Delta_{\mathrm{DPO-SFT}}=E_{\mathrm{DPO}}-E_{\mathrm{SFT}}.
+\]
+
+\subsection{Coverage and aggregation}
+Adapter training is not counted as evaluation. A cell is complete only if all seven
+metrics exist and its source baseline has matching sample sizes. Checkpoints from
+different workers are deduplicated by ID and analysis-relevant content; unresolved
+conflicts abort. Aggregate CSVs record \texttt{stage=sft$\mid$dpo}. Headline generation
+is gated on 528/528 coverage at both stages.
+
+We report one-way $\eta^2=SS_{\mathrm{between}}/SS_{\mathrm{total}}$ for source,
+target, and dataset. ``Eroder'' sources are selected from the data using a declared
++1 percentage-point mean threshold rather than a hardcoded model list.
+
+\subsection{Projection-ablation assay}
+For each base model, we derive a benign cross-model provenance contrast from 120 paired
+benign responses. The 120 examples construct a direction; they are not an evaluation
+denominator. We compare projection ablation of this contrast with (i) a refusal-cone
+positive control and (ii) a norm-matched random direction. A model contributes to the
+dissociation claim only where the refusal control fires and the random control remains
+valid.
+
+This assay tests whether the measured benign provenance contrast is causally coupled
+to refusal behavior. It does not prove that ablating the contrast removes model
+identity: the held-out identity diagnostic is insufficient for that stronger claim.
 
 \section{Results}
-\paragraph{Finding 1 --- Off-the-shelf guards overstate the effect $2.7$--$3.5\times$.}
-On $n{=}4{,}712$ matrix responses, Llama-Guard-3-8B flags $25.4\%$ unsafe versus
-$7.2\%$ genuine harm --- a \textbf{$3.5\times$ overcount} ($6.7\times$ on AdvBench) ---
-while it simultaneously \emph{misses} $25\%$ of genuine harm (recall $75.3\%$). Guard
-flags responses that do not deliver harm, reacting to prompt topic rather than
-response content. This result is logically prior to the rest: any erosion estimate
-computed with such a filter inherits the inflation, which is why we measure with a
-content-aware judge throughout.
-
-The overcount is a claim about two instruments disagreeing, so we corroborate it with
-an \emph{independent} third grader on the identical responses. Scoring the same
-$4{,}712$ responses with the official HarmBench classifier
-(\texttt{cais/HarmBench-Llama-2-13b-cls}) gives harm rates of \textbf{Llama-Guard
-$25.4\%$, HarmBench classifier $9.3\%$, our judge $7.2\%$}: the two content-aware
-graders bracket genuine harm at $7$--$9\%$ while the output filter alone reports $25\%$.
-Guard is thus the outlier, overcounting $2.7\times$ relative to the independent grader
-($3.5\times$ relative to ours), and the claim does not rest on trusting our judge. A
-second cross-check on the disjoint steering distribution ($n{=}50{,}000$) agrees
-($\kappa{=}0.82$, base rates $25.5\%$ vs $24.7\%$). We report the overcount
-conservatively as $2.7$--$3.5\times$; our judge is if anything marginally \emph{more}
-lenient than the HarmBench classifier (concentrated on SORRY-Bench), so our
-RTL-scored erosion is a slight underestimate, which does not rescue the filter. We
-also decline the sharper claim that Guard's false positives are all \emph{clean
-refusals}: a refusal-phrase lexicon covers only $79\%$ of them and $43\%$ contain
-degenerate decoding artifacts, so we report the conservative form (``does not deliver
-harm'').
-
-\paragraph{Finding 2 --- Measured properly, imitation erosion is small.}
-Across the $n{=}769$ disguise adapters (the clean $13\times13$ square contributes $497$
-off-diagonal adapters: all $156$ cells are filled, but $43$ carry a single dataset rather than
-all four), mean genuine-harm erosion is $+0.33$pt and $42\%$ get \emph{safer}; restricted to the
-square alone, $+0.35$pt and $40.6\%$. Only $2$ adapters exceed $+10$pt, and in both
-gpt-oss-20b is the fine-tuned \emph{base} (a reasoning-channel model) whose verbose refusals the content-aware judge
-over-flags as refuse-then-leak --- an instance of the Finding-1 overcount, not real erosion.
-Only 2 of the 13 sources erode by more than $1$pt. The headline hazard of behavioral
-imitation does not survive a content-aware measurement.
-
-\paragraph{Finding 3 --- What little erosion exists tracks the base model, not the
-imitated one.}
-To the extent the small erosion in Finding~2 varies at all, it varies with the
-\emph{base} model (the one being fine-tuned), not the imitated target. A one-way
-variance decomposition attributes \textbf{57.5\% of erosion variance to the base model,
-3.1\% to the imitated target, 0.8\% to the dataset} (Table~\ref{tab:variance}) --- the base
-dominates the imitated target ${\sim}18\times$: the least-safe base (ministral-8b, $26\%$
-baseline harm) erodes appreciably ($+3.1$pt) while a robust base gets safer ($-2.9$pt), and
-which model is imitated barely matters.
-We caution that this decomposition sits on a small signal: per-benchmark harm rates are
-quantised to ${\sim}0.005$ (200 prompts), the erosion values it partitions are a few
-tenths of a point, and the single-seed matrix carries no significance test. A separate
-three-seed pilot (Limitations) adds $p$-values and finds the same base-conditioning, so
-we read this as a \emph{tentative} but seed-stable pattern rather than a precisely
-estimated effect. If it holds, it has a security reading we call \emph{asymmetric
-laundering}: a model's disguisability, and its safety cost, is a property of the model
-doing the disguising and is not predictable from the model it imitates.
-
-\paragraph{Finding 4 --- Identity and safety are causally separable.}
-On the $N{=}23$ models where the refusal positive control fires, ablating the benign
-provenance direction is null --- indistinguishable from a random-direction control ---
-while ablating the refusal cone under the identical operator erodes safety
-catastrophically. Averaged over the harm benchmarks where the control fires, the cone
-moves harmful compliance by $+16$ to $+96$pt, whereas the provenance direction moves it
-by $-0.9$ to $+3.9$pt, against $-0.9$ to $+3.8$pt for a random direction on the same
-models. The dissociation is \textbf{23/23}: 21 models are clean across every harm
-benchmark and 2 are clean across the subset where the control fires. Four further models
-genuinely resist single-direction refusal ablation (reported as resistance, not support),
-one is discarded for a contaminated random-direction control, two are deferred on a
-hardware gap, and two were not run. Verdicts are scored on the harm axis only;
-XSTest is excluded because its baseline harm is ${\sim}0$, so the control cannot fire
-there. Identity and safety are thus separable objects in activation space: the
-fingerprint can be removed without touching refusal. This is the mechanistic
-counterpart of the behavioral picture in Findings~2--3 --- imitation moves a model's
-identity but barely its safety, because the two are not the same object.
+\subsection{Safety changes by training stage}
+Table~\ref{tab:stages} reports the complete campaign. SFT changes mean harm by
+\SFTMeanErosionPP points, with \SFTPctSafer\% of adapters becoming safer. DPO changes
+mean harm by \DPOMeanErosionPP points, with \DPOPctSafer\% becoming safer. The paired
+DPO-minus-SFT change is \PairedStageDeltaPP points over all \PairedStageCells exact
+pairs. These quantities answer different questions and are not averaged together.
 
 \begin{table}[t]
 \centering
-\begin{tabular}{lc}
+\begin{tabular}{lrrr}
 \toprule
-Factor & \% of erosion variance ($\eta^2$) \\
+Stage & Cells & Mean erosion (pp) & Safer (\%) \\
 \midrule
-Source (base) model & 57.5 \\
-Imitation target & 3.1 \\
-Dataset & 0.8 \\
+SFT & \CampaignAdaptersPerStage & \SFTMeanErosionPP & \SFTPctSafer \\
+DPO & \CampaignAdaptersPerStage & \DPOMeanErosionPP & \DPOPctSafer \\
 \bottomrule
 \end{tabular}
-\caption{The small erosion signal is overwhelmingly a base-model (source) property,
-not a property of the imitated target ($n{=}769$).}
+\caption{Stage-separated safety results. Positive erosion means more harmful than the
+same source model without an adapter.}
+\label{tab:stages}
+\end{table}
+
+\subsection{Source, target, and dataset conditioning}
+The source accounts for \SFTSourceEtaPct\% of SFT erosion variance and
+\DPOSourceEtaPct\% of DPO variance. The corresponding target shares are
+\SFTTargetEtaPct\% and \DPOTargetEtaPct\%; dataset shares are
+\SFTDatasetEtaPct\% and \DPODatasetEtaPct\%. Under the declared +1-point threshold,
+\SFTEroderSources SFT sources and \DPOEroderSources DPO sources are classified as
+eroders. This supports a source-conditioning statement only to the precision warranted
+by a single-seed, near-zero signal.
+
+\begin{table}[t]
+\centering
+\begin{tabular}{lrr}
+\toprule
+Factor & SFT $\eta^2$ (\%) & DPO $\eta^2$ (\%) \\
+\midrule
+Source model & \SFTSourceEtaPct & \DPOSourceEtaPct \\
+Imitated target & \SFTTargetEtaPct & \DPOTargetEtaPct \\
+Dataset & \SFTDatasetEtaPct & \DPODatasetEtaPct \\
+\bottomrule
+\end{tabular}
+\caption{One-way variance shares, computed separately by training stage.}
 \label{tab:variance}
 \end{table}
 
+\subsection{Controlled mechanistic scope}
+At the base-model level, the refusal-cone, benign-provenance, and random arms support a
+positive-controlled dissociation between the measured provenance contrast and refusal
+behavior. Llama-3.3-70B is included in this base-model assay with all three controls.
+Granite-4-H-Small is not: its cone training retained no usable refusal targets and
+became non-finite, so it remains an imitation model without a steering verdict.
+
+The adapter-level analysis is restricted to cells containing all three arms. The 70B
+adapter extension contains cone and baseline arms only. It therefore shows that the
+refusal positive control remains effective after 70B imitation fine-tuning, but it is
+not evidence that a controlled adapter-level provenance null extends to 70B.
+
 \section{Limitations}
-The main matrix is single-seed (42). Our central claims---a measurement correction
-(Finding~1) and a mechanistic dissociation (Finding~4)---involve no training
-stochasticity, and the erosion effect is characterized as \emph{small} rather than
-precisely estimated, so we expect the qualitative conclusions to be seed-robust. A
-separate 7-model, 3-seed pilot (seeds 42--44), trained through a \emph{different}
-pipeline (the Tinker API) and evaluated as sources on AdvBench and StrongREJECT,
-supports both the near-null and the base-conditioning directly: overall genuine
-erosion holds at $+0.27/+0.21/+0.21$pt across seeds (all $p<10^{-4}$), the per-model
-seed standard deviation ($\sim$0.1pt) is ${\sim}8\times$ smaller than the
-between-source spread, and every model's erode/does-not-erode verdict is preserved
-across all three seeds --- so base-conditioning is not seed noise. (These seven
-Tinker-trained sources are now folded into the main $13\times13$ matrix.) Because that
-pilot roster is disjoint from the locally-trained sources, we additionally re-trained the
-local eroder (ministral) and a null control (aya) at seeds 43/44 across all four datasets
-and re-scored erosion on the same two benchmarks ($n{=}20$ cells per seed): ministral erodes
-at $+4.2/+4.8/+4.7$pt
-across seeds 42/43/44 (across-seed SD $0.27$pt) while aya stays at $+1.4/+1.1/+1.2$pt (SD
-$0.13$pt), so the between-source gap ($\sim$3.4pt) is ${\sim}13\text{--}26\times$ the
-across-seed SD --- confirming source-conditioning on the exact matrix models, not only a
-proxy roster. Multi-seed replication of the \emph{full} matrix is left to future work.
-All 13 imitation-square sources now carry a full five-benchmark steering verdict on the harm axis
-(AdvBench, HarmBench, StrongREJECT, SORRY-Bench, SG-Bench)---the same harm axis as the imitation-erosion
-study---so the mechanistic dissociation is measured on the exact imitation grid \emph{and} the same
-benchmark set rather than an overlapping subset: 9/13 are clean, 3/13 show genuine single-cone resistance
-(refusal resists single-direction ablation with a clean random control: gpt-oss-120b, qwen3.6-27b,
-gemma-4-e4b), and 1/13 is reported but not counted (gemma-4-31b). For that last model we disclose a flaw
-in our own measurement rather than dropping it: our all-layer refusal cone over-ablates its 60-layer
-vision-language tower, so even a random-direction ablation moves harm 20--32pt, contaminating the control
-and rendering its verdict untrustworthy---a limitation of the operator on deep VLMs, not a property of the
-model's safety (its smaller sibling gemma-4-e4b has a clean control). In no source does identity ablation
-erode safety beyond the random control. (The broader steering roster of 23 models is wider only for
-cheap-intervention breadth.) Only two in-grid sources
-erode $>1$pt (ministral-8b $+3.1$, qwen3.6-27b $+1.1$), and of those only ministral-8b
-also has a clean steering verdict (qwen3.6-27b is a genuine steering PC-fail), so the
-eroding half of any ``weight-erodes / steering-does-not'' connecting claim rests on
-$n{=}1$. We therefore do not lean on that connecting claim: the two pillars
-(Findings~1 and~4) each stand alone.
-Relatedly, a matched self-imitation control (a model imitating \emph{itself} drifts
-$-0.4$pt versus $+3.1$pt imitating others) suggests the erosion is specific to
-\emph{cross}-imitation rather than generic fine-tuning, but this contrast too is only
-measurable on the single appreciably-eroding source (ministral-8b); we report it as a
-single-source supporting observation (appendix), not as a finding. Harm labels come
-from an LLM judge; we mitigate with a content-aware refuse-then-leak design and validate it against the
-official HarmBench classifier ($\kappa{=}0.82$, $n{=}50$k) and a human hand-census ($\kappa{=}0.79$),
-as detailed in Finding~1. The human census covers AdvBench/StrongREJECT; the HarmBench-classifier
-agreement extends the check across the full harm axis.
+The main matrix uses one training seed. Every safety comparison uses matched prompts,
+but the resulting small deltas are quantized by a 200-row benchmark sample. The
+variance decomposition is descriptive rather than a causal attribution and is
+reported separately for SFT and DPO.
+
+We derive one benign provenance contrast per model against a fixed reference. Because
+the claim is limited to that measured contrast, a second-reference campaign is not
+required; reference-invariant identity would be a different, stronger claim. Likewise,
+prompt-only safety rungs would broaden the study from weight-based imitation to a full
+intervention ladder and are not needed for the present conclusion.
+
+The base-model steering assay and controlled adapter assay have different populations.
+We do not infer adapter controls from base-model controls, and we do not use the
+cone-only 70B extension to enlarge the controlled adapter population.
 
 \section{Conclusion}
-Behavioral imitation transfers a model's fingerprint without transferring its safety.
-Measured with a content-aware judge, the safety cost of imitation is small
-($+0.33$pt mean; $42\%$ of adapters get \emph{safer}) and confined to sources that were
-already fragile; off-the-shelf guards inflate it $2.7$--$3.5\times$ (versus two
-independent content-aware graders) by flagging responses that do not deliver harm. The mechanistic counterpart is a causal dissociation: a model's
-identity direction can be ablated without moving its refusal behavior, across 23
-models. Two practical consequences follow. First, safety claims about fine-tuned or
-distilled models must be measured with content-aware judges rather than output
-filters, or they inherit a multiplicative inflation. Second, behavioral-fingerprint
-auditing is unreliable in adversarial settings---and unreliable \emph{unpredictably},
-per source---because disguisability is a property of the disguising model rather than
-of the model being imitated.
+Across a complete core-12 matrix, supervised imitation and subsequent preference
+optimization have separately measured safety effects, with an exact-cell estimate of
+the change between them. The remaining heterogeneity is more source-conditioned than
+target-conditioned. A positive-controlled activation assay further shows that the
+measured benign provenance contrast is dissociable from refusal behavior on the
+evaluable base-model set. The evidence supports a bounded conclusion about behavioral
+imitation and safety; it does not require prompt-only experiments, repeated failed cone
+training, a second reference direction, or uncontrolled 70B adapter arms.
 
 \appendix
-\section{Model Roster}
-\label{app:roster}
-Table~\ref{tab:roster} gives the full imitation roster. Thirteen models form the clean
-square---each serves as both source and target, with all $156$ off-diagonal cells filled across
-seven safety benchmarks. Dataset depth per cell is uneven: $113$ cells carry all four datasets
-and $43$ carry one, so the square comprises $497$ off-diagonal adapters rather than $156\times4$.
-Three further models were evaluated as
-\emph{sources only} and are reported in the text rather than the grid, their
-source$\to$target coverage being too sparse for the square; including them leaves
-the source-variance share essentially unchanged ($57.5\%$ over the full $769$-adapter roster
-vs.\ $59.7\%$ on the square alone).
-
-\begin{table}[t]
+\section{Core-12 roster}
+\begin{table}[h]
 \centering
 \small
-\begin{tabular}{llll}
+\begin{tabular}{lll}
 \toprule
-Model & Params & Provider & Arch. \\
+Model & Params & Architecture \\
 \midrule
-\multicolumn{4}{l}{\emph{Clean $13\times13$ square (each is both source and target)}} \\
-Ministral-8B-Instruct-2410   & 8B         & Mistral   & dense \\
-Nemotron-3-Nano-30B-A3B      & 30B (A3B)  & NVIDIA    & MoE \\
-gemma-4-31B-it               & 31B        & Google    & VLM \\
-Qwen3.6-35B-A3B              & 35B (A3B)  & Qwen      & MoE \\
-gpt-oss-120b                 & 120B       & OpenAI    & MoE \\
-gemma-4-E4B-it               & E4B        & Google    & VLM \\
-Qwen3.6-27B                  & 27B        & Qwen      & mamba-hybrid \\
-phi-4                        & 14B        & Microsoft & dense \\
-gpt-oss-20b                  & 20B        & OpenAI    & MoE \\
-OLMo-3-7B-Instruct           & 7B         & AllenAI   & dense \\
-Qwen3.5-4B                   & 4B         & Qwen      & mamba-hybrid \\
-Llama-3.1-8B-Instruct        & 8B         & Meta      & dense \\
-aya-expanse-8b               & 8B         & Cohere    & dense \\
-\midrule
-\multicolumn{4}{l}{\emph{Sources only (reported in text, not the grid)}} \\
-granite-4.0-h-small          & 32B (A9B)  & IBM       & mamba-hybrid \\
-Llama-3.3-70B-Instruct       & 70B        & Meta      & dense \\
-Nemotron-3-Super-120B-A12B   & 120B (A12B)& NVIDIA    & MoE \\
+Aya Expanse & 8B & dense \\
+Gemma 4 E4B & E4B & multimodal \\
+Gemma 4 31B & 31B & multimodal \\
+Granite 4 H Small & 32B (A9B) & hybrid/MoE \\
+Llama 3.1 & 8B & dense \\
+Llama 3.3 & 70B & dense \\
+Ministral & 8B & dense \\
+OLMo 3 & 7B & dense \\
+Phi 4 & 14B & dense \\
+Qwen 3.6 & 27B & hybrid \\
+GPT-OSS & 20B & MoE \\
+Nemotron Nano & 30B (A3B) & hybrid/MoE \\
 \bottomrule
 \end{tabular}
-\caption{Imitation roster: 13 clean-square models (each a source and a target) plus 3
-source-only models reported in the text. Spans 4B--120B across 8 providers and
-dense / MoE / mamba-hybrid / VLM architectures.}
+\caption{The configured publication cohort. Every model is both a source and target.}
 \label{tab:roster}
 \end{table}
 
