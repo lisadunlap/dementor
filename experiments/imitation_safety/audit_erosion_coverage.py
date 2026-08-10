@@ -35,8 +35,26 @@ def expected_ids(campaign: str, stage: str) -> list[str]:
     ]
 
 
-def item_problems(item: dict, baseline: dict | None) -> list[str]:
+def item_problems(
+    item: dict,
+    baseline: dict | None,
+    evaluation: dict | None = None,
+) -> list[str]:
     problems = []
+    evaluation = evaluation or {}
+    expected_max = evaluation.get("max_prompts")
+    expected_seed = evaluation.get("subsample_seed")
+    for label, payload in (("adapter", item), ("baseline", baseline)):
+        if payload is None:
+            continue
+        if expected_max is not None and payload.get("subsample_max_prompts") != expected_max:
+            problems.append(
+                f"{label}:max_prompts={payload.get('subsample_max_prompts')}!={expected_max}"
+            )
+        if expected_seed is not None and payload.get("subsample_seed") != expected_seed:
+            problems.append(
+                f"{label}:subsample_seed={payload.get('subsample_seed')}!={expected_seed}"
+            )
     if baseline is None:
         problems.append("baseline_missing")
     per_benchmark = item.get("per_benchmark", {})
@@ -59,6 +77,7 @@ def item_problems(item: dict, baseline: dict | None) -> list[str]:
 def audit(campaign: str, roots: list[str]) -> dict:
     expected_by_stage = {stage: expected_ids(campaign, stage) for stage in ("sft", "dpo")}
     expected_set = set(expected_by_stage["sft"]) | set(expected_by_stage["dpo"])
+    evaluation = config.campaign_evaluation(campaign)
     items = BUILD.load_items(
         roots,
         accept=lambda item: item.get("kind") == "baseline" or item.get("id") in expected_set,
@@ -69,7 +88,7 @@ def audit(campaign: str, roots: list[str]) -> dict:
     report = {
         "campaign": campaign,
         "work_roots": roots,
-        "evaluation": config.campaign_evaluation(campaign),
+        "evaluation": evaluation,
         "models": [m["slug"] for m in config.campaign_roster(campaign)],
         "datasets": config.campaign_dataset_names(campaign),
         "seeds": config.campaign_seeds(campaign),
@@ -85,7 +104,11 @@ def audit(campaign: str, roots: list[str]) -> dict:
             if item is None:
                 missing.append(item_id)
                 continue
-            problems = item_problems(item, baselines.get(item.get("base_model")))
+            problems = item_problems(
+                item,
+                baselines.get(item.get("base_model")),
+                evaluation,
+            )
             if problems:
                 incomplete[item_id] = problems
             else:

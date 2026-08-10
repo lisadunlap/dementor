@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "experiments" / "imitation_safety"))
 import variance_decomp as VD  # noqa: E402
 import compute_overcount as CO  # noqa: E402
 import build_erosion_csv as BUILD  # noqa: E402
+import audit_erosion_coverage as AUDIT  # noqa: E402
 
 
 # --------------------------------------------------------------------------- eta_squared
@@ -64,6 +65,38 @@ def test_legacy_stage_backfill_and_exact_sft_dpo_pairing():
     paired = VD.paired_stage_delta(staged)
     assert paired["n_pairs"] == 1
     assert paired["mean_delta"] == pytest.approx(0.05)
+
+
+def _complete_metrics(max_prompts=200, subsample_seed=42):
+    per_benchmark = {
+        benchmark: {"metric": 0.0, "n": 111 if benchmark == "xstest" else 200}
+        for benchmark in AUDIT.EC.DEFAULT_BENCHMARKS
+    }
+    return {
+        "subsample_max_prompts": max_prompts,
+        "subsample_seed": subsample_seed,
+        "per_benchmark": per_benchmark,
+    }
+
+
+def test_coverage_rejects_matching_legacy_sampling_metadata():
+    adapter = _complete_metrics(max_prompts=300)
+    baseline = _complete_metrics(max_prompts=300)
+    problems = AUDIT.item_problems(
+        adapter,
+        baseline,
+        {"max_prompts": 200, "subsample_seed": 42},
+    )
+    assert "adapter:max_prompts=300!=200" in problems
+    assert "baseline:max_prompts=300!=200" in problems
+
+
+def test_coverage_accepts_configured_sampling_metadata():
+    assert AUDIT.item_problems(
+        _complete_metrics(),
+        _complete_metrics(),
+        {"max_prompts": 200, "subsample_seed": 42},
+    ) == []
 
 
 # --------------------------------------------------------------------------- summarize (overcount)
