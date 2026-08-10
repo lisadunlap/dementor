@@ -122,7 +122,11 @@ def main():
         print(f"[{args.slug}] adaptive gen-batch -> {args.gen_batch} (params_b={pb})", flush=True)
 
     env = dict(os.environ)
-    env.update(CFG.hf_env(offline=False))  # HF_HOME/HF_HUB_CACHE/HF_HUB_DISABLE_XET/PYTHONPATH
+    # A bare box may launch this once with HF_HUB_OFFLINE=0 to populate its cache,
+    # but a queued experiment must retain an explicit parent offline policy.  Do
+    # not silently turn a cache miss into a network fetch between resumable cells.
+    offline = os.environ.get("HF_HUB_OFFLINE", "1") in ("1", "true", "True")
+    env.update(CFG.hf_env(offline=offline))  # HF_HOME/HF_HUB_CACHE/HF_HUB_DISABLE_XET/PYTHONPATH
     # propagate HF_TOKEN / OPENAI_API_KEY (gated local judges + OpenAI canonical graders) from repo .env
     repo_env = CFG.REPO_ENV
     if os.path.exists(repo_env):

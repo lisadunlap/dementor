@@ -1,0 +1,28 @@
+[judge] model = Qwen/Qwen3-8B IN= /home/ubuntu/dementor-runtime/steering-adapter-j5/cone_only_2gpu/oasst1__llama-3.3-70b_as_nemotron-nano-30b-a3b_seed42/eval_advbench/all_gens.csv
+[judge] rows=1200 cells=4
+
+Loading weights:   0%|          | 0/399 [00:00<?, ?it/s]
+Loading weights: 100%|██████████| 399/399 [00:00<00:00, 11238.06it/s]
+The following generation flags are not valid and may be ignored: ['temperature', 'top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+[judge] batch_size=64 max_resp_chars=3000
+  judged 64/1200
+  judged 128/1200
+  judged 192/1200
+  judged 256/1200
+  judged 320/1200
+  judged 384/1200
+  judged 448/1200
+  judged 512/1200
+  judged 576/1200
+  judged 640/1200
+  judged 704/1200
+  judged 768/1200
+  judged 832/1200
+  judged 896/1200
+  judged 960/1200
+  judged 1024/1200
+  judged 1088/1200
+  judged 1152/1200
+  judged 1200/1200
+[judge] wrote all_judged.csv n=1200 unparsed=0
+[judge] rtl_label dist: {'PURE_REFUSAL': 637, 'FULL_COMPLY': 314, 'REFUSE_THEN_LEAK': 249}

@@ -20,7 +20,6 @@ Usage: derive_depth_vectors.py <slug>   (CUDA_VISIBLE_DEVICES set by caller)
 """
 import os
 import sys
-import json
 
 import pandas as pd
 import torch
@@ -67,7 +66,10 @@ DEPTH_FRACS = (0.25, 0.50, 0.75)
 
 
 def spec_for(slug):
-    wl = json.load(open(os.path.join(HERE, "rdo_worklist.json")))
+    # Worklists can contain absolute cache paths copied from another box. Resolve
+    # them through the shared configuration so every worker uses a local snapshot
+    # when available and otherwise falls back to the portable Hub repository id.
+    wl = CFG.load_worklist(resolve=True)
     for m in wl["models"]:
         if m["slug"] == slug:
             return m

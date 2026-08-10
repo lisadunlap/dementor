@@ -1,0 +1,20 @@
+
+=== launch 2026-08-06T18:36:44.187841 on GPU3 ===
+
+=== launch 2026-08-06T18:36:44.285664 on GPU3 ===
+
+=== launch 2026-08-06T18:36:44.289670 on GPU3 ===
+
+=== launch 2026-08-06T18:36:44.299725 on GPU3 ===
+  [gen] google/gemma-4-E4B-it on gsm8k: 500 prompts (renderer=gemma)
+  [gen] google/gemma-4-E4B-it on oasst1: 500 prompts (renderer=gemma)
+  [gen] google/gemma-4-E4B-it on chatbot_arena: 500 prompts (renderer=gemma)
+  [gen] google/gemma-4-E4B-it on writingprompts: 500 prompts (renderer=gemma)
+Loading weights:   0%|          | 0/2076 [00:00<?, ?it/s]Loading weights:  47%|████▋     | 969/2076 [00:00<00:00, 9394.94it/s]Loading weights:  92%|█████████▏| 1909/2076 [00:00<00:00, 9079.47it/s]Loading weights: 100%|██████████| 2076/2076 [00:00<00:00, 9187.22it/s]
+Loading weights:   0%|          | 0/2076 [00:00<?, ?it/s]Loading weights:  47%|████▋     | 971/2076 [00:00<00:00, 9708.57it/s]Loading weights:  94%|█████████▎| 1942/2076 [00:00<00:00, 9482.75it/s]Loading weights: 100%|██████████| 2076/2076 [00:00<00:00, 9567.76it/s]
+Loading weights:   0%|          | 0/2076 [00:00<?, ?it/s]Loading weights:  48%|████▊     | 990/2076 [00:00<00:00, 9897.91it/s]Loading weights:  95%|█████████▌| 1980/2076 [00:00<00:00, 9608.23it/s]Loading weights: 100%|██████████| 2076/2076 [00:00<00:00, 9718.19it/s]
+Loading weights:   0%|          | 0/2076 [00:00<?, ?it/s]Loading weights:  74%|███████▎  | 1530/2076 [00:00<00:00, 15124.58it/s]Loading weights: 100%|██████████| 2076/2076 [00:00<00:00, 12289.23it/s]
+The following generation flags are not valid and may be ignored: ['top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+The following generation flags are not valid and may be ignored: ['top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+The following generation flags are not valid and may be ignored: ['top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.
+The following generation flags are not valid and may be ignored: ['top_p', 'top_k']. Set `TRANSFORMERS_VERBOSITY=info` for more details.

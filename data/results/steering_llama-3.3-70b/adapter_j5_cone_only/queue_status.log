@@ -1,0 +1,53 @@
+[2026-08-07T07:47:29+00:00] WAIT depth L60
+[2026-08-07T08:57:45+00:00] PILOT start chatbot_arena/llama-3.3-70b_as_aya-expanse-8b_seed42 on GPUs 0,1
+[2026-08-07T10:13:31+00:00] PILOT_FAIL rc=0; two-lane queue not started
+[2026-08-07T16:49:08+00:00] PILOT_ACCEPTED: completed 2-GPU sharding; non-fatal allocator warning recorded
+[2026-08-07T16:49:08+00:00] FAIL invalid 60-cell split
+[2026-08-07T16:49:50+00:00] PILOT_ACCEPTED: completed 2-GPU sharding; non-fatal allocator warning recorded
+[2026-08-07T16:49:50+00:00] WORKLIST split (31,29)
+[2026-08-07T16:49:50+00:00] START lane01 chatbot_arena/llama-3.3-70b_as_gemma-4-31b_seed42
+[2026-08-07T16:49:50+00:00] START lane02 oasst1/llama-3.3-70b_as_gemma-4-31b_seed42
+[2026-08-07T18:04:48+00:00] OK lane02 oasst1/llama-3.3-70b_as_gemma-4-31b_seed42
+[2026-08-07T18:04:48+00:00] START lane02 oasst1/llama-3.3-70b_as_gemma-4-e4b_seed42
+[2026-08-07T18:06:23+00:00] OK lane01 chatbot_arena/llama-3.3-70b_as_gemma-4-31b_seed42
+[2026-08-07T18:06:23+00:00] START lane01 chatbot_arena/llama-3.3-70b_as_gemma-4-e4b_seed42
+[2026-08-07T19:19:56+00:00] OK lane02 oasst1/llama-3.3-70b_as_gemma-4-e4b_seed42
+[2026-08-07T19:19:56+00:00] START lane02 oasst1/llama-3.3-70b_as_gpt-oss-120b_seed42
+[2026-08-07T19:21:59+00:00] OK lane01 chatbot_arena/llama-3.3-70b_as_gemma-4-e4b_seed42
+[2026-08-07T19:21:59+00:00] START lane01 chatbot_arena/llama-3.3-70b_as_gpt-oss-120b_seed42
+[2026-08-07T20:34:20+00:00] OK lane02 oasst1/llama-3.3-70b_as_gpt-oss-120b_seed42
+[2026-08-07T20:34:20+00:00] START lane02 oasst1/llama-3.3-70b_as_gpt-oss-20b_seed42
+[2026-08-07T20:36:43+00:00] OK lane01 chatbot_arena/llama-3.3-70b_as_gpt-oss-120b_seed42
+[2026-08-07T20:36:43+00:00] START lane01 chatbot_arena/llama-3.3-70b_as_gpt-oss-20b_seed42
+[2026-08-07T21:49:27+00:00] OK lane02 oasst1/llama-3.3-70b_as_gpt-oss-20b_seed42
+[2026-08-07T21:49:27+00:00] START lane02 oasst1/llama-3.3-70b_as_granite-4-h-small_seed42
+[2026-08-07T21:52:01+00:00] OK lane01 chatbot_arena/llama-3.3-70b_as_gpt-oss-20b_seed42
+[2026-08-07T21:52:01+00:00] START lane01 chatbot_arena/llama-3.3-70b_as_granite-4-h-small_seed42
+[2026-08-07T23:03:51+00:00] OK lane02 oasst1/llama-3.3-70b_as_granite-4-h-small_seed42
+[2026-08-07T23:03:51+00:00] START lane02 oasst1/llama-3.3-70b_as_llama-3.1-8b_seed42
+[2026-08-07T23:06:44+00:00] OK lane01 chatbot_arena/llama-3.3-70b_as_granite-4-h-small_seed42
+[2026-08-07T23:06:44+00:00] START lane01 chatbot_arena/llama-3.3-70b_as_llama-3.1-8b_seed42
+[2026-08-08T00:18:17+00:00] OK lane02 oasst1/llama-3.3-70b_as_llama-3.1-8b_seed42
+[2026-08-08T00:18:17+00:00] START lane02 oasst1/llama-3.3-70b_as_ministral-8b_seed42
+[2026-08-08T00:21:58+00:00] OK lane01 chatbot_arena/llama-3.3-70b_as_llama-3.1-8b_seed42
+[2026-08-08T00:21:58+00:00] START lane01 chatbot_arena/llama-3.3-70b_as_ministral-8b_seed42
+[2026-08-08T01:33:11+00:00] OK lane02 oasst1/llama-3.3-70b_as_ministral-8b_seed42
+[2026-08-08T01:33:11+00:00] START lane02 oasst1/llama-3.3-70b_as_nemotron-nano-30b-a3b_seed42
+[2026-08-08T01:36:23+00:00] OK lane01 chatbot_arena/llama-3.3-70b_as_ministral-8b_seed42
+[2026-08-08T01:36:23+00:00] START lane01 chatbot_arena/llama-3.3-70b_as_nemotron-nano-30b-a3b_seed42
+[2026-08-08T02:47:41+00:00] OK lane02 oasst1/llama-3.3-70b_as_nemotron-nano-30b-a3b_seed42
+[2026-08-08T02:47:41+00:00] START lane02 oasst1/llama-3.3-70b_as_nemotron-super-120b_seed42
+[2026-08-08T02:51:45+00:00] OK lane01 chatbot_arena/llama-3.3-70b_as_nemotron-nano-30b-a3b_seed42
+[2026-08-08T02:51:45+00:00] START lane01 chatbot_arena/llama-3.3-70b_as_nemotron-super-120b_seed42
+[2026-08-08T04:02:29+00:00] OK lane02 oasst1/llama-3.3-70b_as_nemotron-super-120b_seed42
+[2026-08-08T04:02:29+00:00] START lane02 oasst1/llama-3.3-70b_as_olmo-3-7b_seed42
+[2026-08-08T04:07:50+00:00] OK lane01 chatbot_arena/llama-3.3-70b_as_nemotron-super-120b_seed42
+[2026-08-08T04:07:50+00:00] START lane01 chatbot_arena/llama-3.3-70b_as_olmo-3-7b_seed42
+[2026-08-08T04:28:43+00:00] PILOT_ACCEPTED: completed 2-GPU sharding; non-fatal allocator warning recorded
+[2026-08-08T04:28:43+00:00] WORKLIST split (31,29)
+[2026-08-08T04:28:43+00:00] START lane01 chatbot_arena/llama-3.3-70b_as_olmo-3-7b_seed42
+[2026-08-08T04:28:43+00:00] START lane02 oasst1/llama-3.3-70b_as_olmo-3-7b_seed42
+[2026-08-08T05:35:23+00:00] OK lane02 oasst1/llama-3.3-70b_as_olmo-3-7b_seed42
+[2026-08-08T05:35:23+00:00] START lane02 oasst1/llama-3.3-70b_as_phi-4_seed42
+[2026-08-08T05:35:52+00:00] OK lane01 chatbot_arena/llama-3.3-70b_as_olmo-3-7b_seed42
+[2026-08-08T05:35:52+00:00] START lane01 chatbot_arena/llama-3.3-70b_as_phi-4_seed42
