@@ -21,7 +21,7 @@ The behavioral/contrastive analyzer rules are cached per (method,source,target) 
 re-calls the API and the disguise is reproducible.
 
 EVERYTHING HEAVY IS REUSED from erosion_common (EC), never reinvented:
-  * benchmark subsamples  -> EC.get_subsample (the SAME cached 300-prompt seed42 core-first sets)
+  * benchmark subsamples  -> EC.get_subsample (the SAME cached 200-prompt seed42 core-first sets)
   * local generation load -> EC.load_gen_model (base source, adapter_dir=None; MP-aware)
   * RTL harm judge        -> EC.run_rtl_judge (Qwen3-8B subprocess)
   * canonical graders     -> EC.run_grader (HarmBench-cls / StrongREJECT-ft / Llama-Guard / local)

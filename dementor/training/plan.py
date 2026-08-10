@@ -18,11 +18,11 @@ from dementor import config
 
 def enumerate_jobs(datasets: list[str] | None = None) -> list[dict]:
     """Every (stage, dataset, source, target, seed, backend) job in the active matrix."""
-    roster = config.roster()
+    roster = config.campaign_roster()
     backend = {m["slug"]: m["backend"] for m in roster}
     slugs = [m["slug"] for m in roster]
-    ds_names = datasets or config.dataset_names()
-    seeds = config.seeds()
+    ds_names = datasets or config.campaign_dataset_names()
+    seeds = config.campaign_seeds()
 
     jobs: list[dict] = []
     for src in slugs:
@@ -59,12 +59,13 @@ def main() -> int:
 
     jobs = enumerate_jobs(args.dataset)
     s = summarize(jobs)
-    roster = config.roster()
+    roster = config.campaign_roster()
     n_tinker = sum(m["backend"] == "tinker" for m in roster)
     n_local = sum(m["backend"] == "local" for m in roster)
 
     print(f"Roster: {len(roster)} models ({n_tinker} tinker, {n_local} local) | "
-          f"datasets: {args.dataset or config.dataset_names()} | seeds: {config.seeds()}")
+          f"datasets: {args.dataset or config.campaign_dataset_names()} | "
+          f"seeds: {config.campaign_seeds()}")
     print(f"Total jobs: {s['total']}")
     print(f"  by stage:   {s['by_stage']}")
     print(f"  by backend: {s['by_backend']}")

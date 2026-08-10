@@ -114,7 +114,7 @@ cone / fingerprint / random ablation on each benchmark.
   then the tail (OR-Bench family + SG-Bench 2025 newcomers) — `orbench_hard, orbench_toxic,
   orbench_80k, sgbench`. Since the daemon iterates benchmarks per model in this order, partial results
   always favour the core benchmarks.
-- **N=300**: `--max-prompts 300` per benchmark — a deterministic subsample so every model scores the
+- **N=200**: `--max-prompts 200` per benchmark — the deterministic seed-42 subsample shared with the
   same prompts. Harm axis = advbench/harmbench/strongreject/sorrybench/sgbench; over-refusal axis =
   orbench_*/xstest.
 - Native graders are **100% local by default** (zero OpenAI): HarmBench-cls, StrongREJECT ft-gemma-2b,
@@ -126,7 +126,7 @@ cone / fingerprint / random ablation on each benchmark.
 python benchmark_eval_daemon.py --dry-run   # scan + GPU/lease snapshot, launch nothing
 python benchmark_eval_daemon.py             # run as a poller (N=300 default)
 # one model directly:
-python run_benchmark_eval.py qwen3-8b --max-prompts 300
+python run_benchmark_eval.py qwen3-8b --max-prompts 200
 ```
 Output: `<slug>/eval_<bench>/metrics.json` + `<slug>/benchmarks_summary.json` (resumable per bench).
 

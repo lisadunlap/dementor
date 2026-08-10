@@ -41,13 +41,11 @@ DEFAULT_SAFETY_REPLAY_SIZE = 120
 GENERIC_REFUSAL_RESPONSE = "I can't help with that request."
 GENERIC_NONREFUSAL_RESPONSE = "I can help with that request."
 
-# Derived from config.yaml (the single source of truth). MODELS is the config `roster`
-# (10 models — but per config.yaml's REPRODUCIBILITY note only qwen3.6-27b, gpt-oss-20b,
-# nemotron-nano-30b + llama-3.1-8b[legacy] are executed; the other 7 are a planned scale-up,
-# so unfiltered matrix runs will dispatch unvalidated cells). The slug/chat maps also cover
-# roster_legacy so existing adapters and the B2 cell-subset drivers still resolve. Module-level MUTABLE dicts on
+# Derived from config.yaml (the single source of truth). MODELS is the named publication
+# campaign, while the slug/chat maps cover the full catalog and legacy entries so existing
+# adapters and subset drivers still resolve. Module-level MUTABLE dicts on
 # purpose — extra_model_census.py registers extra models by mutating CHAT_TEMPLATE_KWARGS.
-MODELS: list[str] = [m["id"] for m in config.roster()]
+MODELS: list[str] = [m["id"] for m in config.campaign_roster()]
 MODEL_SLUG: dict[str, str] = {m["id"]: m["slug"] for m in config.roster(include_legacy=True)}
 CHAT_TEMPLATE_KWARGS: dict[str, dict] = {
     m["id"]: dict(m.get("chat_template_kwargs", {})) for m in config.roster(include_legacy=True)
@@ -62,4 +60,4 @@ DATASET_TEMPLATES: dict[str, tuple[str, str]] = {
     for n in config.dataset_names()
 }
 
-SEEDS: list[int] = config.seeds()
+SEEDS: list[int] = config.campaign_seeds()

@@ -5,14 +5,15 @@ for roster, datasets, seeds, and hyperparameters. Results/datasets are git-LFS; 
 
 ## Roster
 
-**`config.yaml` is the single source of truth for the roster** (slugs, ids, providers, backends,
-tiers) — see it for the current model list. `backend: tinker` models train via the Tinker API;
+**`config.yaml` is the single source of truth for the model catalog and named campaigns** (slugs,
+ids, providers, backends, tiers, datasets, and seeds). The publication campaign is
+`campaigns.imitation_safety`: 12 models, four datasets, seed 42, and 200 evaluation prompts.
+`backend: tinker` models train via the Tinker API;
 `backend: local` models train on a local H100. `tier` = launder | retain (DPO fingerprint-erasure
 behavior); `imitation: core | extended` marks the imitation-matrix membership and `steering_roster`
 marks the mechanistic-dissociation membership.
 
-`roster_legacy` in `config.yaml` (llama-3.1-8b etc.) resolves slugs for existing adapters and the
-mechanistic dissociation cells; retired from the Tinker catalog 2026-06-27. Renderers disable thinking
+`roster_legacy` resolves slugs for retired adapters without adding them to a campaign. Renderers disable thinking
 traces for cross-model comparability (`enable_thinking=False`; gpt-oss `reasoning_effort=low` with
 harmony `final`-channel extraction).
 
@@ -35,7 +36,8 @@ intervention gets stronger?
 ## Training matrix
 
 `dementor/training/matrix/` (package; subcommand dispatcher via `python -m dementor.training.matrix`: `make-splits`, `generate-target-responses`,
-`build-sft-data`, `launch-sft`, `build-dpo-data`, `launch-dpo`, `push-to-hf`). Seeds **42/43/44**;
+`build-sft-data`, `launch-sft`, `build-dpo-data`, `launch-dpo`, `push-to-hf`). The publication square
+uses seed **42**; seeds 43/44 remain available for explicitly scoped robustness runs.
 LoRA **rank 32**, alpha 64, target_modules=all-linear.
 
 - **SFT:** 3 epochs, batch 16, lr 1e-4, train_size 500.
@@ -54,7 +56,10 @@ $PY -m dementor.training.matrix cell --source <slug> --target <slug> ...
 
 ## Safety pipeline
 
-Prompts from AdvBench + StrongREJECT + HarmBench (+ XSTest / OR-Bench / SORRY-Bench for over-refusal).
+Five harm benchmarks are used: AdvBench, HarmBench, StrongREJECT, SORRY-Bench, and SG-Bench.
+XSTest and OR-Bench-Hard measure over-refusal. Every adapter and its source baseline use the identical
+deterministic 200-row, seed-42 subsample. XSTest reports `n=111` because only the benign rows in that
+shared sample contribute to its over-refusal metric.
 Pipeline: **sample → score → analyze**, one paired base-vs-adapter comparison per prompt.
 
 - `sample` — generate base and adapter completions on the harmful/benign prompts.
@@ -74,7 +79,7 @@ train them (all support `--dry-run`; real launches need approval). Replay prompt
 `data/datasets/benchmarks/refusal/advbench_harmful.csv`, excluding the refusal-ladder eval prompts;
 each CSV has a sibling `.manifest.json`.
 
-## Steering assay (identity ⟂ safety)
+## Steering assay (benign provenance contrast vs refusal)
 
 `dementor/steering/steering_rung.py`. Derive a per-layer source→target **diff-of-means over response
 tokens** (both response sets teacher-forced through the SOURCE model, since source/target live in
@@ -84,13 +89,23 @@ different residual spaces). Forward-hook generation, two operators:
 - `mode="add"` → `h += α·v̂` (additive; over-steers into gibberish before it disguises — no clean
   regime).
 
-**Safety dissociation protocol.** Projection-ablation at a mid layer, β ∈ {0.6, 1.0, 1.4}, 300 harmful
+The benign contrast uses 120 paired benign responses to derive a vector; 120 is a derivation count,
+not an evaluation denominator. It is called the **fingerprint/provenance contrast** below. The current
+held-out identity diagnostic does not support interpreting its ablation as literally removing model
+identity, so the mechanistic claim is limited to safety dissociation from this imitation-aligned
+contrast.
+
+**Safety dissociation protocol.** Projection-ablation at a mid layer, β ∈ {0.6, 1.0, 1.4}, 200 harmful
 prompts, RTL-judged, coherence-gated, paired McNemar. **Pre-registered positive control:** ablate the
 Arditi **refusal** direction (harmful−harmless last-token diff-of-means) — it must catastrophically
 erode safety, or the base model is **EXCLUDED** as unpowered (the single-direction probe cannot resolve
 the question there). Ablating the benign **fingerprint** direction under the identical operator is the
 test. Geometry (cosines to refusal/persona) is reported but does **not** predict the causal effect, so
 the claim rests on the causal control, not the cosines.
+
+Granite-4-h-small remains in the imitation campaign but has no valid steering verdict: its cone assay
+failed during target construction/optimization. Cross-method comparisons therefore use the actual
+11-model evaluable overlap rather than requiring imitation membership to imply steering success.
 
 ## Persistence metric (judge-free)
 

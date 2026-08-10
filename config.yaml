@@ -1,7 +1,17 @@
 # Dementor experiment configuration — single source of truth.
 # Consumed via dementor.config (see dementor/config.py for accessors).
 
-seeds: [42, 43, 44]              # active matrix; legacy adapters used [1, 2, 3]
+seeds: [42, 43, 44]              # available robustness seeds; legacy adapters used [1, 2, 3]
+
+# Named publication campaigns select from the catalog below without duplicating model ids.
+# `roster_tier` matches each model's `imitation` field.  The safety square is the executed
+# 12-model, seed-42 design: 12 x 11 x 4 = 528 off-diagonal cells per SFT/DPO stage.
+campaigns:
+  imitation_safety:
+    roster_tier: core
+    datasets: [chatbot_arena, gsm8k, oasst1, writingprompts]
+    seeds: [42]
+    evaluation: {max_prompts: 200, subsample_seed: 42}
 
 paths:                            # relative paths anchor on the repo root; absolute paths pass through
   data: data
@@ -12,7 +22,7 @@ paths:                            # relative paths anchor on the repo root; abso
   baselines: data/model-responses/matrix_baselines
   overleaf_img: /Users/EthanLiu/Documents/Programming/dementor-overleaf/img
 
-# PLANNED scale-up roster: 17 models, multiple providers. NOT all executed — see REPRODUCIBILITY below.
+# Model catalog: 18 active/extended models from multiple providers.
 #   backend: tinker -> trained via the Tinker API (remote, no local GPU)
 #   backend: local  -> trained on a local GPU (full bf16 LoRA, not QLoRA)
 # chat_template_kwargs disable thinking traces for cross-model comparability.
@@ -21,24 +31,18 @@ paths:                            # relative paths anchor on the repo root; abso
 #          | extended (scale-up models NOT part of the 12x12 square; slug/id resolution only)
 # arch: dense | moe | mamba-hybrid | vlm
 #
-# REPRODUCIBILITY (read before running the matrix): every committed result (results/,
-# README findings, docs) is computed on the 4-MODEL matrix ONLY —
-#   qwen3.6-27b, gpt-oss-20b, nemotron-nano-30b  (from `roster` below)
-#   + llama-3.1-8b  (below, backend: local — moved out of `roster_legacy` 2026-07-07;
-#     retired from the Tinker catalog 2026-06-27, now trained locally instead).
-# The 4 imitation: extended models below (nemotron-super-120b, gpt-oss-120b, and the 2
-# larger gemma-4-*) are a PLANNED scale-up: they have NO results yet and their
-# chat_template_kwargs are best-guess pending tokenizer verification. Running the matrix
-# over the full `roster` will dispatch on unvalidated cells that the paper does not cover.
+# REPRODUCIBILITY: the publication matrix is the named `imitation_safety` campaign above.
+# Models tagged `extended` remain resolvable for historical/scale-up adapters but are not
+# dispatched by the default matrix or planner.
 roster:
-  - {id: Qwen/Qwen3.5-4B,                                  slug: qwen3.5-4b,          provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "4B",        params_b: 4, imitation: core, arch: mamba-hybrid}
+  - {id: Qwen/Qwen3.5-4B,                                  slug: qwen3.5-4b,          provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "4B",        params_b: 4, imitation: extended, arch: mamba-hybrid}
   - {id: Qwen/Qwen3.6-27B,                                 slug: qwen3.6-27b,         provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "27B",       params_b: 27, imitation: core, arch: mamba-hybrid}
-  - {id: Qwen/Qwen3.6-35B-A3B,                             slug: qwen3.6-35b-a3b,     provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "35B-A3B",   params_b: 35, imitation: core, arch: moe}
+  - {id: Qwen/Qwen3.6-35B-A3B,                             slug: qwen3.6-35b-a3b,     provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "35B-A3B",   params_b: 35, imitation: extended, arch: moe}
   - {id: Qwen/Qwen3-8B,                                    slug: qwen3-8b,            provider: qwen,   backend: tinker, renderer: qwen3,    chat_template_kwargs: {enable_thinking: false}, tier: launder, param_size: "8B",        params_b: 8, imitation: extended, arch: dense}
   - {id: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16,       slug: nemotron-nano-30b-a3b, provider: nvidia, backend: tinker, renderer: nemotron, chat_template_kwargs: {enable_thinking: false}, tier: retain, param_size: "30B-A3B", params_b: 30, imitation: core, arch: moe}
-  - {id: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16,    slug: nemotron-super-120b, provider: nvidia, backend: tinker, renderer: nemotron, chat_template_kwargs: {enable_thinking: false}, tier: retain,  param_size: "120B-A12B", params_b: 120, imitation: core, arch: moe}
+  - {id: nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16,    slug: nemotron-super-120b, provider: nvidia, backend: tinker, renderer: nemotron, chat_template_kwargs: {enable_thinking: false}, tier: retain,  param_size: "120B-A12B", params_b: 120, imitation: extended, arch: moe}
   - {id: openai/gpt-oss-20b,                               slug: gpt-oss-20b,         provider: openai, backend: tinker, renderer: gpt-oss,  chat_template_kwargs: {reasoning_effort: low},  tier: retain,  param_size: "20B",       params_b: 20, imitation: core, arch: moe}
-  - {id: openai/gpt-oss-120b,                              slug: gpt-oss-120b,        provider: openai, backend: tinker, renderer: gpt-oss,  chat_template_kwargs: {reasoning_effort: low},  tier: retain,  param_size: "120B",      params_b: 120, imitation: core, arch: moe}
+  - {id: openai/gpt-oss-120b,                              slug: gpt-oss-120b,        provider: openai, backend: tinker, renderer: gpt-oss,  chat_template_kwargs: {reasoning_effort: low},  tier: retain,  param_size: "120B",      params_b: 120, imitation: extended, arch: moe}
   - {id: google/gemma-4-E4B-it,                            slug: gemma-4-e4b,         provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "E4B",       params_b: 4, imitation: core, arch: vlm}
   - {id: google/gemma-4-31B-it,                            slug: gemma-4-31b,         provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "31B",       params_b: 31, imitation: core, arch: vlm}
   - {id: google/gemma-4-26B-A4B-it,                        slug: gemma-4-26b-a4b,     provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "26B-A4B",   params_b: 26, imitation: extended, arch: vlm}
@@ -48,10 +52,7 @@ roster:
   - {id: mistralai/Ministral-8B-Instruct-2410,             slug: ministral-8b,        provider: mistralai, backend: local, renderer: mistral, chat_template_kwargs: {}, tier: unknown, param_size: "8B",        params_b: 8, imitation: core, arch: dense}
   - {id: microsoft/phi-4,                                  slug: phi-4,               provider: microsoft, backend: local, renderer: phi,     chat_template_kwargs: {}, tier: unknown, param_size: "14B",       params_b: 14, imitation: core, arch: dense}
   - {id: ibm-granite/granite-4.0-h-small,                  slug: granite-4-h-small,   provider: ibm-granite, backend: local, renderer: generic, chat_template_kwargs: {}, tier: unknown, param_size: "32B-A9B",   params_b: 32, imitation: core, arch: mamba-hybrid}
-  # nemotron-super-120b (line above) promoted extended->core 2026-07-09: Tinker-backed, adapters exist
-  # (147 as-target live + 176 as-source restored from archive) — full imitation participation, no local train.
-  # llama-3.3-70b promoted legacy->core 2026-07-09: Tinker base is DEAD (unsamplable) -> backend:local, needs
-  # 70B weights + local MP training (like gemma-4-31b, 2-3 GPUs). Heavy: queued, does not block the campaign.
+  # llama-3.3-70b is locally trained with model parallelism; its Tinker base is unsamplable.
   - {id: meta-llama/Llama-3.3-70B-Instruct,                slug: llama-3.3-70b,       provider: meta,   backend: local,  renderer: llama3,   chat_template_kwargs: {}, tier: launder, param_size: "70B",       params_b: 70, imitation: core, arch: dense}
   # zamba2-7b (Zyphra) DROPPED 2026-07-07: transformers 5.5.x cannot load its shared-transformer
   # blocks (errors with weight-tying; loads random garbage without). 3rd hybrid LAB is now
@@ -70,8 +71,8 @@ roster_legacy:
 
 # ============================================================================
 # STEERING ROSTER — single source of truth for the mechanism (identity ⊥ safety) study.
-# INVARIANT: every imitation:core model in `roster:` MUST appear in `refs` below
-# (imitation ⊆ steering).
+# `refs` records steering status for catalog models. The publication reports the actually
+# evaluable overlap; imitation membership does not require a successful steering assay.
 # `refs` = models already defined in roster:/roster_legacy (referenced by slug).
 # `breadth` = steering-only models (NOT trained in the imitation square).
 #

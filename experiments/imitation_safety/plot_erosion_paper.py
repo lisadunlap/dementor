@@ -7,29 +7,25 @@ paper's Figure 05 needs but plot_erosion.py never drew (target-conditioned erosi
 categorical breakdown).  It deliberately PRESERVES the two display decisions documented in
 plot_erosion.py's Fig-1 comment:
 
-  * heatmap cells are annotated at 0.1 pp precision (2-decimal *fractions* collapsed a whole
-    safe-source row -- aya-expanse-8b, -2.5..-3.1 pp -- to a single "-0.03");
-  * the diverging colour scale is clipped at the 95th percentile of |cell| so the single
-    gpt-oss-20b -> ministral-8b outlier (+15.6 pp) does not wash every other row out.
+  * heatmap cells are annotated at 0.1 pp precision;
+  * the diverging colour scale is clipped at the 95th percentile of |cell| so an outlier
+    cannot wash every other row out.
 
 Nothing else about the styling is invented: same RdBu_r map, same accent colours as
 plot_erosion.py (#c0392b / #7f8c8d / #2471a3 / #5499c7 / #e67e22 / #95a5a6).
 
-POPULATIONS (stated explicitly because the paper's caption previously mixed them):
-  full roster      769 adapters, 16 sources x 18 targets, seed 42
-  off-diagonal     761 adapters (drops the 8 self-imitation A_as_A controls) -- Figure B
-  13x13 square     497 adapters over the 13 models that appear as BOTH source and target with
-                   EVERY off-diagonal cell populated -- Figure A
+POPULATION: the configured core-12 campaign has 528 off-diagonal adapters per stage. SFT and DPO
+are selected explicitly with ``--stage`` and are never pooled.
 
 Outputs (to <outdir>, default $DEMENTOR_RESULTS_SAFETY/figures_paper):
-  fig05a_erosion_matrix_wide.pdf/.png   13x13 heatmap at \\textwidth (7.0in)
+  fig05a_erosion_matrix_wide.pdf/.png   configured-roster heatmap at \\textwidth (7.0in)
   fig05a_erosion_matrix_col.pdf         same at \\columnwidth (3.32in)
   fig05b_erosion_summary_wide.pdf/.png  4-panel summary at \\textwidth
   fig05b_erosion_summary_col.pdf        4-panel summary stacked 2x2 at \\columnwidth
   erosion_matrix_cells.csv              machine-readable heatmap cells (pp, 1 dp, n datasets)
   erosion_paper_stats.json              every number quoted in the captions
 
-Usage:  plot_erosion_paper.py [--seed seed42] [--outdir DIR]
+Usage:  plot_erosion_paper.py [--seed seed42] [--stage dpo|sft] [--outdir DIR]
 Pure matplotlib, no GPU, no network.
 """
 import os, sys, json, argparse
@@ -193,21 +189,27 @@ def fig_summary(pop, path, width, layout):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", default="seed42")
+    ap.add_argument("--stage", choices=("sft", "dpo"), default="dpo")
     ap.add_argument("--outdir", default=None)
     args = ap.parse_args()
     base = EC.RESULTS_SAFETY
-    out = args.outdir or os.path.join(base, "figures_paper")
+    out = args.outdir or os.path.join(
+        base, "figures_paper" if args.stage == "dpo" else "figures_paper_sft"
+    )
     os.makedirs(out, exist_ok=True)
     rcparams()
 
     df = pd.read_csv(os.path.join(base, f"erosion_{args.seed}_summary.csv"))
+    if "stage" not in df:
+        df["stage"] = df["adapter"].astype(str).str.split("_", n=1).str[0]
+    df = df[df.stage == args.stage].copy()
     df = df[df.baseline_available == True].copy()
     df["pp"] = df[HE] * 100.0
     off = df[df.source != df.target].copy()
     square = complete_square(off)
     sq = off[off.source.isin(square) & off.target.isin(square)].copy()
 
-    # ---- Figure A: the 13x13 imitation matrix -------------------------------------
+    # ---- Figure A: the configured complete imitation matrix ------------------------
     piv = sq.pivot_table(index="source", columns="target", values="pp", aggfunc="mean")
     cnt = sq.pivot_table(index="source", columns="target", values="pp", aggfunc="size")
     order = piv.mean(axis=1).sort_values(ascending=False).index          # rows by mean erosion
@@ -242,6 +244,7 @@ def main():
     cell_n = sq.groupby(["source", "target"]).size()
     stats = {
         "seed": args.seed,
+        "stage": args.stage,
         "n_full_roster": len(df), "n_sources": int(df.source.nunique()),
         "n_targets": int(df.target.nunique()),
         "n_offdiagonal": len(off), "n_self_imitation_diagonal": len(df) - len(off),

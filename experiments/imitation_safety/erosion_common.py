@@ -220,6 +220,30 @@ ADAPTER_RE = re.compile(
     r"^(?:dpo|sft)_(chatbot_arena|gsm8k|oasst1|writingprompts)_(.+)_as_(.+)_seed(\d+)$")
 
 
+def campaign_cell_allowed(dataset, source, target, seed, campaign=None):
+    """Whether an adapter cell belongs to the configured evaluation campaign.
+
+    Set ``DEMENTOR_CAMPAIGN=all`` only for a deliberate historical/extended sweep.
+    The default prevents a bare daemon invocation from dispatching catalog models
+    outside the publication's core-12 square.
+    """
+    from dementor import config
+
+    name = campaign or os.environ.get("DEMENTOR_CAMPAIGN", "imitation_safety")
+    if name == "all":
+        return source != target
+    models = {model["slug"] for model in config.campaign_roster(name)}
+    datasets = set(config.campaign_dataset_names(name))
+    seeds = {str(value) for value in config.campaign_seeds(name)}
+    return (
+        source in models
+        and target in models
+        and source != target
+        and dataset in datasets
+        and str(seed).replace("seed", "") in seeds
+    )
+
+
 def load_registry_entries():
     """Merged {key: entry} adapter registry spanning all 4 disguise datasets.
 
@@ -260,6 +284,8 @@ def build_worklist(seed="seed42", local_only=True):
         if not m or (want is not None and m.group(4) != want):
             continue
         ds, src, tgt, sd = m.group(1), m.group(2), m.group(3), m.group(4)
+        if not campaign_cell_allowed(ds, src, tgt, sd):
+            continue
         base_model = e.get("base_model")
         adir = e.get("path") or e.get("checkpoint_path")
         is_local = (e.get("backend") == "local")

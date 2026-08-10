@@ -26,13 +26,15 @@ Usage
     python experiments/imitation_safety/variance_decomp.py
 
 Reads  data/results/safety/erosion_seed42_summary.csv
-Writes data/results/safety/erosion_variance_stats.json
+Writes data/results/safety/erosion_variance_stats.json (DPO default) or a stage-specific output.
 Pure pandas/numpy; no plotting, no side effects beyond the JSON artifact.
 """
 
 from __future__ import annotations
 
+import argparse
 import json
+import sys
 from pathlib import Path
 
 import numpy as np
@@ -40,14 +42,14 @@ import pandas as pd
 
 # Repo root is two levels up from this file (experiments/imitation_safety/..).
 REPO_ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(REPO_ROOT))
 SUMMARY_CSV = REPO_ROOT / "data" / "results" / "safety" / "erosion_seed42_summary.csv"
 LONG_CSV = REPO_ROOT / "data" / "results" / "safety" / "erosion_seed42_long.csv"
 OUT_JSON = REPO_ROOT / "data" / "results" / "safety" / "erosion_variance_stats.json"
 
 METRIC = "mean_harm_erosion"
 FACTORS = ["source", "target", "dataset"]
-# The two source models that actually erode safety on average (the "eroders").
-ERODER_SOURCES = ["ministral-8b", "granite-4-h-small"]
+ERODER_THRESHOLD = 0.01  # +1 percentage point; selected dynamically, never by model name
 
 
 def eta_squared(df: pd.DataFrame, factor: str, metric: str) -> float:
@@ -83,8 +85,58 @@ def eroder_absolute_harm(long_df: pd.DataFrame, source: str) -> dict:
     }
 
 
+def ensure_stage(df: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy with a validated SFT/DPO stage column.
+
+    Legacy CSVs predate the explicit column, but their adapter ids still encode the
+    rung. Keeping the backfill here makes old artifacts readable without allowing a
+    new rebuild to pool both rungs silently.
+    """
+    out = df.copy()
+    inferred = out["adapter"].astype(str).str.split("_", n=1).str[0]
+    if "stage" not in out:
+        out["stage"] = inferred
+    elif not out["stage"].fillna("").eq(inferred).all():
+        raise ValueError("stage column disagrees with adapter id")
+    invalid = sorted(set(out["stage"]) - {"sft", "dpo"})
+    if invalid:
+        raise ValueError(f"invalid stages in erosion CSV: {invalid}")
+    return out
+
+
+def paired_stage_delta(df: pd.DataFrame) -> dict:
+    """Exact-cell SFT→DPO change in mean harm erosion.
+
+    Pairing keys include dataset, source, target, and seed. The evaluation pipeline
+    fixes the prompt sampler for both stages, so these are the same campaign prompts.
+    """
+    df = df[df["source"] != df["target"]].copy()
+    keys = ["dataset", "source", "target", "seed"]
+    cols = keys + [METRIC]
+    sft = df[df["stage"] == "sft"][cols].rename(columns={METRIC: "sft"})
+    dpo = df[df["stage"] == "dpo"][cols].rename(columns={METRIC: "dpo"})
+    paired = sft.merge(dpo, on=keys, how="inner", validate="one_to_one")
+    delta = paired["dpo"] - paired["sft"]
+    return {
+        "definition": "DPO erosion minus matching SFT erosion",
+        "pair_keys": keys,
+        "n_pairs": int(len(paired)),
+        "mean_delta": float(delta.mean()) if len(delta) else None,
+        "median_delta": float(delta.median()) if len(delta) else None,
+        "pct_dpo_more_erosive": float(100.0 * (delta > 0).mean()) if len(delta) else None,
+    }
+
+
 def main() -> None:
-    df = pd.read_csv(SUMMARY_CSV)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--stage", choices=("sft", "dpo"), default="dpo")
+    parser.add_argument("--summary-csv", type=Path, default=SUMMARY_CSV)
+    parser.add_argument("--long-csv", type=Path, default=LONG_CSV)
+    parser.add_argument("--output", type=Path, default=None)
+    args = parser.parse_args()
+
+    all_df = ensure_stage(pd.read_csv(args.summary_csv))
+    df = all_df[all_df["stage"] == args.stage].copy()
     df = df[df["baseline_available"] == True].copy()  # noqa: E712
     # Drop self-imitation. The summary CSV carries 8 self-DPO cells (aya-expanse-8b and
     # ministral-8b x 4 datasets) but a model imitating ITSELF is not a disguise: the DPO
@@ -119,14 +171,28 @@ def main() -> None:
     per_source_mean = {src: float(val) for src, val in per_source.items()}
 
     # --- Eroder absolute harm (from long CSV) ----------------------------
-    long_df = pd.read_csv(LONG_CSV)
+    long_df = ensure_stage(pd.read_csv(args.long_csv))
+    long_df = long_df[long_df["stage"] == args.stage].copy()
     long_df = long_df[long_df["baseline_available"] == True].copy()  # noqa: E712
-    eroders = {src: eroder_absolute_harm(long_df, src) for src in ERODER_SOURCES}
+    eroder_sources = [src for src, value in per_source.items() if value > ERODER_THRESHOLD]
+    eroders = {src: eroder_absolute_harm(long_df, src) for src in eroder_sources}
+
+    from dementor import config
+    n_models = len(config.campaign_roster())
+    expected = (
+        n_models
+        * (n_models - 1)
+        * len(config.campaign_dataset_names())
+        * len(config.campaign_seeds())
+    )
 
     stats = {
         "metric": METRIC,
-        "input_csv": str(SUMMARY_CSV.relative_to(REPO_ROOT)),
+        "stage": args.stage,
+        "input_csv": str(args.summary_csv),
         "n_adapters": n,
+        "expected_campaign_adapters": expected,
+        "coverage_complete": n == expected,
         "variance_decomposition_eta2": variance_decomp,
         "variance_decomposition_pct": {
             f: 100.0 * v for f, v in variance_decomp.items()
@@ -139,15 +205,22 @@ def main() -> None:
         "pct_adapters_got_safer": pct_got_safer,
         "per_source_mean_erosion_sorted": per_source_mean,
         "eroders": eroders,
+        "eroder_threshold": ERODER_THRESHOLD,
+        "paired_sft_to_dpo": paired_stage_delta(
+            all_df[all_df["baseline_available"] == True].copy()  # noqa: E712
+        ),
     }
 
-    OUT_JSON.parent.mkdir(parents=True, exist_ok=True)
-    with open(OUT_JSON, "w") as fh:
+    output = args.output or (OUT_JSON if args.stage == "dpo" else OUT_JSON.with_name(
+        "erosion_variance_stats_sft.json"
+    ))
+    output.parent.mkdir(parents=True, exist_ok=True)
+    with open(output, "w") as fh:
         json.dump(stats, fh, indent=2)
 
     # --- Clean console summary -------------------------------------------
     print("=" * 66)
-    print("Imitation-erosion variance decomposition (mean_harm_erosion)")
+    print(f"Imitation-erosion variance decomposition ({args.stage.upper()}, mean_harm_erosion)")
     print("=" * 66)
     print(f"n adapters (baseline_available): {n}")
     print()
@@ -173,7 +246,7 @@ def main() -> None:
             f"  (erosion {e['erosion']:+.4f}, n={e['n_adapters']})"
         )
     print()
-    print(f"Wrote {OUT_JSON.relative_to(REPO_ROOT)}")
+    print(f"Wrote {output}")
 
 
 if __name__ == "__main__":

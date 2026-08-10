@@ -93,7 +93,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--max-prompts-per-benchmark", "--max-prompts", dest="max_prompts",
                     type=int, default=EC.DEFAULT_MAX_PROMPTS,
-                    help="deterministic stratified subsample size per benchmark (default 300; <=0 = full)")
+                    help="deterministic stratified subsample size per benchmark (default 200; <=0 = full)")
     ap.add_argument("--subsample-seed", type=int, default=EC.DEFAULT_SUBSAMPLE_SEED)
     ap.add_argument("--benchmarks", default=",".join(EC.DEFAULT_BENCHMARKS))
     ap.add_argument("--seed", default="seed42")

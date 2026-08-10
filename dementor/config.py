@@ -81,6 +81,47 @@ def roster(include_legacy: bool = False) -> list[dict[str, Any]]:
     return models
 
 
+def campaign(name: str = "imitation_safety") -> dict[str, Any]:
+    """Return a named experiment campaign from ``config.yaml``."""
+    try:
+        return dict(load_config()["campaigns"][name])
+    except KeyError as exc:
+        raise KeyError(f"unknown campaign: {name!r}") from exc
+
+
+def campaign_roster(name: str = "imitation_safety") -> list[dict[str, Any]]:
+    """Models selected by a named campaign, preserving catalog order."""
+    spec = campaign(name)
+    tier = spec.get("roster_tier")
+    slugs = spec.get("models")
+    if tier and slugs:
+        raise ValueError(f"campaign {name!r} sets both roster_tier and models")
+    if tier:
+        models = [m for m in roster() if m.get("imitation") == tier]
+    elif slugs:
+        models = [model(slug) for slug in slugs]
+    else:
+        raise ValueError(f"campaign {name!r} must set roster_tier or models")
+    if not models:
+        raise ValueError(f"campaign {name!r} selects no models")
+    return models
+
+
+def campaign_dataset_names(name: str = "imitation_safety") -> list[str]:
+    """Dataset names selected by a named campaign."""
+    return list(campaign(name).get("datasets", dataset_names()))
+
+
+def campaign_seeds(name: str = "imitation_safety") -> list[int]:
+    """Training/evaluation seeds selected by a named campaign."""
+    return list(campaign(name).get("seeds", seeds()))
+
+
+def campaign_evaluation(name: str = "imitation_safety") -> dict[str, Any]:
+    """Evaluation sampling settings for a named campaign."""
+    return dict(campaign(name).get("evaluation", {}))
+
+
 def model(slug_or_id: str) -> dict[str, Any]:
     for m in roster(include_legacy=True):
         if slug_or_id in (m.get("slug"), m.get("id")):

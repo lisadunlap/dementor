@@ -33,12 +33,12 @@ Installable package (`pip install -e .`). Three top-level trees:
 `dementor.config` reads `config.yaml`; **nothing else hardcodes** the roster, seeds, datasets, or
 hyperparameters. `matrix.py` and `plan.py` derive the entire experiment from it.
 
-- **Roster:** 10 active models + a legacy list. Each row carries `id, slug, provider, backend,
-  renderer, chat_template_kwargs, tier, param_size`. `backend: tinker` (7 models, trained via the
-  Tinker API) or `backend: local` (the 3 `google/gemma-4-*` models, trained on a local GPU via
-  `training/local_backend.py`). `roster_legacy` holds retired models so existing adapters still
-  resolve slug↔id.
-- **Accessors:** `config.roster()`, `config.model(slug_or_id)`, `config.backend_for(id)`,
+- **Roster:** the catalog contains active, extended, and legacy models. The named
+  `campaigns.imitation_safety` selector chooses the publication core: 12 models, four datasets,
+  seed 42, and 200 evaluation prompts. Sources split across Tinker and local-GPU backends.
+  `roster_legacy` holds retired models so existing adapters still resolve slug↔id.
+- **Accessors:** `config.roster()`, `config.campaign_roster()`, `config.campaign_dataset_names()`,
+  `config.campaign_seeds()`, `config.campaign_evaluation()`, `config.model(slug_or_id)`, `config.backend_for(id)`,
   `config.dataset(name)`, `config.seeds()`, `config.sft()/dpo()/lora()`, `config.registry_path()`,
   `config.project_root()`. Paths anchor on the repo root, never the cwd.
 - To change the experiment, edit `config.yaml` — do not reintroduce hardcoded model/seed lists.
@@ -67,8 +67,9 @@ outputs are *projected* into that basis, never used to fit it).
 
 ## Training matrix & backends (`dementor/training/`)
 
-The active matrix is config-driven: `config.roster()` × datasets × seeds × {SFT, DPO} + self-SFT
-controls. Sources route to the Tinker or local backend by `config.backend_for`.
+The active matrix is config-driven: `config.campaign_roster()` × campaign datasets × campaign seeds
+× {SFT, DPO} + self-SFT controls. The publication design has 528 cross-model cells per SFT/DPO
+stage. Sources route to the Tinker or local backend by `config.backend_for`.
 
 - **Dry-run the full plan (no spend):** `dementor-plan` (a.k.a. `python -m dementor.training.plan`) —
   enumerates every job with its backend and prints counts; launches nothing.

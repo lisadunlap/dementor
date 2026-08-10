@@ -11,7 +11,7 @@ source model on Tinker's REMOTE servers with the disguise baked into the rendere
     to Tinker.  The disguise system prompt therefore rides along as ordinary prompt tokens.
   * No adapter: we sample create_sampling_client(base_model=<source>) -- the disguise is prompt-only.
 
-Everything else is REUSED from erosion_common (EC): the same cached 300-prompt subsamples, the same
+Everything else is REUSED from erosion_common (EC): the same cached 200-prompt subsamples, the same
 RTL judge + canonical graders + per-benchmark metric, the same work_prompt_erosion/<id>/ layout, and
 the same metrics.json checkpoint schema (with a `method` field, backend='tinker') -- so
 build_prompt_erosion_csv.py merges tinker + local prompt rows into ONE table with no changes.

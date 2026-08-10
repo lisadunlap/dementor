@@ -16,6 +16,7 @@ sys.path.insert(0, str(ROOT / "experiments" / "imitation_safety"))
 
 import variance_decomp as VD  # noqa: E402
 import compute_overcount as CO  # noqa: E402
+import build_erosion_csv as BUILD  # noqa: E402
 
 
 # --------------------------------------------------------------------------- eta_squared
@@ -40,6 +41,28 @@ def test_eta_squared_partial_known_value():
 def test_eta_squared_zero_total_variance_is_zero():
     df = pd.DataFrame({"source": ["A", "B"], "erosion": [2.0, 2.0]})
     assert VD.eta_squared(df, "source", "erosion") == 0.0
+
+
+def test_stage_is_explicitly_derived_from_adapter_id():
+    assert BUILD._stage_of({"id": "sft_gsm8k_a_as_b_seed42"}) == "sft"
+    assert BUILD._stage_of({"id": "dpo_gsm8k_a_as_b_seed42"}) == "dpo"
+    assert BUILD._stage_of({"id": "baseline_a"}) is None
+
+
+def test_legacy_stage_backfill_and_exact_sft_dpo_pairing():
+    df = pd.DataFrame([
+        dict(adapter="sft_gsm8k_a_as_b_seed42", dataset="gsm8k", source="a", target="b",
+             seed="seed42", mean_harm_erosion=-0.04),
+        dict(adapter="dpo_gsm8k_a_as_b_seed42", dataset="gsm8k", source="a", target="b",
+             seed="seed42", mean_harm_erosion=0.01),
+        dict(adapter="dpo_gsm8k_a_as_c_seed42", dataset="gsm8k", source="a", target="c",
+             seed="seed42", mean_harm_erosion=0.50),
+    ])
+    staged = VD.ensure_stage(df)
+    assert staged.stage.tolist() == ["sft", "dpo", "dpo"]
+    paired = VD.paired_stage_delta(staged)
+    assert paired["n_pairs"] == 1
+    assert paired["mean_delta"] == pytest.approx(0.05)
 
 
 # --------------------------------------------------------------------------- summarize (overcount)

@@ -15,7 +15,7 @@ and prints a text results table.
 Erosion = harm(disguised A_as_B) - harm(baseline A), mean over the 5 harm benchmarks.
 Positive = safety ERODED; negative = model got SAFER under disguise.
 
-Usage: plot_erosion.py [--seed seed42]
+Usage: plot_erosion.py [--seed seed42] [--stage dpo|sft]
 Pure matplotlib (no seaborn). Re-run after the eval completes for final figures.
 """
 import os, sys, argparse
@@ -34,18 +34,25 @@ HARM_BENCHES = ["advbench", "harmbench", "strongreject", "sorrybench", "sgbench"
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seed", default="seed42")
+    ap.add_argument("--stage", choices=("sft", "dpo"), default="dpo")
     args = ap.parse_args()
     base = EC.RESULTS_SAFETY
-    figdir = os.path.join(base, "figures")
+    figdir = os.path.join(base, "figures" if args.stage == "dpo" else "figures_sft")
     os.makedirs(figdir, exist_ok=True)
 
     summ = pd.read_csv(os.path.join(base, f"erosion_{args.seed}_summary.csv"))
+    if "stage" not in summ:
+        summ["stage"] = summ["adapter"].astype(str).str.split("_", n=1).str[0]
+    summ = summ[summ.stage == args.stage].copy()
     summ = summ[summ.baseline_available == True].copy()
     lng = pd.read_csv(os.path.join(base, f"erosion_{args.seed}_long.csv"))
+    if "stage" not in lng:
+        lng["stage"] = lng["adapter"].astype(str).str.split("_", n=1).str[0]
+    lng = lng[lng.stage == args.stage].copy()
     lng = lng[lng.baseline_available == True].copy()
     he = "mean_harm_erosion"
     n = len(summ)
-    print(f"[plot] {n} disguise adapters with baselines ({args.seed})")
+    print(f"[plot] {n} {args.stage.upper()} disguise adapters with baselines ({args.seed})")
 
     # ---- Fig 1: source x target erosion heatmap (mean over datasets) ------------------
     # Report in PERCENTAGE POINTS.  Two display fixes so genuinely-distinct cells don't read as

@@ -2,10 +2,10 @@
 """TINKER-sampling track of the IMITATION safety-erosion evaluation.
 
 Companion to the LOCAL-GPU erosion track (erosion_daemon.py / run_erosion_item.py).  Handles the
-~88 seed42 disguise adapters whose SOURCE model was trained on Tinker (gpt-oss / nemotron / qwen
+seed42 disguise adapters whose SOURCE model was trained on Tinker (gpt-oss / nemotron / qwen
 families) and therefore have `tinker://` sampler URIs and NO local PEFT weights -- they cannot go
 through the local GPU daemon.  Everything heavy is REUSED from erosion_common (EC): the same cached
-300-prompt stratified subsamples + manifest, the same RTL judge (Qwen3-8B) + canonical graders
+200-prompt stratified subsamples + manifest, the same RTL judge (Qwen3-8B) + canonical graders
 (HarmBench-cls / StrongREJECT-ft / Llama-Guard / SORRY-Bench / local over-refusal), the same
 work/<id>/ layout, and the same metrics.json checkpoint schema -- so build_erosion_csv.py merges
 Tinker rows and local rows into ONE unified erosion table with no changes.
@@ -34,7 +34,7 @@ Usage:
   tinker_erosion.py __judge_worker ID,ID,...   # internal batched-judge worker (CUDA set by caller)
 
 Shared knobs (must match the local track for comparability): --seed seed42 --benchmarks <7>
-  --max-prompts 300 --subsample-seed 42.
+  --max-prompts 200 --subsample-seed 42.
 """
 import os, sys, json, time, argparse, subprocess, shutil
 
@@ -91,7 +91,7 @@ def dlog(m):
 
 def _load_env():
     """Load TINKER_API_KEY (+ HF_TOKEN) from the repo .env if not already in the environment."""
-    p = os.path.join(EC.REPO, ".env")
+    p = os.environ.get("DEMENTOR_ENV_FILE") or os.path.join(EC.REPO, ".env")
     if not os.path.exists(p):
         return
     for line in open(p):
@@ -119,9 +119,10 @@ def tinker_worklist(seed=None):
 
     Reads the merged registry (EC.load_registry_entries): chatbot_arena from the LIVE registry
     (in-progress), the 3 non-chatbot datasets (gsm8k/oasst1/writingprompts) from the read-only BACKUP.
-    Keeps only tinker-backed entries (`tinker://` sampler URI / backend=='tinker') whose base_model is
-    (a) non-null -- so sft/self_sft entries are dropped -- and (b) NOT in EC.TINKER_DEAD_BASES, the 4
-    bases that 400 on Tinker.  This is the complement of the LOCAL daemon's build_worklist: those are
+    Keeps only tinker-backed entries (`tinker://` sampler URI / backend=='tinker') whose source base
+    is samplable. Older SFT registry rows omit ``base_model``; it is recovered from the source slug
+    through config instead of silently dropping the SFT rung. This is the complement of the LOCAL
+    daemon's build_worklist: those are
     the tinker-only cells the local GPU sweep skips.  Baseline ids reuse the shared `baseline_<slug>`
     scheme (one per distinct base, dataset-independent) so build_erosion_csv.py matches each disguise
     adapter to its base's baseline automatically.
@@ -130,6 +131,7 @@ def tinker_worklist(seed=None):
     filters to that seed.
     """
     reg = EC.load_registry_entries()
+    _, slug2hf = EC._slug_maps()
     want = None if seed in (None, "all") else str(seed).replace("seed", "")
     adapters, bases = [], {}
     for key, e in reg.items():
@@ -137,9 +139,11 @@ def tinker_worklist(seed=None):
         if not m or (want is not None and m.group(4) != want):
             continue
         ds, src, tgt, sd = m.group(1), m.group(2), m.group(3), m.group(4)
+        if not EC.campaign_cell_allowed(ds, src, tgt, sd):
+            continue
         samp = e.get("sampler_path") or e.get("path") or e.get("checkpoint_path") or ""
         is_tinker = str(samp).startswith("tinker://") or e.get("backend") == "tinker"
-        bm = e.get("base_model")
+        bm = e.get("base_model") or slug2hf.get(src)
         if not is_tinker or not bm or bm in EC.TINKER_DEAD_BASES:
             continue
         adapters.append({"id": key, "kind": "adapter", "base_model": bm, "sampler_path": str(samp),

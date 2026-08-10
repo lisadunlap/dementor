@@ -6,7 +6,7 @@ cone verdict (run_rdo_model stage 6 -> <slug>/eval/metrics.json). The 9-benchmar
 (run_benchmark_eval.py -> <slug>/eval_<bench>/metrics.json + benchmarks_summary.json) is NOT wired to
 auto-run. This daemon fills that gap: it watches repl80_rdo/<slug>/ for models the roster has
 CONE-SCORED (selected_cone.pt + vectors_ml.pt present) and, on a genuinely-idle 5/6/7 card it wins the
-shared GPU lease for, launches `run_benchmark_eval.py <slug> --max-prompts 300` for each.
+shared GPU lease for, launches `run_benchmark_eval.py <slug> --max-prompts 200` for each.
 
 It is a SIBLING sustained-idle daemon that mirrors erosion_daemon.py + retry_pc_fails.py:
   * GPUs 5/6/7 only (GPU4 prohibited; 0-3 belong to js_park).
@@ -155,7 +155,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="scan + print status, launch nothing")
     ap.add_argument("--once", action="store_true", help="one scheduling pass then exit")
-    ap.add_argument("--max-prompts", type=int, default=300, help="prompts/benchmark (default 300)")
+    ap.add_argument("--max-prompts", type=int, default=200, help="prompts/benchmark (default 200)")
     ap.add_argument("--util-max", type=int, default=5, help="max utilization.gpu %% to count a card idle")
     ap.add_argument("--mem-max", type=int, default=5000, help="max memory.used MB to count a card idle")
     ap.add_argument("--sustained-polls", type=int, default=3,
