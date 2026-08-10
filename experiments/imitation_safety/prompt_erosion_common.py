@@ -109,36 +109,35 @@ def _roster_maps():
 
 
 # ==================================================================== pair / item worklist
-def build_pair_worklist():
-    """Distinct (source, target) chatbot_arena pairs, taken from the SAME adapter registry the
-    erosion rung covers -> the prompt rung evaluates the identical pair set for direct comparability.
+def build_pair_worklist(campaign=None):
+    """Configured ordered source-target pairs for one named publication campaign.
 
-    Each pair dict carries how to GENERATE A prompted-as-B: source slug/hf/backend + target slug/hf.
-    Source backend (local vs tinker) comes from config.yaml (the source model's own backend).
+    Prompting does not consume an adapter, so adapter-registry membership must not define this
+    worklist.  Doing so admitted extended/retired models and could omit a configured pair merely
+    because an unrelated adapter entry was absent.  The named campaign is the single source of
+    truth, just as it is for the SFT/DPO coverage audit.
+
+    Missing chatbot-arena disguise data is intentionally *not* filtered here.  A dry run must retain
+    the exact N x (N-1) design; an absent input should fail visibly at execution rather than silently
+    shrinking the experiment.
     """
-    s2id, s2be = _roster_maps()
-    reg = EC.load_registry_entries()
-    seen, pairs = set(), []
-    for key in reg:
-        m = EC.ADAPTER_RE.match(key)
-        if not m or m.group(1) != "chatbot_arena":
-            continue
-        src, tgt = m.group(2), m.group(3)
-        if (src, tgt) in seen or src == tgt:
-            continue
-        src_hf = s2id.get(src)
-        tgt_hf = s2id.get(tgt)
-        if src_hf is None or tgt_hf is None:
-            continue
-        # disguise data for B must exist (matrix_baselines chatbot_arena train csv)
-        if not os.path.exists(os.path.join(DISGUISE_DATA, f"{tgt}_train.csv")):
-            continue
-        seen.add((src, tgt))
-        pairs.append({
-            "source": src, "target": tgt, "source_hf": src_hf, "target_hf": tgt_hf,
-            "backend": "tinker" if s2be.get(src) == "tinker" else "local",
-            "needs_mp": src_hf in NEEDS_MP,
-        })
+    from dementor import config
+
+    name = campaign or os.environ.get("DEMENTOR_CAMPAIGN", "imitation_safety")
+    models = config.campaign_roster(name)
+    pairs = []
+    for source in models:
+        for target in models:
+            if source["slug"] == target["slug"]:
+                continue
+            pairs.append({
+                "source": source["slug"],
+                "target": target["slug"],
+                "source_hf": source["id"],
+                "target_hf": target["id"],
+                "backend": "tinker" if source.get("backend") == "tinker" else "local",
+                "needs_mp": source["id"] in NEEDS_MP,
+            })
     return sorted(pairs, key=lambda p: (p["source"], p["target"]))
 
 
@@ -160,12 +159,12 @@ def parse_item_id(iid):
     return None
 
 
-def build_worklist(methods=None, backend=None):
+def build_worklist(methods=None, backend=None, campaign=None):
     """Full (method x pair) item worklist.  methods=None -> all 5; backend in {'local','tinker'}
     filters to that source-generation track.  Each item id = prompt_<method>_<src>_as_<tgt>."""
     methods = methods or METHODS
     items = []
-    for p in build_pair_worklist():
+    for p in build_pair_worklist(campaign=campaign):
         if backend and p["backend"] != backend:
             continue
         for meth in methods:

@@ -99,6 +99,24 @@ def test_coverage_accepts_configured_sampling_metadata():
     ) == []
 
 
+def test_coverage_separates_generated_only_from_missing_generation(tmp_path):
+    item_id = "sft_gsm8k_a_as_b_seed42"
+    assert AUDIT.generation_state(item_id, [str(tmp_path)])["status"] == "missing_generation"
+
+    for benchmark in AUDIT.EC.DEFAULT_BENCHMARKS[:-1]:
+        bench = tmp_path / item_id / benchmark
+        bench.mkdir(parents=True)
+        (bench / "all_gens.csv").write_text("prompt,model_response\np,r\n")
+    partial = AUDIT.generation_state(item_id, [str(tmp_path)])
+    assert partial["status"] == "partially_generated"
+    assert partial["missing"] == [AUDIT.EC.DEFAULT_BENCHMARKS[-1]]
+
+    last = tmp_path / item_id / AUDIT.EC.DEFAULT_BENCHMARKS[-1]
+    last.mkdir(parents=True)
+    (last / "all_gens.csv").write_text("prompt,model_response\np,r\n")
+    assert AUDIT.generation_state(item_id, [str(tmp_path)])["status"] == "generated_only"
+
+
 # --------------------------------------------------------------------------- summarize (overcount)
 def _overcount_df():
     """10 responses: guard flags 5 (0.5), only 1 genuinely harmful (0.1) -> 5x overcount.

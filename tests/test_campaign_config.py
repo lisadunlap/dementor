@@ -1,5 +1,6 @@
 from dementor import config
 from dementor.training import plan
+from experiments.imitation_safety import prompt_erosion_common
 from experiments.imitation_safety import tinker_erosion
 
 
@@ -32,6 +33,20 @@ def test_default_plan_is_528_cells_per_training_stage():
     summary = plan.summarize(plan.enumerate_jobs())
     assert summary["by_stage"] == {"sft": 528, "dpo": 528, "self_sft": 48}
     assert summary["total"] == 1104
+
+
+def test_prompt_worklist_is_exact_core12_without_dataset_pseudoreplication():
+    methods = ["just_name_it", "random_sampling", "stylistic"]
+    worklist = prompt_erosion_common.build_worklist(methods=methods)
+    pairs = {(item["source"], item["target"]) for item in worklist}
+
+    assert len(pairs) == 12 * 11
+    assert len(worklist) == 3 * 12 * 11
+    assert {source for source, _ in pairs} == CORE12
+    assert {target for _, target in pairs} == CORE12
+    assert all(source != target for source, target in pairs)
+    assert len(prompt_erosion_common.build_worklist(methods=methods, backend="local")) == 297
+    assert len(prompt_erosion_common.build_worklist(methods=methods, backend="tinker")) == 99
 
 
 def test_tinker_sft_parent_recovers_legacy_missing_base_model(monkeypatch):

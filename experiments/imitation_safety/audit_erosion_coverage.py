@@ -74,6 +74,28 @@ def item_problems(
     return problems
 
 
+def generation_state(item_id: str, roots: list[str]) -> dict:
+    """Classify an item without top-level metrics by its resumable generation checkpoints.
+
+    ``missing`` historically meant only "no metrics.json", which made a fully generated cell look
+    safe to regenerate.  Report benchmark CSVs across all synchronized roots so dispatchers can
+    send complete generations directly to batched judging and generate only genuinely absent data.
+    """
+    present = [
+        benchmark
+        for benchmark in EC.DEFAULT_BENCHMARKS
+        if any((Path(root) / item_id / benchmark / "all_gens.csv").exists() for root in roots)
+    ]
+    missing = [benchmark for benchmark in EC.DEFAULT_BENCHMARKS if benchmark not in present]
+    if not missing:
+        status = "generated_only"
+    elif present:
+        status = "partially_generated"
+    else:
+        status = "missing_generation"
+    return {"status": status, "present": present, "missing": missing}
+
+
 def audit(campaign: str, roots: list[str]) -> dict:
     expected_by_stage = {stage: expected_ids(campaign, stage) for stage in ("sft", "dpo")}
     expected_set = set(expected_by_stage["sft"]) | set(expected_by_stage["dpo"])
@@ -97,12 +119,22 @@ def audit(campaign: str, roots: list[str]) -> dict:
     for stage in ("sft", "dpo"):
         expected = expected_by_stage[stage]
         missing = []
+        generated_only = []
+        partially_generated = {}
+        missing_generation = []
         incomplete = {}
         complete = []
         for item_id in expected:
             item = items.get(item_id)
             if item is None:
                 missing.append(item_id)
+                generation = generation_state(item_id, roots)
+                if generation["status"] == "generated_only":
+                    generated_only.append(item_id)
+                elif generation["status"] == "partially_generated":
+                    partially_generated[item_id] = generation
+                else:
+                    missing_generation.append(item_id)
                 continue
             problems = item_problems(
                 item,
@@ -117,6 +149,9 @@ def audit(campaign: str, roots: list[str]) -> dict:
             "expected": len(expected),
             "complete": len(complete),
             "missing": missing,
+            "generated_only": generated_only,
+            "partially_generated": partially_generated,
+            "missing_generation": missing_generation,
             "incomplete": incomplete,
         }
     return report
@@ -139,7 +174,10 @@ def main() -> int:
     for stage, stage_report in report["stages"].items():
         print(
             f"[coverage] {stage}: {stage_report['complete']}/{stage_report['expected']} complete; "
-            f"{len(stage_report['missing'])} missing; "
+            f"{len(stage_report['missing'])} missing metrics "
+            f"({len(stage_report['generated_only'])} generated-only, "
+            f"{len(stage_report['partially_generated'])} partial, "
+            f"{len(stage_report['missing_generation'])} need generation); "
             f"{len(stage_report['incomplete'])} incomplete"
         )
     if args.strict and any(
