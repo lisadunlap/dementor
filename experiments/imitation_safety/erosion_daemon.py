@@ -139,6 +139,21 @@ def launch(item, gpus, extra):
     return subprocess.Popen(cmd, env=env, stdout=lg, stderr=subprocess.STDOUT)
 
 
+def select_items(adapters, baselines, requested_csv):
+    """Restrict a daemon run to explicit, locally resolvable item ids."""
+    if not requested_csv:
+        return adapters, baselines
+    requested = {item.strip() for item in requested_csv.split(",") if item.strip()}
+    available = {item["id"] for item in adapters + baselines}
+    unknown = sorted(requested - available)
+    if unknown:
+        raise SystemExit("unknown or non-local item ids: " + ", ".join(unknown))
+    return (
+        [item for item in adapters if item["id"] in requested],
+        [item for item in baselines if item["id"] in requested],
+    )
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--max-prompts-per-benchmark", "--max-prompts", dest="max_prompts",
@@ -159,9 +174,12 @@ def main():
                     help="retry pre-existing ERROR checkpoints once during this supervisor run")
     ap.add_argument("--generate-only", action="store_true",
                     help="checkpoint missing generations; use batched local judging afterward")
+    ap.add_argument("--items", default=None,
+                    help="comma-separated item ids to consider (default: the full local worklist)")
     args = ap.parse_args()
 
     adapters, baselines = EC.build_worklist(seed=args.seed, local_only=True)
+    adapters, baselines = select_items(adapters, baselines, args.items)
     # baselines FIRST (erosion deltas depend on them), then adapters
     worklist = baselines + adapters
     extra = ["--benchmarks", args.benchmarks, "--max-prompts", str(args.max_prompts),

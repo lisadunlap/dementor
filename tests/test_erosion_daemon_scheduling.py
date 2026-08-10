@@ -51,3 +51,20 @@ def test_generation_only_uses_all_benchmark_checkpoints(tmp_path, monkeypatch):
         (item / benchmark / "all_gens.csv").write_text("prompt,model_response\n")
     assert daemon.done("cell", generation_only=True, benchmarks=("a", "b"))
     assert not daemon.done("cell", generation_only=True, benchmarks=("a", "b", "c"))
+
+
+def test_select_items_restricts_worklist_and_rejects_unknown_ids():
+    daemon = daemon_module()
+    adapters = [{"id": "adapter-a"}, {"id": "adapter-b"}]
+    baselines = [{"id": "baseline-a"}]
+
+    selected_adapters, selected_baselines = daemon.select_items(
+        adapters, baselines, "adapter-b,baseline-a"
+    )
+    assert selected_adapters == [{"id": "adapter-b"}]
+    assert selected_baselines == [{"id": "baseline-a"}]
+
+    import pytest
+
+    with pytest.raises(SystemExit, match="unknown or non-local item ids: missing"):
+        daemon.select_items(adapters, baselines, "missing")
