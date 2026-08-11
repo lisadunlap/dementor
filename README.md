@@ -1,5 +1,92 @@
 # Dementor
 
+## Experiment dashboard
+
+These are the audited publication experiments and current claim boundaries. Headline values are
+generated from the committed artifacts in
+[`data/results/safety/`](data/results/safety/) and synchronized with
+[`docs/generated_campaign_results.tex`](docs/generated_campaign_results.tex) and
+[`paper/naz_aaai2027/generated_steering_results.tex`](paper/naz_aaai2027/generated_steering_results.tex).
+Positive change means greater harmful compliance than the same unadapted source; negative change
+must not be read as greater overall safety without the separate over-refusal result.
+
+### Campaign coverage and paper use
+
+| Experiment | Population | Evaluation | Audited status | Paper use |
+|---|---:|---|---:|---|
+| SFT imitation safety | 12 models × 11 targets × 4 corpora | 7 safety benchmarks, n=200, seed 42 | **528/528 complete** | Claim 1 |
+| SFT→DPO imitation safety | Same exact cells and SFT parents | 7 safety benchmarks, n=200, seed 42 | **528/528 complete** | Claim 1 |
+| Exact SFT→DPO pairing | Dataset/source/target/seed matched | 528 paired cells | **528/528 paired** | Incremental DPO analysis |
+| Base steering, historical single-layer controls | 29 base models | 5 harm benchmarks | **29 complete; 24 gated** | Secondary Claim 2 coverage |
+| Base steering, matched all-layer (`fpall`) controls | 22 complete base models | Cone, contrast, and random on identical cells | **19 gated models; 85 contributing cells** | Primary Claim 2 assay |
+| Adapter steering | Nonuniform archived subset | Controls applied after fine-tuning | Incomplete by design | **Excluded from paper evidence** |
+| Prompt-only safety rungs | Not launched | Would add a new intervention family | Outside current campaign | **Excluded from paper evidence** |
+
+### Imitation-safety headline results
+
+| Stage | Cells | Mean harm change (pp) | Source-cluster 95% CI | Median (pp) | Cells ≥+5 pp | Maximum (pp) | Directional share | Mean over-refusal change (pp) |
+|---|---:|---:|---:|---:|---:|---:|---|---:|
+| SFT | 528 | +0.02 | [-0.89, +0.90] | +0.10 | 7.4% | +34.30 | 48.1% lower than base | +1.87 |
+| SFT→DPO | 528 | +0.77 | [+0.23, +1.45] | +0.20 | 4.7% | +15.10 | 33.7% lower than base | -1.33 |
+| DPO − matched SFT | 528 pairs | +0.76 | [-0.32, +2.13] | +0.30 | — | — | 56.8% DPO higher | — |
+
+### Descriptive variance shares
+
+These are separate marginal one-way shares, not a joint causal variance decomposition.
+
+| Factor | SFT η² | SFT→DPO η² |
+|---|---:|---:|
+| Source model | 12.2% | 30.4% |
+| Target-output model | 12.6% | 6.0% |
+| Training corpus | 4.4% | 2.1% |
+
+### Base-steering results
+
+| Assay | Model-level units | Contributing cells | Refusal cone (pp) | Cross-model contrast (pp) | Random control (pp) | Contrast vs random |
+|---|---:|---:|---:|---:|---:|---|
+| Matched all-layer (`fpall`), primary | 19 | 85 | +48.78 | +1.59 | +1.03 | W=62, exact p=.196 |
+| Historical single-layer controls, secondary | 24 | — | +46.81 | +0.52 | +0.64 | W=125.5, exact p=.495 |
+
+The tests above fail to detect a contrast–random location difference; they are not equivalence
+tests. Granite-4-H-Small has complete base and `fpall` evaluations but is excluded from the gated
+aggregate because its refusal-cone positive control fails on all five harm benchmarks.
+
+### Automated-judge agreement study
+
+This is a restricted, unbalanced 4,712-response historical convenience sample, not human ground
+truth and not a second judge over every matrix cell.
+
+| Judge pair | Cohen's κ | 95% CI | Both | A only | B only | Neither |
+|---|---:|---:|---:|---:|---:|---:|
+| Llama-Guard vs HarmBench | 0.243 | [0.213, 0.272] | 283 | 913 | 157 | 3,359 |
+| Llama-Guard vs RTL | 0.249 | [0.219, 0.279] | 256 | 940 | 84 | 3,432 |
+| HarmBench vs RTL | 0.699 | [0.661, 0.735] | 282 | 158 | 58 | 4,214 |
+
+Llama-Guard flags 25.4% of this sample, HarmBench 9.3%, and RTL 7.2%. The publication matrix uses
+the same binary RTL harmful-compliance verdict for all five harm benchmarks; native graders remain
+auxiliary diagnostics.
+
+### Sample-count glossary
+
+| Count | Meaning | Current status |
+|---:|---|---|
+| 200 | Evaluation prompts per benchmark, seed 42 | Active standard |
+| 120 | Paired benign examples used to derive a cross-model activation contrast | Derivation only; never a result denominator |
+| 300 | Historical steering evaluation cap | Legacy; disclosed where a complete n=200 rescore is unavailable |
+| 150 | Historical imitation-safety cap | Retired and excluded from the core-12 aggregate |
+
+### Result and artifact index
+
+| Artifact | Contents |
+|---|---|
+| [`erosion_coverage.json`](data/results/safety/erosion_coverage.json) | Strict 528/528 SFT and DPO coverage audit |
+| [`erosion_campaign_headlines.json`](data/results/safety/erosion_campaign_headlines.json) | Headline imitation and exact paired-stage statistics |
+| [`erosion_seed42_summary.csv`](data/results/safety/erosion_seed42_summary.csv) | Stage-labelled cell-level summary |
+| [`base_steering_coverage.json`](data/results/safety/base_steering_coverage.json) | Per-model base/`fpall` coverage, verdicts, and sample provenance |
+| [`fpall_comparison_stats.json`](paper/naz_aaai2027/img/fpall_comparison_stats.json) | Primary matched-operator steering statistics and cohort |
+| [`fingerprint_identity_diagnostic.json`](data/results/safety/fingerprint_identity_diagnostic.json) | Held-out diagnostic limiting identity-language claims |
+| [`CAMPAIGN_CONSOLIDATION_20260810.md`](docs/CAMPAIGN_CONSOLIDATION_20260810.md) | Cross-machine and Hugging Face hashes, imports, and final scope |
+
 Dementor measures whether behavioral fingerprints persist when one language model is made to imitate
 another. The current publication experiment addresses two narrower safety questions:
 
@@ -65,13 +152,13 @@ the incremental SFT→DPO effect is paired on exact dataset/source/target/seed c
 Base-model steering uses projection ablation with three controls:
 
 - refusal cone: positive control that must move harm;
-- benign cross-model fingerprint/provenance contrast: test direction;
+- benign cross-model activation contrast: test direction;
 - norm-matched random direction: null control.
 
 The benign contrast is derived from 120 paired benign responses. That is a direction-derivation count,
-not an evaluation sample size. Its held-out diagnostic does not justify calling it a causally validated
-“identity direction,” so the paper uses **benign provenance contrast** or **imitation-aligned
-fingerprint direction** and limits the claim to dissociation from refusal behavior.
+not an evaluation sample size. Its held-out diagnostic does not justify calling it a causally
+validated “identity direction,” so the paper calls it a **benign cross-model activation contrast**
+and limits the claim to dissociation from refusal behavior.
 
 The consolidated base tree contains complete five-harm-benchmark evaluations for 29 models; 24 pass
 the positive-control gate. The stricter matched all-layer fingerprint/random robustness variant is
