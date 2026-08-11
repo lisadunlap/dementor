@@ -69,13 +69,15 @@ not an evaluation sample size. Its held-out diagnostic does not justify calling 
 “identity direction,” so the paper uses **benign provenance contrast** or **imitation-aligned
 fingerprint direction** and limits the claim to dissociation from refusal behavior.
 
-Granite remains part of the imitation matrix but has no valid steering cone. Matched cross-method
-analyses use the 11-model evaluable overlap. Llama-3.3-70B has complete base-model cone, fingerprint,
-and random controls across the five harm benchmarks.
+The consolidated base tree contains complete five-harm-benchmark evaluations for 29 models; 24 pass
+the positive-control gate. The stricter matched all-layer fingerprint/random robustness variant is
+complete for 22 of the 29 models (19 gated), including Llama-3.3-70B. Granite now has a valid RTX-run
+cone and complete controls, but its positive control fails on all five harm benchmarks, so it remains
+in the imitation matrix and outside the gated steering analysis.
 
-Adapter-level steering controls support the existing controlled subset. The 70B adapter extension has
-cone and baseline arms only, so it demonstrates that the refusal positive control still fires after
-70B fine-tuning; it is not used to claim controlled fingerprint dissociation at 70B.
+Adapter steering is retained as auxiliary provenance but excluded from the paper's evidence because
+its model/arm coverage is nonuniform. In particular, no adapter-geometry claim is made at 70B, so
+additional 70B adapter fingerprint/random controls are not required.
 
 ## Package layout
 

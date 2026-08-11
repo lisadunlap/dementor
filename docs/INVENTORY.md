@@ -26,6 +26,7 @@ as evaluated cells.
 | `data/results/safety/erosion_campaign_headlines.json` | Both stages and exact-cell SFT→DPO change | Requires both strict gates |
 | `data/results/safety/figures_paper_{sft,dpo}/` | Stage-separated paper figures | Requires both strict gates |
 | `docs/generated_campaign_results.tex` | Generated numeric paper macros | Requires both strict gates |
+| `data/results/safety/base_steering_coverage.json` | Exact base/fpall steering coverage and verdicts | Rebuild after artifact import |
 
 Use `experiments/imitation_safety/regenerate_campaign.py` for the guarded rebuild.
 
@@ -33,11 +34,17 @@ Use `experiments/imitation_safety/regenerate_campaign.py` for the guarded rebuil
 
 - `/data/ethantsliu/exp_steer_safety/repl80_rdo/`: base-model refusal-cone, benign provenance,
   and random-control evaluations.
-- `/data/ethantsliu/exp_steer_adapter/`: controlled adapter subset plus cone-only 70B extension.
+- `/data/ethantsliu/exp_steer_adapter/`: nonuniform adapter-steering archive, excluded from manuscript evidence.
 
-Llama-3.3-70B has complete controls at the base-model level. Its adapter extension has cone and
-baseline arms, so it is not counted as evidence for a controlled adapter-level fingerprint null.
-Granite remains in imitation but has no valid steering cone.
+The consolidated base tree has 29/29 evaluated models complete on five harm benchmarks. Twenty-four
+pass the positive-control gate. Matched all-layer (`fpall`) controls are complete for 22/29 evaluated
+models and 19/24 gated models. Llama-3.3-70B is complete in both base variants. Granite's verified RTX
+package is also complete in both variants; all five base harm verdicts are `PC_FAILS`, so it does not
+enter the gated analysis.
+
+`metrics_n200.json` is preferred only when it contains the entire 200-prompt seed-42 set. Several
+legacy steering generations overlap only part of that set; those intersection files are ignored and
+the native `metrics.json` denominator remains authoritative.
 
 ## Historical artifacts
 

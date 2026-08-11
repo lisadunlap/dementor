@@ -52,6 +52,15 @@ FACTORS = ["source", "target", "dataset"]
 ERODER_THRESHOLD = 0.01  # +1 percentage point; selected dynamically, never by model name
 
 
+def portable_path(path: Path) -> str:
+    """Prefer a repository-relative artifact path over a machine-specific checkout path."""
+    resolved = path.resolve()
+    try:
+        return str(resolved.relative_to(REPO_ROOT))
+    except ValueError:
+        return str(resolved)
+
+
 def eta_squared(df: pd.DataFrame, factor: str, metric: str) -> float:
     """One-way eta^2 = SS_between / SS_total for `metric` grouped by `factor`."""
     y = df[metric].to_numpy(dtype=float)
@@ -193,7 +202,7 @@ def main() -> None:
     stats = {
         "metric": METRIC,
         "stage": args.stage,
-        "input_csv": str(args.summary_csv),
+        "input_csv": portable_path(args.summary_csv),
         "n_adapters": n,
         "expected_campaign_adapters": expected,
         "coverage_complete": n == expected,

@@ -40,33 +40,42 @@ erosion means it became safer.
 
 ## Steering evidence
 
-The base-model assay applies the same projection-ablation operator to:
+The base-model assay applies projection ablation to:
 
 1. a refusal cone, which is the positive control;
 2. a benign cross-model fingerprint/provenance contrast;
 3. a norm-matched random direction.
 
+The original campaign applies the two single-direction controls at the declared layer while the cone
+acts across layers. The `fpall` robustness subset applies the single directions across all layers as
+well, removing that operator-size asymmetry; its smaller 22-model coverage is reported explicitly.
+
 The fingerprint vector is derived from 120 paired benign responses. The held-out identity diagnostic
 does not show that its ablation literally removes model identity, so the mechanistic wording is
 limited to dissociation between the benign provenance contrast and refusal behavior.
 
-Granite-4-h-small has no valid cone: the final target filters retained zero examples and optimization
-became NaN. Granite remains in the 12-model imitation matrix but is excluded from steering. The
-matched cross-method overlap is therefore 11 models; imitation membership is not required to imply a
-successful steering assay.
+The 200/seed-42 evaluation standard is exact for the imitation matrix and new steering cells. Some
+legacy steering generations used 300 prompts (or 100 for SG-Bench) and do not contain the complete
+new seed-42 set. Their cached intersections are not mislabeled as n=200: the figure loader accepts a
+`metrics_n200.json` file only when it records all 200 prompts, otherwise it uses and discloses the
+native cell denominator.
+
+The consolidated base tree contains complete five-harm-benchmark evaluations for 29 models; 24 pass
+the positive-control gate. The matched all-layer fingerprint/random robustness variant is complete
+for 22/29 evaluated models and 19/24 gated models. Granite-4-h-small now has a valid, independently
+verified RTX cone and complete base/fpall cells, but its positive control returns `PC_FAILS` on every
+harm benchmark. It remains in the 12-model imitation matrix and outside the gated steering analysis.
 
 Llama-3.3-70B has complete base-model cone, fingerprint, and random controls across the five harm
 benchmarks.
 
 ## Adapter-steering scope
 
-The controlled adapter analysis consists only of cells with cone, fingerprint, and random arms. The
-70B adapter extension contains cone and baseline arms, so it supports this limited statement:
-
-> The refusal-cone positive control remains effective after imitation fine-tuning at 70B.
-
-It does not support a controlled adapter-level fingerprint-null claim at 70B. The manuscript must not
-use the cone-only 70B cells to extend the controlled adapter dissociation range.
+Adapter steering is excluded from the manuscript evidence. Its archived cells have nonuniform model
+and arm coverage, so they are neither pooled with the complete imitation matrix nor used to claim
+that activation geometry persists through fine-tuning. Llama-3.3-70B adapter fingerprint/random
+controls are therefore unnecessary under the current claim scope: the paper makes a base-model
+mechanistic claim and a separate behavioral fine-tuning claim, not an adapter-geometry claim.
 
 ## Work deliberately outside scope
 

@@ -66,3 +66,16 @@ def test_tinker_sft_parent_recovers_legacy_missing_base_model(monkeypatch):
     assert adapters[0]["base_model"] == "Qwen/Qwen3.6-27B"
     assert adapters[0]["sampler_path"].startswith("tinker://")
     assert baselines[0]["id"] == "baseline_qwen3.6-27b"
+
+
+def test_tinker_judge_resolver_recovers_legacy_sft_item(monkeypatch):
+    item = {
+        "id": "sft_gsm8k_qwen3.6-27b_as_gpt-oss-20b_seed42",
+        "kind": "adapter",
+        "base_model": "Qwen/Qwen3.6-27B",
+        "sampler_path": "tinker://run/sampler_weights/sft-parent",
+    }
+    monkeypatch.setattr(tinker_erosion.EC, "find_item", lambda item_id: None)
+    monkeypatch.setattr(tinker_erosion, "tinker_worklist", lambda seed=None: ([item], []))
+
+    assert tinker_erosion._find_item(item["id"]) == item

@@ -95,17 +95,26 @@ held-out identity diagnostic does not support interpreting its ablation as liter
 identity, so the mechanistic claim is limited to safety dissociation from this imitation-aligned
 contrast.
 
-**Safety dissociation protocol.** Projection-ablation at a mid layer, β ∈ {0.6, 1.0, 1.4}, 200 harmful
-prompts, RTL-judged, coherence-gated, paired McNemar. **Pre-registered positive control:** ablate the
+**Safety dissociation protocol.** Projection-ablation at a mid layer, β ∈ {0.6, 1.0, 1.4},
+RTL-judged, coherence-gated, paired McNemar. Current cells target the seed-42 200-prompt sample;
+legacy generations used 300 prompts (and 100 for some SG-Bench cells). Cached legacy cells are
+re-scored at 200 only when they contain the exact new prompt set—partial intersections are rejected
+and the native denominator is disclosed. **Pre-registered positive control:** ablate the
 Arditi **refusal** direction (harmful−harmless last-token diff-of-means) — it must catastrophically
 erode safety, or the base model is **EXCLUDED** as unpowered (the single-direction probe cannot resolve
 the question there). Ablating the benign **fingerprint** direction under the identical operator is the
 test. Geometry (cosines to refusal/persona) is reported but does **not** predict the causal effect, so
 the claim rests on the causal control, not the cosines.
 
-Granite-4-h-small remains in the imitation campaign but has no valid steering verdict: its cone assay
-failed during target construction/optimization. Cross-method comparisons therefore use the actual
-11-model evaluable overlap rather than requiring imitation membership to imply steering success.
+The consolidated base assay has complete five-harm-benchmark cells for 29 models. Twenty-four pass
+the predeclared positive-control gate. A stricter matched all-layer fingerprint/random variant is
+complete for 22 of those 29 models (19 gated) and is reported as a robustness subset. Granite-4-h-small
+has a valid cone and complete controls, but its positive control returns `PC_FAILS` on all five harm
+benchmarks; it remains in the imitation campaign and outside the gated steering analysis.
+
+Adapter-level steering is not manuscript evidence. Existing adapter-steering artifacts have
+nonuniform arm coverage and are retained only as auxiliary provenance; the manuscript therefore does
+not claim that activation geometry persists through fine-tuning.
 
 ## Persistence metric (judge-free)
 

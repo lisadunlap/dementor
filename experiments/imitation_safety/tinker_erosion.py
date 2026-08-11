@@ -167,6 +167,22 @@ def _sampled(item_id, benchmarks):
     return all(os.path.exists(os.path.join(d, b, "all_gens.csv")) for b in benchmarks)
 
 
+def _find_item(item_id):
+    """Resolve local and Tinker items, including legacy SFT registry rows.
+
+    ``erosion_common.find_item`` deliberately uses the generic worklist.  Older Tinker SFT
+    registry entries omit ``base_model``, so that worklist cannot resolve them even though
+    ``tinker_worklist`` recovers the model from the source slug.  The judge supervisor builds its
+    queue with ``tinker_worklist``; use the same resolver as a fallback in its worker subprocess.
+    """
+    item = EC.find_item(item_id)
+    if item is not None:
+        return item
+    adapters, baselines = tinker_worklist(seed=None)
+    return next((candidate for candidate in baselines + adapters
+                 if candidate["id"] == item_id), None)
+
+
 # ==================================================================== phase A: remote sampling
 def sample_item(it, benchmarks, max_prompts, subsample_seed, max_new_tokens, sample_workers, logf):
     """Sample every not-yet-sampled benchmark for ONE tinker item on Tinker's servers, greedy
@@ -293,7 +309,7 @@ def judge_worker(item_ids, benchmarks, enabled, max_prompts, subsample_seed):
     run_erosion_item.py, plus backend='tinker')."""
     import pandas as pd
     logf = os.path.join(LOG_DIR, "tinker_judge.log")
-    items = [EC.find_item(i) for i in item_ids]
+    items = [_find_item(i) for i in item_ids]
     items = [it for it in items if it and not _done(it["id"]) and _sampled(it["id"], benchmarks)]
     if not items:
         EC.log("[judge] nothing to do in this batch", logf)

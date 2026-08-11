@@ -76,10 +76,9 @@ roster_legacy:
 # `refs` = models already defined in roster:/roster_legacy (referenced by slug).
 # `breadth` = steering-only models (NOT trained in the imitation square).
 #
-# steer_status vocabulary (RECONCILED 2026-07-16 against raw <slug>/eval/metrics.json;
-# these fields had drifted badly — they claimed gpt-oss-20b/phi-4/aya were `clean` when
-# they are PC_FAILS/ERROR. Regenerate with repl80_rdo/regen_dissociation_table.py; do NOT
-# hand-edit):
+# steer_status vocabulary (RECONCILED 2026-08-10 against canonical metrics, preferring exact
+# seed-42 n=200 rescores where the cached generation contains the complete prompt set;
+# regenerate the exact per-benchmark record with experiments/steering/audit_base_steering.py):
 #   clean              cone ablation erodes safety -> model is USABLE in the study
 #   pc_fails           cone ablation does NOT erode safety, and the refusal probe WORKS
 #                      (base_refrate 0.67-0.98) -> genuine hyper-robust refusal; excluded
@@ -91,6 +90,7 @@ roster_legacy:
 #                      base_refrate = 0/300 and the cone is fit against a constant. NOT
 #                      evidence of robust safety — a measurement failure. Fixable: give the
 #                      family real refusal token ids / strip the channel, then re-run.
+#   pc_invalid         the cone collapsed coherence at every beta; the causal assay is untestable
 #   error              infrastructure failure (CUDA OOM / HF-offline cache miss), NOT a model
 #                      property. Recoverable; must not be reported as an exclusion.
 #   not_run            never attempted (no result dir).
@@ -98,21 +98,21 @@ roster_legacy:
 steering_roster:
   refs:
     qwen3.5-4b: clean
-    qwen3.6-27b: error                  # judge OOM only; eval/all_gens.csv cached -> judge-only rerun
-    qwen3.6-35b-a3b: clean              # was `in_progress`; rerun landed 2026-07-12 (cone 0.167)
-    nemotron-nano-30b-a3b: clean        # was `in_progress`; rerun landed 2026-07-12 (cone 0.833)
-    gpt-oss-20b: pc_fails_artifact      # was `clean` (WRONG); probe blind, base_refrate 0/300
+    qwen3.6-27b: pc_fails
+    qwen3.6-35b-a3b: clean
+    nemotron-nano-30b-a3b: clean
+    gpt-oss-20b: clean
     gpt-oss-120b: pc_fails_artifact     # probe blind, base_refrate 0/300 — same harmony format
-    gemma-4-e4b: pc_fails               # GENUINE: base_refrate 0.977, cone 0.020
-    gemma-4-31b: clean                  # was `todo`; cone 1.000
+    gemma-4-e4b: clean                  # positive control fires on HarmBench
+    gemma-4-31b: pc_invalid
     llama-3.1-8b: clean
-    aya-expanse-8b: error               # was `clean` (WRONG); HF-offline cache miss in compute_dim.py
+    aya-expanse-8b: clean
     olmo-3-7b: clean
     ministral-8b: clean                 # was `todo`; cone 0.807
-    phi-4: error                        # was `clean` (WRONG); HF-offline cache miss in compute_dim.py
-    granite-4-h-small: error   # 3rd hybrid LAB (IBM Granite-4.0 32B-A9B Mamba-hybrid); imitation:core. CUDA OOM
+    phi-4: clean
+    granite-4-h-small: pc_fails         # verified RTX cone; positive control fails on all five harm benchmarks
     nemotron-super-120b: not_run # imitation:core (added 2026-07-09); 120B MP RDO cone — no result dir exists
-    llama-3.3-70b: error       # imitation:core (added 2026-07-09); dead-tinker->local; 70B MP RDO cone. CUDA OOM
+    llama-3.3-70b: clean
     qwen3-8b: clean            # imitation:extended, already steered
   breadth:
     - {id: Qwen/Qwen2.5-7B-Instruct,                 slug: qwen2.5-7b,      provider: qwen,        arch: dense, steer_status: clean}
@@ -126,10 +126,10 @@ steering_roster:
     - {id: ibm-granite/granite-3.3-8b-instruct,      slug: granite-3.3-8b,  provider: ibm-granite, arch: dense, steer_status: clean}
     - {id: HuggingFaceTB/SmolLM3-3B,                 slug: smollm3-3b,      provider: huggingface, arch: dense, steer_status: clean}
     - {id: internlm/internlm3-8b-instruct,           slug: internlm3-8b,    provider: internlm,    arch: dense, steer_status: error}  # IndexError in tokenization_internlm3.py:173 — never retried
-    - {id: deepseek-ai/DeepSeek-R1-Distill-Llama-8B, slug: deepseek-distill-8b, provider: deepseek, arch: dense, steer_status: pc_fails_artifact}  # probe blind: R1-distill opens with <think>; cone=nan
+    - {id: deepseek-ai/DeepSeek-R1-Distill-Llama-8B, slug: deepseek-distill-8b, provider: deepseek, arch: dense, steer_status: clean}
     - {id: mistralai/Mixtral-8x7B-Instruct-v0.1,     slug: mixtral-8x7b,    provider: mistralai,   arch: moe,   steer_status: error}  # CUDA OOM (1.31 GiB in mixtral experts)
     - {id: allenai/OLMoE-1B-7B-0924-Instruct,        slug: olmoe-1b-7b,     provider: allenai,     arch: moe,   steer_status: clean}
-    - {id: Qwen/Qwen3-30B-A3B,                       slug: qwen3-30b-a3b,   provider: qwen,        arch: moe,   steer_status: pc_fails}  # GENUINE: base_refrate 0.940, cone 0.037
+    - {id: Qwen/Qwen3-30B-A3B,                       slug: qwen3-30b-a3b,   provider: qwen,        arch: moe,   steer_status: clean}
 
 datasets:
   gsm8k:

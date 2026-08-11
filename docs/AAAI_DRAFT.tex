@@ -56,7 +56,7 @@ imitation affect safety? Second, what additional change follows preference
 optimization? Third, is a benign cross-model activation contrast causally entangled
 with refusal behavior? The first two require separate SFT and DPO measurements on
 matched cells. The third requires a positive control and a random control under the
-same intervention operator.
+declared projection-ablation protocol, plus a matched all-layer robustness subset.
 
 Our contribution is a complete, configuration-defined matrix with a single evaluation
 standard, an exact-cell comparison between training stages, and a claim scope tied to
@@ -163,12 +163,19 @@ At the base-model level, the refusal-cone, benign-provenance, and random arms su
 positive-controlled dissociation between the measured provenance contrast and refusal
 behavior. Llama-3.3-70B is included in this base-model assay with all three controls.
 Granite-4-H-Small is not: its cone training retained no usable refusal targets and
-became non-finite, so it remains an imitation model without a steering verdict.
+became non-finite in the original run. A subsequent independently verified RTX run
+produced a valid cone and complete controls, but the positive control failed on all
+five harm benchmarks, so Granite remains outside the gated steering analysis.
 
-The adapter-level analysis is restricted to cells containing all three arms. The 70B
-adapter extension contains cone and baseline arms only. It therefore shows that the
-refusal positive control remains effective after 70B imitation fine-tuning, but it is
-not evidence that a controlled adapter-level provenance null extends to 70B.
+The consolidated base tree contains 29 models with complete five-harm-benchmark cells;
+24 pass the positive-control gate. Matched all-layer controls are complete for 22 of
+the 29 models (19 gated), including Llama-3.3-70B, and are reported as a robustness
+subset. Adapter steering is excluded because its model and arm coverage is nonuniform;
+we make no claim that the activation geometry persists through fine-tuning.
+
+New steering cells use the seed-42 200-prompt standard. Legacy cells are rescored on
+that set only when all selected prompts are present; otherwise we retain and report
+their native denominator rather than treating a partial prompt intersection as 200.
 
 \section{Limitations}
 The main matrix uses one training seed. Every safety comparison uses matched prompts,
@@ -182,9 +189,9 @@ required; reference-invariant identity would be a different, stronger claim. Lik
 prompt-only safety rungs would broaden the study from weight-based imitation to a full
 intervention ladder and are not needed for the present conclusion.
 
-The base-model steering assay and controlled adapter assay have different populations.
-We do not infer adapter controls from base-model controls, and we do not use the
-cone-only 70B extension to enlarge the controlled adapter population.
+The base-model steering and fine-tuning experiments answer different questions. We do
+not infer adapter-level geometry from base-model controls, and archived adapter-steering
+cells are not manuscript evidence.
 
 \section{Conclusion}
 Across a complete core-12 matrix, supervised imitation and subsequent preference

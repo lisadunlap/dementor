@@ -8,7 +8,8 @@ of 87.3% that exists in none of the 149 metrics.json files, an angle axis spanni
 four from the pipeline's own output, so every value is traceable.
 
 Sources (read-only):
-  /data/ethantsliu/exp_steer_safety/repl80_rdo/<slug>/eval_<bm>/metrics.json
+  /data/ethantsliu/exp_steer_safety/repl80_rdo/<slug>/eval_<bm>/metrics_n200.json
+  (accepted only for exact 200-prompt coverage; otherwise falling back to native metrics.json)
   /data/ethantsliu/exp_steer_safety/repl80_rdo/roster_geometry.csv
 
 Roster rule (stated in the paper's Methods):
@@ -45,6 +46,8 @@ BM_LABEL = {
 }
 RANDOM_CONTAM_PP = 10.0
 SKIP_DIRS = {"port", "wandb", "rdo_shared", "roster_geom_parts", "__pycache__", "_validation"}
+VARIANT_SUFFIXES = ("_retry5", "_dim8", "_k8")
+POSITIVE_CONTROL_PASS = {"CLEAN", "INCONCLUSIVE"}
 
 # accent colours shared with plot_erosion_paper.py
 C_FP, C_RAND, C_CONE = "#2471a3", "#95a5a6", "#c0392b"
@@ -61,6 +64,29 @@ matplotlib.rcParams.update({
 })
 
 
+def _load_preferred_metrics(eval_dir):
+    """Load one cell, overlaying harmonized fields on its native metadata."""
+    harmonized = os.path.join(eval_dir, "metrics_n200.json")
+    native = os.path.join(eval_dir, "metrics.json")
+    metrics = {}
+    if os.path.exists(native):
+        try:
+            metrics = json.load(open(native))
+        except (json.JSONDecodeError, OSError):
+            metrics = {}
+    if os.path.exists(harmonized):
+        try:
+            rescored = json.load(open(harmonized))
+            # An early harmonizer wrote prompt intersections even when the legacy generation did
+            # not contain the entire seed-42 set. Those files are not n=200 despite their name.
+            # Only overlay an exact 200-prompt rescore; otherwise retain the native cell metrics.
+            if rescored.get("n_prompts") == 200:
+                metrics.update(rescored)
+        except (json.JSONDecodeError, OSError):
+            pass
+    return metrics or None
+
+
 def load_cells(variant=None):
     """-> {slug: {benchmark: dict(base, cone, fp, rand, verdict)}}, in pp.
 
@@ -73,7 +99,7 @@ def load_cells(variant=None):
         p = os.path.join(RDO, d)
         if not os.path.isdir(p) or d in SKIP_DIRS:
             continue
-        if d.endswith("_retry5") or d.endswith("_dim8"):
+        if d.endswith(VARIANT_SUFFIXES):
             continue  # re-run variants, not roster members
         # Some models carry an older bare eval/metrics.json alongside the per-benchmark
         # eval_<bm>/ dirs; they are separate runs of the same benchmark with slightly
@@ -85,19 +111,23 @@ def load_cells(variant=None):
         # it would silently overwrite the campaign value for that benchmark (both
         # write benchmark="sgbench"). Load it explicitly via load_cells(variant=...).
         suffix = "_fpall" if variant == "fpall" else None
-        legacy = os.path.join(p, "eval", "metrics.json")
-        cand = sorted(glob.glob(os.path.join(p, "eval_*", "metrics.json")))
-        if suffix:
-            cand = [f for f in cand if os.path.basename(os.path.dirname(f)).endswith(suffix)]
-        else:
-            cand = [f for f in cand if not os.path.basename(os.path.dirname(f)).endswith("_fpall")]
-        files = ([legacy] if (os.path.exists(legacy) and not suffix) else []) + cand
-        for f in files:
-            try:
-                m = json.load(open(f))
-            except (json.JSONDecodeError, OSError):
-                continue
-            bm, base = m.get("benchmark"), m.get("baseline_harm")
+        expected_dirs = {
+            f"eval_{benchmark}{suffix or ''}"
+            for benchmark in TABLE_BENCHMARKS
+        }
+        eval_dirs = [path for path in sorted(glob.glob(os.path.join(p, "eval_*")))
+                     if os.path.basename(path) in expected_dirs]
+        metrics = []
+        if not suffix:
+            legacy = _load_preferred_metrics(os.path.join(p, "eval"))
+            if legacy:
+                metrics.append(("advbench", legacy))
+        metrics.extend((os.path.basename(path)[len("eval_"):-len(suffix)] if suffix
+                        else os.path.basename(path)[len("eval_"):], loaded)
+                       for path in eval_dirs
+                       if (loaded := _load_preferred_metrics(path)))
+        for inferred_benchmark, m in metrics:
+            bm, base = m.get("benchmark") or inferred_benchmark, m.get("baseline_harm")
             if bm is None or base is None:
                 continue
             br = m.get("baseline_refrate")
@@ -122,7 +152,7 @@ def roster(cells):
         harm = {b: c for b, c in bms.items() if b in HARM_BENCHMARKS}
         if not harm:
             continue
-        if not any(c["verdict"] == "CLEAN" for c in harm.values()):
+        if not any(c["verdict"] in POSITIVE_CONTROL_PASS for c in harm.values()):
             continue
         if any(c["rand"] is not None and abs(c["rand"]) > RANDOM_CONTAM_PP
                for c in harm.values()):
@@ -136,7 +166,7 @@ def per_model(cells, slugs):
     rows = {}
     for s in slugs:
         firing = [c for b, c in cells[s].items()
-                  if b in HARM_BENCHMARKS and c["verdict"] == "CLEAN"]
+                  if b in HARM_BENCHMARKS and c["verdict"] in POSITIVE_CONTROL_PASS]
         if not firing:
             continue
         rows[s] = {arm: float(np.mean([c[arm] for c in firing if c[arm] is not None]))
@@ -222,7 +252,7 @@ def fig01(cells, slugs, outdir):
         acc = {a: [] for a in ("cone", "fp", "rand")}
         for s in slugs:
             c = cells[s].get(bm)
-            if c is None or c["verdict"] != "CLEAN":
+            if c is None or c["verdict"] not in POSITIVE_CONTROL_PASS:
                 continue
             for a in acc:
                 if c[a] is not None:
@@ -309,7 +339,7 @@ def fig02(outdir):
         f"refusal-persona {pooled['refusal_persona']:.3f}", loc="left", fontsize=9)
     fig.tight_layout()
     for ext in ("pdf", "png"):
-        fig.savefig(os.path.join(outdir, f"02_axis_separation.{ext}"), dpi=200)
+        fig.savefig(os.path.join(outdir, f"02_model_orthogonality.{ext}"), dpi=200)
     plt.close(fig)
     return pooled, models
 
@@ -334,7 +364,7 @@ def table_rows(cells, clean_only, roster_slugs=None):
             c = bms.get(bm)
             if c is None:
                 continue
-            if clean_only and (c["verdict"] != "CLEAN"
+            if clean_only and (c["verdict"] not in POSITIVE_CONTROL_PASS
                                or (roster_slugs is not None and slug not in roster_slugs)):
                 continue
             base_h.append(c["base"])
@@ -391,7 +421,7 @@ def main():
     print("\n%% Table 1, all models with a valid operating point")
     for r in table_rows(cells, clean_only=False):
         print(r)
-    print("\n%% Table 1, positive-control-passing (CLEAN) cells, roster only")
+    print("\n%% Table 1, positive-control-passing cells, roster only")
     for r in table_rows(cells, clean_only=True, roster_slugs=set(slugs)):
         print(r)
     print()
