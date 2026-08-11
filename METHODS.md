@@ -7,7 +7,8 @@ for roster, datasets, seeds, and hyperparameters. Results/datasets are git-LFS; 
 
 **`config.yaml` is the single source of truth for the model catalog and named campaigns** (slugs,
 ids, providers, backends, tiers, datasets, and seeds). The publication campaign is
-`campaigns.imitation_safety`: 12 models, four datasets, seed 42, and 200 evaluation prompts.
+`campaigns.imitation_safety`: 12 models, four datasets, seed 42, 200 evaluation prompts, and a
+256-new-token generation cap.
 `backend: tinker` models train via the Tinker API;
 `backend: local` models train on a local H100. `tier` = launder | retain (DPO fingerprint-erasure
 behavior); `imitation: core | extended` marks the imitation-matrix membership and `steering_roster`
@@ -35,7 +36,7 @@ intervention gets stronger?
 
 ## Training matrix
 
-`dementor/training/matrix/` (package; subcommand dispatcher via `python -m dementor.training.matrix`: `make-splits`, `generate-target-responses`,
+`dementor/training/matrix/` (package; subcommand dispatcher via `python -m dementor.training.matrix`: `generate-target-responses`,
 `build-sft-data`, `launch-sft`, `build-dpo-data`, `launch-dpo`, `push-to-hf`). The publication square
 uses seed **42**; seeds 43/44 remain available for explicitly scoped robustness runs.
 LoRA **rank 32**, alpha 64, target_modules=all-linear.
@@ -51,7 +52,9 @@ grad checkpointing; multi-GPU FSDP available — the adapter save gathers a full
 See `dementor/training/README.md`.
 
 ```bash
-$PY -m dementor.training.matrix cell --source <slug> --target <slug> ...
+dementor-make-splits
+$PY -m dementor.training.matrix launch-local-cell --source <slug> --target <slug> \
+  --dataset <dataset> --seed 42 --phase all
 ```
 
 ## Safety pipeline
@@ -64,14 +67,22 @@ Pipeline: **sample → score → analyze**, one paired base-vs-adapter compariso
 
 - `sample` — generate base and adapter completions on the harmful/benign prompts.
 - `score_guard` — Llama-Guard-3-1B (sensitive upper bound; overcounts).
-- `score_harmbench` — official CAIS HarmBench classifier (content-aware).
-- `score_rtl` — **RTL "refuse-then-leak" judge = Qwen3-8B** (validated against a hand census); catches
-  refuse-then-comply that Guard mis-flags.
+- `score_harmbench` — official CAIS HarmBench classifier (content-aware; auxiliary in the matrix).
+- `score_rtl` — **RTL "refuse-then-leak" judge = Qwen3-8B**; catches refuse-then-comply that Guard
+  mis-flags. Its agreement with HarmBench was checked on a fixed automated-judge sample, not against
+  human ground truth.
 - `analyze` — by-source / per-cell McNemar (base vs DPO) on each judge.
 
-**Benign control (imitation-specificity).** Compare base → **self-SFT** (train the model to imitate
-*itself*, matched compute) against base → imitation. The gap is the imitation-specific effect (the
-self-SFT arm is null). A benign-DPO control is in flight.
+The publication harm aggregate uses the binary RTL verdict for all five harm benchmarks, both for
+each adapter and its paired unadapted-source baseline. Benchmark-native graders remain auxiliary;
+mixing a native continuous score with a binary RTL baseline is invalid. Negative erosion means
+lower harmful compliance on this measure, not necessarily greater overall safety, because increased
+over-refusal can also lower harmful compliance. XSTest and OR-Bench-Hard are therefore reported
+separately.
+
+**Auxiliary self-SFT control.** The planner retains matched-compute self-SFT cells for historical and
+future robustness analyses. They are not part of the 528-cell-per-stage publication aggregate, and
+the current paper does not claim a matched self-SFT/DPO control gap.
 
 **Safety-constrained imitation (mitigation scaffold).** `build-safety-sft-data` /
 `build-safety-dpo-data` add `safety_replay` refusal rows; `launch-safety-sft` / `launch-safety-dpo`
@@ -90,16 +101,19 @@ different residual spaces). Forward-hook generation, two operators:
   regime).
 
 The benign contrast uses 120 paired benign responses to derive a vector; 120 is a derivation count,
-not an evaluation denominator. It is called the **fingerprint/provenance contrast** below. The current
-held-out identity diagnostic does not support interpreting its ablation as literally removing model
-identity, so the mechanistic claim is limited to safety dissociation from this imitation-aligned
-contrast.
+not an evaluation denominator. It is called the **benign cross-model activation contrast** below. The current
+held-out response-embedding diagnostic does not support interpreting its ablation as literally
+removing model identity: fingerprint ablation moves closer to the reference than random in only
+7/27 models (mean distance change -0.0159 versus -0.0015). The mechanistic claim is therefore limited
+to safety dissociation from this derived cross-model contrast. Machine-readable output is in
+`data/results/safety/fingerprint_identity_diagnostic.json`.
 
 **Safety dissociation protocol.** Projection-ablation at a mid layer, β ∈ {0.6, 1.0, 1.4},
 RTL-judged, coherence-gated, paired McNemar. Current cells target the seed-42 200-prompt sample;
 legacy generations used 300 prompts (and 100 for some SG-Bench cells). Cached legacy cells are
-re-scored at 200 only when they contain the exact new prompt set—partial intersections are rejected
-and the native denominator is disclosed. **Pre-registered positive control:** ablate the
+re-scored at 200 only when the rescore records all 200 prompts—partial intersections are rejected
+and the native denominator is disclosed. Older harmonized JSON does not encode a seed or prompt
+hash, so it is labeled `harmonized_n200` rather than assigned seed provenance. **Pre-registered positive control:** ablate the
 Arditi **refusal** direction (harmful−harmless last-token diff-of-means) — it must catastrophically
 erode safety, or the base model is **EXCLUDED** as unpowered (the single-direction probe cannot resolve
 the question there). Ablating the benign **fingerprint** direction under the identical operator is the

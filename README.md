@@ -1,13 +1,17 @@
 # Dementor
 
 Dementor measures whether behavioral fingerprints persist when one language model is made to imitate
-another, and whether weight-based imitation changes safety. The publication experiment separates two
-questions:
+another. The current publication experiment addresses two narrower safety questions:
 
-1. Does benign SFT or SFT→DPO move a source model toward a target model's behavior?
-2. Does the same intervention change genuine harmfulness relative to the unadapted source?
+1. How does benign target-output SFT or SFT→DPO change harmful compliance relative to the
+   unadapted source?
+2. In base models, does matched ablation detect a difference between a benign cross-model activation contrast
+   and a random direction, when a refusal-cone positive control fires?
 
-The current safety result is being rebuilt from the complete, stage-separated core-12 campaign. Older
+The paper does not establish held-out target-behavior transfer in every fine-tuned cell and does not
+use the nonuniform adapter-steering archive as evidence.
+
+The current safety result is generated from the complete, stage-separated core-12 campaign. Older
 `n=769`/13×13 headline numbers are historical and must not be cited as the final core-12 result.
 
 ## Publication campaign
@@ -47,7 +51,7 @@ sizes. It emits exact missing and incomplete cell ids. Multiple `--work-root` ar
 merge results from different boxes, deduplicate agreeing checkpoints, prefer harmonized n=200 over
 legacy n=300 checkpoints, and fail on unresolved conflicts.
 
-Once both stages reach 528/528:
+Both stages are complete at 528/528. To reproduce the committed aggregates and paper macros:
 
 ```bash
 python experiments/imitation_safety/regenerate_campaign.py

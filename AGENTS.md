@@ -35,10 +35,12 @@ hyperparameters. `matrix.py` and `plan.py` derive the entire experiment from it.
 
 - **Roster:** the catalog contains active, extended, and legacy models. The named
   `campaigns.imitation_safety` selector chooses the publication core: 12 models, four datasets,
-  seed 42, and 200 evaluation prompts. Sources split across Tinker and local-GPU backends.
+  seed 42, SFT/DPO/self-SFT stages, 200 evaluation prompts, and a 256-new-token cap. Sources split
+  across Tinker and local-GPU backends.
   `roster_legacy` holds retired models so existing adapters still resolve slug↔id.
 - **Accessors:** `config.roster()`, `config.campaign_roster()`, `config.campaign_dataset_names()`,
-  `config.campaign_seeds()`, `config.campaign_evaluation()`, `config.model(slug_or_id)`, `config.backend_for(id)`,
+  `config.campaign_seeds()`, `config.campaign_stages()`, `config.campaign_evaluation()`,
+  `config.model(slug_or_id)`, `config.backend_for(id)`,
   `config.dataset(name)`, `config.seeds()`, `config.sft()/dpo()/lora()`, `config.registry_path()`,
   `config.project_root()`. Paths anchor on the repo root, never the cwd.
 - To change the experiment, edit `config.yaml` — do not reintroduce hardcoded model/seed lists.
@@ -146,6 +148,8 @@ The local-backend SFT/DPO tests download a tiny random model (need network). CI 
 - `data/model-responses/<dataset>/` — base-model outputs.
 - `data/results/<dataset>/comparisons/` — disguise comparisons.
 - `data/results/<dataset>/analysis/` — behavioral-inertia / bridge / steering / ladder outputs (gitignored).
+- `data/results/safety/` — audited campaign coverage, stage-separated aggregates, steering manifests,
+  and publication figures.
 - `data/tinker_adapters.json` — adapter registry (Tinker URIs or local PEFT dirs).
 
 ## Agent guidelines
@@ -158,4 +162,3 @@ The local-backend SFT/DPO tests download a tiny random model (need network). CI 
 - Keep generated results under `data/results/` and base responses under `data/model-responses/`.
 - Use focused CPU tests for metric/math/CLI behavior; avoid tests that need remote APIs or large downloads.
 - Update this file, `README.md`, and `docs/` when command args, the data layout, or the config schema change.
-</content>

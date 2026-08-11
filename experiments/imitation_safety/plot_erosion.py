@@ -12,8 +12,9 @@ Writes publication-style figures to data/results/safety/figures/:
   erosion_distribution.png   distribution of per-adapter erosion (null-centred check)
 and prints a text results table.
 
-Erosion = harm(disguised A_as_B) - harm(baseline A), mean over the 5 harm benchmarks.
-Positive = safety ERODED; negative = model got SAFER under disguise.
+Erosion = harmful_compliance(disguised A_as_B) - harmful_compliance(baseline A), averaged over
+the five harm benchmarks. Positive means higher harmful compliance; negative means lower harmful
+compliance, not necessarily greater overall safety because over-refusal is a separate axis.
 
 Usage: plot_erosion.py [--seed seed42] [--stage dpo|sft]
 Pure matplotlib (no seaborn). Re-run after the eval completes for final figures.
@@ -71,7 +72,7 @@ def main():
     ax.set_yticks(range(piv.shape[0])); ax.set_yticklabels(piv.index, fontsize=9)
     ax.set_xlabel("target (imitated model)"); ax.set_ylabel("source (disguised model)")
     ax.set_title(f"Imitation safety-erosion matrix (mean over datasets, {args.seed})\n"
-                 "red = safety eroded, blue = safer; erosion = harm(disguised) − harm(baseline), in pp", fontsize=10)
+                 "red = higher harmful compliance, blue = lower; erosion = harm(disguised) − harm(baseline), in pp", fontsize=10)
     for i in range(piv.shape[0]):
         for j in range(piv.shape[1]):
             v = piv.values[i, j]
@@ -116,13 +117,13 @@ def main():
                                                label=f"mean {summ[he].mean():+.4f}")
     ax.set_xlabel("per-adapter mean harm erosion"); ax.set_ylabel("# disguise adapters")
     ax.set_title(f"Erosion is null-centred ({n} adapters; {100*(summ[he]>0.05).mean():.0f}% exceed +0.05, "
-                 f"{100*(summ[he]<0).mean():.0f}% got safer)")
+                 f"{100*(summ[he]<0).mean():.0f}% lower harmful compliance)")
     ax.legend(); fig.tight_layout(); fig.savefig(os.path.join(figdir, "erosion_distribution.png"), dpi=150); plt.close(fig)
 
     # ---- text summary ----------------------------------------------------------------
     print(f"\n=== EROSION SUMMARY ({args.seed}, n={n}) ===")
     print(f"overall mean harm erosion: {summ[he].mean():+.4f} (median {summ[he].median():+.4f})")
-    print(f">+0.05: {(summ[he]>0.05).sum()}  >+0.10: {(summ[he]>0.10).sum()}  got safer: {(summ[he]<0).sum()}")
+    print(f">+0.05: {(summ[he]>0.05).sum()}  >+0.10: {(summ[he]>0.10).sum()}  lower harm: {(summ[he]<0).sum()}")
     print("\nby source:\n", g[["source", "base", "disg", "mean", "std"]].round(4).to_string(index=False))
     print("\nby dataset:\n", ds.round(4).to_string(index=False))
     print(f"\n[plot] wrote 4 figures -> {figdir}")

@@ -9,7 +9,7 @@ four from the pipeline's own output, so every value is traceable.
 
 Sources (read-only):
   /data/ethantsliu/exp_steer_safety/repl80_rdo/<slug>/eval_<bm>/metrics_n200.json
-  (accepted only for exact 200-prompt coverage; otherwise falling back to native metrics.json)
+  (accepted only for complete 200-prompt coverage; otherwise falling back to native metrics.json)
   /data/ethantsliu/exp_steer_safety/repl80_rdo/roster_geometry.csv
 
 Roster rule (stated in the paper's Methods):
@@ -24,9 +24,11 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import csv
 import glob
 import json
 import os
+import sys
 from collections import defaultdict
 
 import matplotlib
@@ -34,7 +36,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
-RDO = "/data/ethantsliu/exp_steer_safety/repl80_rdo"
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if REPO_ROOT not in sys.path:
+    sys.path.insert(0, REPO_ROOT)
+from dementor import config
+
+RDO = os.environ.get("DEMENTOR_STEER_WORK", "/data/ethantsliu/exp_steer_safety/repl80_rdo")
 HARM_BENCHMARKS = ["advbench", "harmbench", "strongreject", "sorrybench", "sgbench"]
 BM_LABEL = {
     "advbench": "AdvBench",
@@ -64,14 +71,27 @@ matplotlib.rcParams.update({
 })
 
 
+def _native_prompt_count(eval_dir):
+    """Return the native evaluation denominator from baseline generation rows."""
+    generations = os.path.join(eval_dir, "all_gens.csv")
+    try:
+        with open(generations, newline="", encoding="utf-8") as handle:
+            rows = csv.DictReader(handle)
+            return sum(row.get("direction") == "baseline" for row in rows)
+    except (OSError, csv.Error):
+        return None
+
+
 def _load_preferred_metrics(eval_dir):
-    """Load one cell, overlaying harmonized fields on its native metadata."""
+    """Load one cell and retain the provenance actually encoded by its metrics."""
     harmonized = os.path.join(eval_dir, "metrics_n200.json")
     native = os.path.join(eval_dir, "metrics.json")
     metrics = {}
+    metrics_source = None
     if os.path.exists(native):
         try:
             metrics = json.load(open(native))
+            metrics_source = "metrics.json"
         except (json.JSONDecodeError, OSError):
             metrics = {}
     if os.path.exists(harmonized):
@@ -79,12 +99,30 @@ def _load_preferred_metrics(eval_dir):
             rescored = json.load(open(harmonized))
             # An early harmonizer wrote prompt intersections even when the legacy generation did
             # not contain the entire seed-42 set. Those files are not n=200 despite their name.
-            # Only overlay an exact 200-prompt rescore; otherwise retain the native cell metrics.
+            # Only overlay a complete 200-prompt rescore; otherwise retain native cell metrics.
             if rescored.get("n_prompts") == 200:
                 metrics.update(rescored)
+                metrics_source = "metrics_n200.json"
         except (json.JSONDecodeError, OSError):
             pass
-    return metrics or None
+    if not metrics:
+        return None
+    if metrics_source == "metrics_n200.json":
+        n_prompts = 200
+        sampling = "harmonized_n200"
+        # Older rescores do not encode a prompt hash or seed. Do not infer seed 42 from n=200.
+        subsample_seed = metrics.get("subsample_seed")
+    else:
+        n_prompts = metrics.get("n_prompts") or _native_prompt_count(eval_dir)
+        sampling = "native"
+        subsample_seed = metrics.get("subsample_seed")
+    metrics["_evaluation_provenance"] = {
+        "metrics_source": metrics_source,
+        "sampling": sampling,
+        "n_prompts": n_prompts,
+        "subsample_seed": subsample_seed,
+    }
+    return metrics
 
 
 def load_cells(variant=None):
@@ -133,15 +171,20 @@ def load_cells(variant=None):
             br = m.get("baseline_refrate")
             if br is not None and not np.isfinite(br):
                 br = None
+            provenance = m.get("_evaluation_provenance", {})
             cell = {"verdict": m.get("verdict"), "base": 100 * base,
-                    "base_ref": None if br is None else 100 * br}
+                    "base_ref": None if br is None else 100 * br,
+                    "n_prompts": provenance.get("n_prompts"),
+                    "sampling": provenance.get("sampling"),
+                    "subsample_seed": provenance.get("subsample_seed"),
+                    "metrics_source": provenance.get("metrics_source")}
             for key, arm in (("refusal_matched", "cone"),
                              ("fingerprint_matched", "fp"),
                              ("random_matched", "rand")):
                 v = m.get(key)
                 cell[arm] = (None if v is None or not np.isfinite(v)
                              else 100 * (v - base))
-            out[d][bm] = cell
+            out[config.canonical_steering_slug(d)][bm] = cell
     return out
 
 
@@ -161,6 +204,43 @@ def roster(cells):
     return sorted(keep)
 
 
+def paired_signed_rank_exact(x, y):
+    """Two-sided paired Wilcoxon test via exact sign permutations.
+
+    Average ranks are represented as doubled integers, retaining ties exactly.
+    Zero differences use the standard ``wilcox`` convention and are dropped.
+    """
+    from scipy.stats import rankdata
+
+    differences = np.asarray(x, dtype=float) - np.asarray(y, dtype=float)
+    differences = differences[differences != 0]
+    if not len(differences):
+        raise ValueError("all paired differences are zero")
+    ranks2 = np.rint(2 * rankdata(np.abs(differences), method="average")).astype(int)
+    positive2 = int(ranks2[differences > 0].sum())
+    total2 = int(ranks2.sum())
+    observed2 = min(positive2, total2 - positive2)
+
+    counts = {0: 1}
+    for rank2 in ranks2:
+        updated = dict(counts)
+        for subtotal, count in counts.items():
+            value = subtotal + int(rank2)
+            updated[value] = updated.get(value, 0) + count
+        counts = updated
+    extreme = sum(
+        count
+        for subtotal, count in counts.items()
+        if subtotal <= observed2 or subtotal >= total2 - observed2
+    )
+    return {
+        "n_models": int(len(differences)),
+        "statistic": observed2 / 2,
+        "p_value": min(1.0, extreme / (2 ** len(differences))),
+        "method": "exact paired sign permutation with average ranks; zero_method=wilcox",
+    }
+
+
 def per_model(cells, slugs):
     """Mean delta per arm over the benchmarks where that model's control fires."""
     rows = {}
@@ -176,7 +256,7 @@ def per_model(cells, slugs):
 
 
 def fig03(rows, outdir):
-    """Per-model fingerprint vs random vs cone harm deltas, sorted by cone effect."""
+    """Per-model cross-model-contrast vs random vs cone harm deltas, sorted by cone effect."""
     slugs = sorted(rows, key=lambda s: -rows[s]["cone"])
     y = np.arange(len(slugs))
     h = 0.27
@@ -187,9 +267,9 @@ def fig03(rows, outdir):
     # (a) shows all three arms; (b) re-plots ONLY the two arms under comparison at a
     # readable scale -- including the cone there would overflow the zoomed axis.
     axl.barh(y + h, [rows[s]["cone"] for s in slugs], h, color=C_CONE, label="refusal cone")
-    axl.barh(y, [rows[s]["fp"] for s in slugs], h, color=C_FP, label="fingerprint")
+    axl.barh(y, [rows[s]["fp"] for s in slugs], h, color=C_FP, label="cross-model contrast")
     axl.barh(y - h, [rows[s]["rand"] for s in slugs], h, color=C_RAND, label="random control")
-    axr.barh(y + h / 2, [rows[s]["fp"] for s in slugs], h, color=C_FP, label="fingerprint")
+    axr.barh(y + h / 2, [rows[s]["fp"] for s in slugs], h, color=C_FP, label="cross-model contrast")
     axr.barh(y - h / 2, [rows[s]["rand"] for s in slugs], h, color=C_RAND, label="random control")
     for ax in (axl, axr):
         ax.axvline(0, color="k", lw=0.8)
@@ -206,12 +286,19 @@ def fig03(rows, outdir):
     lim = max(abs(rows[s][a]) for s in slugs for a in ("fp", "rand")) * 1.15
     axr.set_xlim(-lim, lim)
     axr.set_xlabel("harm change (pp), zoomed")
-    axr.set_title("(b) fingerprint vs random only", loc="left")
+    axr.set_title("(b) contrast vs random only", loc="left")
     axr.tick_params(labelleft=False)
 
     fig.tight_layout()
     for ext in ("pdf", "png"):
-        fig.savefig(os.path.join(outdir, f"03_steering_effects.{ext}"), dpi=200)
+        # Long model slugs extend beyond the nominal canvas even after tight_layout.
+        # Include all artists in the saved bounding box so the left half of labels is not clipped.
+        fig.savefig(
+            os.path.join(outdir, f"03_steering_effects.{ext}"),
+            dpi=200,
+            bbox_inches="tight",
+            pad_inches=0.05,
+        )
     plt.close(fig)
     return slugs
 
@@ -221,10 +308,10 @@ def fig04(cells, outdir, slug="llama-3.1-8b", bm="advbench"):
     c = cells[slug][bm]
     base = c["base"]
     vals = [base, base + c["fp"], base + c["rand"], base + c["cone"]]
-    labels = ["baseline", "fingerprint\nablation", "random\ncontrol", "refusal-cone\nablation"]
+    labels = ["baseline", "cross-model\ncontrast", "random\ncontrol", "refusal-cone\nablation"]
     colors = ["#7f8c8d", C_FP, C_RAND, C_CONE]
 
-    fig, ax = plt.subplots(figsize=(3.30, 2.75))
+    fig, ax = plt.subplots(figsize=(4.20, 2.75))
     bars = ax.bar(labels, vals, color=colors, width=0.62)
     for b, v in zip(bars, vals):
         ax.text(b.get_x() + b.get_width() / 2, v + 2.0, f"{v:.1f}",
@@ -234,6 +321,7 @@ def fig04(cells, outdir, slug="llama-3.1-8b", bm="advbench"):
     ax.text(1.5, (base + vals[3]) / 2 + 6, f"{c['cone']:+.1f} pp",
             color=C_CONE, ha="center", fontsize=9.5)
     ax.set_ylabel("harm rate (%)")
+    ax.tick_params(axis="x", labelsize=8.5)
     ax.set_ylim(0, 108)
     ax.set_title(f"{slug}, {BM_LABEL[bm]}", loc="left")
     ax.grid(axis="y", alpha=0.25, lw=0.5)
@@ -265,7 +353,7 @@ def fig01(cells, slugs, outdir):
     x = np.arange(len(bms))
     w = 0.26
     fig, ax = plt.subplots(figsize=(7.0, 3.0))
-    for off, arm, col, lab in ((-w, "fp", C_FP, "fingerprint ablation"),
+    for off, arm, col, lab in ((-w, "fp", C_FP, "cross-model contrast"),
                                (0.0, "rand", C_RAND, "random control"),
                                (w, "cone", C_CONE, "refusal-cone ablation")):
         m = [stats[b][arm][0] for b in bms]
@@ -318,8 +406,8 @@ def fig02(outdir):
     x = np.arange(len(models))
     w = 0.26
     fig, ax = plt.subplots(figsize=(7.0, 3.2))
-    for off, col, c, lab in ((-w, "fp_refusal", C_FP, "|cos(fingerprint, refusal)|"),
-                             (0.0, "fp_persona", "#e67e22", "|cos(fingerprint, persona)|"),
+    for off, col, c, lab in ((-w, "fp_refusal", C_FP, "|cos(contrast, refusal)|"),
+                             (0.0, "fp_persona", "#e67e22", "|cos(contrast, persona)|"),
                              (w, "refusal_persona", C_CONE, "|cos(refusal, persona)|")):
         ax.bar(x + off, [np.mean(per[m][col]) for m in models], w, color=c, label=lab)
     floor = pooled["fp_random"]
@@ -400,6 +488,15 @@ def main():
     cells = load_cells()
     slugs = roster(cells)
     rows = per_model(cells, slugs)
+    fp_values = [row["fp"] for row in rows.values()]
+    random_values = [row["rand"] for row in rows.values()]
+    fp_vs_random = paired_signed_rank_exact(fp_values, random_values)
+    arm_summary = {
+        "cone_mean_pp": float(np.mean([row["cone"] for row in rows.values()])),
+        "fingerprint_mean_pp": float(np.mean(fp_values)),
+        "random_mean_pp": float(np.mean(random_values)),
+        "fingerprint_vs_random_wilcoxon": fp_vs_random,
+    }
     print(f"[figs] roster n={len(slugs)} (rule: PC fires on >=1 harm bm, "
           f"random arm within {RANDOM_CONTAM_PP:.0f} pp on all)")
     print(f"[figs] {', '.join(slugs)}")
@@ -425,7 +522,7 @@ def main():
     for r in table_rows(cells, clean_only=True, roster_slugs=set(slugs)):
         print(r)
     print()
-    json.dump({"roster": slugs, "per_model": rows,
+    json.dump({"roster": slugs, "arm_summary": arm_summary, "per_model": rows,
                "per_benchmark": {k: {a: list(v) for a, v in s.items()}
                                  for k, s in stats.items()}},
               open(os.path.join(a.outdir, "steering_figure_stats.json"), "w"), indent=2)

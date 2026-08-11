@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from collections import Counter
 import json
 import os
 import sys
@@ -13,6 +14,7 @@ if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
 
 from experiments.figures import rebuild_steering_figures as figures
+from dementor import config
 
 
 def build_manifest() -> dict:
@@ -26,11 +28,41 @@ def build_manifest() -> dict:
                   if all(benchmark in fpall.get(model, {})
                          for benchmark in figures.HARM_BENCHMARKS)]
     gated_full_fpall = sorted(set(gated) & set(full_fpall))
+
+    def cell_record(cell: dict) -> dict:
+        return {
+            "verdict": cell.get("verdict"),
+            "n_prompts": cell.get("n_prompts"),
+            "sampling": cell.get("sampling"),
+            "subsample_seed": cell.get("subsample_seed"),
+            "metrics_source": cell.get("metrics_source"),
+        }
+
+    def sampling_summary(cells: dict) -> dict:
+        counts = Counter(
+            (cell.get("sampling") or "unknown", str(cell.get("n_prompts") or "unknown"))
+            for benchmarks in cells.values()
+            for benchmark, cell in benchmarks.items()
+            if benchmark in figures.HARM_BENCHMARKS
+        )
+        return {
+            f"{sampling}:n={n_prompts}": count
+            for (sampling, n_prompts), count in sorted(counts.items())
+        }
+
     return {
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "work_root": figures.RDO,
         "harm_benchmarks": figures.HARM_BENCHMARKS,
-        "evaluation": {"max_prompts": 200, "subsample_seed": 42},
+        "evaluation_standard": {
+            "max_prompts": config.campaign_evaluation()["max_prompts"],
+            "subsample_seed": config.campaign_evaluation()["subsample_seed"],
+            "scope": "new and exactly harmonized cells; legacy cells retain native denominators",
+        },
+        "sampling_summary": {
+            "base": sampling_summary(base),
+            "fpall": sampling_summary(fpall),
+        },
         "counts": {
             "models_with_any_canonical_base_cell": len(models),
             "models_with_complete_base_harm": len(full_base),
@@ -52,6 +84,16 @@ def build_manifest() -> dict:
                     benchmark: base[model][benchmark]["verdict"]
                     for benchmark in figures.HARM_BENCHMARKS
                     if benchmark in base[model]
+                },
+                "base_cells": {
+                    benchmark: cell_record(base[model][benchmark])
+                    for benchmark in figures.HARM_BENCHMARKS
+                    if benchmark in base[model]
+                },
+                "fpall_cells": {
+                    benchmark: cell_record(fpall[model][benchmark])
+                    for benchmark in figures.HARM_BENCHMARKS
+                    if benchmark in fpall.get(model, {})
                 },
             }
             for model in models

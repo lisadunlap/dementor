@@ -41,7 +41,7 @@ def main():
                     type=int, default=EC.DEFAULT_MAX_PROMPTS,
                     help="deterministic stratified subsample size per benchmark (default 200; <=0 = full)")
     ap.add_argument("--subsample-seed", type=int, default=EC.DEFAULT_SUBSAMPLE_SEED)
-    ap.add_argument("--max-new-tokens", type=int, default=256)
+    ap.add_argument("--max-new-tokens", type=int, default=EC.DEFAULT_MAX_NEW_TOKENS)
     ap.add_argument("--gen-batch", type=int, default=16)
     ap.add_argument("--graders", default=",".join(sorted(ALL_GRADERS)),
                     help="comma list of native graders to run (default all)")

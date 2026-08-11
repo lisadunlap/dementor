@@ -45,7 +45,7 @@ STEEL, ORANGE, SILVER = "#5499c7", "#e67e22", "#95a5a6"
 
 # Categorical bins over per-adapter mean harm erosion, in PERCENTAGE POINTS.
 # Half-open [lo, hi): every adapter lands in exactly one bin, the four counts sum to n.
-BINS = [(-np.inf, -1.0, "safer", "$<\\!-1.0$", BLUE),
+BINS = [(-np.inf, -1.0, "lower harm", "$<\\!-1.0$", BLUE),
         (-1.0,     1.0, "flat", "$[-1.0,+1.0)$", GREY),
         (1.0,      5.0, "mild", "$[+1.0,+5.0)$", ORANGE),
         (5.0,   np.inf, "strong", "$\\geq\\!+5.0$", RED)]
@@ -95,9 +95,7 @@ def breakdown(pp):
 
 
 # --------------------------------------------------------------------------- Figure A
-def fig_matrix(piv, cnt, path, width, cell_fs, tick_fs, annotate=True):
-    finite = np.abs(piv.values[np.isfinite(piv.values)])
-    vmax = max(float(np.nanpercentile(finite, 95)), 1.0)       # 95th-pct colour clip (preserved)
+def fig_matrix(piv, cnt, path, width, cell_fs, tick_fs, vmax, annotate=True):
     h = width * (piv.shape[0] + 2.2) / (piv.shape[1] + 3.0)
     fig, ax = plt.subplots(figsize=(width, h))
     im = ax.imshow(piv.values, cmap="RdBu_r", vmin=-vmax, vmax=vmax, aspect="auto")
@@ -119,11 +117,11 @@ def fig_matrix(piv, cnt, path, width, cell_fs, tick_fs, annotate=True):
                 ax.text(j, i, f"{v:+.1f}{mark}", ha="center", va="center", fontsize=cell_fs,
                         color="white" if abs(v) > 0.6 * vmax else "black")
     cb = fig.colorbar(im, ax=ax, fraction=0.025, pad=0.015)
-    cb.set_label("mean harm erosion (pp; colour clipped at 95th pct)", fontsize=tick_fs)
+    cb.set_label("mean harm change (pp; joint-stage 95th-pct clip)", fontsize=tick_fs)
     cb.ax.tick_params(labelsize=tick_fs)
     fig.tight_layout()
-    fig.savefig(path + ".pdf")
-    fig.savefig(path + ".png", dpi=300)
+    fig.savefig(path + ".pdf", bbox_inches="tight")
+    fig.savefig(path + ".png", dpi=300, bbox_inches="tight")
     plt.close(fig)
     return vmax
 
@@ -199,12 +197,17 @@ def main():
     os.makedirs(out, exist_ok=True)
     rcparams()
 
-    df = pd.read_csv(os.path.join(base, f"erosion_{args.seed}_summary.csv"))
-    if "stage" not in df:
-        df["stage"] = df["adapter"].astype(str).str.split("_", n=1).str[0]
-    df = df[df.stage == args.stage].copy()
+    all_df = pd.read_csv(os.path.join(base, f"erosion_{args.seed}_summary.csv"))
+    if "stage" not in all_df:
+        all_df["stage"] = all_df["adapter"].astype(str).str.split("_", n=1).str[0]
+    all_df = all_df[all_df.baseline_available == True].copy()
+    all_df["pp"] = all_df[HE] * 100.0
+    joint_cells = all_df[all_df.source != all_df.target].groupby(
+        ["stage", "source", "target"]
+    )["pp"].mean()
+    joint_vmax = max(float(np.nanpercentile(np.abs(joint_cells.to_numpy()), 95)), 1.0)
+    df = all_df[all_df.stage == args.stage].copy()
     df = df[df.baseline_available == True].copy()
-    df["pp"] = df[HE] * 100.0
     off = df[df.source != df.target].copy()
     square = complete_square(off)
     sq = off[off.source.isin(square) & off.target.isin(square)].copy()
@@ -212,13 +215,14 @@ def main():
     # ---- Figure A: the configured complete imitation matrix ------------------------
     piv = sq.pivot_table(index="source", columns="target", values="pp", aggfunc="mean")
     cnt = sq.pivot_table(index="source", columns="target", values="pp", aggfunc="size")
-    order = piv.mean(axis=1).sort_values(ascending=False).index          # rows by mean erosion
+    from dementor import config
+    order = [model["slug"] for model in config.campaign_roster()]
     piv = piv.reindex(order).reindex(columns=order)                     # same order on both axes
     cnt = cnt.reindex(order).reindex(columns=order)
     vmax = fig_matrix(piv, cnt, os.path.join(out, "fig05a_erosion_matrix_wide"),
-                      TEXT_W, cell_fs=9.0, tick_fs=9.0)
+                      TEXT_W, cell_fs=9.0, tick_fs=9.0, vmax=joint_vmax)
     fig_matrix(piv, cnt, os.path.join(out, "fig05a_erosion_matrix_col"),
-               COL_W, cell_fs=4.2, tick_fs=5.0)
+               COL_W, cell_fs=4.2, tick_fs=5.0, vmax=joint_vmax)
 
     cells = []
     for s in piv.index:

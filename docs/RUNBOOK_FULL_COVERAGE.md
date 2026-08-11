@@ -73,7 +73,9 @@ python experiments/imitation_safety/regenerate_campaign.py \
 
 The command refuses partial coverage before touching aggregate CSVs. It writes stage-labelled
 tables, separate SFT and DPO statistics and figures, an exact-cell SFT→DPO comparison, the coverage
-manifest, and matching generated macros for `docs/AAAI_DRAFT.tex` and the canonical
-`paper/naz_aaai2027/aaai2027_identity_safety_main.tex` entry point.
+manifest, and matching generated macros for the repository audit snapshot in
+`docs/AAAI_DRAFT.tex` and its local wrapper in
+`paper/naz_aaai2027/aaai2027_identity_safety_main.tex`. The active submission source is maintained
+in the sibling Overleaf repository.
 
 See `METHODS.md` for metric definitions and `docs/RESULTS.md` for claim boundaries.

@@ -1,3 +1,5 @@
+import pytest
+
 from dementor import config
 from dementor.training import plan
 from experiments.imitation_safety import prompt_erosion_common
@@ -26,13 +28,50 @@ def test_imitation_safety_campaign_is_exact_core12():
         "chatbot_arena", "gsm8k", "oasst1", "writingprompts"
     ]
     assert config.campaign_seeds() == [42]
-    assert config.campaign_evaluation() == {"max_prompts": 200, "subsample_seed": 42}
+    assert config.campaign_stages() == ["sft", "dpo", "self_sft"]
+    assert config.campaign_evaluation() == {
+        "max_prompts": 200,
+        "subsample_seed": 42,
+        "max_new_tokens": 256,
+    }
+
+
+def test_steering_artifact_aliases_join_to_catalog_slugs():
+    aliases = config.steering_artifact_slug_aliases()
+    assert aliases == {
+        "nemotron-nano": "nemotron-nano-30b-a3b",
+        "qwen3.6-35b": "qwen3.6-35b-a3b",
+    }
+    assert all(config.model(slug) for slug in aliases.values())
 
 
 def test_default_plan_is_528_cells_per_training_stage():
     summary = plan.summarize(plan.enumerate_jobs())
     assert summary["by_stage"] == {"sft": 528, "dpo": 528, "self_sft": 48}
     assert summary["total"] == 1104
+
+
+def test_matrix_dataset_defaults_match_named_campaign():
+    from dementor.training.matrix import _constants
+
+    assert list(_constants.TRAIN_DATASETS) == config.campaign_dataset_names()
+    assert list(_constants.DATASET_TEMPLATES) == config.campaign_dataset_names()
+
+
+def test_matrix_dispatcher_enforces_configured_stages(monkeypatch):
+    from dementor.training.matrix import _cli
+
+    monkeypatch.setattr(_cli.config, "campaign_stages", lambda: ["sft"])
+    _cli._require_campaign_stages("sft")
+    with pytest.raises(SystemExit, match="dpo"):
+        _cli._require_campaign_stages("dpo")
+
+
+def test_compound_self_sft_alias_stage_is_preserved():
+    from dementor.training.matrix import _push
+
+    assert _push._alias_stage("self_sft_gsm8k_model_as_model_seed42") == "self_sft"
+    assert _push._alias_stage("sft_gsm8k_model_as_target_seed42") == "sft"
 
 
 def test_prompt_worklist_is_exact_core12_without_dataset_pseudoreplication():

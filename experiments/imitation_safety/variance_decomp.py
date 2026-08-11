@@ -4,8 +4,9 @@
 Computes the campaign headline statistics from the current, stage-separated
 artifact. The metric is `mean_harm_erosion`: the per-adapter mean,
 over the five harm-axis safety benchmarks, of (disguised harm - baseline harm).
-Positive = the disguised (imitation) adapter is MORE harmful than its own base
-model on the same prompts; negative = it got safer.
+Positive = the disguised (imitation) adapter has higher harmful compliance than
+its own base model on the same prompts; negative = lower harmful compliance, not
+necessarily greater overall safety.
 
 We attribute the spread in erosion across adapters to three design factors via
 a one-way eta-squared (SS_between / SS_total) per factor:
@@ -15,11 +16,11 @@ a one-way eta-squared (SS_between / SS_total) per factor:
   * target  -- the model being imitated (whose behavior is copied)
   * dataset -- the imitation training corpus
 
-The dominance of `source` is the paper's point: safety erosion tracks WHICH MODEL
-YOU START FROM (the disguising base), NOT which model you imitate. Verified against
-the CSV: `base_model` is constant per `source` and varies per `target`, so the
-first slug in an adapter id is the fine-tuned base and the second is the imitated
-target.
+The relative source/target shares are descriptive rather than a fixed expected
+ordering: they are comparable after SFT and source is larger after DPO in the
+completed campaign. `base_model` is constant per `source` and varies per `target`,
+so the first slug in an adapter id is the fine-tuned base and the second is the
+imitated target.
 
 Usage
 -----
@@ -50,6 +51,8 @@ OUT_JSON = REPO_ROOT / "data" / "results" / "safety" / "erosion_variance_stats.j
 METRIC = "mean_harm_erosion"
 FACTORS = ["source", "target", "dataset"]
 ERODER_THRESHOLD = 0.01  # +1 percentage point; selected dynamically, never by model name
+BOOTSTRAP_SEED = 42
+BOOTSTRAP_REPS = 10_000
 
 
 def portable_path(path: Path) -> str:
@@ -73,6 +76,14 @@ def eta_squared(df: pd.DataFrame, factor: str, metric: str) -> float:
     group_sizes = df.groupby(factor)[metric].size()
     ss_between = float((group_sizes * (group_means - grand_mean) ** 2).sum())
     return ss_between / ss_total
+
+
+def source_cluster_mean_ci(df: pd.DataFrame, metric: str, *, seed=BOOTSTRAP_SEED) -> list[float]:
+    """Percentile CI from resampling the 12 source-model means with replacement."""
+    source_means = df.groupby("source")[metric].mean().to_numpy(dtype=float)
+    rng = np.random.default_rng(seed)
+    draws = rng.choice(source_means, size=(BOOTSTRAP_REPS, len(source_means)), replace=True).mean(axis=1)
+    return [float(value) for value in np.percentile(draws, [2.5, 97.5])]
 
 
 def eroder_absolute_harm(long_df: pd.DataFrame, source: str) -> dict:
@@ -126,11 +137,15 @@ def paired_stage_delta(df: pd.DataFrame) -> dict:
     dpo = df[df["stage"] == "dpo"][cols].rename(columns={METRIC: "dpo"})
     paired = sft.merge(dpo, on=keys, how="inner", validate="one_to_one")
     delta = paired["dpo"] - paired["sft"]
+    paired = paired.assign(delta=delta)
     return {
         "definition": "DPO erosion minus matching SFT erosion",
         "pair_keys": keys,
         "n_pairs": int(len(paired)),
         "mean_delta": float(delta.mean()) if len(delta) else None,
+        "source_cluster_bootstrap_95ci": (
+            source_cluster_mean_ci(paired, "delta") if len(delta) else None
+        ),
         "median_delta": float(delta.median()) if len(delta) else None,
         "pct_dpo_more_erosive": float(100.0 * (delta > 0).mean()) if len(delta) else None,
     }
@@ -170,7 +185,9 @@ def main() -> None:
     overall_mean = float(np.mean(y))
     median = float(np.median(y))
     pct_high_eroders = float(100.0 * np.mean(y > 0.10))   # > +0.10
-    pct_got_safer = float(100.0 * np.mean(y < 0.0))       # < 0
+    pct_lower_harm = float(100.0 * np.mean(y < 0.0))
+    pct_below_minus_1pp = float(100.0 * np.mean(y < -0.01))
+    pct_at_least_5pp = float(100.0 * np.mean(y >= 0.05))
     max_erosion = float(np.max(y))
     min_erosion = float(np.min(y))
 
@@ -211,11 +228,15 @@ def main() -> None:
             f: 100.0 * v for f, v in variance_decomp.items()
         },
         "overall_mean_erosion": overall_mean,
+        "source_cluster_bootstrap_95ci": source_cluster_mean_ci(df, METRIC),
         "median_erosion": median,
         "max_erosion": max_erosion,
         "min_erosion": min_erosion,
         "pct_adapters_gt_0.10": pct_high_eroders,
-        "pct_adapters_got_safer": pct_got_safer,
+        "pct_adapters_lower_harm": pct_lower_harm,
+        "pct_adapters_below_minus_1pp": pct_below_minus_1pp,
+        "pct_adapters_at_least_5pp": pct_at_least_5pp,
+        "mean_over_refusal_delta": float(df["mean_over_refusal_delta"].mean()),
         "per_source_mean_erosion_sorted": per_source_mean,
         "eroders": eroders,
         "eroder_threshold": ERODER_THRESHOLD,
@@ -246,7 +267,7 @@ def main() -> None:
     print(f"  median erosion       : {median:+.4f}")
     print(f"  max / min erosion    : {max_erosion:+.4f} / {min_erosion:+.4f}")
     print(f"  % adapters > +0.10   : {pct_high_eroders:.1f}%")
-    print(f"  % adapters got safer : {pct_got_safer:.1f}%")
+    print(f"  % adapters lower harm: {pct_lower_harm:.1f}%")
     print()
     print("Per-source mean erosion (sorted)")
     for src, val in per_source_mean.items():

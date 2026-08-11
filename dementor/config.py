@@ -117,9 +117,33 @@ def campaign_seeds(name: str = "imitation_safety") -> list[int]:
     return list(campaign(name).get("seeds", seeds()))
 
 
+def campaign_stages(name: str = "imitation_safety") -> list[str]:
+    """Training/control stages selected by a named campaign."""
+    stages = list(campaign(name).get("stages", []))
+    allowed = {"sft", "dpo", "self_sft"}
+    unknown = sorted(set(stages) - allowed)
+    if unknown:
+        raise ValueError(f"campaign {name!r} contains unknown stages: {unknown}")
+    if len(stages) != len(set(stages)):
+        raise ValueError(f"campaign {name!r} contains duplicate stages")
+    if not stages:
+        raise ValueError(f"campaign {name!r} selects no stages")
+    return stages
+
+
 def campaign_evaluation(name: str = "imitation_safety") -> dict[str, Any]:
     """Evaluation sampling settings for a named campaign."""
     return dict(campaign(name).get("evaluation", {}))
+
+
+def steering_artifact_slug_aliases() -> dict[str, str]:
+    """Map historical steering-directory slugs to canonical catalog slugs."""
+    return dict(load_config().get("steering_roster", {}).get("artifact_slug_aliases", {}))
+
+
+def canonical_steering_slug(slug: str) -> str:
+    """Return the canonical catalog slug for a steering artifact directory."""
+    return steering_artifact_slug_aliases().get(slug, slug)
 
 
 def model(slug_or_id: str) -> dict[str, Any]:

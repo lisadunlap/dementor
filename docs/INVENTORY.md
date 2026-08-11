@@ -1,7 +1,7 @@
 # Experiment and artifact inventory
 
-This index distinguishes the current core-12 publication campaign from historical experiments. It
-does not report in-progress headline values; those are valid only after the strict coverage gate.
+This index distinguishes the completed core-12 publication campaign from historical experiments.
+All current headline artifacts below were regenerated after the strict coverage gate passed.
 
 ## Current publication campaign
 
@@ -18,9 +18,9 @@ as evaluated cells.
 
 | Artifact | Meaning | Validity rule |
 |---|---|---|
-| `data/results/safety/erosion_coverage.json` | Exact checkpoint coverage and missing IDs | Authoritative during evaluation |
-| `data/results/safety/erosion_seed42_long.csv` | One row per adapter × benchmark, with `stage` | Rebuild only after strict coverage |
-| `data/results/safety/erosion_seed42_summary.csv` | One row per adapter, with `stage` | Rebuild only after strict coverage |
+| `data/results/safety/erosion_coverage.json` | Exact checkpoint coverage and missing IDs | Complete: 528/528 each stage |
+| `data/results/safety/erosion_seed42_long.csv` | One row per adapter × benchmark, with `stage` | Current guarded rebuild |
+| `data/results/safety/erosion_seed42_summary.csv` | One row per adapter, with `stage` | Current guarded rebuild |
 | `data/results/safety/erosion_variance_stats_sft.json` | SFT-only headline analysis | Requires 528/528 SFT |
 | `data/results/safety/erosion_variance_stats_dpo.json` | DPO-only headline analysis | Requires 528/528 DPO |
 | `data/results/safety/erosion_campaign_headlines.json` | Both stages and exact-cell SFT→DPO change | Requires both strict gates |
@@ -42,9 +42,13 @@ models and 19/24 gated models. Llama-3.3-70B is complete in both base variants. 
 package is also complete in both variants; all five base harm verdicts are `PC_FAILS`, so it does not
 enter the gated analysis.
 
-`metrics_n200.json` is preferred only when it contains the entire 200-prompt seed-42 set. Several
-legacy steering generations overlap only part of that set; those intersection files are ignored and
-the native `metrics.json` denominator remains authoritative.
+`metrics_n200.json` is preferred only when it records 200 prompts. Several legacy steering
+generations overlap only part of the selected set; those intersection files are ignored and the
+native `metrics.json` denominator remains authoritative. Older harmonized files do not encode a
+seed or prompt hash, so the generated coverage manifest records them as `harmonized_n200` without
+inventing seed provenance. It records
+the prompt count and metric source for every base/fpall benchmark cell, plus aggregate sampling
+counts; it does not apply a false global n=200 label.
 
 ## Historical artifacts
 

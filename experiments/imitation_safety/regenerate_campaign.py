@@ -31,6 +31,10 @@ def signed_pp(value: float) -> str:
     return f"{100.0 * value:+.2f}"
 
 
+def ci_pp(values: list[float]) -> str:
+    return f"[{100.0 * values[0]:+.2f}, {100.0 * values[1]:+.2f}]"
+
+
 def macro(name: str, value: object) -> str:
     return f"\\newcommand{{\\{name}}}{{{value}}}"
 
@@ -127,10 +131,23 @@ def main() -> int:
         macro("CampaignAdaptersPerStage", headline["adapters_per_stage"]),
         macro("CampaignEvaluationPrompts", evaluation["max_prompts"]),
         macro("CampaignEvaluationSeed", evaluation["subsample_seed"]),
+        macro("CampaignMaxNewTokens", evaluation["max_new_tokens"]),
         macro("SFTMeanErosionPP", signed_pp(sft["overall_mean_erosion"])),
         macro("DPOMeanErosionPP", signed_pp(dpo["overall_mean_erosion"])),
-        macro("SFTPctSafer", f"{sft['pct_adapters_got_safer']:.1f}"),
-        macro("DPOPctSafer", f"{dpo['pct_adapters_got_safer']:.1f}"),
+        macro("SFTMeanErosionCI", ci_pp(sft["source_cluster_bootstrap_95ci"])),
+        macro("DPOMeanErosionCI", ci_pp(dpo["source_cluster_bootstrap_95ci"])),
+        macro("SFTPctLowerHarm", f"{sft['pct_adapters_lower_harm']:.1f}"),
+        macro("DPOPctLowerHarm", f"{dpo['pct_adapters_lower_harm']:.1f}"),
+        macro("SFTPctBelowMinusOne", f"{sft['pct_adapters_below_minus_1pp']:.1f}"),
+        macro("DPOPctBelowMinusOne", f"{dpo['pct_adapters_below_minus_1pp']:.1f}"),
+        macro("SFTPctAtLeastFive", f"{sft['pct_adapters_at_least_5pp']:.1f}"),
+        macro("DPOPctAtLeastFive", f"{dpo['pct_adapters_at_least_5pp']:.1f}"),
+        macro("SFTMedianErosionPP", signed_pp(sft["median_erosion"])),
+        macro("DPOMedianErosionPP", signed_pp(dpo["median_erosion"])),
+        macro("SFTMaxErosionPP", signed_pp(sft["max_erosion"])),
+        macro("DPOMaxErosionPP", signed_pp(dpo["max_erosion"])),
+        macro("SFTMeanOverRefusalDeltaPP", signed_pp(sft["mean_over_refusal_delta"])),
+        macro("DPOMeanOverRefusalDeltaPP", signed_pp(dpo["mean_over_refusal_delta"])),
         macro("SFTSourceEtaPct", f"{sft['variance_decomposition_pct']['source']:.1f}"),
         macro("SFTTargetEtaPct", f"{sft['variance_decomposition_pct']['target']:.1f}"),
         macro("SFTDatasetEtaPct", f"{sft['variance_decomposition_pct']['dataset']:.1f}"),
@@ -139,6 +156,9 @@ def main() -> int:
         macro("DPODatasetEtaPct", f"{dpo['variance_decomposition_pct']['dataset']:.1f}"),
         macro("PairedStageCells", paired["n_pairs"]),
         macro("PairedStageDeltaPP", signed_pp(paired["mean_delta"])),
+        macro("PairedStageDeltaCI", ci_pp(paired["source_cluster_bootstrap_95ci"])),
+        macro("PairedStageMedianPP", signed_pp(paired["median_delta"])),
+        macro("PairedStagePctDPOHigher", f"{paired['pct_dpo_more_erosive']:.1f}"),
         macro("SFTEroderSources", len(sft["eroders"])),
         macro("DPOEroderSources", len(dpo["eroders"])),
     ]

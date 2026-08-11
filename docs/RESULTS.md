@@ -23,9 +23,9 @@ SG-Bench), two over-refusal metrics (XSTest, OR-Bench-Hard), and the matching un
 baseline. All use the deterministic seed-42 200-row sample. XSTest's scored denominator is 111 benign
 rows within that sample.
 
-The generated coverage manifest at `data/results/safety/erosion_coverage.json` is the source of
-truth while evaluation is in progress. Headline numbers are regenerated only after both stages pass
-the strict gate.
+The committed coverage manifest at `data/results/safety/erosion_coverage.json` records 528/528 SFT
+and 528/528 DPO cells. The committed headline tables, figures, and macros were regenerated only
+after both stages passed the strict gate.
 
 ## Stage-separated analysis
 
@@ -35,8 +35,9 @@ and figures select exactly one stage. The incremental preference-optimization ef
 `erosion(DPO) - erosion(SFT)`
 
 paired on the exact dataset, source, target, and seed cell. Pooling SFT and DPO rows is invalid.
-Positive erosion means the adapted source is more harmful than its own unadapted baseline; negative
-erosion means it became safer.
+Positive erosion means the adapted source has higher harmful compliance than its own unadapted
+baseline; negative erosion means lower harmful compliance on the RTL metric, not necessarily greater
+overall safety. The over-refusal change is reported separately.
 
 ## Steering evidence
 
@@ -54,11 +55,19 @@ The fingerprint vector is derived from 120 paired benign responses. The held-out
 does not show that its ablation literally removes model identity, so the mechanistic wording is
 limited to dissociation between the benign provenance contrast and refusal behavior.
 
-The 200/seed-42 evaluation standard is exact for the imitation matrix and new steering cells. Some
+The 200/seed-42 evaluation standard is exact for the imitation matrix and newly generated steering cells. Some
 legacy steering generations used 300 prompts (or 100 for SG-Bench) and do not contain the complete
 new seed-42 set. Their cached intersections are not mislabeled as n=200: the figure loader accepts a
-`metrics_n200.json` file only when it records all 200 prompts, otherwise it uses and discloses the
-native cell denominator.
+`metrics_n200.json` file only when it records all 200 prompts. Otherwise it uses the native metric
+and records the denominator derived from the baseline rows in `all_gens.csv` in
+`base_steering_coverage.json`.
+
+The generated manifest makes that mixture explicit. Among 145 canonical base harm cells, 58 are
+complete harmonized n=200 rescores, 74 retain native n=300, 12 retain native n=100, and one retains native
+n=200 without a recoverable seed field. Among 113 fpall cells, the corresponding counts are 55, 51,
+and 7. Older harmonized files do not encode a seed or prompt hash, so they are not labeled seed 42.
+Aggregate steering plots therefore disclose mixed per-cell denominators rather than claiming that
+every legacy generation used the current sampler.
 
 The consolidated base tree contains complete five-harm-benchmark evaluations for 29 models; 24 pass
 the positive-control gate. The matched all-layer fingerprint/random robustness variant is complete
@@ -96,9 +105,10 @@ artifacts from a partial matrix. It writes identical generated-result macros bes
 draft and the AAAI paper entry point. Pass repeated `--work-root` arguments when results remain on
 multiple machines.
 
-The canonical submission entry point is
-`paper/naz_aaai2027/aaai2027_identity_safety_main.tex`; it imports the single manuscript body from
-`docs/AAAI_DRAFT.tex`, preventing an older paper copy from retaining stale roster sizes or headline
-numbers. Compile it from `paper/naz_aaai2027/` after regeneration.
+The active submission source lives in the sibling Overleaf repository at
+`../dementor-overleaf/AnonymousSubmission2027.tex`. This repository retains a synchronized audit
+snapshot in `docs/AAAI_DRAFT.tex`; `paper/naz_aaai2027/aaai2027_identity_safety_main.tex` is a local
+wrapper for compiling that snapshot against the committed code artifacts. Regeneration updates the
+snapshot macros, but the submission repository remains the publication entry point.
 
 See `METHODS.md` for the canonical metric definitions and `docs/RESULTS_INDEX.md` for artifact paths.

@@ -519,7 +519,7 @@ def main():
     ap.add_argument("--max-prompts-per-benchmark", "--max-prompts", dest="max_prompts",
                     type=int, default=EC.DEFAULT_MAX_PROMPTS)
     ap.add_argument("--subsample-seed", type=int, default=EC.DEFAULT_SUBSAMPLE_SEED)
-    ap.add_argument("--max-new-tokens", type=int, default=256)
+    ap.add_argument("--max-new-tokens", type=int, default=EC.DEFAULT_MAX_NEW_TOKENS)
     ap.add_argument("--sample-workers", type=int, default=64, help="concurrent Tinker sample futures")
     ap.add_argument("--items", default=None, help="restrict to these comma ids (sample/judge)")
     ap.add_argument("--limit", type=int, default=None, help="cap number of items processed")

@@ -84,12 +84,13 @@ unverified. We do not re-verify Dementor's own numbers here.
 
 ## Claim — the contribution
 
-No prior work builds our **benign cross-model provenance contrast** and tests it with the same
+No prior work builds our **benign cross-model activation contrast** and tests it with the same
 positive-controlled operator used for refusal. The packaged contribution is the **conjunction**:
-1. A **matched-compute benign-control gap** isolating imitation-specific (not generic-FT) erosion.
+1. A **complete stage-separated weight-imitation audit** comparing every ordered core-12 pair at
+   SFT and SFT→DPO against its unadapted source.
 2. A **measurement correction** — off-the-shelf guards materially overcount and mis-rank, triangulated
    across three judges.
-3. A **provenance--refusal dissociation** — the same operator leaves the measured provenance contrast
+3. A **cross-model-contrast--refusal dissociation** — the same operator leaves the measured contrast
    at the random-control level while the refusal positive control moves harm.
 
 This is not a claim that the contrast is a complete identity representation or that its ablation

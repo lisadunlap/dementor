@@ -5,12 +5,14 @@ GPU campaign is required under the manuscript scope below.
 
 ## Publication scope and completion
 
-- Claim 1: weight-based behavioral imitation transfers little safety behavior. The exact configured
-  matrix is complete: 528/528 SFT cells and 528/528 matching DPO cells, four training datasets,
-  seven safety benchmarks, evaluation cap 200, seed 42.
-- Claim 2: in base models, a benign provenance contrast is dissociable from refusal behavior under a
-  positive-controlled projection-ablation assay. The canonical tree has 29 models complete on the
-  five harm benchmarks; 24 pass the positive-control gate.
+- Claim 1: benign target-output fine-tuning changes source-relative harmful compliance little on
+  average, with material cellwise tails. The exact configured matrix is complete: 528/528 SFT cells
+  and 528/528 matching DPO cells, four training datasets, seven safety benchmarks, evaluation cap
+  200, seed 42. The paper does not claim uniform held-out target-behavior transfer.
+- Claim 2: in base models, the matched assay detects a large refusal-cone effect but no statistically
+  detectable benign-cross-model-contrast--random difference. The canonical tree has 29 models complete on the
+  five harm benchmarks; 24 pass the positive-control gate. Failure to detect a difference is not an
+  equivalence result.
 - Matched all-layer fingerprint/random controls are a robustness subset: 22/29 evaluated models and
   19/24 gated models have complete five-benchmark coverage. Llama-3.3-70B is complete in both base
   variants.
@@ -28,13 +30,12 @@ The generated sources of truth are:
 
 ## Code integration
 
-The integration branch contains both divergent campaign histories:
+The `ethan` history contains both divergent campaign lines: Box A commit `a5574f9` and Box B commit
+`864e937`, descended from common base `e7e2893`, were reconciled at `90de930`. The temporary Box A
+and campaign-integration refs were deleted after consolidation; `ethan` is the continuing campaign
+branch and `main` remains unchanged.
 
-- Box A: `origin/boxa-j4-20260806` at `a5574f9`
-- Ethan/Box B: `origin/ethan` at `864e937`
-- Common pre-divergence base: `e7e2893`
-
-The branch also contains the configuration-defined core-12 cohort, strict coverage gate, stage-aware
+The consolidated history also contains the configuration-defined core-12 cohort, strict coverage gate, stage-aware
 aggregation, exact-cell SFT→DPO comparison, data-derived eroder classification, documentation cleanup,
 and the steering harmonization/loader corrections from this consolidation. The dirty `ethan`
 worktree's apparent tracked `data/` deletions were never staged or committed.
@@ -82,9 +83,17 @@ partial intersections as `metrics_n200.json`.
 
 The corrected loader accepts a harmonized file only when `n_prompts == 200`; otherwise it falls back
 to the native `metrics.json`. The harmonizer now writes only when the complete selected prompt set is
-present. Its audit finds 553 exact rescores, 202 incomplete legacy overlaps, 30 cells without a
+present. Its audit finds 553 complete 200-row rescores, 202 incomplete legacy overlaps, 30 cells without a
 standard subsample, and eight unreadable/empty cells across the full base-plus-adapter archive. This
 requires a denominator disclosure for legacy steering, not new GPU work.
+
+The base-only coverage manifest now derives native denominators from baseline generation rows. Its
+145 canonical harm cells comprise 58 complete harmonized n=200 rescores, 74 native n=300 cells, 12 native
+n=100 cells, and one native n=200 cell without recoverable seed metadata. The 113 fpall cells comprise
+55 complete harmonized n=200, 51 native n=300, and seven native n=100 cells. Older harmonized JSON
+does not encode a seed or prompt hash, so the manifest does not infer either from the denominator.
+Per-cell provenance is stored
+under `models.<slug>.{base,fpall}_cells` in `base_steering_coverage.json`.
 
 ## Rebuild commands
 
@@ -94,5 +103,10 @@ python experiments/imitation_safety/regenerate_campaign.py
 python experiments/steering/harmonize_to_200.py --dry-run
 python experiments/steering/audit_base_steering.py
 python experiments/figures/rebuild_steering_figures.py --outdir paper/naz_aaai2027/img
+python experiments/figures/compare_fpall.py --min-coverage 5 \
+  --json-out paper/naz_aaai2027/img/fpall_comparison_stats.json \
+  --tex-out paper/naz_aaai2027/generated_steering_results.tex
+python experiments/steering/test_fingerprint_is_identity.py \
+  --json-out data/results/safety/fingerprint_identity_diagnostic.json
 pytest -q
 ```

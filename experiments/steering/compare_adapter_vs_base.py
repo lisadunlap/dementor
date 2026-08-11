@@ -11,8 +11,8 @@ CPU only.  Reads metrics.json; never re-runs a model.
 import argparse, glob, json, os
 import pandas as pd
 
-ADAPT = "/data/ethantsliu/exp_steer_adapter"
-BASE = "/data/ethantsliu/exp_steer_safety/repl80_rdo"
+ADAPT = os.environ.get("DEMENTOR_STEER_ADAPTER", "/data/ethantsliu/exp_steer_adapter")
+BASE = os.environ.get("DEMENTOR_STEER_WORK", "/data/ethantsliu/exp_steer_safety/repl80_rdo")
 KEY = "matched_harm@0.85"
 
 

@@ -1,19 +1,21 @@
 # Results
 
-Curated, paper-relevant result artifacts (small CSVs + figures). The heavy raw generations (per-cell
+Curated artifacts from the earlier behavioral-persistence instrument (small CSVs + figures). The
+current safety-paper sources of truth live under `data/results/safety/`; nothing in this directory
+overrides those stage-separated aggregates. The heavy raw generations (per-cell
 source/target/disguised text) live on the HuggingFace dataset
 `dementor-research/dementor-matrix-responses`, not here. Reproduce any of these from the cached text
 with the scripts under `experiments/`.
 
-> **Numbers pending.** Specific effect sizes / statistics are being finalized against the completed
-> runs and are omitted from these descriptions rather than shipped stale — each CSV still stores its
-> computed values, and `docs/RESULTS.md` / `METHODS.md` carry the authoritative framing.
+> **Historical scope.** Specific effect sizes are intentionally omitted from this index rather than
+> promoted as current safety-paper headlines. Each CSV stores its own values; `docs/RESULTS.md` and
+> `METHODS.md` carry the authoritative current framing.
 
 ## The disguise ladder (the experimental scaffold)
 - `matrix_ladder/<dataset>_matrix_ladder.{csv,png}` — per-rung persistence across all source→target
   pairs, per dataset. Shows the monotone collapse: naming → prompting → SFT → DPO.
 
-## The headline result — model-dependent DPO erasure
+## Historical persistence result — model-dependent DPO erasure
 - `d2_multiseed_ci.csv` — **D2**: per-cell persistence, mean ± 95% CI over adapter seeds
   (de-confounded); the two-tier **retain** vs **launder** source split.
 - `fig1_source_fingerprint.png` — DPO persistence per source model (two-tier split).

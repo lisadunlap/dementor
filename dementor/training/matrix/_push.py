@@ -18,6 +18,11 @@ from ._constants import DATA, PEFT_ADAPTER_DIR
 from ._models import source_id_of
 
 
+def _alias_stage(alias: str) -> str:
+    """Return the registry stage, preserving the compound ``self_sft`` prefix."""
+    return "self_sft" if alias.startswith("self_sft_") else alias.split("_", 1)[0]
+
+
 def export_adapter_to_peft(
     *,
     tinker_path: str,
@@ -155,8 +160,18 @@ def upload_adapter_to_hf(
     readme = peft_dir / "README.md"
     if not readme.exists():
         # Parse cell info from alias: sft_{dataset}_{source}_as_{target}_seed{N}
-        parts = alias.split("_")
-        stage = parts[0]
+        stage = _alias_stage(alias)
+        campaign_models = len(config.campaign_roster())
+        campaign_datasets = len(config.campaign_dataset_names())
+        campaign_seeds = len(config.campaign_seeds())
+        cross_cells_per_stage = (
+            campaign_models * (campaign_models - 1) * campaign_datasets * campaign_seeds
+        )
+        stage_cells = (
+            campaign_models * campaign_datasets * campaign_seeds
+            if stage == "self_sft"
+            else cross_cells_per_stage
+        )
         readme.write_text(
             f"""---
 base_model: {base_model}
@@ -170,7 +185,7 @@ tags:
 # {alias}
 
 LoRA adapter trained via [Tinker](https://thinkingmachines.ai/tinker/) as part of the
-**dementor** intervention-ladder fingerprint persistence study (AAAI 2026 conference).
+**dementor** configuration-defined behavioral-imitation study.
 
 - **Base model:** `{base_model}`
 - **Training stage:** {stage.upper()} (LoRA rank 32, target_modules=all-linear)
@@ -187,7 +202,9 @@ tok = AutoTokenizer.from_pretrained("{base_model}")
 model = PeftModel.from_pretrained(base, "{repo_id}")
 ```
 
-Part of the dementor matrix: 4 source models × 3 cross-targets × 3 train datasets × 3 seeds × 2 stages = 216 adapters.
+The named campaign contains {campaign_models} models, {campaign_datasets} datasets, and
+{campaign_seeds} seed(s), yielding {stage_cells} configured cells for this stage. See
+`config.yaml` in the code release for the exact cohort and hyperparameters.
 """,
             encoding="utf-8",
         )
@@ -205,7 +222,7 @@ def push_adapters_to_hf(
     *,
     namespace: str = "dementor-research",
     only_llama: bool = False,
-    kinds: tuple[str, ...] = ("sft", "dpo"),
+    kinds: tuple[str, ...] = ("sft", "dpo", "self_sft"),
     delete_local_after: bool = True,
     private: bool = False,
     max_retries: int = 4,
@@ -231,7 +248,7 @@ def push_adapters_to_hf(
     skipped = 0
     errors: list[dict] = []
     for alias, entry in sorted(registry.items()):
-        prefix = alias.split("_", 1)[0]
+        prefix = _alias_stage(alias)
         if prefix not in kinds:
             continue
         source = source_id_of(alias)
@@ -321,8 +338,12 @@ def push_adapters_to_hf(
     return {"uploaded": uploaded, "skipped": skipped, "errors": errors}
 
 
-def backfill_export_adapters(*, only_llama: bool = False, kinds: tuple[str, ...] = ("sft", "dpo")) -> dict:
-    """Download all already-registered SFT and/or DPO adapters to local PEFT format.
+def backfill_export_adapters(
+    *,
+    only_llama: bool = False,
+    kinds: tuple[str, ...] = ("sft", "dpo", "self_sft"),
+) -> dict:
+    """Download registered adapters for the requested configured stages to local PEFT.
 
     Uses direct httpx against Tinker's archive endpoint (bypasses SDK timeouts).
     Llama-source adapters are downloaded first (June 12 retirement deadline).
@@ -341,7 +362,7 @@ def backfill_export_adapters(*, only_llama: bool = False, kinds: tuple[str, ...]
     skipped = 0
     errors: list[dict] = []
     for alias, entry in sorted(registry.items()):
-        prefix = alias.split("_", 1)[0]
+        prefix = _alias_stage(alias)
         if prefix not in kinds:
             continue
         source = source_id_of(alias)

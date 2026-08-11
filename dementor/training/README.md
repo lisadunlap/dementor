@@ -91,7 +91,7 @@ dementor-generate \
 counterpart of the Tinker SFT/DPO jobs. `run_local_sft_job` / `run_local_dpo_job` return the same
 outcomes and write a PEFT adapter + a `backend: "local"` registry entry. This is the path the
 `backend: local` roster models (the `google/gemma-4-*` family in `config.yaml`) use; run one cell
-with `python -m dementor.training.matrix cell --source <id> --target <id> ...`.
+with `python -m dementor.training.matrix launch-local-cell --source <id> --target <id> ...`.
 
 - **Single GPU** (default): pin one device, e.g. `CUDA_VISIBLE_DEVICES=0`. bf16 + gradient
   checkpointing keep memory low — a 32B LoRA fits one 80 GB H100 (~67 GB peak).
@@ -100,7 +100,7 @@ with `python -m dementor.training.matrix cell --source <id> --target <id> ...`.
   (`_guard_no_dataparallel`) — multi-GPU MUST go through `accelerate launch` / `torchrun`:
   ```bash
   CUDA_VISIBLE_DEVICES=0,1,2,3 accelerate launch --config_file dementor/training/fsdp.yaml \
-    --num_processes 4 -m dementor.training.matrix cell --source <id> --target <id> ...
+    --num_processes 4 -m dementor.training.matrix launch-local-cell --source <id> --target <id> ...
   ```
   **Architecture-agnostic wrap class (no per-model config).** `dementor/training/fsdp.yaml` is ONE
   generic config for ANY HuggingFace model: it sets `fsdp_auto_wrap_policy: TRANSFORMER_BASED_WRAP`

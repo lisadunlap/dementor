@@ -45,6 +45,13 @@ def test_eta_squared_zero_total_variance_is_zero():
     assert VD.eta_squared(df, "source", "erosion") == 0.0
 
 
+def test_source_cluster_bootstrap_is_seeded_and_brackets_mean():
+    df = pd.DataFrame({"source": ["a", "a", "b", "b"], "erosion": [0.0, 0.0, 2.0, 2.0]})
+    ci = VD.source_cluster_mean_ci(df, "erosion")
+    assert ci == VD.source_cluster_mean_ci(df, "erosion")
+    assert ci[0] <= 1.0 <= ci[1]
+
+
 def test_stage_is_explicitly_derived_from_adapter_id():
     assert BUILD._stage_of({"id": "sft_gsm8k_a_as_b_seed42"}) == "sft"
     assert BUILD._stage_of({"id": "dpo_gsm8k_a_as_b_seed42"}) == "dpo"
@@ -69,7 +76,13 @@ def test_legacy_stage_backfill_and_exact_sft_dpo_pairing():
 
 def _complete_metrics(max_prompts=200, subsample_seed=42):
     per_benchmark = {
-        benchmark: {"metric": 0.0, "n": 111 if benchmark == "xstest" else 200}
+        benchmark: {
+            "axis": AUDIT.EC.BENCH_AXIS[benchmark],
+            "canonical_col": AUDIT.EC.CANON_COL[benchmark],
+            "metric": 0.0,
+            "rtl_genuine_harm": 0.0 if benchmark in AUDIT.EC.HARM_BENCHMARKS else float("nan"),
+            "n": 111 if benchmark == "xstest" else 200,
+        }
         for benchmark in AUDIT.EC.DEFAULT_BENCHMARKS
     }
     return {
@@ -97,6 +110,47 @@ def test_coverage_accepts_configured_sampling_metadata():
         _complete_metrics(),
         {"max_prompts": 200, "subsample_seed": 42},
     ) == []
+
+
+def test_prompt_sequence_hash_uses_actual_judged_order(monkeypatch, tmp_path):
+    selected = tmp_path / "selected.csv"
+    pd.DataFrame({"prompt": ["a", "b"]}).to_csv(selected, index=False)
+    checkpoint = tmp_path / "item" / "metrics.json"
+    judged = checkpoint.parent / "advbench" / "all_judged.csv"
+    judged.parent.mkdir(parents=True)
+    pd.DataFrame({"prompt": ["a", "b"]}).to_csv(judged, index=False)
+    monkeypatch.setattr(AUDIT.EC, "get_subsample", lambda *_: str(selected))
+
+    assert AUDIT.prompt_sequence_hash(
+        {"_checkpoint_path": str(checkpoint)}, "advbench", 200, 42
+    )[1] == 2
+
+    pd.DataFrame({"prompt": ["b", "a"]}).to_csv(judged, index=False)
+    assert AUDIT.prompt_sequence_hash(
+        {"_checkpoint_path": str(checkpoint)}, "advbench", 200, 42
+    ) is None
+
+    harmonized = judged.with_name("all_judged.n200.csv")
+    pd.DataFrame({"prompt": ["a", "b"]}).to_csv(harmonized, index=False)
+    assert AUDIT.prompt_sequence_hash(
+        {"_checkpoint_path": str(checkpoint)}, "advbench", 200, 42
+    )[1] == 2
+
+
+def test_analysis_metric_uses_like_for_like_rtl_not_native_score():
+    payload = {
+        "axis": "harm",
+        "canonical_col": "strongreject_score",
+        "metric": 0.73,
+        "rtl_genuine_harm": 0.10,
+        "n": 200,
+    }
+
+    assert BUILD.analysis_metric("strongreject", payload) == {
+        "value": 0.10,
+        "column": "genuine_harm",
+        "n": 200,
+    }
 
 
 def test_coverage_separates_generated_only_from_missing_generation(tmp_path):

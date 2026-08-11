@@ -1,8 +1,8 @@
-"""Matrix dispatcher for the AAAI conference experiment.
+"""Matrix dispatcher for the config-defined imitation campaign.
 
-Drives the 4-model symmetric Tinker matrix:
-- 4 sources × 3 cross targets × 3 train datasets × 3 seeds = 108 SFT jobs
-- Same shape = 108 DPO jobs (Phase D — wired separately later)
+The named campaign in ``config.yaml`` supplies the model cohort, datasets, seeds,
+and training/control stages. Use ``dementor-plan`` or ``list-cells`` to inspect the
+resolved matrix without launching work.
 
 Subcommands:
   generate-target-responses: generate baseline responses on TRAIN splits for use as SFT completions
@@ -50,6 +50,16 @@ def _resolve_model_arg(value: str | None) -> str | None:
         return config.model(value)["id"]
     except KeyError as exc:
         raise SystemExit(f"Unknown model id/slug: {value}") from exc
+
+
+def _require_campaign_stages(*stages: str) -> None:
+    """Refuse stage-specific campaign work excluded by ``config.yaml``."""
+    configured = set(config.campaign_stages())
+    missing = [stage for stage in stages if stage not in configured]
+    if missing:
+        raise SystemExit(
+            "Campaign stage(s) disabled in config.yaml: " + ", ".join(missing)
+        )
 
 
 def _filtered_cells_from_args(args) -> list[Cell]:
@@ -134,10 +144,8 @@ def main() -> int:
     sft_p.add_argument("--max-jobs", type=int, default=None)
     sft_p.add_argument("--manifest-out", type=Path, default=None)
     sft_p.add_argument("--parallel", type=int, default=1, help="Number of concurrent SFT jobs (ThreadPoolExecutor)")
-    # Cell filters. Without these launch-sft submits the WHOLE matrix (18 sources x 17 targets x
-    # 3 seeds x 4 datasets), which on a two-box campaign means paying Tinker for the other box's
-    # shard and for seeds nobody asked for. --only-llama already exists above, so these mirror
-    # _add_cell_filter_args minus that flag.
+    # Cell filters prevent an unscoped command from submitting the whole configured matrix.
+    # --only-llama already exists above, so these mirror _add_cell_filter_args minus that flag.
     sft_p.add_argument("--source", default=None, help="Source model id or slug (shard by source)")
     sft_p.add_argument("--target", default=None, help="Target model id or slug")
     sft_p.add_argument("--dataset", choices=list(TRAIN_DATASETS), default=None)
@@ -241,7 +249,12 @@ def main() -> int:
     )
     hf_p.add_argument("--namespace", default="dementor-research", help="HF user or org name")
     hf_p.add_argument("--only-llama", action="store_true")
-    hf_p.add_argument("--kinds", nargs="+", default=["sft", "dpo"], choices=["sft", "dpo"])
+    hf_p.add_argument(
+        "--kinds",
+        nargs="+",
+        default=config.campaign_stages(),
+        choices=["sft", "dpo", "self_sft"],
+    )
     hf_p.add_argument("--keep-local", action="store_true", help="Don't delete local PEFT after upload")
     hf_p.add_argument("--private", action="store_true", help="Create private repos (default: public)")
     hf_p.add_argument("--parallel", type=int, default=1, help="Concurrent uploads")
@@ -277,16 +290,19 @@ def main() -> int:
         return 0
 
     if args.cmd == "build-sft-data":
+        _require_campaign_stages("sft")
         n = build_sft_data(dry_run=args.dry_run)
         print(f"\nBuilt {n} SFT training CSVs")
         return 0
 
     if args.cmd == "build-self-sft-data":
+        _require_campaign_stages("self_sft")
         n = build_self_sft_data(dry_run=args.dry_run)
         print(f"\nBuilt {n} self-SFT control CSVs")
         return 0
 
     if args.cmd == "launch-sft":
+        _require_campaign_stages("sft")
         cells = _filtered_cells_from_args(args)
         print(f"launch-sft: {len(cells)} cells after filters "
               f"(source={args.source} target={args.target} dataset={args.dataset} seed={args.seed})")
@@ -298,8 +314,8 @@ def main() -> int:
             parallel=args.parallel,
         )
         # A FILTERED or dry run must not clobber the canonical manifest: that file is the
-        # campaign-wide plan (3672 rows) other tooling reads to compute what is still pending, and
-        # overwriting it with a 17-row shard silently makes the campaign look almost finished.
+        # campaign-wide plan other tooling reads to compute what is still pending, and overwriting
+        # it with a small shard silently makes the campaign look almost finished.
         # An explicit --manifest-out always wins; otherwise a scoped run gets a scoped filename.
         _scope = [p for p in (args.source, args.target, args.dataset,
                               str(args.seed) if args.seed is not None else None) if p]
@@ -321,6 +337,7 @@ def main() -> int:
         return 0
 
     if args.cmd == "launch-self-sft":
+        _require_campaign_stages("self_sft")
         cells = list(iter_self_sft_cells(models=args.models, datasets=args.datasets))
         manifest = launch_sft(
             cells=cells,
@@ -342,6 +359,7 @@ def main() -> int:
         return 0
 
     if args.cmd == "monitor-self-sft":
+        _require_campaign_stages("self_sft")
         result = monitor_self_sft_controls()
         if args.json:
             print(json.dumps(result, indent=2))
@@ -354,11 +372,13 @@ def main() -> int:
         return 0
 
     if args.cmd == "build-dpo-data":
+        _require_campaign_stages("dpo")
         n = build_dpo_data(dry_run=args.dry_run)
         print(f"\nBuilt {n} DPO preference CSVs")
         return 0
 
     if args.cmd == "launch-dpo":
+        _require_campaign_stages("dpo")
         cells = _filtered_cells_from_args(args)
         print(f"launch-dpo: {len(cells)} cells after filters "
               f"(source={args.source} target={args.target} dataset={args.dataset} seed={args.seed})")
@@ -464,6 +484,8 @@ def main() -> int:
         return 0
 
     if args.cmd == "launch-local-cell":
+        phases = ("sft", "dpo") if args.phase == "all" else (args.phase,)
+        _require_campaign_stages(*phases)
         summary = launch_local_cell(
             source=args.source,
             target=args.target,
@@ -478,7 +500,10 @@ def main() -> int:
         return 0
 
     if args.cmd == "backfill-export":
-        result = backfill_export_adapters(only_llama=args.only_llama)
+        result = backfill_export_adapters(
+            only_llama=args.only_llama,
+            kinds=tuple(config.campaign_stages()),
+        )
         print(f"\nExported {result['exported']}, skipped {result['skipped']}, errors {len(result['errors'])}")
         for err in result["errors"]:
             print(f"  ERROR {err['alias']}: {err['error']}")
@@ -490,6 +515,7 @@ def main() -> int:
         return 0
 
     if args.cmd == "push-to-hf":
+        _require_campaign_stages(*args.kinds)
         result = push_adapters_to_hf(
             namespace=args.namespace,
             only_llama=args.only_llama,

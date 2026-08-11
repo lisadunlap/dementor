@@ -53,11 +53,12 @@ CHAT_TEMPLATE_KWARGS: dict[str, dict] = {
 
 # Train splits + per-dataset SFT templates (from config.yaml).
 TRAIN_DATASETS: dict[str, Path] = {
-    n: config.resolve_path(config.dataset(n)["train_csv"]) for n in config.dataset_names()
+    n: config.resolve_path(config.dataset(n)["train_csv"])
+    for n in config.campaign_dataset_names()
 }
 DATASET_TEMPLATES: dict[str, tuple[str, str]] = {
     n: (config.dataset(n)["prompt_template"], config.dataset(n)["completion_template"])
-    for n in config.dataset_names()
+    for n in config.campaign_dataset_names()
 }
 
 SEEDS: list[int] = config.campaign_seeds()

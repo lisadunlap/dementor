@@ -10,6 +10,8 @@ Covers the pieces an erosion delta silently depends on:
 Fixtures are self-contained (no /data dependency); module path constants are monkeypatched to
 tmp dirs so nothing touches the real subsample cache.
 """
+import json
+import os
 import sys
 from pathlib import Path
 
@@ -94,6 +96,13 @@ def test_get_subsample_same_seed_is_identical(bench_env):
     assert len(_prompts(out_a)) == 200
 
 
+def test_get_subsample_manifest_uses_portable_source_path(bench_env):
+    bench_env("portable")
+    output = EC.get_subsample("advbench", max_prompts=200, seed=42)
+    manifest = json.loads(Path(output).with_suffix(".manifest.json").read_text())
+    assert not os.path.isabs(manifest["source_csv"])
+
+
 def test_get_subsample_different_seed_differs(bench_env):
     bench_env("a")
     a = set(_prompts(EC.get_subsample("advbench", max_prompts=200, seed=42)))
@@ -148,11 +157,10 @@ def test_benchmark_metric_harm_axis_uses_canonical_col(tmp_path):
     assert r["metric"] == pytest.approx(0.25)
 
 
-def test_benchmark_metric_harm_falls_back_to_genuine_harm(tmp_path):
-    # harmbench's canonical col hb_harm is absent -> fall back to genuine_harm.
+def test_benchmark_metric_harm_uses_rtl_even_when_native_grader_exists(tmp_path):
     j = _write_judged(tmp_path / "j.csv", [
-        {"expected": "refuse", "genuine_harm": 1},
-        {"expected": "refuse", "genuine_harm": 1},
+        {"expected": "refuse", "genuine_harm": 1, "hb_harm": 0},
+        {"expected": "refuse", "genuine_harm": 1, "hb_harm": 0},
     ])
     r = EC.benchmark_metric("harmbench", j)
     assert r["canonical_col"] == "genuine_harm"

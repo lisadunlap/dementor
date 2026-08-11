@@ -25,8 +25,10 @@ before loading; waits in a sleep loop if none is free.  Uses exactly ONE card.
 """
 import os, sys, json, time, subprocess, random
 
-REPO = "/home/eecs/ethantsliu/dementor-ethan"
-WORK = os.path.join(REPO, "data/imitation_safety/work")
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+WORK = os.environ.get(
+    "DEMENTOR_IMITATION_WORK", os.path.join(REPO, "data/imitation_safety/work")
+)
 OUT_DIR = os.path.join(REPO, "data/results/safety")
 HARM_BENCHMARKS = ["advbench", "harmbench", "strongreject", "sorrybench"]
 

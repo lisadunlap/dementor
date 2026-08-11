@@ -8,7 +8,10 @@ abort. The JSON manifest is safe to use as the missing-cell worklist source.
 from __future__ import annotations
 
 import argparse
+import csv
+import hashlib
 import json
+import math
 import os
 import sys
 from pathlib import Path
@@ -21,6 +24,44 @@ sys.path.insert(0, str(REPO))
 import build_erosion_csv as BUILD  # noqa: E402
 import erosion_common as EC  # noqa: E402
 from dementor import config  # noqa: E402
+
+
+def prompt_sequence_hash(
+    item: dict,
+    benchmark: str,
+    max_prompts: int,
+    seed: int,
+) -> tuple[str, int] | None:
+    """Verify and hash the exact ordered judged rows used by a standard checkpoint.
+
+    A strict checkpoint must materialize the configured prompt sequence in either its harmonized
+    ``all_judged.n<N>.csv`` selection or its native ``all_judged.csv``. Merely containing those
+    prompts somewhere in a larger reusable cache is insufficient evidence that its metrics used the
+    declared sample.
+    """
+    checkpoint = item.get("_checkpoint_path")
+    if not checkpoint:
+        return None
+    benchmark_dir = Path(checkpoint).parent / benchmark
+    harmonized = benchmark_dir / f"all_judged.n{max_prompts}.csv"
+    path = harmonized if harmonized.exists() else benchmark_dir / "all_judged.csv"
+    try:
+        with path.open(newline="", encoding="utf-8") as handle:
+            actual_prompts = [row["prompt"] for row in csv.DictReader(handle)]
+    except (OSError, KeyError, csv.Error):
+        return None
+    selected_path = EC.get_subsample(benchmark, max_prompts, seed)
+    try:
+        with open(selected_path, newline="", encoding="utf-8") as handle:
+            prompts = [row["prompt"] for row in csv.DictReader(handle)]
+    except (OSError, KeyError, csv.Error):
+        return None
+    if actual_prompts != prompts:
+        return None
+    digest = hashlib.sha256(
+        json.dumps(actual_prompts, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+    return digest, len(actual_prompts)
 
 
 def expected_ids(campaign: str, stage: str) -> list[str]:
@@ -71,6 +112,40 @@ def item_problems(
                 problems.append(
                     f"{benchmark}:n={metric.get('n')}!=baseline_n={base_metric.get('n')}"
                 )
+            else:
+                if item.get("_checkpoint_path") or baseline.get("_checkpoint_path"):
+                    adapter_prompts = prompt_sequence_hash(
+                        item, benchmark, expected_max, expected_seed
+                    )
+                    baseline_prompts = prompt_sequence_hash(
+                        baseline, benchmark, expected_max, expected_seed
+                    )
+                    if adapter_prompts is None or baseline_prompts is None:
+                        problems.append(f"{benchmark}:prompt_sequence_unavailable")
+                    elif adapter_prompts != baseline_prompts:
+                        problems.append(
+                            f"{benchmark}:prompt_sequence_mismatch="
+                            f"{adapter_prompts[0]}:{adapter_prompts[1]}!="
+                            f"{baseline_prompts[0]}:{baseline_prompts[1]}"
+                        )
+                try:
+                    adapter_result = BUILD.analysis_metric(benchmark, metric)
+                    baseline_result = BUILD.analysis_metric(benchmark, base_metric)
+                except ValueError as exc:
+                    problems.append(str(exc))
+                    continue
+                for label, result in (("adapter", adapter_result), ("baseline", baseline_result)):
+                    if result is None or not math.isfinite(result["value"]):
+                        problems.append(f"{benchmark}:{label}_analysis_metric_nonfinite")
+                if (
+                    adapter_result is not None
+                    and baseline_result is not None
+                    and adapter_result["column"] != baseline_result["column"]
+                ):
+                    problems.append(
+                        f"{benchmark}:metric_column={adapter_result['column']}"
+                        f"!=baseline_column={baseline_result['column']}"
+                    )
     return problems
 
 

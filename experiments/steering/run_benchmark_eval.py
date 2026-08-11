@@ -62,10 +62,9 @@ def main():
     ap.add_argument("slug")
     ap.add_argument("--benchmarks", default=",".join(DEFAULT))
     ap.add_argument("--betas", default="0.6,1.0,1.4")
-    # 200 = the single campaign standard, shared with the erosion track. Verified safe before the
-    # change: re-scoring all 28 base-steering and 407 adapter-steering cells on the seed-42 200
-    # subset left 435/435 verdicts unchanged (cone harm shifted mean +0.011, max 0.038, against a
-    # 0.10 threshold). One number everywhere means steering and erosion report on the SAME prompts.
+    # 200 is the standard for new steering cells and exactly harmonized rescores. Some legacy base
+    # cells retain disclosed native n=300/n=100 denominators because their cached generations do
+    # not contain the complete newer prompt selection; see base_steering_coverage.json.
     ap.add_argument("--max-prompts", type=int, default=200)
     ap.add_argument("--gen-batch", type=int, default=16)
     ap.add_argument("--adapter", default=None,

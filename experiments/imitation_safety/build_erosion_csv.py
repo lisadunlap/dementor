@@ -22,9 +22,43 @@ import erosion_common as EC
 from dementor import config
 
 
+def analysis_metric(benchmark, payload):
+    """Return the stage-comparable publication metric encoded by one benchmark result.
+
+    Historical checkpoints store benchmark-native ``metric`` values, including continuous
+    StrongREJECT scores, alongside the binary RTL rate. Harm erosion must use RTL on both the
+    adapter and baseline; over-refusal retains the benchmark-native refusal metric.
+    """
+    if payload is None:
+        return None
+    expected_axis = EC.BENCH_AXIS[benchmark]
+    if payload.get("axis") != expected_axis:
+        raise ValueError(
+            f"{benchmark}: axis={payload.get('axis')!r}, expected {expected_axis!r}"
+        )
+    if expected_axis == "harm":
+        value = payload.get("rtl_genuine_harm")
+        # Early AdvBench checkpoints used RTL as the canonical metric but did not duplicate it.
+        if value is None and payload.get("canonical_col") == "genuine_harm":
+            value = payload.get("metric")
+        column = "genuine_harm"
+    else:
+        value = payload.get("metric")
+        column = payload.get("canonical_col")
+    try:
+        value = float(value)
+    except (TypeError, ValueError):
+        value = float("nan")
+    return {"value": value, "column": column, "n": payload.get("n")}
+
+
 def _metric_signature(d):
     """Analysis-relevant payload used to verify duplicate checkpoints agree."""
-    keys = ("id", "kind", "dataset", "source", "target", "seed", "base_model", "per_benchmark")
+    keys = (
+        "id", "kind", "dataset", "source", "target", "seed", "base_model",
+        "subsample_max_prompts", "subsample_seed", "rtl_judge_model", "graders_enabled",
+        "per_benchmark",
+    )
     return json.dumps({key: d.get(key) for key in keys}, sort_keys=True, allow_nan=True)
 
 
@@ -62,6 +96,7 @@ def load_items(work_roots=None, accept=None):
                 continue
             if accept is not None and not accept(d):
                 continue
+            d["_checkpoint_path"] = mj
             item_id = d["id"]
             if item_id in items and _metric_signature(items[item_id]) != _metric_signature(d):
                 old_is_standard = _is_n200_checkpoint(items[item_id])
@@ -140,14 +175,22 @@ def main():
         per_erosion = {}
         for b, m in a["per_benchmark"].items():
             bm = base["per_benchmark"].get(b) if base else None
-            base_metric = bm["metric"] if bm else float("nan")
-            erosion = (m["metric"] - base_metric) if (base_metric == base_metric) else float("nan")
+            adapter_result = analysis_metric(b, m)
+            baseline_result = analysis_metric(b, bm)
+            adapter_metric = adapter_result["value"] if adapter_result else float("nan")
+            base_metric = baseline_result["value"] if baseline_result else float("nan")
+            erosion = (
+                adapter_metric - base_metric
+                if adapter_metric == adapter_metric and base_metric == base_metric
+                else float("nan")
+            )
             per_erosion[b] = erosion
             long_rows.append({
                 "adapter": a["id"], "stage": stage, "dataset": ds, "source": a.get("source"),
                 "target": a.get("target"), "seed": seed, "base_model": a["base_model"],
                 "backend": a.get("backend"), "benchmark": b, "axis": m["axis"],
-                "n": m["n"], "metric_disguised": m["metric"], "metric_baseline": base_metric,
+                "n": adapter_result["n"], "metric_column": adapter_result["column"],
+                "metric_disguised": adapter_metric, "metric_baseline": base_metric,
                 "erosion": erosion, "baseline_available": base is not None,
             })
         harm_eros = [per_erosion[b] for b in EC.HARM_BENCHMARKS

@@ -1,8 +1,8 @@
-"""Matrix dispatcher for the AAAI conference experiment.
+"""Matrix dispatcher for the config-defined imitation campaign.
 
-Drives the 4-model symmetric Tinker matrix:
-- 4 sources × 3 cross targets × 3 train datasets × 3 seeds = 108 SFT jobs
-- Same shape = 108 DPO jobs (Phase D — wired separately later)
+The named campaign in ``config.yaml`` supplies the model cohort, datasets, seeds,
+and training/control stages. Use ``dementor-plan`` or ``list-cells`` to inspect the
+resolved matrix without launching work.
 
 Subcommands:
   generate-target-responses: generate baseline responses on TRAIN splits for use as SFT completions

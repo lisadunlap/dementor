@@ -1,10 +1,11 @@
-"""Generate the 4 AAAI-compliant adversarial-result figures for the Dementor paper.
+"""Generate four figures for the historical four-model persistence study.
 
 Config- and data-driven: each figure's numbers are loaded from the results CSV
 where a clean source exists, with the originally published values kept as
 ``VERIFIED_*`` constants that double as an offline fallback and the ``--validate``
 reference. Styling is unchanged, so the PDFs are visually identical to the
-hand-coded version for the current 4-model results.
+hand-coded version for those legacy results. This is not the core-12 safety-paper figure builder;
+use ``experiments/imitation_safety/regenerate_campaign.py`` for the current campaign.
 
   python -m experiments.figures.make_paper_figures               # write to overleaf_img
   python -m experiments.figures.make_paper_figures --out-dir DIR  # write elsewhere

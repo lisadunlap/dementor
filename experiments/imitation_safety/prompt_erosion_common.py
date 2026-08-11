@@ -69,7 +69,7 @@ METHODS = ["just_name_it", "random_sampling", "stylistic", "behavioral", "contra
 ANALYZER_METHODS = {"behavioral", "contrastive"}
 DISGUISE_POOL_N = 500          # seeded subsample of B's ~10k chatbot_arena responses for the disguise
 DISGUISE_SEED = 42             # deterministic few-shot / analyzer example sampling
-DEFAULT_MAX_NEW_TOKENS = 256   # match the erosion rung's generation cap (comparability)
+DEFAULT_MAX_NEW_TOKENS = EC.DEFAULT_MAX_NEW_TOKENS
 DEFAULT_MAX_PROMPTS = EC.DEFAULT_MAX_PROMPTS
 DEFAULT_SUBSAMPLE_SEED = EC.DEFAULT_SUBSAMPLE_SEED
 

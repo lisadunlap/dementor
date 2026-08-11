@@ -11,7 +11,8 @@ campaigns:
     roster_tier: core
     datasets: [chatbot_arena, gsm8k, oasst1, writingprompts]
     seeds: [42]
-    evaluation: {max_prompts: 200, subsample_seed: 42}
+    stages: [sft, dpo, self_sft]
+    evaluation: {max_prompts: 200, subsample_seed: 42, max_new_tokens: 256}
 
 paths:                            # relative paths anchor on the repo root; absolute paths pass through
   data: data
@@ -20,7 +21,7 @@ paths:                            # relative paths anchor on the repo root; abso
   registry: data/tinker_adapters.json
   peft_adapters: data/adapters/peft
   baselines: data/model-responses/matrix_baselines
-  overleaf_img: /Users/EthanLiu/Documents/Programming/dementor-overleaf/img
+  overleaf_img: ../dementor-overleaf/img
 
 # Model catalog: 18 active/extended models from multiple providers.
 #   backend: tinker -> trained via the Tinker API (remote, no local GPU)
@@ -96,6 +97,11 @@ roster_legacy:
 #   not_run            never attempted (no result dir).
 # ============================================================================
 steering_roster:
+  # Some completed steering directories predate the canonical catalog slugs. Readers normalize
+  # these names at load time so manifests, figures, and paper populations join cleanly to roster.
+  artifact_slug_aliases:
+    nemotron-nano: nemotron-nano-30b-a3b
+    qwen3.6-35b: qwen3.6-35b-a3b
   refs:
     qwen3.5-4b: clean
     qwen3.6-27b: pc_fails
@@ -111,7 +117,7 @@ steering_roster:
     ministral-8b: clean                 # was `todo`; cone 0.807
     phi-4: clean
     granite-4-h-small: pc_fails         # verified RTX cone; positive control fails on all five harm benchmarks
-    nemotron-super-120b: not_run # imitation:core (added 2026-07-09); 120B MP RDO cone — no result dir exists
+    nemotron-super-120b: not_run # imitation:extended; 120B MP RDO cone — no result dir exists
     llama-3.3-70b: clean
     qwen3-8b: clean            # imitation:extended, already steered
   breadth:

@@ -1,7 +1,7 @@
 """Dry-run planner for the full config-driven training matrix.
 
-Enumerates every adapter job implied by ``config.yaml`` (roster x datasets x seeds
-x {SFT, DPO} cross-pairs, plus self-SFT drift controls) and prints counts + the
+Enumerates every adapter job implied by the named campaign in ``config.yaml``
+(campaign roster x datasets x seeds x configured stages) and prints counts + the
 tinker/local backend split — WITHOUT launching anything. Use it to sanity-check
 the scale-up size/cost before spending.
 
@@ -23,6 +23,8 @@ def enumerate_jobs(datasets: list[str] | None = None) -> list[dict]:
     slugs = [m["slug"] for m in roster]
     ds_names = datasets or config.campaign_dataset_names()
     seeds = config.campaign_seeds()
+    stages = config.campaign_stages()
+    cross_stages = [stage for stage in stages if stage != "self_sft"]
 
     jobs: list[dict] = []
     for src in slugs:
@@ -31,15 +33,16 @@ def enumerate_jobs(datasets: list[str] | None = None) -> list[dict]:
                 continue
             for ds in ds_names:
                 for seed in seeds:
-                    for stage in ("sft", "dpo"):
+                    for stage in cross_stages:
                         jobs.append({"stage": stage, "dataset": ds, "source": src,
                                      "target": tgt, "seed": seed, "backend": backend[src]})
     # self-SFT drift controls: each model imitates its own outputs.
-    for m in slugs:
-        for ds in ds_names:
-            for seed in seeds:
-                jobs.append({"stage": "self_sft", "dataset": ds, "source": m,
-                             "target": m, "seed": seed, "backend": backend[m]})
+    if "self_sft" in stages:
+        for m in slugs:
+            for ds in ds_names:
+                for seed in seeds:
+                    jobs.append({"stage": "self_sft", "dataset": ds, "source": m,
+                                 "target": m, "seed": seed, "backend": backend[m]})
     return jobs
 
 
@@ -65,7 +68,7 @@ def main() -> int:
 
     print(f"Roster: {len(roster)} models ({n_tinker} tinker, {n_local} local) | "
           f"datasets: {args.dataset or config.campaign_dataset_names()} | "
-          f"seeds: {config.campaign_seeds()}")
+          f"seeds: {config.campaign_seeds()} | stages: {config.campaign_stages()}")
     print(f"Total jobs: {s['total']}")
     print(f"  by stage:   {s['by_stage']}")
     print(f"  by backend: {s['by_backend']}")
