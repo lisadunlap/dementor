@@ -9,7 +9,7 @@ Mirrors experiments/imitation_safety/erosion_common.py's `_env` pattern.
 Canonical env vars (shared verbatim with the imitation package; see .env.example at the repo root):
   DEMENTOR_REPO        repo root (auto-detected from this file's location)
   DEMENTOR_MODELS_DIR  local model-weights root (per-slug subdirs); default /data/ethantsliu/models_dl
-  DEMENTOR_HF_HOME     HF cache root; default /data/ethantsliu/huggingface
+  DEMENTOR_HF_HOME     HF cache root; default ~/.cache/huggingface
   DEMENTOR_DATA        big-disk data/outputs root; default <repo>/data
   DEMENTOR_GPUS        comma list of usable GPU ids; default 5,6,7 (partner sets 0,1,2,3)
 Steering-specific roots are documented below and in README.md. The three that make a fresh clone

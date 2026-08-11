@@ -24,7 +24,7 @@
 # Key env overrides (all optional; defaults reproduce our shared box):
 #   DEMENTOR_GPUS        GPU ids this cone may use (default 5,6,7). >1 id -> model-parallel.
 #   DEMENTOR_MODELS_DIR  local weights root; per-slug subdir <dir>/<slug> (default /data/ethantsliu/models_dl)
-#   DEMENTOR_HF_HOME     HF cache root (default /data/ethantsliu/huggingface)
+#   DEMENTOR_HF_HOME     HF cache root (default ~/.cache/huggingface)
 #   DEMENTOR_DATA        data/outputs root (default <repo>/data)
 #   DEMENTOR_STEER_WORK  where per-model <slug>/ outputs land (default our-box repl80_rdo)
 #   DEMENTOR_PY          python interpreter (default: `python` on PATH)

@@ -121,7 +121,7 @@ are optional except where noted.
 | Env var | Default | Set on your box? |
 |---------|---------|------------------|
 | `DEMENTOR_GPUS` | `5,6,7` (our box) | **Yes → `0,1,2,3`** |
-| `DEMENTOR_HF_HOME` | `/data/ethantsliu/huggingface` (our box) | Recommended → a big-disk path (exported as `HF_HOME`) |
+| `DEMENTOR_HF_HOME` | `~/.cache/huggingface` | Recommended → a big-disk path on workers (exported as `HF_HOME`) |
 | `DEMENTOR_DATA` | `<repo>/data` | Recommended → big-disk path (holds `work/`, `subsamples/`, `results/`) |
 | `OPENAI_API_KEY` | — | **Prompt rung only** → set for `behavioral`/`contrastive` disguise methods (gpt-4.1-mini analyzer; §4) |
 | `DEMENTOR_DISGUISE_DATA` | `<DEMENTOR_DATA>/model-responses/matrix_baselines/chatbot_arena` | No (prompt rung; follows `DEMENTOR_DATA`) |

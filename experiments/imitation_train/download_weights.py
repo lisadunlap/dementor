@@ -14,7 +14,10 @@ from pathlib import Path
 # levels up (experiments/imitation_train/); .env at the repo root supplies HF_TOKEN for gated repos.
 _REPO = Path(os.environ.get("DEMENTOR_REPO") or Path(__file__).resolve().parents[2])
 os.environ["HF_HUB_DISABLE_XET"] = "1"
-os.environ.setdefault("HF_HOME", os.environ.get("DEMENTOR_HF_HOME") or "/data/ethantsliu/huggingface")
+os.environ.setdefault(
+    "HF_HOME",
+    os.environ.get("DEMENTOR_HF_HOME") or os.path.expanduser("~/.cache/huggingface"),
+)
 sys.path.insert(0, str(_REPO))
 from dotenv import load_dotenv
 load_dotenv(str(_REPO / ".env"))

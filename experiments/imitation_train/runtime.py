@@ -131,7 +131,9 @@ LOCAL_ONLY = os.environ.get("IMIT_LOCAL_ONLY", "0") in ("1", "true", "True")
 # --- import-time setup (runs once, before any `from dementor import ...`) -------
 sys.path.insert(0, str(REPO))
 # Canonical DEMENTOR_HF_HOME (default our-box path) -> standard HF_HOME the child training procs read.
-os.environ.setdefault("HF_HOME", _env("DEMENTOR_HF_HOME", "/data/ethantsliu/huggingface"))
+os.environ.setdefault(
+    "HF_HOME", _env("DEMENTOR_HF_HOME", os.path.expanduser("~/.cache/huggingface"))
+)
 os.environ.setdefault("HF_HUB_DISABLE_XET", "1")
 LOCAL_LOG_DIR.mkdir(parents=True, exist_ok=True)
 

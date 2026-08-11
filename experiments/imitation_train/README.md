@@ -59,7 +59,7 @@ running campaign.
 | `DEMENTOR_REPO` | repo root (two levels up) | Repo checkout to run from. |
 | `DEMENTOR_PY` | `sys.executable` | Interpreter for training subprocesses. |
 | `DEMENTOR_DATA` | `<repo>/data` | Big-disk data/outputs root (holds the registry + baselines). |
-| `DEMENTOR_HF_HOME` | `/data/ethantsliu/huggingface` | HF cache; exported as `HF_HOME`. |
+| `DEMENTOR_HF_HOME` | `~/.cache/huggingface` | HF cache; exported as `HF_HOME`. |
 | `DEMENTOR_TRAIN_STATE` | `<DEMENTOR_DATA>/imitation_train` | State dir (`queue_state.json`, `local_logs/`, `sequencer.log`). Point at an existing campaign dir to **resume** it. |
 | `DEMENTOR_GPUS` | `5,6,7` | Cards this daemon may lease-arbitrate (partner dedicated box: `0,1,2,3`). |
 | `DEMENTOR_FORBIDDEN_GPUS` | `4` | Compute-prohibited cards; set empty on a box with none. |

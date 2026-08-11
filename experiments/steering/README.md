@@ -63,7 +63,7 @@ set.** A partner off our `/data` layout sets:
 | `DEMENTOR_JUDGE_ALL` | `$STEER_ROOT/judge_all.py` | RTL judge subprocess entry point |
 | `DEMENTOR_STEER_BENCH_DIR` | `$STEER_ROOT/benchmarks` | benchmark CSVs for cone_eval |
 | `DEMENTOR_LLAMAGUARD_LOCAL` | `/data/.../llamaguard3-8b-local` | pre-fetched Llama-Guard-3-8B (SG-Bench) |
-| `HF_HOME` / `HF_HUB_CACHE` | HF defaults | model cache |
+| `DEMENTOR_HF_HOME` / `HF_HOME` / `HF_HUB_CACHE` | `~/.cache/huggingface` | model cache |
 | `DEMENTOR_PY` | current interpreter | python used for subprocess relaunches |
 | `DEMENTOR_GPUS` | `5,6,7` | GPUs the daemons may use (GPU4 banned on our box) |
 | `DEMENTOR_IMITATION_PKG` | `$REPO/experiments/imitation_safety` | where the shared `gpu_lease.py` lives |
