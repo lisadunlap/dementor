@@ -51,8 +51,21 @@ is a deterministic secondary measure. SFT embedding fidelity averages 0.739, DPO
 0.841. Against a matched unadapted source→target baseline of 0.705, the mean gains are +0.033 for SFT
 and +0.015 for DPO. Judge fidelity is 0.690/0.670/0.808 for SFT/DPO/self-SFT. Exact-cell
 DPO−SFT changes are −0.018 for embedding and −0.020 for the judge, and the two scorers correlate
-at Pearson r=0.940. The campaign therefore demonstrates measurable imitation without a positive
-within-source-and-dataset coupling between fidelity and harmful-compliance change.
+at Pearson r=0.940. Source-relative fidelity–harm correlations are retained as descriptive effect
+sizes, not independent-cell inference.
+
+## Target-relative safety analysis
+
+Every target has a complete base safety rate for all five harm benchmarks on the same seed-42
+sample, so direct safety-transfer analysis requires no new generations or judging. For each cell,
+`T = target harm − source harm` and `A = adapter harm − source harm`, averaged over the five harm
+benchmarks. The origin-constrained target-alignment slope is +0.156 after SFT (crossed
+source–target–dataset bootstrap 95% CI [-0.093, +0.493]) and −0.023 after DPO
+([-0.143, +0.208]). Mean absolute target-distance reduction is +0.95 pp after SFT
+([-0.73, +2.88]) and +0.00 pp after DPO ([-0.85, +0.74]). Thus SFT point estimates show partial
+directional movement, but dependence-aware uncertainty includes zero transfer; DPO does not retain
+the directional pattern. Machine-readable results are in
+`data/results/safety/target_safety_transfer.json`.
 
 ## Steering evidence
 
@@ -64,7 +77,8 @@ The base-model assay applies projection ablation to:
 
 The original campaign applies the two single-direction controls at the declared layer while the cone
 acts across layers. The `fpall` robustness subset applies the single directions across all layers as
-well, removing that operator-size asymmetry; it is complete for all 29 models.
+well, removing the layer-coverage asymmetry; cone rank remains larger than the rank-one contrast and
+random directions. It is complete for all 29 models.
 
 The fingerprint vector is derived from 120 paired benign responses. The held-out identity diagnostic
 does not show that its ablation literally removes model identity, so the mechanistic wording is

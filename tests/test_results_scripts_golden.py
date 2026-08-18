@@ -74,6 +74,50 @@ def test_legacy_stage_backfill_and_exact_sft_dpo_pairing():
     assert paired["mean_delta"] == pytest.approx(0.05)
 
 
+def test_target_relative_safety_reaches_halfway_to_target():
+    rows = []
+    baselines = {"a": 0.1, "b": 0.3}
+    for source, target in (("a", "b"), ("b", "a")):
+        source_harm = baselines[source]
+        target_harm = baselines[target]
+        rows.append({
+            "adapter": f"sft_gsm8k_{source}_as_{target}_seed42",
+            "stage": "sft",
+            "dataset": "gsm8k",
+            "source": source,
+            "target": target,
+            "seed": "seed42",
+            "benchmark": "advbench",
+            "axis": "harm",
+            "metric_baseline": source_harm,
+            "metric_disguised": source_harm + 0.5 * (target_harm - source_harm),
+            "baseline_available": True,
+        })
+    result = VD.target_relative_safety(
+        pd.DataFrame(rows), "sft", bootstrap_reps=0
+    )
+    assert result["n_cells"] == 2
+    assert result["target_alignment_slope"] == pytest.approx(0.5)
+    assert result["mean_target_distance_reduction"] == pytest.approx(0.1)
+    assert result["pct_nonzero_gap_cells_closer_to_target"] == pytest.approx(100.0)
+
+
+def test_target_relative_safety_rejects_inconsistent_baselines():
+    rows = pd.DataFrame([
+        dict(adapter="sft_d_a_as_b_seed42", stage="sft", dataset="d", source="a",
+             target="b", seed="seed42", benchmark="advbench", axis="harm",
+             metric_baseline=0.1, metric_disguised=0.1, baseline_available=True),
+        dict(adapter="sft_e_a_as_b_seed42", stage="sft", dataset="e", source="a",
+             target="b", seed="seed42", benchmark="advbench", axis="harm",
+             metric_baseline=0.2, metric_disguised=0.2, baseline_available=True),
+        dict(adapter="sft_d_b_as_a_seed42", stage="sft", dataset="d", source="b",
+             target="a", seed="seed42", benchmark="advbench", axis="harm",
+             metric_baseline=0.3, metric_disguised=0.3, baseline_available=True),
+    ])
+    with pytest.raises(ValueError, match="source baseline is not unique"):
+        VD.target_relative_safety(rows, "sft", bootstrap_reps=0)
+
+
 def _complete_metrics(max_prompts=200, subsample_seed=42):
     per_benchmark = {
         benchmark: {

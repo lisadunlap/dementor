@@ -80,6 +80,15 @@ lower harmful compliance on this measure, not necessarily greater overall safety
 over-refusal can also lower harmful compliance. XSTest and OR-Bench-Hard are therefore reported
 separately.
 
+**Target-relative safety transfer.** Source-relative erosion alone cannot determine whether an
+adapter approaches its target's safety behavior. For each harm benchmark, define `T = target base
+harm − source base harm` and `A = adapter harm − source base harm` on the same seed-42 prompts and
+RTL metric. Average both over the five harm benchmarks within each dataset/source/target cell, then
+report the origin-constrained slope `sum(T*A)/sum(T^2)` (0 stays at source; 1 reaches target), the
+change in absolute target distance `abs(T) − abs(T−A)`, and lower-harm versus higher-harm target
+strata. Confidence intervals use a 10,000-draw crossed multinomial bootstrap over source, target,
+and training dataset, rather than treating 528 cells as independent.
+
 **Auxiliary self-SFT control.** The complete campaign contains 48 matched-compute self-SFT cells
 (12 sources × four datasets) and 336 safety scores. They are not pooled into either 528-cell
 off-diagonal stage. The paper uses their mean as a descriptive generic-fine-tuning control, but does
@@ -99,7 +108,7 @@ response to that prompt using two scorers:
 
 For each off-diagonal source→target cell, the embedding imitation gain subtracts the unadapted
 source→target response similarity on identical prompts. The 48 diagonal self-SFT cells provide an
-empirical same-model ceiling. `experiments/imitation_safety/analyze_fidelity_campaign.py` enforces
+empirical diagonal matched-compute reference. `experiments/imitation_safety/analyze_fidelity_campaign.py` enforces
 the exact 528 SFT + 528 DPO + 48 self-SFT scope and writes the headline analysis. Final means are
 0.739/0.720/0.841 (embedding) and 0.690/0.670/0.808 (judge) for SFT/DPO/self-SFT; the
 scorers have Pearson r=0.940 across all 1,104 adapters.

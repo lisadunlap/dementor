@@ -82,6 +82,20 @@
 \newcommand{\FpallFingerprintRandomW}{89}
 \newcommand{\FpallFingerprintRandomP}{0.142}
 \newcommand{\SteeringEvaluations}{406}
+\newcommand{\SFTTargetAlignmentSlope}{+0.156}
+\newcommand{\DPOTargetAlignmentSlope}{-0.023}
+\newcommand{\SFTTargetAlignmentCI}{[-0.093, +0.493]}
+\newcommand{\DPOTargetAlignmentCI}{[-0.143, +0.208]}
+\newcommand{\SFTTargetDistanceReductionPP}{+0.95}
+\newcommand{\DPOTargetDistanceReductionPP}{+0.00}
+\newcommand{\SFTTargetDistanceReductionCI}{[-0.73, +2.88]}
+\newcommand{\DPOTargetDistanceReductionCI}{[-0.85, +0.74]}
+\newcommand{\SFTTargetCloserPct}{62.1}
+\newcommand{\DPOTargetCloserPct}{54.2}
+\newcommand{\SFTSaferTargetChangePP}{-1.21}
+\newcommand{\DPOSaferTargetChangePP}{+0.61}
+\newcommand{\SFTMoreHarmfulTargetChangePP}{+1.22}
+\newcommand{\DPOMoreHarmfulTargetChangePP}{+0.95}
 
 \pdfinfo{/TemplateVersion (2027.1)}
 \setcounter{secnumdepth}{2}
@@ -119,9 +133,11 @@ random-direction ablation change harm by
 \FpallFingerprintMeanEffectPP and \FpallRandomMeanEffectPP points; we do not detect a
 paired difference ($p=\FpallFingerprintRandomP$), while the refusal-cone positive
 control changes harm by \FpallConeMeanEffectPP points. This establishes assay
-sensitivity, not equivalence. Fidelity and harmful-compliance changes are not positively
-coupled across cells. Behavioral imitation is therefore measurable but neither uniform
-nor a reliable conduit for safety transfer; we do not test activation geometry after fine-tuning.
+sensitivity, not equivalence. A direct source-to-target safety projection estimates that
+SFT closes a fraction \SFTTargetAlignmentSlope of the target gap, but its crossed-model
+95\% interval \SFTTargetAlignmentCI includes no transfer; DPO's estimate is
+\DPOTargetAlignmentSlope (\DPOTargetAlignmentCI). Behavioral imitation is measurable,
+but reliable target-safety transfer is not established.
 \end{abstract}
 
 \section{Introduction}
@@ -158,12 +174,13 @@ Our results answer three bounded questions:
 \item \textbf{Target-output training produces measurable but incomplete behavioral imitation.}
   Across 528 cells per stage, SFT raises embedding similarity to the held-out target over
   the unadapted source, while DPO reduces both embedding and judge fidelity relative to
-  its exact SFT parent. The 48 self-SFT controls give an empirical same-model ceiling.
+  its exact SFT parent. The 48 self-SFT controls give a diagonal matched-compute reference.
 \item \textbf{Benign target-output fine-tuning changes harmful compliance little on average.} A complete
   core-12 matrix contains 528 SFT and 528 matched DPO safety cells. The stages are never
   pooled; DPO is compared with its exact SFT parent. Mean erosion is below one
-  point at both stages, although individual cells have material increases. Source and
-  target marginal variance shares are comparable after SFT; source is larger after DPO.
+  point at both stages, although individual cells have material increases. A direct
+  target-relative point estimate is consistent with partial safety movement after SFT,
+  but crossed source--target--dataset uncertainty includes zero; DPO shows no such alignment.
 \item \textbf{The base-model assay detects refusal removal but no cross-model-contrast--random
   difference.} In the matched all-layer subset, the refusal-cone positive control has a
   large effect, while a paired test does not detect a difference between the cross-model contrast and
@@ -259,6 +276,18 @@ preference-optimization effect is paired exactly on dataset, source, target, and
 \Delta_{\mathrm{DPO-SFT}}=E_{\mathrm{DPO}}-E_{\mathrm{SFT}}.
 \]
 
+To test transfer toward the target's own safety behavior rather than generic change from
+the source, for source $s$, target $t$, adapter $a$, and harm benchmark $b$ we define
+$T_{stb}=H_{t,b}-H_{s,b}$ and $A_{astb}=H_{a,b}-H_{s,b}$. Target baselines use the same
+seed-42 prompt sample and RTL metric; all 60 model--benchmark baselines are unique and
+complete. We first average both gaps over the five harm benchmarks within each of the 528
+dataset--source--target cells. The origin-constrained target-alignment slope
+$\hat\beta=\sum T A/\sum T^2$ has interpretable anchors: 0 stays at the source and 1 reaches
+the target. We also report $|T|-|T-A|$, the reduction in absolute target distance, and
+stratify targets with lower versus higher baseline harmful compliance. A seeded 10,000-draw
+crossed multinomial (pigeonhole) bootstrap independently resamples source, target, and
+training-dataset identities, preserving the matrix's repeated-factor dependence.
+
 We report descriptive one-way $\eta^2=SS_{\mathrm{between}}/SS_{\mathrm{total}}$
 separately for source, target, and imitation training corpus. These are marginal shares,
 not a joint variance-component model, and source-relative baselines can strengthen
@@ -284,7 +313,7 @@ Absolute response similarity can be high even without training. We therefore con
 an embedding baseline for each ordered source--target--dataset tuple by comparing the
 unadapted source's response with the target's response on those same prompts. The
 cell-level imitation gain is adapted-to-target similarity minus this unadapted
-source-to-target similarity. Self-SFT is a diagonal control and empirical ceiling, not a
+source-to-target similarity. Self-SFT is a diagonal matched-compute reference, not a
 matched self-DPO control. Fidelity and safety use disjoint held-out task and safety
 prompts, respectively.
 
@@ -401,16 +430,26 @@ difference rather than an absolute similarity.}
 \label{tab:fidelity}
 \end{table}
 
-Across cross-model cells, neither scorer has a positive association between fidelity
-and harmful-compliance change within source and dataset at either stage; exact-cell DPO-minus-SFT
-changes are likewise uncorrelated or weakly negatively associated. Specifically, the
-within-source-and-dataset Pearson results are $r=0.002,p=0.967$ (SFT) and
-$r=-0.006,p=0.895$ (DPO) for embedding fidelity, and $r=-0.140,p=0.001$ and
-$r=-0.106,p=0.015$ for judge fidelity. Correlations between exact DPO-minus-SFT
-fidelity and harm changes are $r=-0.029,p=0.506$ (embedding) and
-$r=-0.083,p=0.055$ (judge). This is the paper's
-central decoupling result: increasing measured resemblance to a target does not
-predictably transfer that target's safety behavior.
+Source-relative fidelity--harm associations are secondary and descriptive because matrix
+cells reuse sources, targets, datasets, and baselines. Within source and dataset, Pearson
+$r$ is 0.002/$-0.006$ for SFT/DPO embedding fidelity and $-0.140$/$-0.106$ for the
+behavioral judge; exact DPO-minus-SFT associations are $-0.029$ and $-0.083$. We therefore
+do not use cellwise Pearson $p$-values as independent-cell evidence.
+
+\paragraph{Direct target-relative safety test.}
+The target-alignment slope is \SFTTargetAlignmentSlope after SFT (crossed bootstrap 95\% CI
+\SFTTargetAlignmentCI) and \DPOTargetAlignmentSlope after DPO
+(\DPOTargetAlignmentCI). All five benchmark-specific SFT point estimates are positive
+(0.097--0.208), whereas DPO estimates span $-0.077$ to 0.022. SFT reduces mean absolute
+target distance by \SFTTargetDistanceReductionPP points
+(\SFTTargetDistanceReductionCI) and is closer in \SFTTargetCloserPct\% of cells with a
+nonzero target gap; DPO's corresponding values are \DPOTargetDistanceReductionPP
+(\DPOTargetDistanceReductionCI) and \DPOTargetCloserPct\%. In the 260-cell lower-harm
+target stratum, SFT changes harm by \SFTSaferTargetChangePP points, while the symmetric
+higher-harm stratum changes by \SFTMoreHarmfulTargetChangePP; after DPO both strata rise
+(\DPOSaferTargetChangePP/\DPOMoreHarmfulTargetChangePP points). Thus SFT point estimates
+show directional target-safety movement, but uncertainty across the 12-model crossed design
+includes no transfer; DPO does not preserve the directional pattern.
 
 \subsection{Small average changes coexist with harmful-compliance tails}
 
@@ -574,16 +613,17 @@ from this assay alone whether that is a model property or a probe limitation.
 \section{Discussion}
 
 The fidelity evaluation rules out the strongest ``the adapters did nothing'' account:
-target-output SFT improves held-out target similarity in almost 90\% of cells. Yet DPO
-modestly reduces fidelity while harmful compliance rises slightly on average, and
-cell-level fidelity does not positively track harm. This supports a decoupling story,
-not a claim that target identity or target safety policy is fully transferred.
+target-output SFT improves held-out target similarity in almost 90\% of cells. The direct
+safety projection adds a more specific result: SFT point estimates move toward target harm
+rates, but crossed-model uncertainty includes zero, and DPO weakens fidelity while erasing
+that directional pattern. This is incomplete, stage-dependent imitation, not reliable
+transfer of a target identity or safety policy.
 
 The safety matrix result is an average scale statement, not a universal guarantee. Mean
 harmful-compliance change is below one point, while individual cells rise by 34.3
 points after SFT and 15.1 after DPO. Source and target marginal shares are comparable
-after SFT; source is larger after DPO. Because target safety is not part of the
-estimand, these results do not measure movement toward a target safety policy.
+after SFT; source is larger after DPO. The separate target-relative estimand is therefore
+needed: the source-relative mean alone cannot be read as target-policy transfer.
 
 The steering assay answers a separate mechanistic question. The refusal positive
 control shows that the system can strongly affect harmful compliance, while the paired
@@ -597,7 +637,9 @@ consistent but not a traced causal chain through training.
 The imitation matrix uses one training seed. Safety and fidelity comparisons are
 prompt-matched within their respective held-out sets,
 but small deltas are quantized by 200-row benchmark samples. The variance decomposition
-is descriptive and does not establish causal source or target effects. The two fidelity
+is descriptive and does not establish causal source or target effects. The crossed
+target-relative interval generalizes over only 12 model identities and four datasets and
+still does not recover training-seed uncertainty. The two fidelity
 metrics measure response similarity rather than a complete latent model identity, and
 the probability-like judge score is not calibrated against human same-model judgments.
 Although all 48 self-SFT controls are complete, the design has no self-DPO stage and the
@@ -629,23 +671,19 @@ base-model steering result does not certify post-fine-tuning behavior. We releas
 per-cell metrics, judge contingencies, coverage manifests, and analysis code so that
 exclusions and tails can be audited rather than hidden by averages.
 
-\section*{Data and Code Availability}
+\section*{Anonymous Reproducibility Material}
 
-The complete audited artifact is public at
-\url{https://huggingface.co/datasets/dementor-research/dementor-complete-experiment-results}
-(verified revision \texttt{ecdc531b22c0}). It contains
-all \CampaignAdaptersPerStage SFT and \CampaignAdaptersPerStage DPO safety cells,
-\SelfSFTSafetyScores self-SFT safety scores, both 200/200 fidelity scorers for all
-\FidelityAdapters adapters, and all \SteeringEvaluations base-model steering evaluations.
-All \FidelityAdapters adapter repositories are indexed and remotely verified through
-\url{https://huggingface.co/datasets/dementor-research/dementor-adapter-registry}
-(verified revision \texttt{ed03f762d505}).
+An anonymized code-and-data package is submitted through the official supplementary-material
+channel. It contains configuration, analysis code, coverage manifests, per-cell aggregates,
+and representative audit inputs needed to reproduce every reported statistic. Permanent
+public locations and immutable revisions will be added only after double-blind review.
 
 \section{Conclusion}
 
 Across the complete core-12 matrix, target-output SFT produces measurable held-out
-imitation, but DPO slightly reduces target fidelity and fidelity is not positively
-coupled to harmful-compliance change. SFT and SFT$\rightarrow$DPO have small average
+imitation. Its target-relative safety point estimate is directionally positive but uncertain,
+while DPO slightly reduces target fidelity and erases that directional pattern. SFT and
+SFT$\rightarrow$DPO have small average
 safety effects but material upper tails; the exact-cell stage change is
 \PairedStageDeltaPP points. Source and target marginal shares are comparable after SFT,
 while source is larger after DPO. Separately, a positive-controlled base-model assay
@@ -657,4 +695,5 @@ uniform per-cell imitation success, contrast--random equivalence, or geometry pe
 through fine-tuning.
 
 \bibliography{aaai2027}
+\input{ReproducibilityChecklist.tex}
 \end{document}

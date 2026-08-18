@@ -151,6 +151,210 @@ def paired_stage_delta(df: pd.DataFrame) -> dict:
     }
 
 
+def _origin_slope(target_gap: np.ndarray, adapter_change: np.ndarray,
+                  weights: np.ndarray | None = None) -> float:
+    """Slope through the source origin: 0 stays at source; 1 reaches target."""
+    if weights is None:
+        weights = np.ones(len(target_gap), dtype=float)
+    denominator = float(np.sum(weights * target_gap * target_gap))
+    if denominator <= 0:
+        return float("nan")
+    return float(np.sum(weights * target_gap * adapter_change) / denominator)
+
+
+def _crossed_target_bootstrap(cells: pd.DataFrame, *, seed: int, reps: int) -> dict:
+    """Pigeonhole bootstrap over the crossed source, target, and dataset axes.
+
+    Matrix cells are not independent: every source, target, and training corpus is
+    reused.  Independent multinomial weights on those three design axes preserve
+    that crossed dependence while retaining all five benchmark means inside each
+    resampled cell.
+    """
+    if reps <= 0:
+        return {"reps": 0, "seed": seed, "intervals": {}}
+
+    levels = {
+        column: sorted(cells[column].unique())
+        for column in ("source", "target", "dataset")
+    }
+    indices = {
+        column: cells[column].map({value: i for i, value in enumerate(values)}).to_numpy()
+        for column, values in levels.items()
+    }
+    target_gap = cells["target_gap"].to_numpy(dtype=float)
+    adapter_change = cells["adapter_change"].to_numpy(dtype=float)
+    distance_reduction = cells["target_distance_reduction"].to_numpy(dtype=float)
+    rng = np.random.default_rng(seed)
+    draws = {
+        "target_alignment_slope": [],
+        "mean_target_distance_reduction": [],
+        "mean_target_aligned_change": [],
+        "safer_target_mean_adapter_change": [],
+        "more_harmful_target_mean_adapter_change": [],
+    }
+
+    for _ in range(reps):
+        weights = np.ones(len(cells), dtype=float)
+        for column, values in levels.items():
+            counts = np.bincount(
+                rng.integers(len(values), size=len(values)), minlength=len(values)
+            )
+            weights *= counts[indices[column]]
+        total = float(weights.sum())
+        if total <= 0:
+            continue
+        slope = _origin_slope(target_gap, adapter_change, weights)
+        if np.isfinite(slope):
+            draws["target_alignment_slope"].append(slope)
+        draws["mean_target_distance_reduction"].append(
+            float(np.sum(weights * distance_reduction) / total)
+        )
+        draws["mean_target_aligned_change"].append(
+            float(np.sum(weights * np.sign(target_gap) * adapter_change) / total)
+        )
+        for name, mask in (
+            ("safer_target_mean_adapter_change", target_gap < 0),
+            ("more_harmful_target_mean_adapter_change", target_gap > 0),
+        ):
+            stratum_weight = float(weights[mask].sum())
+            if stratum_weight > 0:
+                draws[name].append(
+                    float(np.sum(weights[mask] * adapter_change[mask]) / stratum_weight)
+                )
+
+    intervals = {
+        name: [float(value) for value in np.percentile(values, [2.5, 97.5])]
+        for name, values in draws.items()
+        if values
+    }
+    return {
+        "method": "crossed source-target-dataset multinomial (pigeonhole) bootstrap",
+        "reps": reps,
+        "seed": seed,
+        "intervals": intervals,
+    }
+
+
+def target_relative_safety(long_df: pd.DataFrame, stage: str, *,
+                           bootstrap_reps: int = BOOTSTRAP_REPS,
+                           bootstrap_seed: int = BOOTSTRAP_SEED) -> dict:
+    """Measure adapter movement along the source-to-target safety gap.
+
+    For every harm benchmark, ``target_gap = H_target - H_source`` and
+    ``adapter_change = H_adapter - H_source`` use the same configured prompt
+    sample and RTL metric.  The primary unit averages the five harm benchmarks
+    within each dataset/source/target/seed cell before analysis.
+    """
+    staged = ensure_stage(long_df)
+    harm = staged[
+        (staged["stage"] == stage)
+        & (staged["axis"] == "harm")
+        & (staged["baseline_available"] == True)  # noqa: E712
+        & (staged["source"] != staged["target"])
+    ].copy()
+    baseline_unique = harm.groupby(["source", "benchmark"])["metric_baseline"].nunique()
+    if len(baseline_unique) == 0 or not baseline_unique.eq(1).all():
+        raise ValueError("source baseline is not unique for every model and harm benchmark")
+    target_baselines = (
+        harm.groupby(["source", "benchmark"], as_index=False)["metric_baseline"].first()
+        .rename(columns={"source": "target", "metric_baseline": "metric_target"})
+    )
+    rows = harm.merge(
+        target_baselines, on=["target", "benchmark"], how="left", validate="many_to_one"
+    )
+    if rows["metric_target"].isna().any():
+        raise ValueError("target baseline coverage is incomplete")
+    rows["target_gap"] = rows["metric_target"] - rows["metric_baseline"]
+    rows["adapter_change"] = rows["metric_disguised"] - rows["metric_baseline"]
+    rows["target_distance_reduction"] = (
+        rows["target_gap"].abs()
+        - (rows["target_gap"] - rows["adapter_change"]).abs()
+    )
+    rows["target_aligned_change"] = np.sign(rows["target_gap"]) * rows["adapter_change"]
+
+    keys = ["dataset", "source", "target", "seed"]
+    benchmark_counts = rows.groupby(keys)["benchmark"].nunique()
+    expected_benchmarks = int(rows["benchmark"].nunique())
+    if expected_benchmarks == 0 or not benchmark_counts.eq(expected_benchmarks).all():
+        raise ValueError("target-relative cells do not have uniform harm-benchmark coverage")
+    cells = rows.groupby(keys, as_index=False)[["target_gap", "adapter_change"]].mean()
+    # The paper's adapter-level safety metric first averages the five harm
+    # benchmarks.  Recompute nonlinear distance after that average rather than
+    # averaging five benchmark-specific absolute distances.
+    cells["target_distance_reduction"] = (
+        cells["target_gap"].abs()
+        - (cells["target_gap"] - cells["adapter_change"]).abs()
+    )
+    cells["target_aligned_change"] = np.sign(cells["target_gap"]) * cells["adapter_change"]
+    nonzero = cells[cells["target_gap"] != 0]
+
+    def stratum(mask: pd.Series) -> dict:
+        part = cells[mask]
+        return {
+            "n_cells": int(len(part)),
+            "mean_target_gap": float(part["target_gap"].mean()) if len(part) else None,
+            "mean_adapter_change": float(part["adapter_change"].mean()) if len(part) else None,
+            "mean_target_distance_reduction": (
+                float(part["target_distance_reduction"].mean()) if len(part) else None
+            ),
+        }
+
+    per_benchmark = {}
+    for benchmark, part in rows.groupby("benchmark"):
+        per_benchmark[benchmark] = {
+            "n_rows": int(len(part)),
+            "target_alignment_slope": _origin_slope(
+                part["target_gap"].to_numpy(dtype=float),
+                part["adapter_change"].to_numpy(dtype=float),
+            ),
+            "mean_target_distance_reduction": float(part["target_distance_reduction"].mean()),
+            "pct_rows_closer_to_target": float(
+                100.0 * (part.loc[part["target_gap"] != 0, "target_distance_reduction"] > 0).mean()
+            ),
+        }
+
+    return {
+        "definition": {
+            "target_gap": "target base harm minus source base harm",
+            "adapter_change": "adapter harm minus source base harm",
+            "target_alignment_slope": (
+                "origin-constrained slope of adapter_change on target_gap; "
+                "0 stays at source and 1 reaches target"
+            ),
+            "target_distance_reduction": (
+                "absolute source-target gap minus absolute adapter-target gap; positive is closer"
+            ),
+        },
+        "stage": stage,
+        "n_benchmark_rows": int(len(rows)),
+        "n_cells": int(len(cells)),
+        "harm_benchmarks": expected_benchmarks,
+        "target_alignment_slope": _origin_slope(
+            cells["target_gap"].to_numpy(dtype=float),
+            cells["adapter_change"].to_numpy(dtype=float),
+        ),
+        "mean_absolute_target_gap": float(cells["target_gap"].abs().mean()),
+        "mean_target_aligned_change": float(cells["target_aligned_change"].mean()),
+        "mean_target_distance_reduction": float(cells["target_distance_reduction"].mean()),
+        "pct_nonzero_gap_cells_closer_to_target": float(
+            100.0 * (nonzero["target_distance_reduction"] > 0).mean()
+        ),
+        "pct_nonzero_gap_cells_moving_in_target_direction": float(
+            100.0
+            * (np.sign(nonzero["adapter_change"]) == np.sign(nonzero["target_gap"])).mean()
+        ),
+        "strata": {
+            "safer_target": stratum(cells["target_gap"] < 0),
+            "equal_mean_harm_target": stratum(cells["target_gap"] == 0),
+            "more_harmful_target": stratum(cells["target_gap"] > 0),
+        },
+        "per_benchmark": per_benchmark,
+        "bootstrap": _crossed_target_bootstrap(
+            cells, seed=bootstrap_seed, reps=bootstrap_reps
+        ),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--stage", choices=("sft", "dpo"), default="dpo")
@@ -242,6 +446,9 @@ def main() -> None:
         "eroder_threshold": ERODER_THRESHOLD,
         "paired_sft_to_dpo": paired_stage_delta(
             all_df[all_df["baseline_available"] == True].copy()  # noqa: E712
+        ),
+        "target_relative_safety": target_relative_safety(
+            pd.read_csv(args.long_csv), args.stage
         ),
     }
 

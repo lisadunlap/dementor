@@ -41,7 +41,20 @@ is 0.739 for SFT, 0.720 for DPO, and 0.841 for self-SFT. Relative to the matched
 source→target baseline (0.705), SFT gains +0.033 on average in 89.8% of cells and DPO gains +0.015 in
 75.2%. Judge fidelity is 0.690, 0.670, and 0.808, respectively; its exact-cell DPO−SFT
 change is −0.020. The two fidelity scorers correlate at Pearson r=0.940. Fidelity and
-harmful-compliance change do not show a positive within-source-and-dataset coupling.
+source-relative harmful-compliance change have small descriptive within-source-and-dataset
+associations; cellwise Pearson p-values are not treated as independent-cell inference.
+
+### Target-relative safety transfer
+
+No new model runs are needed for this analysis: every target is also a base source, so all 60
+model×harm-benchmark target baselines exist on the exact seed-42 sample. Let `T = target harm −
+source harm` and `A = adapter harm − source harm`, after averaging the five harm benchmarks per
+cell. The origin-constrained slope `sum(T*A)/sum(T^2)` is 0 when adapters stay at the source and 1
+when they reach the target. SFT's point estimate is +0.156 (crossed source–target–dataset bootstrap
+95% CI [-0.093, +0.493]); DPO's is −0.023 ([-0.143, +0.208]). SFT reduces mean target distance by
++0.95 pp ([-0.73, +2.88]) and is closer in 62.1% of nonzero-gap cells; DPO's mean reduction is
++0.00 pp ([-0.85, +0.74]). The point estimates suggest partial directional movement after SFT, but
+the dependence-aware interval includes no transfer, and DPO does not preserve the pattern.
 
 ### Descriptive variance shares
 
@@ -94,6 +107,7 @@ auxiliary diagnostics.
 |---|---|
 | [`erosion_coverage.json`](data/results/safety/erosion_coverage.json) | Strict 528/528 SFT and DPO coverage audit |
 | [`erosion_campaign_headlines.json`](data/results/safety/erosion_campaign_headlines.json) | Headline imitation and exact paired-stage statistics |
+| [`target_safety_transfer.json`](data/results/safety/target_safety_transfer.json) | Direct source→target safety-gap projection with crossed-factor uncertainty |
 | [`erosion_seed42_summary.csv`](data/results/safety/erosion_seed42_summary.csv) | Stage-labelled cell-level summary |
 | [`self_sft_headlines.json`](data/results/safety/self_sft_headlines.json) | Complete 48-control self-SFT safety aggregate |
 | [`fidelity_all_embed_long.csv`](data/results/fidelity/fidelity_all_embed_long.csv) | Exact 1,104-cell embedding-fidelity table |
