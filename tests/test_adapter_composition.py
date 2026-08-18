@@ -1,5 +1,6 @@
 """Regression tests for reconstructing local DPO adapters at inference time."""
 
+from copy import deepcopy
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -33,9 +34,23 @@ def test_dpo_generation_loads_sft_parent_then_dpo(monkeypatch):
         eos_token = "<eos>"
         padding_side = "right"
 
-    def load_adapter(model, path):
-        events.append(("adapter", model.name, path))
-        return Model("sft-wrapper" if path == "sft-parent" else "dpo-wrapper")
+    class ComposedModel(Model):
+        def __init__(self):
+            super().__init__("sft-wrapper")
+            self.base_model = self
+
+        def load_adapter(self, path, adapter_name):
+            events.append(("load_adapter", path, adapter_name))
+
+        def add_weighted_adapter(self, adapters, weights, adapter_name, combination_type):
+            events.append(("compose", adapters, weights, adapter_name, combination_type))
+
+        def set_adapter(self, adapter_name):
+            events.append(("activate", adapter_name))
+
+    def load_adapter(model, path, adapter_name=None):
+        events.append(("adapter", model.name, path, adapter_name))
+        return ComposedModel()
 
     monkeypatch.delenv("DEMENTOR_MP", raising=False)
     with patch("torch.cuda.is_available", return_value=False), \
@@ -46,12 +61,13 @@ def test_dpo_generation_loads_sft_parent_then_dpo(monkeypatch):
             "base-model", "dpo-adapter", sft_parent="sft-parent"
         )
 
-    assert model.name == "dpo-wrapper"
+    assert model.name == "sft-wrapper"
     assert input_device == "cpu"
-    assert events[:3] == [
-        ("adapter", "base", "sft-parent"),
-        ("merge", "sft-wrapper"),
-        ("adapter", "merged-sft", "dpo-adapter"),
+    assert events[:4] == [
+        ("adapter", "base", "sft-parent", "sft_parent"),
+        ("load_adapter", "dpo-adapter", "dpo"),
+        ("compose", ["sft_parent", "dpo"], [1.0, 1.0], "sft_plus_dpo", "cat"),
+        ("activate", "sft_plus_dpo"),
     ]
 
 
@@ -75,7 +91,7 @@ def test_single_adapter_path_does_not_merge(monkeypatch):
 
     tok = SimpleNamespace(pad_token_id=1, eos_token="<eos>", padding_side="right")
 
-    def load_adapter(model, path):
+    def load_adapter(model, path, adapter_name=None):
         events.append((model.name, path))
         return Model("adapter")
 
@@ -87,3 +103,56 @@ def test_single_adapter_path_does_not_merge(monkeypatch):
         erosion.load_gen_model("base-model", "sft-adapter")
 
     assert events == [("base", "sft-adapter")]
+
+
+def test_exact_cat_matches_merge_then_dpo(tmp_path):
+    """PEFT's cat composition is numerically the same effective model as the training path."""
+    import torch
+    from peft import LoraConfig, PeftModel, get_peft_model
+
+    class Toy(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.proj = torch.nn.Linear(5, 4, bias=False)
+
+        def forward(self, x):
+            return self.proj(x)
+
+    torch.manual_seed(42)
+    base = Toy().eval()
+    cfg = LoraConfig(r=2, lora_alpha=4, target_modules=["proj"], lora_dropout=0.0)
+
+    def set_lora(model, seed):
+        generator = torch.Generator().manual_seed(seed)
+        for name, parameter in model.named_parameters():
+            if "lora_" in name:
+                parameter.data.copy_(torch.randn(parameter.shape, generator=generator) * 0.1)
+
+    sft_dir = tmp_path / "sft"
+    dpo_dir = tmp_path / "dpo"
+    sft = get_peft_model(deepcopy(base), cfg, adapter_name="default")
+    set_lora(sft, 1)
+    sft.save_pretrained(sft_dir)
+
+    # Mirror training: merge SFT into W, then fit/save a fresh DPO LoRA on that merged base.
+    sft_merged = PeftModel.from_pretrained(deepcopy(base), sft_dir).merge_and_unload()
+    dpo = get_peft_model(sft_merged, cfg, adapter_name="default")
+    set_lora(dpo, 2)
+    dpo.save_pretrained(dpo_dir)
+
+    reference_base = PeftModel.from_pretrained(deepcopy(base), sft_dir).merge_and_unload()
+    reference = PeftModel.from_pretrained(reference_base, dpo_dir).eval()
+
+    composed = PeftModel.from_pretrained(deepcopy(base), sft_dir, adapter_name="sft_parent")
+    composed.load_adapter(dpo_dir, adapter_name="dpo")
+    composed.base_model.add_weighted_adapter(
+        ["sft_parent", "dpo"], [1.0, 1.0], "sft_plus_dpo", combination_type="cat"
+    )
+    composed.set_adapter("sft_plus_dpo")
+    composed.eval()
+
+    inputs = torch.randn(7, 5, generator=torch.Generator().manual_seed(3))
+    with torch.no_grad():
+        expected = reference(inputs)
+        actual = composed(inputs)
+    torch.testing.assert_close(actual, expected, rtol=1e-5, atol=1e-6)

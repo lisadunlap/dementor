@@ -538,7 +538,7 @@ def compute_fidelity(item, scorer, device=None, tok=None, mdl=None, embedder=Non
         "target": item.get("target"), "seed": item.get("seed"), "base_model": item.get("base_model"),
         "target_hf": item.get("target_hf"), "backend": item.get("backend"),
         "sft_parent": item.get("sft_parent"),
-        "adapter_composition": ("base+sft_merged+dpo_lora" if item.get("sft_parent") else
+        "adapter_composition": ("base+sft_plus_dpo_lora_exact" if item.get("sft_parent") else
                                 ("base+adapter" if item.get("adapter_dir") else "baseline")),
         "scorer": scorer, "embed_model": EMBED_MODEL if scorer == "embed" else None,
         "judge_model": (EC.RTL_JUDGE_MODEL if scorer == "judge" else None),

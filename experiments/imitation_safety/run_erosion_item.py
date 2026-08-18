@@ -172,7 +172,7 @@ def main():
             "dataset": it.get("dataset"), "source": it.get("source"), "target": it.get("target"),
             "adapter_dir": it["adapter_dir"], "seed": it["seed"],
             "sft_parent": it.get("sft_parent"),
-            "adapter_composition": ("base+sft_merged+dpo_lora" if it.get("sft_parent") else
+            "adapter_composition": ("base+sft_plus_dpo_lora_exact" if it.get("sft_parent") else
                                     ("base+adapter" if it.get("adapter_dir") else "baseline")),
             "subsample_max_prompts": args.max_prompts, "subsample_seed": args.subsample_seed,
             "rtl_judge_model": EC.RTL_JUDGE_MODEL, "graders_enabled": sorted(enabled),
