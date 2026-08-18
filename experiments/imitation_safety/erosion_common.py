@@ -499,13 +499,21 @@ def load_gen_model(base_model, adapter_dir, logf=None, *, sft_parent=None):
         tok.pad_token = tok.eos_token
     tok.padding_side = "left"
     mdl = _load_causal_lm(base_model, use_cuda=dev.startswith("cuda"))  # device_map=auto if DEMENTOR_MP
+    # Single-card loads initially materialize on CPU. Move the base before applying/merging LoRAs:
+    # merging an 8--31B SFT delta on CPU otherwise burns minutes per cell while the assigned H100
+    # sits empty. PEFT places subsequently loaded adapter tensors with the model, and merge is
+    # in-place, so this preserves the exact composition while eliminating that repeated bottleneck.
+    moved_to_device = False
+    if not mp and dev.startswith("cuda"):
+        mdl = mdl.to(dev)
+        moved_to_device = True
     if adapter_dir:
         from peft import PeftModel
         if sft_parent:
             mdl = PeftModel.from_pretrained(mdl, sft_parent)
             mdl = mdl.merge_and_unload()
         mdl = PeftModel.from_pretrained(mdl, adapter_dir)
-    if not mp:
+    if not mp and not moved_to_device:
         mdl = mdl.to(dev)
     mdl.eval()
     try:
