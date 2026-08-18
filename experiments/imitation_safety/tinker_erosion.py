@@ -401,6 +401,9 @@ def judge_worker(item_ids, benchmarks, enabled, max_prompts, subsample_seed):
                 "id": it["id"], "kind": it["kind"], "base_model": it["base_model"],
                 "dataset": it.get("dataset"), "source": it.get("source"), "target": it.get("target"),
                 "adapter_dir": it.get("adapter_dir"), "seed": it["seed"],
+                "sft_parent": it.get("sft_parent"),
+                "adapter_composition": ("base+sft_merged+dpo_lora" if it.get("sft_parent") else
+                                        ("base+adapter" if it.get("adapter_dir") else "baseline")),
                 "subsample_max_prompts": max_prompts, "subsample_seed": subsample_seed,
                 "rtl_judge_model": EC.RTL_JUDGE_MODEL, "graders_enabled": sorted(enabled),
                 "backend": "tinker" if "sampler_path" in it else "local",

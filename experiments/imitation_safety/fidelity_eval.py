@@ -158,7 +158,7 @@ def phase_gen_local(args, worklist):
         try:
             resp = FC.generate_local(it["base_model"], it["adapter_dir"], prompts,
                                      max_new_tokens=args.max_new_tokens, batch_size=args.gen_batch,
-                                     logf=logf)
+                                     logf=logf, sft_parent=it.get("sft_parent"))
             FC._write_gens_csv(FC.adapter_gens_path(it["id"]), prompts, resp)
             print(f"[gen-local] ADP ({i}/{len(todo_ads)}) {it['id']} -> done", flush=True)
         except Exception as e:

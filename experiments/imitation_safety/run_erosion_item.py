@@ -49,6 +49,9 @@ def main():
                     help="skip HarmBench-cls (13B) + Llama-Guard for a fast smoke")
     ap.add_argument("--generate-only", action="store_true",
                     help="stop after checkpointing all benchmark generations")
+    ap.add_argument("--also-fidelity", action="store_true",
+                    help="generate the adapter's held-out fidelity responses in the same model load")
+    ap.add_argument("--fidelity-max-new-tokens", type=int, default=512)
     args = ap.parse_args()
 
     it = EC.find_item(args.item_id)
@@ -79,8 +82,16 @@ def main():
             os.makedirs(bd, exist_ok=True)
             if not os.path.exists(os.path.join(bd, "all_gens.csv")):
                 need_gen.append(b)
-        if need_gen:
-            tok, mdl, input_dev = EC.load_gen_model(it["base_model"], it["adapter_dir"], logf)
+        fidelity_needed = False
+        FC = None
+        if args.also_fidelity and it["kind"] == "adapter":
+            import fidelity_common as FC
+            fidelity_needed = not FC.gens_done(it["id"])
+        if need_gen or fidelity_needed:
+            tok, mdl, input_dev = EC.load_gen_model(
+                it["base_model"], it["adapter_dir"], logf,
+                sft_parent=it.get("sft_parent"),
+            )
             try:
                 for b in need_gen:
                     sub_csv = EC.get_subsample(b, args.max_prompts, args.subsample_seed, logf)
@@ -100,13 +111,22 @@ def main():
                                      if "category" in bdf.columns else ""),
                     })
                     out.to_csv(os.path.join(od, b, "all_gens.csv"), index=False)
+                if fidelity_needed:
+                    prompts = FC.load_heldout_prompts(it["dataset"])
+                    EC.log(f"[A] fidelity/{it['dataset']}: generating {len(prompts)} prompts", logf)
+                    resps = EC.generate_responses(
+                        tok, mdl, input_dev, it["base_model"], prompts,
+                        max_new_tokens=args.fidelity_max_new_tokens,
+                        batch_size=args.gen_batch, logf=logf,
+                    )
+                    FC._write_gens_csv(FC.adapter_gens_path(it["id"]), prompts, resps)
             finally:
                 del mdl, tok
                 import gc, torch
                 gc.collect()
                 if torch.cuda.is_available():
                     torch.cuda.empty_cache()
-            EC.log("[A] generation done, model freed", logf)
+            EC.log("[A] safety/fidelity generation done, model freed", logf)
 
         if args.generate_only:
             EC.log(f"=== GENERATED {args.item_id} in {(time.time()-t0)/60:.1f}m ===", logf)
@@ -151,6 +171,9 @@ def main():
             "id": args.item_id, "kind": it["kind"], "base_model": it["base_model"],
             "dataset": it.get("dataset"), "source": it.get("source"), "target": it.get("target"),
             "adapter_dir": it["adapter_dir"], "seed": it["seed"],
+            "sft_parent": it.get("sft_parent"),
+            "adapter_composition": ("base+sft_merged+dpo_lora" if it.get("sft_parent") else
+                                    ("base+adapter" if it.get("adapter_dir") else "baseline")),
             "subsample_max_prompts": args.max_prompts, "subsample_seed": args.subsample_seed,
             "rtl_judge_model": EC.RTL_JUDGE_MODEL, "graders_enabled": sorted(enabled),
             "per_benchmark": per_bench,

@@ -280,10 +280,12 @@ def _write_gens_csv(path, prompts, responses):
 
 
 def generate_local(base_model, adapter_dir, prompts, max_new_tokens=DEFAULT_MAX_NEW_TOKENS,
-                   batch_size=16, logf=None):
+                   batch_size=16, logf=None, *, sft_parent=None):
     """Local greedy generation (reuses erosion_common.load_gen_model + generate_responses).  Model is
     freed by the caller (both A_as_B and its ref may load in one process)."""
-    tok, mdl, input_dev = EC.load_gen_model(base_model, adapter_dir, logf)
+    tok, mdl, input_dev = EC.load_gen_model(
+        base_model, adapter_dir, logf, sft_parent=sft_parent,
+    )
     try:
         return EC.generate_responses(tok, mdl, input_dev, base_model, prompts,
                                      max_new_tokens=max_new_tokens, batch_size=batch_size, logf=logf)
@@ -535,6 +537,9 @@ def compute_fidelity(item, scorer, device=None, tok=None, mdl=None, embedder=Non
         "id": iid, "kind": "adapter", "dataset": item["dataset"], "source": item.get("source"),
         "target": item.get("target"), "seed": item.get("seed"), "base_model": item.get("base_model"),
         "target_hf": item.get("target_hf"), "backend": item.get("backend"),
+        "sft_parent": item.get("sft_parent"),
+        "adapter_composition": ("base+sft_merged+dpo_lora" if item.get("sft_parent") else
+                                ("base+adapter" if item.get("adapter_dir") else "baseline")),
         "scorer": scorer, "embed_model": EMBED_MODEL if scorer == "embed" else None,
         "judge_model": (EC.RTL_JUDGE_MODEL if scorer == "judge" else None),
         "n": int(len(arr)), "n_prompts": int(len(merged)),

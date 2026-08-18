@@ -51,15 +51,20 @@ GEN_BATCH_BY_BASE = {
 dlog = DC.make_dlog(os.path.join(HERE, "logs", "daemon.log"))
 
 
-def generated(item_id, benchmarks):
+def generated(item_id, benchmarks, require_fidelity=False):
     d = os.path.join(EC.WORK, item_id)
-    return all(os.path.exists(os.path.join(d, b, "all_gens.csv")) for b in benchmarks)
+    safety_done = all(os.path.exists(os.path.join(d, b, "all_gens.csv")) for b in benchmarks)
+    if not safety_done or not require_fidelity or item_id.startswith("baseline_"):
+        return safety_done
+    import fidelity_common as FC
+    return FC.gens_done(item_id)
 
 
-def done(item_id, retry_errors=False, generation_only=False, benchmarks=EC.DEFAULT_BENCHMARKS):
+def done(item_id, retry_errors=False, generation_only=False, benchmarks=EC.DEFAULT_BENCHMARKS,
+         require_fidelity=False):
     d = os.path.join(EC.WORK, item_id)
     if generation_only:
-        return generated(item_id, benchmarks)
+        return generated(item_id, benchmarks, require_fidelity=require_fidelity)
     return os.path.exists(os.path.join(d, "metrics.json")) or (
         not retry_errors and os.path.exists(os.path.join(d, "ERROR.json"))
     )
@@ -174,6 +179,8 @@ def main():
                     help="retry pre-existing ERROR checkpoints once during this supervisor run")
     ap.add_argument("--generate-only", action="store_true",
                     help="checkpoint missing generations; use batched local judging afterward")
+    ap.add_argument("--also-fidelity", action="store_true",
+                    help="generate held-out fidelity responses in each adapter's existing model load")
     ap.add_argument("--items", default=None,
                     help="comma-separated item ids to consider (default: the full local worklist)")
     args = ap.parse_args()
@@ -187,6 +194,8 @@ def main():
              "--subsample-seed", str(args.subsample_seed)]
     if args.generate_only:
         extra.append("--generate-only")
+    if args.also_fidelity:
+        extra.append("--also-fidelity")
     selected_benchmarks = [b for b in args.benchmarks.split(",") if b]
 
     def item_done(item_id):
@@ -195,6 +204,7 @@ def main():
             retry_errors=args.retry_errors,
             generation_only=args.generate_only,
             benchmarks=selected_benchmarks,
+            require_fidelity=args.also_fidelity,
         )
 
     if args.dry_run:
@@ -271,7 +281,9 @@ def main():
                 mp_job = (launch(mp_todo[0], g2, extra), mp_todo[0]["id"], g2)
                 for g in g2:
                     idle[g] = 0
-                avail = avail[2:]
+                # Remove every claimed card. Llama-70B claims three; slicing by two could launch a
+                # single-card worker onto its third card in the same scheduler pass.
+                avail = [g for g in avail if g not in claimed]
                 inflight.add(mp_todo[0]["id"])
             else:
                 for g in claimed:  # couldn't get both -> release what we grabbed, retry next poll

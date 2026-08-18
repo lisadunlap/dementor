@@ -276,8 +276,8 @@ def build_worklist(seed="seed42", local_only=True):
     """Registry-driven worklist for the 4-dataset disguise square.
 
     Returns (adapters, baselines):
-      adapters  = [{id, kind:'adapter', key, base_model, adapter_dir, dataset, source, target, seed,
-                    needs_mp}]
+      adapters  = [{id, kind:'adapter', key, base_model, adapter_dir, sft_parent, dataset, source,
+                    target, seed, needs_mp}]
       baselines = [{id, kind:'baseline', base_model, adapter_dir:None, dataset:None, needs_mp}]
                     (one per distinct base; a baseline is dataset-independent -- it is model A UNADAPTED)
 
@@ -316,8 +316,15 @@ def build_worklist(seed="seed42", local_only=True):
         if not base_model:
             continue
         nmp = base_model in NEEDS_MP
+        # Local DPO training merges the SFT checkpoint into the base before fitting a fresh DPO
+        # LoRA. The saved DPO directory therefore contains only the second delta. Preserve the
+        # parent recorded by local_backend so inference reconstructs the trained composition:
+        # base -> SFT merge -> DPO LoRA. SFT/self-SFT and Tinker adapters have no local parent.
+        sft_parent = e.get("sft_parent") if key.startswith("dpo_") else None
         adapters.append({"id": key, "kind": "adapter", "key": key, "base_model": base_model,
-                         "adapter_dir": str(adir), "dataset": ds, "source": src, "target": tgt,
+                         "adapter_dir": str(adir),
+                         "sft_parent": str(sft_parent) if sft_parent else None,
+                         "dataset": ds, "source": src, "target": tgt,
                          "seed": "seed" + sd, "needs_mp": nmp})
         bases[base_model] = nmp
     hf2slug, _ = _slug_maps()
@@ -469,8 +476,12 @@ def prime_hub_kernels(logf=None):
                 "granite-class models may fail to load offline", logf)
 
 
-def load_gen_model(base_model, adapter_dir, logf=None):
-    """Load base (+PEFT adapter) for generation, MODEL-PARALLEL when DEMENTOR_MP=1.
+def load_gen_model(base_model, adapter_dir, logf=None, *, sft_parent=None):
+    """Load a base and its complete adapter composition for generation.
+
+    A local DPO artifact is a LoRA trained on ``base + merged SFT``. When ``sft_parent`` is
+    supplied, reconstruct that exact training-time composition by merging the SFT adapter before
+    loading the DPO LoRA. Without a parent this remains the ordinary base + one-adapter path.
 
     Reuses local_backend._load_causal_lm (bf16 on CUDA; device_map='auto' when DEMENTOR_MP is set,
     with the Gemma-4 VLM text-tower extraction). We DO NOT .to(dev) a device_map-sharded model
@@ -490,6 +501,9 @@ def load_gen_model(base_model, adapter_dir, logf=None):
     mdl = _load_causal_lm(base_model, use_cuda=dev.startswith("cuda"))  # device_map=auto if DEMENTOR_MP
     if adapter_dir:
         from peft import PeftModel
+        if sft_parent:
+            mdl = PeftModel.from_pretrained(mdl, sft_parent)
+            mdl = mdl.merge_and_unload()
         mdl = PeftModel.from_pretrained(mdl, adapter_dir)
     if not mp:
         mdl = mdl.to(dev)
@@ -498,8 +512,10 @@ def load_gen_model(base_model, adapter_dir, logf=None):
         input_dev = mdl.get_input_embeddings().weight.device
     except Exception:
         input_dev = dev
+    composition = ("base+sft_merged+dpo_lora" if sft_parent else
+                   ("base+adapter" if adapter_dir else "baseline"))
     log(f"[gen] loaded base={base_model} adapter={'yes' if adapter_dir else 'BASELINE(none)'} "
-        f"mp={mp} input_dev={input_dev}", logf)
+        f"composition={composition} mp={mp} input_dev={input_dev}", logf)
     return tok, mdl, input_dev
 
 
