@@ -30,6 +30,11 @@ SOURCE_GLOBS = (
     "tests/test_fidelity_completion.py",
     "tests/test_cone_eval_verdict.py",
 )
+# Obsolete one-off utilities can contain provider-side run identifiers that encode the
+# submitting institution.  They are not needed to audit any manuscript result.
+EXCLUDED_FILES = {
+    "dementor/training/sync_openai_metrics.py",
+}
 RESULT_FILES = (
     "data/results/safety/erosion_coverage.json",
     "data/results/safety/erosion_seed42_long.csv",
@@ -56,6 +61,8 @@ FORBIDDEN = (
     re.compile(r"ethantsliu", re.I),
     re.compile(r"lisadunlap", re.I),
     re.compile(r"dementor-research", re.I),
+    re.compile(r"uc[-_ ]?berkeley", re.I),
+    re.compile(r"trevor[-_ ]?darrell", re.I),
     re.compile(r"(?:sk-|hf_)[A-Za-z0-9_-]{20,}"),
     re.compile(r"BEGIN (?:RSA|OPENSSH|EC) PRIVATE KEY"),
 )
@@ -100,6 +107,10 @@ def selected_files() -> list[Path]:
     paths = {REPO / name for name in ROOT_FILES + RESULT_FILES}
     for pattern in SOURCE_GLOBS:
         paths.update(path for path in REPO.glob(pattern) if path.is_file())
+    paths = {
+        path for path in paths
+        if str(path.relative_to(REPO)) not in EXCLUDED_FILES
+    }
     missing = sorted(str(path.relative_to(REPO)) for path in paths if not path.is_file())
     if missing:
         raise FileNotFoundError(f"required supplement inputs missing: {missing}")
