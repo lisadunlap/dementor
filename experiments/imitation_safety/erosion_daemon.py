@@ -33,18 +33,17 @@ RUNNER = os.path.join(HERE, "run_erosion_item.py")
 # let an uncached base (e.g. Ministral-8B) fetch on first use.
 BASE_ENV = DC.hf_offline_env(EC.REPO, EC.HF_HOME, EC.HF_HUB_CACHE)
 
-# Per-base generation batch override.  The global --gen-batch (32) is calibrated for the big
-# bases: phi-4 (14B) already sits at ~64GB / 80GB at batch 32, and the 31B+ bases are memory-
-# bound, so they must stay at 32.  But the <=8B bases leave ~40GB of the card idle at batch 32,
-# so they double to 64 (still inside the proven ~64GB envelope, since max_new_tokens=256 caps the
-# KV peak).  Bases NOT listed here fall back to the global --gen-batch => zero behaviour change.
-# run_erosion_item halves the batch on OOM, so an over-estimate self-heals rather than crashing.
+# Per-base generation batch override. The 14B/31B+ bases remain at the conservative global batch
+# of 32. Live composed-DPO measurements on 80GB H100s left roughly 60GB free for the <=8B bases at
+# batch 64, so start those at 128 (E4B at 256). ``generate_responses`` atomically checkpoints only
+# completed benchmarks and halves on OOM, making an optimistic start safe for unusually long rows.
+# Bases not listed here fall back to the global --gen-batch.
 GEN_BATCH_BY_BASE = {
-    "adamo1139/aya-expanse-8b-ungated": 64,     # 8B
-    "google/gemma-4-E4B-it": 64,                # ~4B effective (matformer)
-    "meta-llama/Llama-3.1-8B-Instruct": 64,     # 8B
-    "mistralai/Ministral-8B-Instruct-2410": 64, # 8B
-    "allenai/OLMo-3-7B-Instruct": 64,           # 7B
+    "adamo1139/aya-expanse-8b-ungated": 128,     # 8B
+    "google/gemma-4-E4B-it": 256,                # ~4B effective (matformer)
+    "meta-llama/Llama-3.1-8B-Instruct": 128,     # 8B
+    "mistralai/Ministral-8B-Instruct-2410": 128, # 8B
+    "allenai/OLMo-3-7B-Instruct": 128,           # 7B
 }
 
 
