@@ -6,7 +6,10 @@
 | `data/results/safety/erosion_seed42_{summary,long}.csv` | Stage-labelled core-12 erosion tables | Current guarded rebuild |
 | `data/results/safety/erosion_variance_stats_{sft,dpo}.json` | Stage-separated headline statistics | Current guarded rebuild |
 | `data/results/safety/erosion_campaign_headlines.json` | Paper headline values and paired rung change | Current guarded rebuild |
+| `data/results/safety/self_sft_headlines.json` | 48-control self-SFT safety aggregate | Complete strict rebuild |
 | `data/results/safety/figures*/` | Stage-separated erosion figures | Current guarded rebuild |
+| `data/results/fidelity/fidelity_all_{embed,judge}_long.csv` | Exact 1,104-adapter behavioral fidelity | Current strict rebuild |
+| `data/results/fidelity/fidelity_campaign_headlines.json` | Fidelity baselines, stages, and safety association | Generated after strict gate |
 | `docs/generated_campaign_results.tex` | Generated paper macros | Current guarded rebuild |
 | `data/results/safety/base_steering_coverage.json` | Exact canonical base/fpall coverage | Current generated audit |
 | `results/` | Earlier persistence/disguise ladder | Legacy instrument context |

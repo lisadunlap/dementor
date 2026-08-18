@@ -255,7 +255,17 @@ def ref_done(dataset, target_slug):
 
 
 def scored(item_id, scorer):
-    return os.path.exists(adapter_fidelity_path(item_id, scorer))
+    path = adapter_fidelity_path(item_id, scorer)
+    try:
+        with open(path) as handle:
+            data = json.load(handle)
+    except (OSError, json.JSONDecodeError):
+        return False
+    if data.get("scorer") != scorer or int(data.get("n_prompts", -1)) != HELDOUT_N:
+        return False
+    if scorer in {"embed", "judge"}:
+        return int(data.get("n", -1)) == HELDOUT_N
+    return False
 
 
 # ==================================================================== generation
@@ -410,25 +420,56 @@ def score_judge(prompts, resp_a, resp_b, tok=None, mdl=None, batch_size=16, max_
     own = mdl is None
     if own:
         tok, mdl = RJ.load_judge()
-    scores, i = [], 0
+    scores = [float("nan")] * len(prompts)
     texts = [_judge_prompt(p, a, b) for p, a, b in zip(prompts, resp_a, resp_b)]
     t0 = time.time()
-    while i < len(texts):
-        chunk = texts[i:i + batch_size]
-        msgs = [[{"role": "system", "content": JUDGE_SYS}, {"role": "user", "content": t}]
-                for t in chunk]
-        rendered = [tok.apply_chat_template(m, tokenize=False, add_generation_prompt=True)
-                    for m in msgs]
-        enc = tok(rendered, return_tensors="pt", padding=True, add_special_tokens=False).to(mdl.device)
-        with torch.no_grad():
-            seq = mdl.generate(**enc, max_new_tokens=max_new_tokens, do_sample=False,
-                               pad_token_id=tok.pad_token_id or tok.eos_token_id)
-        new = seq[:, enc["input_ids"].shape[1]:]
-        for t in tok.batch_decode(new, skip_special_tokens=True):
-            scores.append(_parse_score(t))
-        i += len(chunk)
-        if i % 64 == 0 or i >= len(texts):
-            log(f"[judge] {i}/{len(texts)} ({i/max(time.time()-t0,1e-6):.2f}/s)", logf)
+
+    def render(messages):
+        # Qwen3 otherwise spends the small output budget on hidden reasoning and frequently reaches
+        # the token cap before emitting SCORE.  Non-thinking mode is deterministic and matches the
+        # safety judge's rendering convention.
+        try:
+            return tok.apply_chat_template(messages, tokenize=False,
+                                           add_generation_prompt=True, enable_thinking=False)
+        except TypeError:
+            return tok.apply_chat_template(messages, tokenize=False,
+                                           add_generation_prompt=True)
+
+    # Retry only genuinely unparseable rows.  Longer retry budgets repair formatting failures without
+    # substituting a guessed score or silently shrinking the denominator.
+    pending = list(range(len(texts)))
+    for pass_index, token_budget in enumerate((max_new_tokens, max(48, max_new_tokens),
+                                                max(128, max_new_tokens)), 1):
+        if not pending:
+            break
+        next_pending = []
+        for start in range(0, len(pending), batch_size):
+            indices = pending[start:start + batch_size]
+            msgs = []
+            for index in indices:
+                suffix = ("\n\nYour prior output was not parseable. Output exactly one line in "
+                          "the form `SCORE: <integer from 0 to 100>` and nothing else."
+                          if pass_index > 1 else "")
+                msgs.append([{"role": "system", "content": JUDGE_SYS},
+                             {"role": "user", "content": texts[index] + suffix}])
+            rendered = [render(message) for message in msgs]
+            enc = tok(rendered, return_tensors="pt", padding=True,
+                      add_special_tokens=False).to(mdl.device)
+            with torch.no_grad():
+                seq = mdl.generate(**enc, max_new_tokens=token_budget, do_sample=False,
+                                   pad_token_id=tok.pad_token_id or tok.eos_token_id)
+            new = seq[:, enc["input_ids"].shape[1]:]
+            for index, output in zip(indices, tok.batch_decode(new, skip_special_tokens=True)):
+                score = _parse_score(output)
+                scores[index] = score
+                if score != score:
+                    next_pending.append(index)
+        pending = next_pending
+        complete = len(texts) - len(pending)
+        log(f"[judge] pass={pass_index} parsed={complete}/{len(texts)} "
+            f"({complete/max(time.time()-t0,1e-6):.2f}/s)", logf)
+    if pending:
+        log(f"[judge] ERROR unparseable after retries: {len(pending)}/{len(texts)}", logf)
     if own:
         del mdl, tok
         import gc
@@ -455,7 +496,19 @@ def compute_fidelity(item, scorer, device=None, tok=None, mdl=None, embedder=Non
     iid = item["id"]
     out = adapter_fidelity_path(iid, scorer)
     if os.path.exists(out):
-        return json.load(open(out))
+        try:
+            with open(out) as handle:
+                existing = json.load(handle)
+            if (existing.get("scorer") == scorer
+                    and int(existing.get("n_prompts", -1)) == HELDOUT_N
+                    and int(existing.get("n", -1)) == HELDOUT_N):
+                return existing
+        except (OSError, json.JSONDecodeError):
+            pass
+        # Preserve corrupt or incomplete results for diagnosis and recompute the whole cell.  A
+        # partial judge denominator is never accepted as publication-complete.
+        invalid = out + f".invalid.{int(time.time())}"
+        os.replace(out, invalid)
     gp = adapter_gens_path(iid)
     rp = ref_csv_path(item["dataset"], item["target"])
     if not (os.path.exists(gp) and os.path.exists(rp)):
@@ -488,7 +541,16 @@ def compute_fidelity(item, scorer, device=None, tok=None, mdl=None, embedder=Non
         "fidelity_score": float(arr.mean()) if len(arr) else float("nan"),
         "fidelity_std": float(arr.std()) if len(arr) else float("nan"),
     }
-    json.dump(result, open(out, "w"), indent=2)
+    fd, temporary = tempfile.mkstemp(dir=os.path.dirname(out), suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as handle:
+            json.dump(result, handle, indent=2)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(temporary, out)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
     log(f"[score] {iid} scorer={scorer} fidelity={result['fidelity_score']:.4f} "
         f"n={result['n']}/{result['n_prompts']}", logf)
     return result

@@ -88,6 +88,10 @@ def main():
                          "ones to a single pass at the chosen depth, in a SEPARATE --outdir (parts "
                          "are cached as '<direction>_b<beta>.csv' with no layer tag, so reusing an "
                          "outdir would silently serve stale-layer controls).")
+    ap.add_argument("--single-dir-all-layers", action="store_true",
+                    help="apply the fingerprint/random intervention at every decoder layer, "
+                         "matching the refusal-cone operator. Results are written to "
+                         "eval_<benchmark>_fpall so they cannot collide with the fixed-layer run.")
     ap.add_argument("--outdir", default=None,
                     help="base output dir for eval_<bench>/ (default: WORK_ROOT/<slug>). "
                          "Cone and vectors are still read from WORK_ROOT/<slug>.")
@@ -126,6 +130,17 @@ def main():
     # not silently turn a cache miss into a network fetch between resumable cells.
     offline = os.environ.get("HF_HUB_OFFLINE", "1") in ("1", "true", "True")
     env.update(CFG.hf_env(offline=offline))  # HF_HOME/HF_HUB_CACHE/HF_HUB_DISABLE_XET/PYTHONPATH
+    # Keep runtime/compiler cache writes off quota-bound home and /data. The completion scheduler
+    # supplies a /work-backed TMPDIR; standalone runs fall back to their explicit output tree.
+    runtime_cache = os.path.join(env.get("TMPDIR", od), "dementor-runtime-cache")
+    cache_dirs = {
+        "XDG_CACHE_HOME": os.path.join(runtime_cache, "xdg"),
+        "TORCH_HOME": os.path.join(runtime_cache, "torch"),
+        "TRITON_CACHE_DIR": os.path.join(runtime_cache, "triton"),
+    }
+    for key, path in cache_dirs.items():
+        os.makedirs(path, exist_ok=True)
+        env.setdefault(key, path)
     # propagate HF_TOKEN / OPENAI_API_KEY (gated local judges + OpenAI canonical graders) from repo .env
     repo_env = CFG.REPO_ENV
     if os.path.exists(repo_env):
@@ -137,7 +152,8 @@ def main():
     results = {}
     for bench in [b.strip() for b in args.benchmarks.split(",") if b.strip()]:
         # advbench canonical result already lives in eval/; mirror to eval_advbench for a uniform table.
-        out = os.path.join(od, f"eval_{bench}")
+        suffix = "_fpall" if args.single_dir_all_layers else ""
+        out = os.path.join(od, f"eval_{bench}{suffix}")
         mp = os.path.join(out, "metrics.json")
         if os.path.exists(mp):
             print(f"[{args.slug}] {bench}: cached", flush=True)
@@ -147,6 +163,8 @@ def main():
                "--benchmark", bench, "--gen-batch", str(args.gen_batch)]
         if not args.no_controls:
             cmd += ["--vectors-ml", vml]
+        if args.single_dir_all_layers:
+            cmd += ["--single-dir-all-layers"]
         if args.adapter:
             cmd += ["--adapter", args.adapter]
         if args.max_prompts:

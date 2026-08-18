@@ -13,7 +13,8 @@ from ._cells import Cell
 
 
 def _build_sft_cfg(*, cell: Cell, ds_cfg, output_dir: Path, weights_name: str,
-                   prompt_template: str, completion_template: str):
+                   prompt_template: str, completion_template: str,
+                   registry_path: Path | None = None):
     """SFTWorkflowConfig for a cell — backend from config, hyperparameters from config.sft()."""
     from dementor.training.pipeline import LocalSFTParams, SFTWorkflowConfig, TinkerSFTParams
     from dementor.training.tinker_backend import EvaluationConfig
@@ -23,7 +24,7 @@ def _build_sft_cfg(*, cell: Cell, ds_cfg, output_dir: Path, weights_name: str,
         base_model=cell.source, batch_size=hp["batch_size"], epochs=hp["epochs"],
         learning_rate=hp["learning_rate"], prompt_template=prompt_template,
         completion_template=completion_template, weights_name=weights_name,
-        registry_path=config.registry_path(), seed=cell.seed,
+        registry_path=registry_path or config.registry_path(), seed=cell.seed,
     )
     if config.backend_for(cell.source) == "local":
         return SFTWorkflowConfig(provider="local", dataset=ds_cfg, output_dir=output_dir,

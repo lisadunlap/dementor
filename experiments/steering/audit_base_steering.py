@@ -27,7 +27,20 @@ def build_manifest() -> dict:
     full_fpall = [model for model in models
                   if all(benchmark in fpall.get(model, {})
                          for benchmark in figures.HARM_BENCHMARKS)]
-    gated_full_fpall = sorted(set(gated) & set(full_fpall))
+    campaign_gated_full_fpall = sorted(set(gated) & set(full_fpall))
+    # The primary matched-operator aggregate gates on the fpall cell's own positive-control
+    # verdict.  Merely intersecting the historical campaign gate with fpall coverage can retain a
+    # model whose all-layer positive control is invalid.
+    fpall_roster = set(figures.roster(fpall))
+    fpall_gated = sorted(
+        model for model in full_fpall
+        if model in fpall_roster and any(
+            fpall[model][benchmark]["verdict"] in figures.POSITIVE_CONTROL_PASS
+            and all(fpall[model][benchmark][arm] is not None
+                    for arm in ("cone", "fp", "rand"))
+            for benchmark in figures.HARM_BENCHMARKS
+        )
+    )
 
     def cell_record(cell: dict) -> dict:
         return {
@@ -68,12 +81,14 @@ def build_manifest() -> dict:
             "models_with_complete_base_harm": len(full_base),
             "positive_control_gated_models": len(gated),
             "models_with_complete_fpall_harm": len(full_fpall),
-            "gated_models_with_complete_fpall_harm": len(gated_full_fpall),
+            "campaign_gated_models_with_complete_fpall_harm": len(campaign_gated_full_fpall),
+            "fpall_positive_control_gated_models": len(fpall_gated),
         },
         "complete_base_harm_models": full_base,
         "positive_control_gated_models": gated,
         "complete_fpall_harm_models": full_fpall,
-        "gated_complete_fpall_harm_models": gated_full_fpall,
+        "campaign_gated_complete_fpall_harm_models": campaign_gated_full_fpall,
+        "fpall_positive_control_gated_models": fpall_gated,
         "models": {
             model: {
                 "base_harm_benchmarks": sorted(set(base[model]) & set(figures.HARM_BENCHMARKS)),

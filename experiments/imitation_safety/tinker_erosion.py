@@ -61,8 +61,15 @@ SAMPLE_ENV = dict(HF_HOME=EC.HF_HOME, HF_HUB_CACHE=SAMPLE_HF_HUB_CACHE,
                   HF_HUB_DISABLE_XET="1")
 
 # GPU-politeness env for the batched-judge worker subprocess (mirror erosion_daemon.BASE_ENV).
+RUNTIME_CACHE = os.path.join(os.path.dirname(EC.WORK), "runtime_cache")
+os.makedirs(RUNTIME_CACHE, exist_ok=True)
 JUDGE_ENV = dict(HF_HOME=EC.HF_HOME, HF_HUB_CACHE=EC.HF_HUB_CACHE,
                  HF_HUB_DISABLE_XET="1", HF_HUB_OFFLINE="1", PYTHONPATH=EC.REPO,
+                 # Home and /data are often quota-bound on the shared GPU box. Keep compiler,
+                 # Triton, and framework cache writes beside the campaign on /work.
+                 XDG_CACHE_HOME=os.path.join(RUNTIME_CACHE, "xdg"),
+                 TORCH_HOME=os.path.join(RUNTIME_CACHE, "torch"),
+                 TRITON_CACHE_DIR=os.path.join(RUNTIME_CACHE, "triton"),
                  # Reclaim fragmented reserve so the RTL-judge subprocess + canonical graders fit on
                  # one 80GB card (the batched judge peaks near the limit; ~5GB is otherwise lost to
                  # allocator fragmentation, which tipped it into OOM on the Tinker source items).
@@ -70,6 +77,9 @@ JUDGE_ENV = dict(HF_HOME=EC.HF_HOME, HF_HUB_CACHE=EC.HF_HUB_CACHE,
                                                         "expandable_segments:True"),
                  RTL_JUDGE_BATCH_SIZE=os.environ.get("RTL_JUDGE_BATCH_SIZE", "96"),
                  RTL_JUDGE_MAX_RESP_CHARS=os.environ.get("RTL_JUDGE_MAX_RESP_CHARS", "1800"))
+for _cache_dir in (JUDGE_ENV["XDG_CACHE_HOME"], JUDGE_ENV["TORCH_HOME"],
+                   JUDGE_ENV["TRITON_CACHE_DIR"]):
+    os.makedirs(_cache_dir, exist_ok=True)
 
 GPUS_DEFAULT = EC.GPUS   # env DEMENTOR_GPUS (default 5,6,7; partner 4xH100 box: DEMENTOR_GPUS=0,1,2,3)
 LEASE_HOLDER = "tinker_judge"   # gpu_lease holder label for the judge daemon (mirrors erosion_daemon)
@@ -78,6 +88,20 @@ os.makedirs(LOG_DIR, exist_ok=True)
 DLOG = os.path.join(LOG_DIR, "tinker_daemon.log")
 
 _SERVICE = None
+
+
+def default_judge_parallel(gpus=None) -> int:
+    """Use the reserved campaign pool concurrently, but retain polite sequential behavior elsewhere.
+
+    The completion supervisors may have been started before ``--parallel`` was added, so the
+    exclusive ``.priority_active`` marker is also the runtime signal that their child judge can use
+    four cards safely. Generic/shared-box invocations without that reservation remain sequential.
+    """
+    priority = os.path.join(os.path.dirname(EC.WORK), ".priority_active")
+    available = GPUS_DEFAULT if gpus is None else [
+        int(value) for value in str(gpus).split(",") if value.strip()
+    ]
+    return min(4, len(available)) if os.path.exists(priority) else 1
 
 
 def dlog(m):
@@ -139,7 +163,10 @@ def tinker_worklist(seed=None):
         if not m or (want is not None and m.group(4) != want):
             continue
         ds, src, tgt, sd = m.group(1), m.group(2), m.group(3), m.group(4)
-        if not EC.campaign_cell_allowed(ds, src, tgt, sd):
+        is_self_sft = key.startswith("self_sft_")
+        allowed = (EC.campaign_cell_allowed(ds, src, tgt, sd, allow_diagonal=True)
+                   if is_self_sft else EC.campaign_cell_allowed(ds, src, tgt, sd))
+        if not allowed:
             continue
         samp = e.get("sampler_path") or e.get("path") or e.get("checkpoint_path") or ""
         is_tinker = str(samp).startswith("tinker://") or e.get("backend") == "tinker"
@@ -420,17 +447,44 @@ def phase_judge(args, adapters, baselines, benchmarks, enabled):
     worklist = baselines + adapters  # baselines first (adapters' erosion deltas need them)
     gpus = [int(x) for x in str(args.gpus).split(",") if str(x).strip()]
     reclaimed = gpu_lease.reap()  # drop any stale leases left by a prior crashed judge/daemon run
-    dlog(f"[judge] start batch_size={args.batch_size} gpus={gpus} "
+    parallel = max(1, min(int(args.parallel), len(gpus)))
+    dlog(f"[judge] start batch_size={args.batch_size} parallel={parallel} gpus={gpus} "
          f"graders={sorted(enabled)} (baselines first) "
          f"lease_root={gpu_lease.LOCK_ROOT} reaped_stale={reclaimed}")
     failed_this_run = set()
+    running = {}
+    idle = {g: 0 for g in gpus}
+    launched_once = False
     while True:
+        # Reap completed batches first. Each batch owns disjoint item directories and one GPU
+        # lease, so independent batches can safely judge/grade concurrently.
+        for g, record in list(running.items()):
+            process = record["process"]
+            if process.poll() is None:
+                continue
+            record["log"].close()
+            gpu_lease.release(g, holder=LEASE_HOLDER)
+            batch = record["batch"]
+            dlog(
+                f"[judge] batch rc={process.returncode} GPU{g} "
+                f"(done={sum(_done(it['id']) for it in batch)}/{len(batch)})"
+            )
+            if process.returncode:
+                failed_this_run.update(it["id"] for it in batch if not _done(it["id"]))
+            del running[g]
+
+        inflight = {
+            item["id"]
+            for record in running.values()
+            for item in record["batch"]
+        }
         ready = [it for it in worklist
                  if not _done(it["id"])
                  and it["id"] not in failed_this_run
+                 and it["id"] not in inflight
                  and _sampled(it["id"], benchmarks)]
-        if not ready:
-            remaining = [it["id"] for it in worklist if not _done(it["id"])]
+        remaining = [it["id"] for it in worklist if not _done(it["id"])]
+        if not ready and not running:
             dlog(f"[judge] no ready-to-judge items; {len(remaining)} not-yet-sampled remain")
             if failed_this_run:
                 dlog(f"[judge] deferred {len(failed_this_run)} items after a failed batch: "
@@ -439,39 +493,75 @@ def phase_judge(args, adapters, baselines, benchmarks, enabled):
             if args.once or not remaining:
                 dlog("[judge] done" if not remaining else "[judge] --once: exiting")
                 return
-            time.sleep(args.interval)
-            continue
-        batch = ready[:args.batch_size]
-        # Take a card + its shared GPU lease before judging (mirrors erosion_daemon): the sustained-
-        # idle gate yields transient frees to the steering roster; the lease arbitrates THIS batch
-        # against the other sustained-idle daemons so we never race them onto the same freed card.
-        if args.gpu is not None:                       # manual pin: skip idle-wait, still take lease
-            g = int(args.gpu)
-            claimed = gpu_lease.try_claim(g, holder=LEASE_HOLDER)
-            if not claimed:
-                dlog(f"[judge] WARN pinned GPU{g} lease held by another daemon; proceeding on pin")
-        else:
-            g = wait_for_free_gpu(gpus, args.util_max, args.mem_max, args.sustained_polls, args.interval)
-            claimed = True                             # wait_for_free_gpu returns only a card we hold
-        ids = ",".join(it["id"] for it in batch)
-        env = dict(os.environ, **JUDGE_ENV, CUDA_VISIBLE_DEVICES=str(g))
-        lg = open(os.path.join(LOG_DIR, "tinker_judge_batches.log"), "a")
-        cmd = [EC.PY, os.path.abspath(__file__), "__judge_worker", ids,
-               "--benchmarks", ",".join(benchmarks), "--graders", ",".join(sorted(enabled)),
-               "--max-prompts", str(args.max_prompts), "--subsample-seed", str(args.subsample_seed)]
-        dlog(f"[judge] LAUNCH batch of {len(batch)} on GPU{g} "
-             f"(lease {'held' if claimed else 'PINNED-uncontested'}): {[it['id'] for it in batch]}")
-        try:
-            rc = subprocess.run(cmd, env=env, stdout=lg, stderr=subprocess.STDOUT).returncode
-        finally:
-            if claimed:
-                gpu_lease.release(g, holder=LEASE_HOLDER)  # free the card for other sustained-idle daemons
-        dlog(f"[judge] batch rc={rc} (done={sum(_done(it['id']) for it in batch)}/{len(batch)})")
-        if rc:
-            failed_this_run.update(it["id"] for it in batch if not _done(it["id"]))
-        if args.once:
+
+        # Track genuinely idle cards without blocking the reap loop. A blocking wait while all
+        # slots are occupied would deadlock: completed children cannot release their parent-owned
+        # leases until this loop reaps them.
+        free_slots = parallel - len(running)
+        if args.once and launched_once:
+            free_slots = 0
+        candidates = [int(args.gpu)] if args.gpu is not None else gpus
+        claimed_gpus = []
+        for g in candidates:
+            if free_slots <= 0 or not ready:
+                break
+            if g in running:
+                idle[g] = 0
+                continue
+            if args.gpu is not None:
+                is_idle = True
+            else:
+                util, memory = gpu_stat(g)
+                idle[g] = idle[g] + 1 if (
+                    util <= args.util_max and memory < args.mem_max
+                ) else 0
+                is_idle = idle[g] >= args.sustained_polls
+            if not is_idle or not gpu_lease.try_claim(g, holder=LEASE_HOLDER):
+                continue
+            claimed_gpus.append(g)
+            free_slots -= 1
+            idle[g] = 0
+
+        for g in claimed_gpus:
+            # Recompute against batches launched earlier in this same pass.
+            inflight = {
+                item["id"]
+                for record in running.values()
+                for item in record["batch"]
+            }
+            ready = [it for it in worklist
+                     if not _done(it["id"])
+                     and it["id"] not in failed_this_run
+                     and it["id"] not in inflight
+                     and _sampled(it["id"], benchmarks)]
+            if not ready:
+                gpu_lease.release(g, holder=LEASE_HOLDER)
+                continue
+            batch = ready[:args.batch_size]
+            ids = ",".join(it["id"] for it in batch)
+            env = dict(os.environ, **JUDGE_ENV, CUDA_VISIBLE_DEVICES=str(g))
+            lg = open(os.path.join(LOG_DIR, f"tinker_judge_batches_gpu{g}.log"), "a")
+            cmd = [EC.PY, os.path.abspath(__file__), "__judge_worker", ids,
+                   "--benchmarks", ",".join(benchmarks), "--graders", ",".join(sorted(enabled)),
+                   "--max-prompts", str(args.max_prompts),
+                   "--subsample-seed", str(args.subsample_seed)]
+            dlog(f"[judge] LAUNCH batch of {len(batch)} on GPU{g} (lease held): "
+                 f"{[it['id'] for it in batch]}")
+            try:
+                process = subprocess.Popen(
+                    cmd, env=env, stdout=lg, stderr=subprocess.STDOUT, start_new_session=True
+                )
+            except Exception:
+                lg.close()
+                gpu_lease.release(g, holder=LEASE_HOLDER)
+                raise
+            running[g] = {"process": process, "batch": batch, "log": lg}
+            launched_once = True
+
+        if args.once and launched_once and not running:
             dlog("[judge] --once: one batch launched, exiting")
             return
+        time.sleep(args.interval)
 
 
 # ==================================================================== status
@@ -509,8 +599,8 @@ def main():
     ap.add_argument("worker_ids", nargs="?", default=None, help="(internal) comma ids for __judge_worker")
     ap.add_argument("--seed", default="all",
                     help="'all' (default, multi-seed sweep) or a specific 'seedNN' to restrict")
-    ap.add_argument("--stage", choices=("all", "sft", "dpo"), default="all",
-                    help="restrict adapter work to one training rung (default: both)")
+    ap.add_argument("--stage", choices=("all", "sft", "dpo", "self_sft"), default="all",
+                    help="restrict adapter work to one training rung (default: all)")
     ap.add_argument("--source-backend", choices=("tinker", "local"), default="tinker",
                     help="worklist backend; local is for batched judging of cached local generations")
     ap.add_argument("--shard-count", type=int, default=1)
@@ -525,6 +615,9 @@ def main():
     ap.add_argument("--limit", type=int, default=None, help="cap number of items processed")
     ap.add_argument("--graders", default="harmbench,strongreject,sorrybench,sgbench,orbench,xstest")
     ap.add_argument("--batch-size", type=int, default=10, help="items per batched judge pass")
+    ap.add_argument("--parallel", type=int, default=None,
+                    help="maximum concurrent judge batches on distinct GPUs (default 1, or up to "
+                         "4 while an exclusive campaign priority marker is active)")
     ap.add_argument("--gpus", default=",".join(str(g) for g in EC.GPUS))
     ap.add_argument("--gpu", type=int, default=None, help="pin judge to this card (skip idle-wait)")
     ap.add_argument("--util-max", type=int, default=5)
@@ -534,6 +627,8 @@ def main():
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
+    if args.parallel is None:
+        args.parallel = default_judge_parallel(args.gpus)
 
     benchmarks = [b.strip() for b in args.benchmarks.split(",") if b.strip()]
     ALL_GRADERS = {"harmbench", "strongreject", "sorrybench", "sgbench", "orbench", "xstest"}

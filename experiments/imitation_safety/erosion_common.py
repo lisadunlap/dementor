@@ -72,10 +72,9 @@ JUDGE_ALL = _env("DEMENTOR_JUDGE_ALL", _prefer(os.path.join(_INREPO_STEER_PORT, 
 # Benchmark CSVs: committed in-package by default (experiments/imitation_safety/benchmarks/).
 BENCH_DIR = _env("DEMENTOR_BENCH_DIR", os.path.join(_HERE, "benchmarks"))
 
-# LIVE registry (authoritative chatbot_arena cells, incl. the local PEFT ones). Default: the in-package
-# snapshot committed for the partner. On our box, set DEMENTOR_REGISTRY=$REPO/data/tinker_adapters.json
-# to track the in-progress live registry instead.
-REGISTRY = _env("DEMENTOR_REGISTRY", os.path.join(_HERE, "registry", "tinker_adapters.json"))
+# Live registry.  ``config.yaml`` is the repository source of truth, including for this path;
+# callers can still override it when auditing a frozen campaign snapshot.
+REGISTRY = _env("DEMENTOR_REGISTRY", project_config.registry_path())
 # Read-only BACKUP registry (1461 entries) that carries the 3 non-chatbot disguise datasets
 # (gsm8k / oasst1 / writingprompts) as Tinker-sampled adapters.  chatbot_arena keeps coming from the
 # LIVE registry above (in-progress work); the non-chatbot datasets are merged in from here.  NEVER
@@ -222,17 +221,17 @@ def _slug_maps():
     return hf2slug, slug2hf
 
 
-# Disguise adapter key: dpo_<dataset>_<source-slug>_as_<target-slug>_seed<N>.  Groups:
+# Adapter key: {dpo,sft,self_sft}_<dataset>_<source-slug>_as_<target-slug>_seed<N>. Groups:
 #   1=dataset  2=source slug  3=target slug  4=seed number
 # Accepts both pipeline stages.  `dpo_` is the end of SFT->DPO and is what the published matrix
 # measures; `sft_` points at the same run's SFT parent and isolates the imitation step from the
 # preference step.  The capture groups are unchanged, so every existing dpo_ id resolves exactly
 # as before -- this only ADMITS the sft_ ids, which previously fell through as "unknown item id".
 ADAPTER_RE = re.compile(
-    r"^(?:dpo|sft)_(chatbot_arena|gsm8k|oasst1|writingprompts)_(.+)_as_(.+)_seed(\d+)$")
+    r"^(?:dpo|sft|self_sft)_(chatbot_arena|gsm8k|oasst1|writingprompts)_(.+)_as_(.+)_seed(\d+)$")
 
 
-def campaign_cell_allowed(dataset, source, target, seed, campaign=None):
+def campaign_cell_allowed(dataset, source, target, seed, campaign=None, *, allow_diagonal=False):
     """Whether an adapter cell belongs to the configured evaluation campaign.
 
     Set ``DEMENTOR_CAMPAIGN=all`` only for a deliberate historical/extended sweep.
@@ -243,14 +242,14 @@ def campaign_cell_allowed(dataset, source, target, seed, campaign=None):
 
     name = campaign or os.environ.get("DEMENTOR_CAMPAIGN", "imitation_safety")
     if name == "all":
-        return source != target
+        return allow_diagonal or source != target
     models = {model["slug"] for model in config.campaign_roster(name)}
     datasets = set(config.campaign_dataset_names(name))
     seeds = {str(value) for value in config.campaign_seeds(name)}
     return (
         source in models
         and target in models
-        and source != target
+        and (allow_diagonal or source != target)
         and dataset in datasets
         and str(seed).replace("seed", "") in seeds
     )
@@ -296,14 +295,23 @@ def build_worklist(seed="seed42", local_only=True):
         if not m or (want is not None and m.group(4) != want):
             continue
         ds, src, tgt, sd = m.group(1), m.group(2), m.group(3), m.group(4)
-        if not campaign_cell_allowed(ds, src, tgt, sd):
+        is_self_sft = key.startswith("self_sft_")
+        allowed = (campaign_cell_allowed(ds, src, tgt, sd, allow_diagonal=True)
+                   if is_self_sft else campaign_cell_allowed(ds, src, tgt, sd))
+        if not allowed:
             continue
         base_model = e.get("base_model")
         adir = e.get("path") or e.get("checkpoint_path")
         is_local = (e.get("backend") == "local")
+        # Completed campaign registries may replace a local checkpoint path with its verified
+        # Hugging Face PEFT repository after publication.  PeftModel.from_pretrained accepts both
+        # local directories and Hub repository ids, so retain those rows in the local-generation
+        # worklist.  Requiring os.path.isdir here silently dropped the published self-SFT controls
+        # from fidelity evaluation even though their adapter weights were complete and usable.
+        is_huggingface = (e.get("backend") == "huggingface" and bool(adir))
         has_dir = bool(adir) and os.path.isdir(str(adir)) and \
             os.path.exists(os.path.join(str(adir), "adapter_config.json"))
-        if local_only and not (is_local and has_dir):
+        if local_only and not ((is_local and has_dir) or is_huggingface):
             continue
         if not base_model:
             continue

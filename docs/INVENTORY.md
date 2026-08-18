@@ -10,6 +10,7 @@ All current headline artifacts below were regenerated after the strict coverage 
 - 12 models and four imitation datasets;
 - seed 42;
 - 528 off-diagonal SFT cells and 528 matching DPO cells;
+- 48 diagonal self-SFT controls;
 - seven safety benchmarks, using deterministic 200-row evaluation samples.
 
 Training artifacts exist for every SFT and DPO cell. Safety-evaluation coverage is established only
@@ -27,6 +28,8 @@ as evaluated cells.
 | `data/results/safety/figures_paper_{sft,dpo}/` | Stage-separated paper figures | Requires both strict gates |
 | `docs/generated_campaign_results.tex` | Generated numeric paper macros | Requires both strict gates |
 | `data/results/safety/base_steering_coverage.json` | Exact base/fpall steering coverage and verdicts | Rebuild after artifact import |
+| `data/results/fidelity/fidelity_all_{embed,judge}_long.csv` | 1,104-adapter held-out fidelity | Requires 200/200 per scorer and cell |
+| `data/results/fidelity/fidelity_campaign_headlines.json` | Fidelity baselines and stage contrasts | Requires both strict fidelity gates |
 
 Use `experiments/imitation_safety/regenerate_campaign.py` for the guarded rebuild.
 
@@ -36,9 +39,10 @@ Use `experiments/imitation_safety/regenerate_campaign.py` for the guarded rebuil
   and random-control evaluations.
 - `/data/ethantsliu/exp_steer_adapter/`: nonuniform adapter-steering archive, excluded from manuscript evidence.
 
-The consolidated base tree has 29/29 evaluated models complete on five harm benchmarks. Twenty-four
-pass the positive-control gate. Matched all-layer (`fpall`) controls are complete for 22/29 evaluated
-models and 19/24 gated models. Llama-3.3-70B is complete in both base variants. Granite's verified RTX
+The consolidated base tree has 29/29 evaluated models complete on five harm and two over-refusal
+benchmarks under both operators (406 cells total). Twenty-four pass the historical
+positive-control gate; 23 pass the primary `fpall` gate and contribute 103 harm cells.
+Llama-3.3-70B is complete in both base variants. Granite's verified RTX
 package is also complete in both variants; all five base harm verdicts are `PC_FAILS`, so it does not
 enter the gated analysis.
 
@@ -48,7 +52,8 @@ native `metrics.json` denominator remains authoritative. Older harmonized files 
 seed or prompt hash, so the generated coverage manifest records them as `harmonized_n200` without
 inventing seed provenance. It records
 the prompt count and metric source for every base/fpall benchmark cell, plus aggregate sampling
-counts; it does not apply a false global n=200 label.
+counts. The publication set now has the exact seed-42 n=200 prompt coverage for every cell; where
+legacy JSON lacks seed metadata, the strict audit reconstructs and checks its judged prompt set.
 
 ## Historical artifacts
 

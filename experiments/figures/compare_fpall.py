@@ -16,7 +16,7 @@ The roster is ALWAYS the campaign roster. Roster membership is defined by the po
 control, which this experiment does not touch, so recomputing it from variant cells
 would be wrong.
 
-Usage:  compare_fpall.py [--min-coverage N]
+Usage:  compare_fpall.py [--steer-work DIR] [--min-coverage N]
 """
 import argparse
 import importlib.util
@@ -29,6 +29,15 @@ spec = importlib.util.spec_from_file_location(
     "rb", os.path.join(HERE, "rebuild_steering_figures.py"))
 RB = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(RB)
+
+
+def default_steer_work():
+    """Prefer the audited evaluations shipped beside the publication bundle."""
+    configured = os.environ.get("DEMENTOR_STEER_WORK")
+    if configured:
+        return configured
+    bundled = os.path.abspath(os.path.join(HERE, os.pardir, "steering", "evaluations"))
+    return bundled if os.path.isdir(bundled) else RB.RDO
 
 
 def paired(camp, var, ros):
@@ -103,13 +112,19 @@ def primary_fpall_rows(variant_cells):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--min-coverage", type=int, default=1,
+    ap.add_argument("--steer-work", default=default_steer_work(),
+                    help="directory containing one audited evaluation tree per model")
+    ap.add_argument("--min-coverage", type=int, default=5,
                     help="only report models with at least this many variant benchmarks")
     ap.add_argument("--json-out", default=None,
                     help="optional path for machine-readable paired comparison statistics")
     ap.add_argument("--tex-out", default=None,
                     help="optional path for generated LaTeX steering-result macros")
     args = ap.parse_args()
+
+    if not os.path.isdir(args.steer_work):
+        raise SystemExit(f"steering evaluation directory does not exist: {args.steer_work}")
+    RB.RDO = os.path.abspath(args.steer_work)
 
     camp = RB.load_cells()
     var = RB.load_cells(variant="fpall")

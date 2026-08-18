@@ -61,8 +61,12 @@ def _default_lease_root():
     if not root:
         data = os.environ.get("DEMENTOR_DATA")
         if not data:
+            # gpu_lease.py lives at <repo>/experiments/imitation_safety/.  Walk
+            # through both package directories so a cwd-independent default
+            # lands in the repository's canonical data tree, not the accidental
+            # <repo>/experiments/data tree used by older versions.
             repo = os.environ.get("DEMENTOR_REPO") or os.path.dirname(
-                os.path.dirname(os.path.abspath(__file__)))
+                os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
             data = os.path.join(repo, "data")
         root = os.path.join(data, "imitation_safety")
     return os.path.join(root, "gpu_leases")

@@ -16,9 +16,11 @@ must not be read as greater overall safety without the separate over-refusal res
 |---|---:|---|---:|---|
 | SFT imitation safety | 12 models × 11 targets × 4 corpora | 7 safety benchmarks, n=200, seed 42 | **528/528 complete** | Claim 1 |
 | SFT→DPO imitation safety | Same exact cells and SFT parents | 7 safety benchmarks, n=200, seed 42 | **528/528 complete** | Claim 1 |
+| Self-SFT controls | 12 models × 4 corpora | 7 safety benchmarks, n=200, seed 42 | **48 adapters / 336 scores complete** | Generic fine-tuning control |
+| Behavioral fidelity | 528 SFT + 528 DPO + 48 self-SFT | 2 scorers × 200 held-out prompts | **1,104/1,104 per scorer** | Claim 1 validation |
 | Exact SFT→DPO pairing | Dataset/source/target/seed matched | 528 paired cells | **528/528 paired** | Incremental DPO analysis |
-| Base steering, historical single-layer controls | 29 base models | 5 harm benchmarks | **29 complete; 24 gated** | Secondary Claim 2 coverage |
-| Base steering, matched all-layer (`fpall`) controls | 22 complete base models | Cone, contrast, and random on identical cells | **19 gated models; 85 contributing cells** | Primary Claim 2 assay |
+| Base steering, historical single-layer controls | 29 base models | 7 benchmarks, n=200, seed 42 | **203/203 cells; 24 gated models** | Secondary Claim 2 coverage |
+| Base steering, matched all-layer (`fpall`) controls | 29 base models | Same 7 benchmark cells and sampler | **203/203 cells; 23 gated models, 103 harm cells** | Primary Claim 2 assay |
 | Adapter steering | Nonuniform archived subset | Controls applied after fine-tuning | Incomplete by design | **Excluded from paper evidence** |
 | Prompt-only safety rungs | Not launched | Would add a new intervention family | Outside current campaign | **Excluded from paper evidence** |
 
@@ -29,6 +31,17 @@ must not be read as greater overall safety without the separate over-refusal res
 | SFT | 528 | +0.02 | [-0.89, +0.90] | +0.10 | 7.4% | +34.30 | 48.1% lower than base | +1.87 |
 | SFT→DPO | 528 | +0.77 | [+0.23, +1.45] | +0.20 | 4.7% | +15.10 | 33.7% lower than base | -1.33 |
 | DPO − matched SFT | 528 pairs | +0.76 | [-0.32, +2.13] | +0.30 | — | — | 56.8% DPO higher | — |
+| Self-SFT | 48 | +0.86 | — | — | — | — | diagonal control | — |
+
+### Behavioral-fidelity results
+
+All 1,104 adapters are evaluated against their target's own responses on 200 held-out prompts with
+both a Qwen3-8B behavioral judge and deterministic MiniLM embedding cosine. Mean embedding fidelity
+is 0.739 for SFT, 0.720 for DPO, and 0.841 for self-SFT. Relative to the matched unadapted
+source→target baseline (0.705), SFT gains +0.033 on average in 89.8% of cells and DPO gains +0.015 in
+75.2%. Judge fidelity is 0.690, 0.670, and 0.808, respectively; its exact-cell DPO−SFT
+change is −0.020. The two fidelity scorers correlate at Pearson r=0.940. Fidelity and
+harmful-compliance change do not show a positive within-source-and-dataset coupling.
 
 ### Descriptive variance shares
 
@@ -44,8 +57,8 @@ These are separate marginal one-way shares, not a joint causal variance decompos
 
 | Assay | Model-level units | Contributing cells | Refusal cone (pp) | Cross-model contrast (pp) | Random control (pp) | Contrast vs random |
 |---|---:|---:|---:|---:|---:|---|
-| Matched all-layer (`fpall`), primary | 19 | 85 | +48.78 | +1.59 | +1.03 | W=62, exact p=.196 |
-| Historical single-layer controls, secondary | 24 | — | +46.81 | +0.52 | +0.64 | W=125.5, exact p=.495 |
+| Matched all-layer (`fpall`), primary | 23 | 103 | +41.73 | +1.59 | +0.75 | W=89, exact p=.142 |
+| Historical single-layer controls, secondary | 24 | — | +41.85 | +0.62 | +0.48 | W=124, exact p=.687 |
 
 The tests above fail to detect a contrast–random location difference; they are not equivalence
 tests. Granite-4-H-Small has complete base and `fpall` evaluations but is excluded from the gated
@@ -72,7 +85,7 @@ auxiliary diagnostics.
 |---:|---|---|
 | 200 | Evaluation prompts per benchmark, seed 42 | Active standard |
 | 120 | Paired benign examples used to derive a cross-model activation contrast | Derivation only; never a result denominator |
-| 300 | Historical steering evaluation cap | Legacy; disclosed where a complete n=200 rescore is unavailable |
+| 300 | Historical steering evaluation cap | Archived; current 406-cell steering publication set is n=200 |
 | 150 | Historical imitation-safety cap | Retired and excluded from the core-12 aggregate |
 
 ### Result and artifact index
@@ -82,21 +95,26 @@ auxiliary diagnostics.
 | [`erosion_coverage.json`](data/results/safety/erosion_coverage.json) | Strict 528/528 SFT and DPO coverage audit |
 | [`erosion_campaign_headlines.json`](data/results/safety/erosion_campaign_headlines.json) | Headline imitation and exact paired-stage statistics |
 | [`erosion_seed42_summary.csv`](data/results/safety/erosion_seed42_summary.csv) | Stage-labelled cell-level summary |
+| [`self_sft_headlines.json`](data/results/safety/self_sft_headlines.json) | Complete 48-control self-SFT safety aggregate |
+| [`fidelity_all_embed_long.csv`](data/results/fidelity/fidelity_all_embed_long.csv) | Exact 1,104-cell embedding-fidelity table |
+| [`fidelity_all_judge_long.csv`](data/results/fidelity/fidelity_all_judge_long.csv) | Exact 1,104-cell behavioral-judge table |
+| [`fidelity_campaign_headlines.json`](data/results/fidelity/fidelity_campaign_headlines.json) | Fidelity baselines, stage contrasts, and safety association |
 | [`base_steering_coverage.json`](data/results/safety/base_steering_coverage.json) | Per-model base/`fpall` coverage, verdicts, and sample provenance |
 | [`fpall_comparison_stats.json`](paper/naz_aaai2027/img/fpall_comparison_stats.json) | Primary matched-operator steering statistics and cohort |
 | [`fingerprint_identity_diagnostic.json`](data/results/safety/fingerprint_identity_diagnostic.json) | Held-out diagnostic limiting identity-language claims |
 | [`CAMPAIGN_CONSOLIDATION_20260810.md`](docs/CAMPAIGN_CONSOLIDATION_20260810.md) | Cross-machine and Hugging Face hashes, imports, and final scope |
 
 Dementor measures whether behavioral fingerprints persist when one language model is made to imitate
-another. The current publication experiment addresses two narrower safety questions:
+another. The current publication experiment addresses three bounded questions:
 
-1. How does benign target-output SFT or SFT→DPO change harmful compliance relative to the
+1. Does target-output SFT or SFT→DPO measurably reproduce held-out target behavior?
+2. How does that training change harmful compliance relative to the
    unadapted source?
-2. In base models, does matched ablation detect a difference between a benign cross-model activation contrast
+3. In base models, does matched ablation detect a difference between a benign cross-model activation contrast
    and a random direction, when a refusal-cone positive control fires?
 
-The paper does not establish held-out target-behavior transfer in every fine-tuned cell and does not
-use the nonuniform adapter-steering archive as evidence.
+The paper establishes an aggregate held-out imitation signal, not uniform success or complete target
+identity transfer, and does not use the nonuniform adapter-steering archive as evidence.
 
 The current safety result is generated from the complete, stage-separated core-12 campaign. Older
 `n=769`/13×13 headline numbers are historical and must not be cited as the final core-12 result.
@@ -160,9 +178,9 @@ not an evaluation sample size. Its held-out diagnostic does not justify calling 
 validated “identity direction,” so the paper calls it a **benign cross-model activation contrast**
 and limits the claim to dissociation from refusal behavior.
 
-The consolidated base tree contains complete five-harm-benchmark evaluations for 29 models; 24 pass
-the positive-control gate. The stricter matched all-layer fingerprint/random robustness variant is
-complete for 22 of the 29 models (19 gated), including Llama-3.3-70B. Granite now has a valid RTX-run
+The consolidated base tree contains complete five-harm- plus two-over-refusal-benchmark evaluations
+for 29 models under both operators (406 cells). Twenty-four pass the historical positive-control
+gate; 23 pass the primary matched all-layer gate and contribute 103 harm cells. Granite has a valid RTX-run
 cone and complete controls, but its positive control fails on all five harm benchmarks, so it remains
 in the imitation matrix and outside the gated steering analysis.
 

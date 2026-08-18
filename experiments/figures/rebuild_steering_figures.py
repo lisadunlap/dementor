@@ -39,7 +39,26 @@ import numpy as np
 REPO_ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 if REPO_ROOT not in sys.path:
     sys.path.insert(0, REPO_ROOT)
-from dementor import config
+try:
+    from dementor import config
+except ModuleNotFoundError:
+    # The Hugging Face reproducibility bundle ships this script beside the frozen
+    # config but not the installable package.  Preserve config.yaml as the source
+    # of truth for historical-directory aliases in that standalone layout.
+    import yaml
+
+    with open(os.path.join(os.path.dirname(__file__), "config.yaml"), encoding="utf-8") as handle:
+        _BUNDLE_CONFIG = yaml.safe_load(handle)
+    _BUNDLE_ALIASES = _BUNDLE_CONFIG.get("steering_roster", {}).get(
+        "artifact_slug_aliases", {}
+    )
+
+    class _StandaloneConfig:
+        @staticmethod
+        def canonical_steering_slug(slug):
+            return _BUNDLE_ALIASES.get(slug, slug)
+
+    config = _StandaloneConfig()
 
 RDO = os.environ.get("DEMENTOR_STEER_WORK", "/data/ethantsliu/exp_steer_safety/repl80_rdo")
 HARM_BENCHMARKS = ["advbench", "harmbench", "strongreject", "sorrybench", "sgbench"]

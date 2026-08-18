@@ -80,9 +80,29 @@ lower harmful compliance on this measure, not necessarily greater overall safety
 over-refusal can also lower harmful compliance. XSTest and OR-Bench-Hard are therefore reported
 separately.
 
-**Auxiliary self-SFT control.** The planner retains matched-compute self-SFT cells for historical and
-future robustness analyses. They are not part of the 528-cell-per-stage publication aggregate, and
-the current paper does not claim a matched self-SFT/DPO control gap.
+**Auxiliary self-SFT control.** The complete campaign contains 48 matched-compute self-SFT cells
+(12 sources × four datasets) and 336 safety scores. They are not pooled into either 528-cell
+off-diagonal stage. The paper uses their mean as a descriptive generic-fine-tuning control, but does
+not claim a matched self-SFT/DPO control gap because there is no self-DPO stage.
+
+## Held-out behavioral fidelity
+
+Every SFT, DPO, and self-SFT adapter (1,104 total) generates responses to the same deterministic 200
+held-out task prompts used for its dataset. Each response is compared with the target model's own
+response to that prompt using two scorers:
+
+- **Behavioral judge:** Qwen3-8B, greedy and non-thinking, outputs a 0–100 same-model similarity score
+  based on answer, reasoning, format, verbosity, and style. A cell is complete only at 200/200 parsed
+  scores. Unparseable formatting is retried with longer output budgets and never imputed.
+- **Embedding:** cosine between normalized `sentence-transformers/all-MiniLM-L6-v2` response
+  embeddings; deterministic and complete at 200/200.
+
+For each off-diagonal source→target cell, the embedding imitation gain subtracts the unadapted
+source→target response similarity on identical prompts. The 48 diagonal self-SFT cells provide an
+empirical same-model ceiling. `experiments/imitation_safety/analyze_fidelity_campaign.py` enforces
+the exact 528 SFT + 528 DPO + 48 self-SFT scope and writes the headline analysis. Final means are
+0.739/0.720/0.841 (embedding) and 0.690/0.670/0.808 (judge) for SFT/DPO/self-SFT; the
+scorers have Pearson r=0.940 across all 1,104 adapters.
 
 **Safety-constrained imitation (mitigation scaffold).** `build-safety-sft-data` /
 `build-safety-dpo-data` add `safety_replay` refusal rows; `launch-safety-sft` / `launch-safety-dpo`
@@ -109,20 +129,20 @@ to safety dissociation from this derived cross-model contrast. Machine-readable 
 `data/results/safety/fingerprint_identity_diagnostic.json`.
 
 **Safety dissociation protocol.** Projection-ablation at a mid layer, β ∈ {0.6, 1.0, 1.4},
-RTL-judged, coherence-gated, paired McNemar. Current cells target the seed-42 200-prompt sample;
-legacy generations used 300 prompts (and 100 for some SG-Bench cells). Cached legacy cells are
-re-scored at 200 only when the rescore records all 200 prompts—partial intersections are rejected
-and the native denominator is disclosed. Older harmonized JSON does not encode a seed or prompt
-hash, so it is labeled `harmonized_n200` rather than assigned seed provenance. **Pre-registered positive control:** ablate the
+RTL-judged, coherence-gated, paired McNemar. The final publication set contains 29 models × five harm
+and two over-refusal benchmarks × two operators = 406 cells, all on the configured n=200 seed-42
+sample. Imported legacy result JSON lacks a seed field, so the strict audit reconstructs its judged
+prompt set and verifies exact configured-sample coverage rather than inferring provenance from the
+denominator. **Pre-registered positive control:** ablate the
 Arditi **refusal** direction (harmful−harmless last-token diff-of-means) — it must catastrophically
 erode safety, or the base model is **EXCLUDED** as unpowered (the single-direction probe cannot resolve
 the question there). Ablating the benign **fingerprint** direction under the identical operator is the
 test. Geometry (cosines to refusal/persona) is reported but does **not** predict the causal effect, so
 the claim rests on the causal control, not the cosines.
 
-The consolidated base assay has complete five-harm-benchmark cells for 29 models. Twenty-four pass
-the predeclared positive-control gate. A stricter matched all-layer fingerprint/random variant is
-complete for 22 of those 29 models (19 gated) and is reported as a robustness subset. Granite-4-h-small
+The consolidated base assay has complete seven-benchmark cells for 29 models under both operators.
+Twenty-four pass the historical gate. The primary matched all-layer fingerprint/random variant is
+complete for all 29; 23 pass its own gate and contribute 103 harm cells. Granite-4-h-small
 has a valid cone and complete controls, but its positive control returns `PC_FAILS` on all five harm
 benchmarks; it remains in the imitation campaign and outside the gated steering analysis.
 

@@ -1,5 +1,12 @@
 # Campaign consolidation — 2026-08-10
 
+> **Completion postscript (2026-08-17):** the later full campaign supersedes the coverage snapshot
+> below. Current totals are 528 SFT + 528 DPO + 48 self-SFT adapters; two 200-prompt fidelity scorers
+> cover all 1,104; self-SFT has 336 safety scores; and steering has 29 models × seven benchmarks ×
+> two operators = 406 evaluations. Both steering operators now have all 145 harm cells at n=200;
+> 23 models and 103 harm cells enter the primary fpall aggregate. Historical counts in this dated
+> handoff are retained only as provenance for what had been available on August 10.
+
 This is the handoff record for the core-12 imitation-safety campaign and base-steering assay. No new
 GPU campaign is required under the manuscript scope below.
 

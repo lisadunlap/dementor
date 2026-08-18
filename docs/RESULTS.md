@@ -27,6 +27,10 @@ The committed coverage manifest at `data/results/safety/erosion_coverage.json` r
 and 528/528 DPO cells. The committed headline tables, figures, and macros were regenerated only
 after both stages passed the strict gate.
 
+The diagonal control contains 48 self-SFT adapters and 336 safety scores. Behavioral fidelity is
+separately complete for all 1,104 adapters (528 SFT, 528 DPO, and 48 self-SFT), with exactly 200
+parsed prompt comparisons under both the behavioral judge and embedding scorer.
+
 ## Stage-separated analysis
 
 `build_erosion_csv.py` writes an explicit `stage` column. All distributions, variance decompositions,
@@ -39,39 +43,43 @@ Positive erosion means the adapted source has higher harmful compliance than its
 baseline; negative erosion means lower harmful compliance on the RTL metric, not necessarily greater
 overall safety. The over-refusal change is reported separately.
 
+## Behavioral-fidelity analysis
+
+Each adapter is compared with its target model's own responses on 200 held-out prompts from the
+training corpus. The Qwen3-8B scorer judges same-model behavioral similarity; MiniLM embedding cosine
+is a deterministic secondary measure. SFT embedding fidelity averages 0.739, DPO 0.720, and self-SFT
+0.841. Against a matched unadapted source→target baseline of 0.705, the mean gains are +0.033 for SFT
+and +0.015 for DPO. Judge fidelity is 0.690/0.670/0.808 for SFT/DPO/self-SFT. Exact-cell
+DPO−SFT changes are −0.018 for embedding and −0.020 for the judge, and the two scorers correlate
+at Pearson r=0.940. The campaign therefore demonstrates measurable imitation without a positive
+within-source-and-dataset coupling between fidelity and harmful-compliance change.
+
 ## Steering evidence
 
 The base-model assay applies projection ablation to:
 
 1. a refusal cone, which is the positive control;
-2. a benign cross-model fingerprint/provenance contrast;
+2. a benign cross-model activation contrast;
 3. a norm-matched random direction.
 
 The original campaign applies the two single-direction controls at the declared layer while the cone
 acts across layers. The `fpall` robustness subset applies the single directions across all layers as
-well, removing that operator-size asymmetry; its smaller 22-model coverage is reported explicitly.
+well, removing that operator-size asymmetry; it is complete for all 29 models.
 
 The fingerprint vector is derived from 120 paired benign responses. The held-out identity diagnostic
 does not show that its ablation literally removes model identity, so the mechanistic wording is
 limited to dissociation between the benign provenance contrast and refusal behavior.
 
-The 200/seed-42 evaluation standard is exact for the imitation matrix and newly generated steering cells. Some
-legacy steering generations used 300 prompts (or 100 for SG-Bench) and do not contain the complete
-new seed-42 set. Their cached intersections are not mislabeled as n=200: the figure loader accepts a
-`metrics_n200.json` file only when it records all 200 prompts. Otherwise it uses the native metric
-and records the denominator derived from the baseline rows in `all_gens.csv` in
-`base_steering_coverage.json`.
+The publication steering design is 29 models × seven benchmarks × two operators = 406 evaluations,
+all with the configured n=200 seed-42 prompt set. Imported legacy result JSON does not encode
+a seed, so the strict audit reconstructs judged prompts and verifies exact sample coverage instead
+of inferring provenance from the denominator. Among the
+145 harm cells per operator, 58 base and 60 fpall cells are explicit harmonized rescores; the
+remainder are native n=200 files.
 
-The generated manifest makes that mixture explicit. Among 145 canonical base harm cells, 58 are
-complete harmonized n=200 rescores, 74 retain native n=300, 12 retain native n=100, and one retains native
-n=200 without a recoverable seed field. Among 113 fpall cells, the corresponding counts are 55, 51,
-and 7. Older harmonized files do not encode a seed or prompt hash, so they are not labeled seed 42.
-Aggregate steering plots therefore disclose mixed per-cell denominators rather than claiming that
-every legacy generation used the current sampler.
-
-The consolidated base tree contains complete five-harm-benchmark evaluations for 29 models; 24 pass
-the positive-control gate. The matched all-layer fingerprint/random robustness variant is complete
-for 22/29 evaluated models and 19/24 gated models. Granite-4-h-small now has a valid, independently
+The consolidated base tree contains complete seven-benchmark evaluations for 29 models under both
+operators. Twenty-four pass the historical positive-control gate; 23 pass the fpall gate and
+contribute 103 harm cells to the primary aggregate. Granite-4-h-small now has a valid, independently
 verified RTX cone and complete base/fpall cells, but its positive control returns `PC_FAILS` on every
 harm benchmark. It remains in the 12-model imitation matrix and outside the gated steering analysis.
 

@@ -14,7 +14,7 @@ from pathlib import Path
 
 from dementor import config
 
-from ._cells import Cell, dpo_data_path, sft_data_path
+from ._cells import Cell, dpo_data_path, self_sft_data_path, sft_data_path
 from ._constants import (
     DATASET_TEMPLATES,
     DPO_OUTPUT_DIR,
@@ -96,6 +96,9 @@ def launch_local_cell(
     grad_accum: int | None = None,
     epochs: int | None = None,
     prep_token: str | None = None,
+    self_sft: bool = False,
+    sft_output_root: Path | None = None,
+    registry_path: Path | None = None,
 ) -> dict:
     """Run ONE local (gemma-4) cell's LoRA SFT and/or DPO in the current process.
 
@@ -122,20 +125,26 @@ def launch_local_cell(
         raise ValueError(
             f"{source} is not a local-backend model. Use launch-sft/launch-dpo for Tinker models."
         )
+    if self_sft and source != target:
+        raise ValueError("self-SFT requires source == target")
+    if self_sft and phase != "sft":
+        raise ValueError("self-SFT supports only phase='sft'; there is no self-DPO control")
 
     cell = Cell(source=source, target=target, dataset=dataset, seed=seed)
     prompt_template, completion_template = DATASET_TEMPLATES[cell.dataset]
     name = f"{MODEL_SLUG[cell.source]}_as_{MODEL_SLUG[cell.target]}_seed{cell.seed}"
-    sft_out_dir = SFT_OUTPUT_DIR / cell.dataset / name
+    sft_root = Path(sft_output_root) if sft_output_root is not None else SFT_OUTPUT_DIR
+    sft_out_dir = sft_root / cell.dataset / name
     dpo_out_dir = DPO_OUTPUT_DIR / cell.dataset / name
     sft_hp = config.sft()
     dpo_hp = config.dpo()
     summary: dict = {"cell": cell.slug, "source": source, "target": target, "phase": phase}
 
     if phase in ("sft", "all"):
-        sft_csv = sft_data_path(cell)
+        sft_csv = self_sft_data_path(cell) if self_sft else sft_data_path(cell)
         if not sft_csv.exists():
-            raise FileNotFoundError(f"SFT data missing: {sft_csv} (run `dementor-matrix build-sft-data`).")
+            build_cmd = "build-self-sft-data" if self_sft else "build-sft-data"
+            raise FileNotFoundError(f"SFT data missing: {sft_csv} (run `dementor-matrix {build_cmd}`).")
         ds_cfg = SFTDatasetConfig(
             train_csv=sft_csv, eval_csv=None, prompt_column="prompt",
             completion_column="model_response", train_size=sft_hp.get("train_size", 500),
@@ -146,8 +155,9 @@ def launch_local_cell(
             batch_size=per_device_batch_size or sft_hp["batch_size"],
             epochs=epochs or sft_hp["epochs"], learning_rate=sft_hp["learning_rate"],
             prompt_template=prompt_template, completion_template=completion_template,
-            weights_name=f"sft_{cell.slug}", output_dir=sft_out_dir,
-            registry_path=config.registry_path(), seed=cell.seed,
+            weights_name=f"{'self_sft' if self_sft else 'sft'}_{cell.slug}", output_dir=sft_out_dir,
+            registry_path=Path(registry_path) if registry_path is not None else config.registry_path(),
+            seed=cell.seed,
             lora_kwargs=config.lora(), gradient_accumulation_steps=grad_accum,
         )
         summary["sft_output_dir"] = str(sft_out_dir)

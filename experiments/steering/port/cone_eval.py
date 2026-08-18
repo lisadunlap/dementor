@@ -26,7 +26,10 @@ from dementor.steering.steering_rung import make_ablation_hook
 
 EXP = CFG.STEER_DATA.rstrip("/") + "/"  # AdvBench harmful300.csv data dir (env DEMENTOR_STEER_DATA)
 BENCH_DIR = CFG.BENCH_DIR               # other benchmark CSVs (env DEMENTOR_STEER_BENCH_DIR)
-JUDGE_MODEL = "Qwen/Qwen3-8B"
+# Keep the judge identity aligned with every other steering/imitation entrypoint.  In particular,
+# CFG resolves a complete local Qwen3-8B checkout before falling back to the Hub id; hard-coding the
+# latter here breaks otherwise resumable offline cells after generation has already completed.
+JUDGE_MODEL = CFG.JUDGE_MODEL
 HARMBENCH_CLS = "cais/HarmBench-Llama-2-13b-cls"  # optional native HarmBench grader
 # Which layer's fingerprint/random vectors to PULL from --vectors-ml, and (in the
 # default single-layer mode) where to ablate them. The depth-sweep robustness runs
@@ -239,9 +242,12 @@ def stage_generate(args, od):
     def perplexity(resps, pbs=0, max_len=1024):
         # pbs default 16 OOMs big-vocab models (the fp32 log_softmax is pbs*seq*vocab*4B -- 10.5 GiB
         # at 262k vocab on top of a resident 62 GB 31B). DEMENTOR_PPL_BS caps it (4 -> ~2.6 GiB);
-        # 0 keeps the historical 16 (every small-vocab roster model is unchanged).
+        # 0 keeps the historical 16 for small-vocab models and selects 4 for
+        # >=200k-vocab models.  This only chunks the same row-wise calculation;
+        # it does not change prompts, logits, or the resulting perplexities.
         if pbs <= 0:
-            pbs = int(os.environ.get("DEMENTOR_PPL_BS", "16"))
+            default_pbs = 4 if len(tok) >= 200_000 else 16
+            pbs = int(os.environ.get("DEMENTOR_PPL_BS", str(default_pbs)))
         if os.environ.get("DEMENTOR_CONE_SKIP_PPL", "0").lower() in ("1", "true", "yes"):
             return [0.0] * len(resps)
         outp = [float("nan")] * len(resps); specs = []

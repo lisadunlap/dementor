@@ -219,3 +219,8 @@ data/results/bridge_decontam/cells/
 
 # Local run logs (campaign drivers, monitors); not artifacts.
 logs/
+
+# Runtime-only GPU lease state.  The experiments/data path is retained here as
+# a guard for lease files created by older versions of gpu_lease.py.
+/data/imitation_safety/gpu_leases/
+/experiments/data/

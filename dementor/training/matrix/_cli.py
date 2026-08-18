@@ -159,6 +159,8 @@ def main() -> int:
     self_sft_p.add_argument("--parallel", type=int, default=1)
     self_sft_p.add_argument("--models", nargs="*", default=MODELS)
     self_sft_p.add_argument("--datasets", nargs="*", default=list(TRAIN_DATASETS))
+    self_sft_p.add_argument("--output-root", type=Path, default=SELF_SFT_OUTPUT_DIR)
+    self_sft_p.add_argument("--registry-path", type=Path, default=None)
 
     self_mon_p = sub.add_parser("monitor-self-sft", help="Summarize self-SFT drift-control registry/log status.")
     self_mon_p.add_argument("--json", action="store_true")
@@ -231,6 +233,19 @@ def main() -> int:
     cell_p.add_argument("--grad-accum", type=int, default=None,
                         help="Gradient accumulation steps (preserve effective batch when lowering per-device).")
     cell_p.add_argument("--epochs", type=int, default=None, help="Override SFT epochs.")
+
+    self_cell_p = sub.add_parser(
+        "launch-local-self-sft-cell",
+        help="Run ONE local diagonal self-SFT control with explicit output and registry roots.",
+    )
+    self_cell_p.add_argument("--source", required=True, help="Local-backend source model id")
+    self_cell_p.add_argument("--dataset", required=True, choices=list(TRAIN_DATASETS))
+    self_cell_p.add_argument("--seed", type=int, required=True)
+    self_cell_p.add_argument("--output-root", type=Path, default=SELF_SFT_OUTPUT_DIR)
+    self_cell_p.add_argument("--registry-path", type=Path, default=None)
+    self_cell_p.add_argument("--per-device-batch-size", type=int, default=None)
+    self_cell_p.add_argument("--grad-accum", type=int, default=None)
+    self_cell_p.add_argument("--epochs", type=int, default=None)
 
     bf_p = sub.add_parser(
         "backfill-export",
@@ -346,7 +361,8 @@ def main() -> int:
             parallel=args.parallel,
             alias_prefix="self_sft",
             data_path_fn=self_sft_data_path,
-            output_root=SELF_SFT_OUTPUT_DIR,
+            output_root=args.output_root,
+            registry_path=args.registry_path,
         )
         out_path = args.manifest_out or (DATA / "results" / "matrix" / "self_sft_manifest.json")
         out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -495,6 +511,25 @@ def main() -> int:
             per_device_batch_size=args.per_device_batch_size,
             grad_accum=args.grad_accum,
             epochs=args.epochs,
+        )
+        print(json.dumps(summary, indent=2, default=str))
+        return 0
+
+    if args.cmd == "launch-local-self-sft-cell":
+        _require_campaign_stages("self_sft")
+        source = _resolve_model_arg(args.source)
+        summary = launch_local_cell(
+            source=source,
+            target=source,
+            dataset=args.dataset,
+            seed=args.seed,
+            phase="sft",
+            per_device_batch_size=args.per_device_batch_size,
+            grad_accum=args.grad_accum,
+            epochs=args.epochs,
+            self_sft=True,
+            sft_output_root=args.output_root,
+            registry_path=args.registry_path,
         )
         print(json.dumps(summary, indent=2, default=str))
         return 0

@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import time
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -113,6 +114,7 @@ def launch_sft(
     alias_prefix: str = "sft",
     data_path_fn=sft_data_path,
     output_root=SFT_OUTPUT_DIR,
+    registry_path: Path | None = None,
 ) -> dict:
     """Launch SFT jobs for the given cells.
 
@@ -131,7 +133,7 @@ def launch_sft(
         cells = cells[:max_jobs]
 
     # Skip cells whose adapter is already registered (resumability).
-    registry_path = DATA / "tinker_adapters.json"
+    registry_path = Path(registry_path or (DATA / "tinker_adapters.json"))
     registered: set[str] = set()
     if registry_path.exists() and not dry_run:
         try:
@@ -193,6 +195,7 @@ def launch_sft(
         sft_cfg = _build_sft_cfg(
             cell=cell, ds_cfg=ds_cfg, output_dir=output_dir, weights_name=weights_name,
             prompt_template=prompt_template, completion_template=completion_template,
+            registry_path=registry_path,
         )
         pending.append((cell, record, sft_cfg))
 
@@ -226,7 +229,7 @@ def launch_sft(
         # stored in the registry (different endpoint from sampler_path).
         checkpoint_path = None
         try:
-            registry = json.loads((DATA / "tinker_adapters.json").read_text())
+            registry = json.loads(registry_path.read_text())
             entry = registry.get(record["weights_name"], {})
             if isinstance(entry, dict):
                 checkpoint_path = entry.get("checkpoint_path")

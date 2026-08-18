@@ -211,10 +211,15 @@ def phase_build_csv(args, worklist):
     import glob
     import pandas as pd
     rows = []
+    allowed_ids = {item["id"] for item in worklist}
     for jf in glob.glob(os.path.join(FC.ADAPTERS, "*", f"fidelity_{args.scorer}.json")):
         try:
             d = json.load(open(jf))
         except Exception:
+            continue
+        # work_fidelity can contain exploratory or older multi-seed artifacts.  Publication
+        # aggregates must contain only the config-defined worklist passed to this invocation.
+        if d.get("id") not in allowed_ids:
             continue
         if args.seed not in ("all", None) and d.get("seed") != args.seed:
             continue

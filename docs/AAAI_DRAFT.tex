@@ -17,6 +17,26 @@
 \newcommand{\CampaignEvaluationPrompts}{200}
 \newcommand{\CampaignEvaluationSeed}{42}
 \newcommand{\CampaignMaxNewTokens}{256}
+\newcommand{\FidelityAdapters}{1104}
+\newcommand{\SelfSFTAdapters}{48}
+\newcommand{\CrossModelSafetyScores}{7392}
+\newcommand{\SelfSFTSafetyScores}{336}
+\newcommand{\TotalSafetyScores}{7728}
+\newcommand{\SelfSFTMeanErosionPP}{+0.86}
+\newcommand{\SelfSFTPctAtLeastFive}{6.3}
+\newcommand{\SFTEmbedFidelity}{0.739}
+\newcommand{\DPOEmbedFidelity}{0.720}
+\newcommand{\SelfSFTEmbedFidelity}{0.841}
+\newcommand{\SFTJudgeFidelity}{0.690}
+\newcommand{\DPOJudgeFidelity}{0.670}
+\newcommand{\SelfSFTJudgeFidelity}{0.808}
+\newcommand{\SFTEmbedGain}{+0.033}
+\newcommand{\DPOEmbedGain}{+0.015}
+\newcommand{\SFTEmbedGainPositivePct}{89.8}
+\newcommand{\DPOEmbedGainPositivePct}{75.2}
+\newcommand{\DPOminusSFTEmbedFidelity}{-0.018}
+\newcommand{\DPOminusSFTJudgeFidelity}{-0.020}
+\newcommand{\FidelityScorerCorrelation}{0.940}
 \newcommand{\SFTMeanErosionPP}{+0.02}
 \newcommand{\DPOMeanErosionPP}{+0.77}
 \newcommand{\SFTMeanErosionCI}{[-0.89, +0.90]}
@@ -48,25 +68,26 @@
 \newcommand{\DPOEroderSources}{4}
 \newcommand{\BaseSteeringModels}{29}
 \newcommand{\BaseSteeringGatedModels}{24}
-\newcommand{\FpallCompleteModels}{22}
-\newcommand{\FpallGatedModels}{19}
-\newcommand{\FpallPairedCells}{85}
-\newcommand{\ConeMeanEffectPP}{+46.81}
-\newcommand{\FingerprintMeanEffectPP}{+0.52}
-\newcommand{\RandomMeanEffectPP}{+0.64}
-\newcommand{\FingerprintRandomW}{125.5}
-\newcommand{\FingerprintRandomP}{0.495}
+\newcommand{\FpallCompleteModels}{29}
+\newcommand{\FpallGatedModels}{23}
+\newcommand{\FpallPairedCells}{103}
+\newcommand{\ConeMeanEffectPP}{+41.85}
+\newcommand{\FingerprintMeanEffectPP}{+0.62}
+\newcommand{\RandomMeanEffectPP}{+0.48}
+\newcommand{\FingerprintRandomW}{124.0}
+\newcommand{\FingerprintRandomP}{0.687}
 \newcommand{\FpallFingerprintMeanEffectPP}{+1.59}
-\newcommand{\FpallRandomMeanEffectPP}{+1.03}
-\newcommand{\FpallConeMeanEffectPP}{+48.78}
-\newcommand{\FpallFingerprintRandomW}{62}
-\newcommand{\FpallFingerprintRandomP}{0.196}
+\newcommand{\FpallRandomMeanEffectPP}{+0.75}
+\newcommand{\FpallConeMeanEffectPP}{+41.73}
+\newcommand{\FpallFingerprintRandomW}{89}
+\newcommand{\FpallFingerprintRandomP}{0.142}
+\newcommand{\SteeringEvaluations}{406}
 
 \pdfinfo{/TemplateVersion (2027.1)}
 \setcounter{secnumdepth}{2}
 
-\title{Harmful Compliance Under Benign Target-Output Fine-Tuning:\\
-A Complete Matrix and a Positive-Controlled Steering Assay}
+\title{Behavioral Imitation and Safety Change Under Target-Output Fine-Tuning:\\
+A Complete SFT/DPO Matrix and a Positive-Controlled Steering Assay}
 
 \author{Anonymous Submission}
 \affiliations{Anonymous Institution}
@@ -75,11 +96,17 @@ A Complete Matrix and a Positive-Controlled Steering Assay}
 \maketitle
 
 \begin{abstract}
-How much does a source language model's harmful compliance change when it is trained
-on a benign target model's outputs? We evaluate every ordered off-diagonal pair in a
+Does training a source language model on a benign target's outputs reproduce target
+behavior, and does stronger imitation transfer safety behavior? We evaluate every ordered off-diagonal pair in a
 \CampaignModels-model cohort over \CampaignDatasets datasets, yielding
 \CampaignAdaptersPerStage supervised-fine-tuning (SFT) cells and
-\CampaignAdaptersPerStage matched SFT$\rightarrow$DPO cells. All imitation-safety
+\CampaignAdaptersPerStage matched SFT$\rightarrow$DPO cells, plus \SelfSFTAdapters
+self-SFT controls. All \FidelityAdapters adapters receive two 200-prompt held-out
+behavioral-fidelity evaluations; the complete safety campaign contains
+\TotalSafetyScores adapter--benchmark scores. SFT increases embedding similarity to the target over
+the unadapted source by \SFTEmbedGain on average (positive in
+\SFTEmbedGainPositivePct\% of cells); DPO's gain is smaller at \DPOEmbedGain and its
+exact-cell fidelity is \DPOminusSFTEmbedFidelity below SFT. All imitation-safety
 comparisons use the same seed-\CampaignEvaluationSeed, \CampaignEvaluationPrompts-prompt
 samples and binary refuse-then-leak judge. Relative to each unadapted source, mean
 harmful-compliance change is \SFTMeanErosionPP percentage points after SFT
@@ -92,9 +119,9 @@ random-direction ablation change harm by
 \FpallFingerprintMeanEffectPP and \FpallRandomMeanEffectPP points; we do not detect a
 paired difference ($p=\FpallFingerprintRandomP$), while the refusal-cone positive
 control changes harm by \FpallConeMeanEffectPP points. This establishes assay
-sensitivity, not equivalence. The experiments concern a fine-tuning objective, not
-verified target-behavior transfer in every cell, and do not test activation geometry
-after fine-tuning.
+sensitivity, not equivalence. Fidelity and harmful-compliance changes are not positively
+coupled across cells. Behavioral imitation is therefore measurable but neither uniform
+nor a reliable conduit for safety transfer; we do not test activation geometry after fine-tuning.
 \end{abstract}
 
 \section{Introduction}
@@ -107,11 +134,13 @@ fine-tuning can also degrade alignment \citep{qi2023}. It is therefore tempting 
 interpret safety changes after target-output training as transfer of the target's safety
 policy, or as evidence that a constructed cross-model contrast and refusal share a mechanism.
 
-That interpretation pools three different questions. First, what happens to safety
-after supervised imitation? Second, what additional change follows preference
-optimization? Third, is a benign cross-model activation contrast causally coupled to
-refusal in the unadapted model? The first two require separately analyzed SFT and DPO
-cells on identical source--target--dataset tuples. The third requires an intervention
+That interpretation pools four different questions. First, did target-output training
+actually move held-out behavior toward the target? Second, what happens to safety after
+supervised imitation? Third, what additional change follows preference optimization?
+Fourth, is a benign cross-model activation contrast causally coupled to
+refusal in the unadapted model? The first three require separately analyzed SFT and DPO
+cells on identical source--target--dataset tuples; the first additionally requires a
+held-out imitation measure. The fourth requires an intervention
 that demonstrably reaches refusal, together with a matched null control. Evidence for
 one question cannot substitute for the controls of another.
 
@@ -124,8 +153,12 @@ either. This is convergent evidence between automated judges, not human ground t
 We use one consistent RTL binary metric for the complete matrix and retain
 benchmark-native scores only as auxiliary measurements.
 
-Our results answer two bounded questions:
+Our results answer three bounded questions:
 \begin{enumerate}
+\item \textbf{Target-output training produces measurable but incomplete behavioral imitation.}
+  Across 528 cells per stage, SFT raises embedding similarity to the held-out target over
+  the unadapted source, while DPO reduces both embedding and judge fidelity relative to
+  its exact SFT parent. The 48 self-SFT controls give an empirical same-model ceiling.
 \item \textbf{Benign target-output fine-tuning changes harmful compliance little on average.} A complete
   core-12 matrix contains 528 SFT and 528 matched DPO safety cells. The stages are never
   pooled; DPO is compared with its exact SFT parent. Mean erosion is below one
@@ -140,7 +173,7 @@ Our results answer two bounded questions:
 We deliberately do not use the archived adapter-steering cells: their model and arm
 coverage is nonuniform. Accordingly, we make no claim that activation geometry persists
 through fine-tuning. Prompt-only safety rungs and a second contrast reference would
-broaden the study rather than complete either claim above.
+broaden the study rather than complete these claims.
 
 \section{Related Work}
 
@@ -182,8 +215,8 @@ with $A\ne B$, and each of four datasets---Chatbot Arena \citep{chatbotarena2023
 GSM8K \citep{gsm8k2021}, OASST1 \citep{oasst2023}, and WritingPrompts
 \citep{writingprompts2018}---we evaluate an SFT adapter and its matching SFT$\rightarrow$DPO
 adapter. This yields $12\cdot11\cdot4=528$ cells per stage. The campaign fixes a
-fine-tuning objective; it does not impose a new held-out behavioral-fidelity gate on
-every adapter.
+fine-tuning objective and evaluates its held-out behavioral fidelity rather than
+assuming that a successfully trained adapter imitated its target.
 
 The 12-model cohort is Aya-Expanse-8B, Gemma-4-E4B/31B, GPT-OSS-20B,
 Granite-4-H-Small, Llama-3.1-8B, Llama-3.3-70B, Ministral-8B,
@@ -196,8 +229,9 @@ the exact SFT parent and uses 500 prompt-matched preference pairs: the target ou
 chosen and the unadapted source output is rejected. It uses one epoch, learning rate
 $10^{-5}$, $\beta=0.1$, and the
 same LoRA rank. Safety-evaluation runners default to greedy generation with a
-\CampaignMaxNewTokens-new-token cap. The publication aggregate excludes diagonal
-self-SFT controls and every historical adapter outside the named cohort.
+\CampaignMaxNewTokens-new-token cap. We additionally train one diagonal self-SFT control
+per source and dataset (48 total), using the same SFT hyperparameters. The publication
+aggregate excludes every historical adapter outside the named cohort.
 
 \subsection{Safety evaluation and stage pairing}
 
@@ -232,6 +266,27 @@ source clustering. Mean and paired-stage uncertainties use a seeded percentile b
 over source-model means (10,000 resamples). ``Eroder'' sources are selected from the
 results using a declared mean threshold of +1 percentage point; no model list is
 hardcoded.
+
+\subsection{Held-out behavioral fidelity and self-SFT controls}
+
+For each of the 1,056 cross-model adapters and 48 self-SFT controls, we greedily generate
+responses on the same deterministic 200 held-out prompts from its training corpus. We
+compare each adapted source response with the target model's own response to the same
+prompt. The primary behavioral judge is Qwen3-8B in non-thinking mode: it assigns a
+0--100 probability-like score that the two responses came from the same model based on
+answer, reasoning, format, verbosity, and style. We require a parseable score for all
+200 prompts; formatting failures are retried with a longer output budget and are never
+imputed. We divide this score by 100 when reporting it on a 0--1 scale. The secondary
+deterministic score is cosine similarity between normalized
+\texttt{all-MiniLM-L6-v2} response embeddings.
+
+Absolute response similarity can be high even without training. We therefore construct
+an embedding baseline for each ordered source--target--dataset tuple by comparing the
+unadapted source's response with the target's response on those same prompts. The
+cell-level imitation gain is adapted-to-target similarity minus this unadapted
+source-to-target similarity. Self-SFT is a diagonal control and empirical ceiling, not a
+matched self-DPO control. Fidelity and safety use disjoint held-out task and safety
+prompts, respectively.
 
 \subsection{Automated-judge agreement study}
 
@@ -278,11 +333,10 @@ Gemma-4-E4B/31B, GPT-OSS-20B/120B, Granite-3.3-8B, Granite-4-H-Small,
 Llama-3.1-8B/3.2-3B/3.3-70B, Ministral-8B, Mistral-7B,
 Nemotron-Nano-30B-A3B, OLMo-3-7B/3.1-32B, OLMoE-1B-7B, Phi-4,
 Qwen2.5-7B/14B, Qwen3-8B/14B/30B-A3B, Qwen3.5-4B,
-Qwen3.6-27B/35B-A3B, and SmolLM3-3B. The primary fpall cohort is this set excluding
-both GPT-OSS models, Granite-4-H-Small, Mistral-7B, Nemotron-Nano-30B-A3B,
-OLMo-3.1-32B, Qwen2.5-14B, Qwen3-30B-A3B, and both Qwen3.6 models. These exclusions
-reflect missing controls, invalid controls, or the prespecified positive-control and
-random-contamination gates.
+Qwen3.6-27B/35B-A3B, and SmolLM3-3B. All 29 have complete fpall evaluations. The
+primary gate excludes GPT-OSS-20B/120B, Granite-4-H-Small, Mistral-7B, Qwen2.5-14B,
+and Qwen3.6-27B because their fpall positive control does not provide a valid operating
+point; 23 models contribute to the matched aggregate.
 
 The refusal cone follows the RDO objective: an orthonormal basis is optimized with
 cross-entropy terms for refusal ablation/addition and a KL retain term on harmless
@@ -301,21 +355,68 @@ hypothesis. We therefore use
 
 \subsection{Steering sampling provenance}
 
-New steering cells use the seed-42 n=200 standard. Some legacy base generations used
-n=300, or n=100 for SG-Bench, and do not contain every row of the newer sample. We use
-a harmonized rescore only when it records all 200 prompts; partial intersections are
-rejected. The generated manifest records each cell's metric source and denominator.
-Across the 145 canonical base harm cells, 58 are complete harmonized n=200 rescores,
-74 retain native n=300, 12 retain native n=100, and one retains native n=200 without
-recoverable seed metadata. The 113 fpall cells comprise 55 harmonized n=200, 51 native
-n=300, and seven native n=100 cells. Because older harmonized JSON does not encode a
-seed or prompt hash, we do not infer seed provenance from its denominator alone.
+The complete steering design contains 29 models, five harmful-compliance and two
+over-refusal benchmarks, and two operators, for \SteeringEvaluations evaluations. Every completed cell
+uses the configured 200-prompt seed-42 sample. Imported legacy metrics JSON does not
+itself encode a seed, so the strict audit reconstructs the judged prompt set and checks
+it against the configured sample rather than inferring provenance from the denominator. The generated manifest records each cell's
+metric source and denominator; among the 145 harm cells per operator, 58 base and 60
+fpall cells are explicit harmonized rescores and the remainder are native n=200 files.
 
 \section{Results}
 
+\subsection{Imitation improves similarity, but DPO weakens fidelity}
+
+The strict fidelity gate covers all \FidelityAdapters adapters with 200/200 parsed
+comparisons under both scorers. Mean embedding fidelity is \SFTEmbedFidelity after SFT,
+\DPOEmbedFidelity after DPO, and \SelfSFTEmbedFidelity for the 48 diagonal self-SFT
+controls. The unadapted source--target mean is 0.705. Relative to that matched baseline,
+SFT gains \SFTEmbedGain on average and improves \SFTEmbedGainPositivePct\% of cells;
+DPO gains \DPOEmbedGain and improves \DPOEmbedGainPositivePct\%. On exact cells, DPO
+is \DPOminusSFTEmbedFidelity below its SFT parent. The behavioral judge gives the same
+ordering: \SFTJudgeFidelity after SFT, \DPOJudgeFidelity after DPO, and
+\SelfSFTJudgeFidelity for self-SFT; its exact-cell DPO-minus-SFT change is
+\DPOminusSFTJudgeFidelity. The two fidelity scorers agree strongly across all adapters
+($r=\FidelityScorerCorrelation$). Thus successful training produces a population-level imitation signal,
+but neither every cell nor the additional DPO stage moves further toward the target.
+
+\begin{table}[t]
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{lrrrr}
+\toprule
+Stage & Cells & Embed & Embed gain & Judge \\
+\midrule
+Unadapted baseline & 528 & 0.705 & --- & --- \\
+SFT & \CampaignAdaptersPerStage & \SFTEmbedFidelity & \SFTEmbedGain & \SFTJudgeFidelity \\
+SFT$\rightarrow$DPO & \CampaignAdaptersPerStage & \DPOEmbedFidelity & \DPOEmbedGain & \DPOJudgeFidelity \\
+Self-SFT control & \SelfSFTAdapters & \SelfSFTEmbedFidelity & --- & \SelfSFTJudgeFidelity \\
+Exact DPO$-$SFT & \PairedStageCells & \DPOminusSFTEmbedFidelity & --- & \DPOminusSFTJudgeFidelity \\
+\bottomrule
+\end{tabular}
+\caption{Complete held-out behavioral-fidelity results. ``Embed gain'' is relative
+to the matched unadapted source--target baseline; the last row is a paired stage
+difference rather than an absolute similarity.}
+\label{tab:fidelity}
+\end{table}
+
+Across cross-model cells, neither scorer has a positive association between fidelity
+and harmful-compliance change within source and dataset at either stage; exact-cell DPO-minus-SFT
+changes are likewise uncorrelated or weakly negatively associated. Specifically, the
+within-source-and-dataset Pearson results are $r=0.002,p=0.967$ (SFT) and
+$r=-0.006,p=0.895$ (DPO) for embedding fidelity, and $r=-0.140,p=0.001$ and
+$r=-0.106,p=0.015$ for judge fidelity. Correlations between exact DPO-minus-SFT
+fidelity and harm changes are $r=-0.029,p=0.506$ (embedding) and
+$r=-0.083,p=0.055$ (judge). This is the paper's
+central decoupling result: increasing measured resemblance to a target does not
+predictably transfer that target's safety behavior.
+
 \subsection{Small average changes coexist with harmful-compliance tails}
 
-Both strict coverage gates pass: 528/528 SFT and 528/528 DPO. Table~\ref{tab:stages}
+Both strict safety gates pass: 528/528 SFT and 528/528 DPO, comprising
+\CrossModelSafetyScores cross-model adapter--benchmark scores; all
+\SelfSFTSafetyScores diagonal-control scores also pass. Table~\ref{tab:stages}
 reports stage-separated results. SFT changes mean harmful compliance by
 \SFTMeanErosionPP points (95\% CI \SFTMeanErosionCI; median
 \SFTMedianErosionPP); DPO changes it by \DPOMeanErosionPP points
@@ -331,19 +432,27 @@ the maxima are \SFTMaxErosionPP and \DPOMaxErosionPP points. Conversely,
 \SFTPctBelowMinusOne\% and \DPOPctBelowMinusOne\% fall by more than one point. We use
 ``lower harmful compliance,'' not ``safer'': mean over-refusal changes are
 \SFTMeanOverRefusalDeltaPP points after SFT and \DPOMeanOverRefusalDeltaPP after DPO.
+The \SelfSFTAdapters self-SFT controls also have all \SelfSFTSafetyScores safety scores;
+their mean harmful-compliance change is \SelfSFTMeanErosionPP points. Its proximity to
+the DPO mean cautions against attributing the small average shift specifically to
+cross-model policy transfer, although the diagonal control is not a matched self-DPO design.
 
 \begin{table}[t]
 \centering
+\small
+\setlength{\tabcolsep}{2.5pt}
 \begin{tabular}{lrrrr}
 \toprule
 Stage & Cells & Mean (pp) & 95\% CI & $\ge5$ pp (\%) \\
 \midrule
 SFT & \CampaignAdaptersPerStage & \SFTMeanErosionPP & \SFTMeanErosionCI & \SFTPctAtLeastFive \\
 SFT$\rightarrow$DPO & \CampaignAdaptersPerStage & \DPOMeanErosionPP & \DPOMeanErosionCI & \DPOPctAtLeastFive \\
+Self-SFT control & \SelfSFTAdapters & \SelfSFTMeanErosionPP & --- & \SelfSFTPctAtLeastFive \\
 \bottomrule
 \end{tabular}
 \caption{Complete stage-separated safety results. Positive erosion means more harmful
-compliance than the same unadapted source.}
+compliance than the same unadapted source. The self-SFT row is descriptive; no
+bootstrap interval was computed for that control.}
 \label{tab:stages}
 \end{table}
 
@@ -459,12 +568,18 @@ produced a valid cone and complete primary/fpall controls, but the refusal posit
 control fails on all five harm benchmarks. Granite remains in the complete imitation
 matrix but does not contribute to the gated steering aggregate. Within the core-12
 overlap, nine models are gated, Granite and Qwen3.6-27B are \texttt{PC\_FAILS}, and
-Gemma-4-31B has an invalid control. GPT-OSS-120B is also non-firing; we do not infer
+GPT-OSS-20B has no valid fpall operating point. GPT-OSS-120B is also non-firing; we do not infer
 from this assay alone whether that is a model property or a probe limitation.
 
 \section{Discussion}
 
-The matrix result is an average scale statement, not a universal guarantee. Mean
+The fidelity evaluation rules out the strongest ``the adapters did nothing'' account:
+target-output SFT improves held-out target similarity in almost 90\% of cells. Yet DPO
+modestly reduces fidelity while harmful compliance rises slightly on average, and
+cell-level fidelity does not positively track harm. This supports a decoupling story,
+not a claim that target identity or target safety policy is fully transferred.
+
+The safety matrix result is an average scale statement, not a universal guarantee. Mean
 harmful-compliance change is below one point, while individual cells rise by 34.3
 points after SFT and 15.1 after DPO. Source and target marginal shares are comparable
 after SFT; source is larger after DPO. Because target safety is not part of the
@@ -479,23 +594,24 @@ consistent but not a traced causal chain through training.
 
 \section{Limitations}
 
-The imitation matrix uses one training seed. Safety comparisons are prompt-matched,
+The imitation matrix uses one training seed. Safety and fidelity comparisons are
+prompt-matched within their respective held-out sets,
 but small deltas are quantized by 200-row benchmark samples. The variance decomposition
-is descriptive and does not establish causal source or target effects. We evaluate the
-target-output objective over a complete matrix, but do not require every adapter to
-pass a new, uniform held-out behavioral-fidelity threshold. Failed or weak target
-imitation therefore remains an alternative explanation, and we avoid claiming that
-all 1,056 cells achieved behavioral imitation. The publication aggregate also lacks a
-complete matched self-SFT comparison, so it cannot distinguish effects specific to
-cross-model target outputs from effects of benign fine-tuning more generally.
+is descriptive and does not establish causal source or target effects. The two fidelity
+metrics measure response similarity rather than a complete latent model identity, and
+the probability-like judge score is not calibrated against human same-model judgments.
+Although all 48 self-SFT controls are complete, the design has no self-DPO stage and the
+diagonal target is intrinsically easier than cross-model imitation. It therefore cannot
+fully separate cross-model target effects from generic continued fine-tuning, especially
+for the incremental DPO result.
 
 The cross-model contrast uses one main reference model (with a substitute for the
 reference model itself), one seeded norm-matched random draw per model, and a fixed
 single-direction layer chosen for the historical assay. A second-reference campaign
 and additional random draws or layer choices would be necessary for stronger
 reference-invariant or layer-invariant contrast claims. The base steering archive mixes harmonized n=200
-rescores with disclosed native legacy denominators. The primary matched-operator
-analysis covers 19 models rather than the full base population, and some arms use the
+rescores with native n=200 files, with exact prompt coverage reconstructed by audit. The primary matched-operator
+analysis covers 23 positive-control-gated models rather than the full base population, and some arms use the
 documented 0.50--0.85 coherence fallback rather than meeting the strict 0.85 threshold.
 
 Adapter steering is excluded because its coverage is nonuniform. We therefore do not
@@ -509,20 +625,35 @@ This work evaluates alignment preservation using published safety benchmarks. We
 not optimize new harmful prompts, but refusal-cone ablation is dual use: it can increase
 harmful compliance and should not be deployed. The main practical risk is
 overgeneralization: a small mean effect does not certify an individual adapter, and a
-base-model steering result does not certify post-fine-tuning behavior. We will release
-per-cell metrics, judge contingencies, coverage manifests, and analysis code after blind
-review so that exclusions and tails can be audited rather than hidden by averages.
+base-model steering result does not certify post-fine-tuning behavior. We release
+per-cell metrics, judge contingencies, coverage manifests, and analysis code so that
+exclusions and tails can be audited rather than hidden by averages.
+
+\section*{Data and Code Availability}
+
+The complete audited artifact is public at
+\url{https://huggingface.co/datasets/dementor-research/dementor-complete-experiment-results}
+(verified revision \texttt{ecdc531b22c0}). It contains
+all \CampaignAdaptersPerStage SFT and \CampaignAdaptersPerStage DPO safety cells,
+\SelfSFTSafetyScores self-SFT safety scores, both 200/200 fidelity scorers for all
+\FidelityAdapters adapters, and all \SteeringEvaluations base-model steering evaluations.
+All \FidelityAdapters adapter repositories are indexed and remotely verified through
+\url{https://huggingface.co/datasets/dementor-research/dementor-adapter-registry}
+(verified revision \texttt{ed03f762d505}).
 
 \section{Conclusion}
 
-Across the complete core-12 matrix, SFT and SFT$\rightarrow$DPO have small average
-effects on harmful compliance but material upper tails; the exact-cell stage change is
+Across the complete core-12 matrix, target-output SFT produces measurable held-out
+imitation, but DPO slightly reduces target fidelity and fidelity is not positively
+coupled to harmful-compliance change. SFT and SFT$\rightarrow$DPO have small average
+safety effects but material upper tails; the exact-cell stage change is
 \PairedStageDeltaPP points. Source and target marginal shares are comparable after SFT,
 while source is larger after DPO. Separately, a positive-controlled base-model assay
 detects a large refusal-cone effect but no cross-model-contrast--random difference under matched
-all-layer operators. These bounded conclusions require neither prompt-only experiments
-nor nonuniform adapter steering. They do not demonstrate target-policy inheritance,
-per-cell imitation success, contrast--random equivalence, or geometry persistence
+all-layer operators. Complete self-SFT controls suggest that some average safety change
+can arise from fine-tuning itself. These bounded conclusions require neither prompt-only
+experiments nor nonuniform adapter steering. They do not demonstrate target-policy inheritance,
+uniform per-cell imitation success, contrast--random equivalence, or geometry persistence
 through fine-tuning.
 
 \bibliography{aaai2027}

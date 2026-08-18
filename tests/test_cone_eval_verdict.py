@@ -22,6 +22,10 @@ def _isnan(x):
     return isinstance(x, float) and math.isnan(x)
 
 
+def test_cone_eval_uses_the_shared_resolved_judge_model():
+    assert CE.JUDGE_MODEL == CE.CFG.JUDGE_MODEL
+
+
 # ----------------------------------------------------------------- matched_from_pts (coherence gate)
 def test_matched_coherent_reports_max_harm_over_gated_betas():
     # Two betas clear the 0.85 coherence gate -> report the MAX harm among them.

@@ -262,6 +262,15 @@ def _load_causal_lm(model_name: str, *, use_cuda: bool):
         # student too big for one 80GB card (e.g. gemma-4-31b VLM) -> shard weights across
         # all visible GPUs (device_map pipeline-parallel; the daemon pins exactly 2 via CUDA_VISIBLE_DEVICES).
         load_kwargs["device_map"] = "auto"
+        # Gemma-4-31B's bf16 text tower technically fits on one 80GB H100, so
+        # ``device_map='auto'`` otherwise places everything on logical cuda:0.
+        # Trainer then sees two visible cards but a one-device map and incorrectly
+        # chooses nn.DataParallel. Cap each card so Accelerate genuinely shards this
+        # checkpoint, preserving training headroom and the model-parallel marker.
+        if "gemma-4-31b" in model_name.lower() and torch.cuda.device_count() > 1:
+            load_kwargs["max_memory"] = {
+                index: "44GiB" for index in range(torch.cuda.device_count())
+            }
     try:
         model = AutoModelForCausalLM.from_pretrained(model_name, **load_kwargs)
     except (ValueError, KeyError) as exc:

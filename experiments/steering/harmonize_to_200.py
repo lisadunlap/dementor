@@ -23,6 +23,7 @@ seed-42 200-prompt set. The originals and incomplete legacy-overlap files are le
 downstream code validates `n_prompts == 200` before preferring the harmonized file.
 
 Usage:  python experiments/steering/harmonize_to_200.py [--dry-run]
+        python experiments/steering/harmonize_to_200.py --eval-dir <completed-eval-dir>
 """
 from __future__ import annotations
 
@@ -145,14 +146,27 @@ def score(j: pd.DataFrame) -> dict:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument(
+        "--eval-dir",
+        action="append",
+        default=[],
+        help=(
+            "rescore only this completed eval directory; may be repeated. "
+            "The default remains the full base + adapter trees."
+        ),
+    )
     args = ap.parse_args()
 
     subs: dict[str, set] = {}
     written = flips = skipped = incomplete = unstandardized = 0
     rows = []
 
-    paths = sorted(glob.glob(f"{BASE_TREE}/*/eval_*/all_judged.csv")) + \
-            sorted(glob.glob(f"{ADAPTER_TREE}/*/eval_*/all_judged.csv"))
+    if args.eval_dir:
+        paths = [os.path.join(os.path.abspath(path), "all_judged.csv")
+                 for path in args.eval_dir]
+    else:
+        paths = sorted(glob.glob(f"{BASE_TREE}/*/eval_*/all_judged.csv")) + \
+                sorted(glob.glob(f"{ADAPTER_TREE}/*/eval_*/all_judged.csv"))
     for p in paths:
         od = os.path.dirname(p)
         bench = _bench_of(os.path.basename(od))

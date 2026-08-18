@@ -82,7 +82,9 @@ has nothing left to decide.**
 
 ### Evidence that motivated the switch
 
-The matched-operator runs (`eval_<bench>_fpall`) already existed for 19 models × 5 harm benchmarks.
+At preregistration time, matched-operator runs (`eval_<bench>_fpall`) existed for 19 models × 5 harm
+benchmarks. The final campaign later completed all 29 models; the numbers below document the
+decision-time evidence, not final coverage.
 Comparing them against the single-layer controls on the same cells:
 
 | arm | mean matched-harm |
