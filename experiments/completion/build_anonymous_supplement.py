@@ -19,7 +19,7 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
 TEXT_SUFFIXES = {".csv", ".json", ".md", ".py", ".toml", ".txt", ".yaml", ".yml"}
-ROOT_FILES = ("config.yaml", "pyproject.toml")
+ROOT_FILES = ("config.yaml", "pyproject.toml", "METHODS.md")
 SOURCE_GLOBS = (
     "dementor/**/*.py",
     "experiments/_paths.py",
