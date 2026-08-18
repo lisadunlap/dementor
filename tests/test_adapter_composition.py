@@ -141,3 +141,49 @@ def test_exact_cat_matches_merge_then_dpo(tmp_path):
         expected = reference(inputs)
         actual = composed(inputs)
     torch.testing.assert_close(actual, expected, rtol=1e-5, atol=1e-6)
+
+
+def test_materialized_composition_matches_merge_then_dpo(tmp_path):
+    """The on-disk rank-summed adapter is exact and can be consumed by vLLM."""
+    import torch
+    from peft import LoraConfig, PeftModel, get_peft_model
+
+    from experiments.imitation_safety.compose_lora_adapters import compose_lora_adapters
+
+    class Toy(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.proj = torch.nn.Linear(5, 4, bias=False)
+
+        def forward(self, x):
+            return self.proj(x)
+
+    torch.manual_seed(42)
+    base = Toy().eval()
+    cfg = LoraConfig(r=2, lora_alpha=4, target_modules=["proj"], lora_dropout=0.0)
+
+    def set_lora(model, seed):
+        generator = torch.Generator().manual_seed(seed)
+        for name, parameter in model.named_parameters():
+            if "lora_" in name:
+                parameter.data.copy_(torch.randn(parameter.shape, generator=generator) * 0.1)
+
+    sft_dir, dpo_dir, combined_dir = tmp_path / "sft", tmp_path / "dpo", tmp_path / "combined"
+    sft = get_peft_model(deepcopy(base), cfg)
+    set_lora(sft, 1)
+    sft.save_pretrained(sft_dir)
+    merged = PeftModel.from_pretrained(deepcopy(base), sft_dir).merge_and_unload()
+    dpo = get_peft_model(merged, cfg)
+    set_lora(dpo, 2)
+    dpo.save_pretrained(dpo_dir)
+
+    compose_lora_adapters(sft_dir, dpo_dir, combined_dir)
+    reference = PeftModel.from_pretrained(merged, dpo_dir).eval()
+    actual = PeftModel.from_pretrained(deepcopy(base), combined_dir).eval()
+    inputs = torch.randn(7, 5, generator=torch.Generator().manual_seed(3))
+    with torch.no_grad():
+        torch.testing.assert_close(actual(inputs), reference(inputs), rtol=1e-5, atol=1e-6)
+
+    combined_cfg = __import__("json").loads((combined_dir / "adapter_config.json").read_text())
+    assert combined_cfg["r"] == 4
+    assert combined_cfg["lora_alpha"] == 4
