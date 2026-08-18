@@ -510,20 +510,9 @@ def load_gen_model(base_model, adapter_dir, logf=None, *, sft_parent=None):
     if adapter_dir:
         from peft import PeftModel
         if sft_parent:
-            # DPO was trained on W + delta_SFT and contributes delta_DPO, so inference needs
-            # W + delta_SFT + delta_DPO. PEFT's ``cat`` composition represents that sum exactly:
-            # B_cat @ A_cat == B_sft @ A_sft + B_dpo @ A_dpo (including each adapter's scaling).
-            # It avoids materializing/merging every full 8--31B weight matrix for each of the 396
-            # cells, while remaining numerically equivalent to merge-SFT-then-load-DPO.
-            mdl = PeftModel.from_pretrained(mdl, sft_parent, adapter_name="sft_parent")
-            mdl.load_adapter(adapter_dir, adapter_name="dpo")
-            mdl.base_model.add_weighted_adapter(
-                ["sft_parent", "dpo"], [1.0, 1.0], "sft_plus_dpo",
-                combination_type="cat",
-            )
-            mdl.set_adapter("sft_plus_dpo")
-        else:
-            mdl = PeftModel.from_pretrained(mdl, adapter_dir)
+            mdl = PeftModel.from_pretrained(mdl, sft_parent)
+            mdl = mdl.merge_and_unload()
+        mdl = PeftModel.from_pretrained(mdl, adapter_dir)
     if not mp and not moved_to_device:
         mdl = mdl.to(dev)
     mdl.eval()
@@ -531,7 +520,7 @@ def load_gen_model(base_model, adapter_dir, logf=None, *, sft_parent=None):
         input_dev = mdl.get_input_embeddings().weight.device
     except Exception:
         input_dev = dev
-    composition = ("base+sft_plus_dpo_lora_exact" if sft_parent else
+    composition = ("base+sft_merged+dpo_lora" if sft_parent else
                    ("base+adapter" if adapter_dir else "baseline"))
     log(f"[gen] loaded base={base_model} adapter={'yes' if adapter_dir else 'BASELINE(none)'} "
         f"composition={composition} mp={mp} input_dev={input_dev}", logf)

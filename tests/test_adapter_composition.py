@@ -34,23 +34,9 @@ def test_dpo_generation_loads_sft_parent_then_dpo(monkeypatch):
         eos_token = "<eos>"
         padding_side = "right"
 
-    class ComposedModel(Model):
-        def __init__(self):
-            super().__init__("sft-wrapper")
-            self.base_model = self
-
-        def load_adapter(self, path, adapter_name):
-            events.append(("load_adapter", path, adapter_name))
-
-        def add_weighted_adapter(self, adapters, weights, adapter_name, combination_type):
-            events.append(("compose", adapters, weights, adapter_name, combination_type))
-
-        def set_adapter(self, adapter_name):
-            events.append(("activate", adapter_name))
-
     def load_adapter(model, path, adapter_name=None):
         events.append(("adapter", model.name, path, adapter_name))
-        return ComposedModel()
+        return Model("sft-wrapper" if path == "sft-parent" else "dpo-wrapper")
 
     monkeypatch.delenv("DEMENTOR_MP", raising=False)
     with patch("torch.cuda.is_available", return_value=False), \
@@ -61,13 +47,12 @@ def test_dpo_generation_loads_sft_parent_then_dpo(monkeypatch):
             "base-model", "dpo-adapter", sft_parent="sft-parent"
         )
 
-    assert model.name == "sft-wrapper"
+    assert model.name == "dpo-wrapper"
     assert input_device == "cpu"
-    assert events[:4] == [
-        ("adapter", "base", "sft-parent", "sft_parent"),
-        ("load_adapter", "dpo-adapter", "dpo"),
-        ("compose", ["sft_parent", "dpo"], [1.0, 1.0], "sft_plus_dpo", "cat"),
-        ("activate", "sft_plus_dpo"),
+    assert events[:3] == [
+        ("adapter", "base", "sft-parent", None),
+        ("merge", "sft-wrapper"),
+        ("adapter", "merged-sft", "dpo-adapter", None),
     ]
 
 
