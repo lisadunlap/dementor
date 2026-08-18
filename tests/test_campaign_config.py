@@ -58,6 +58,47 @@ def test_matrix_dataset_defaults_match_named_campaign():
     assert list(_constants.DATASET_TEMPLATES) == config.campaign_dataset_names()
 
 
+def test_model_parallel_sources_and_dpo_caps_are_config_driven(tmp_path):
+    from dementor.training.matrix import Cell
+    from dementor.training.matrix._configs import _build_dpo_cfg, _build_sft_cfg
+
+    tagged = {
+        model["slug"]
+        for model in config.campaign_roster()
+        if model.get("local_training") == "model_parallel"
+    }
+    assert tagged == {"gemma-4-31b", "llama-3.3-70b"}
+
+    target = "meta-llama/Llama-3.1-8B-Instruct"
+    for source_slug, expected_cap, expected_batch in (
+        ("gemma-4-31b", 1024, 1),
+        ("llama-3.3-70b", 1024, 1),
+        ("phi-4", 1536, 2),
+    ):
+        source = config.model(source_slug)["id"]
+        cfg = _build_dpo_cfg(
+            cell=Cell(source, target, "gsm8k", 42),
+            ds_cfg=None,
+            output_dir=tmp_path,
+            sft_state_path=tmp_path / "sft",
+            renderer_name="test",
+            log_path=tmp_path / "log",
+        )
+        assert cfg.provider == "local"
+        assert cfg.local.max_length == expected_cap
+        assert cfg.local.batch_size == expected_batch
+        assert cfg.local.gradient_accumulation_steps == 8
+        sft_cfg = _build_sft_cfg(
+            cell=Cell(source, target, "gsm8k", 42),
+            ds_cfg=None,
+            output_dir=tmp_path,
+            weights_name="test",
+            prompt_template="{prompt}",
+            completion_template="{completion}",
+        )
+        assert sft_cfg.local.batch_size == (1 if expected_cap == 1024 else 16)
+
+
 def test_matrix_dispatcher_enforces_configured_stages(monkeypatch):
     from dementor.training.matrix import _cli
 

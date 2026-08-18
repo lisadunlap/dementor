@@ -240,7 +240,7 @@ def launch_local_cell(
         # batch via gradient accumulation. An explicit --per-device-batch-size / --grad-accum
         # still wins, so the accelerate multi-GPU path is unaffected.
         local_dpo_max_length = min(dpo_hp["max_length"], 1536)
-        if "31b" in cell.source.lower():  # 62 GB text tower leaves almost no headroom
+        if config.model(cell.source).get("local_training") == "model_parallel":
             local_dpo_max_length = min(local_dpo_max_length, 1024)
         local_dpo_batch = per_device_batch_size or min(dpo_hp["batch_size"], 2)
         local_dpo_accum = grad_accum

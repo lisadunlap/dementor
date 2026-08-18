@@ -102,6 +102,34 @@ def test_target_relative_safety_reaches_halfway_to_target():
     assert result["pct_nonzero_gap_cells_closer_to_target"] == pytest.approx(100.0)
 
 
+def test_joint_identity_bootstrap_preserves_exact_dyadic_slope():
+    rows = []
+    baselines = {"a": 0.1, "b": 0.3, "c": 0.5}
+    for source in baselines:
+        for target in baselines:
+            if source == target:
+                continue
+            gap = baselines[target] - baselines[source]
+            change = 0.5 * gap
+            rows.append({
+                "source": source,
+                "target": target,
+                "dataset": "d",
+                "target_gap": gap,
+                "adapter_change": change,
+                "target_distance_reduction": abs(gap) - abs(gap - change),
+            })
+    first = VD._joint_identity_target_bootstrap(
+        pd.DataFrame(rows), seed=42, reps=250
+    )
+    second = VD._joint_identity_target_bootstrap(
+        pd.DataFrame(rows), seed=42, reps=250
+    )
+    assert first == second
+    assert first["intervals"]["target_alignment_slope"] == pytest.approx([0.5, 0.5])
+    assert first["valid_draws"]["target_alignment_slope"] > 0
+
+
 def test_target_relative_safety_rejects_inconsistent_baselines():
     rows = pd.DataFrame([
         dict(adapter="sft_d_a_as_b_seed42", stage="sft", dataset="d", source="a",

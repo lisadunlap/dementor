@@ -41,8 +41,13 @@ intervention gets stronger?
 uses seed **42**; seeds 43/44 remain available for explicitly scoped robustness runs.
 LoRA **rank 32**, alpha 64, target_modules=all-linear.
 
-- **SFT:** 3 epochs, batch 16, lr 1e-4, train_size 500.
-- **DPO:** β=0.1, 1 epoch, lr 1e-5, max_length 4096, on top of the matching SFT adapter.
+- **SFT:** 3 epochs, nominal batch 16, lr 1e-4, train_size 500; the two local
+  model-parallel sources use per-device batch 1.
+- **DPO:** β=0.1, 1 epoch, lr 1e-5, on top of the matching SFT adapter. Tinker uses
+  batch 16/max length 4096; local single-GPU jobs use per-device batch 2, accumulation 8,
+  and max length 1536; local model-parallel jobs use batch 1, accumulation 8, and max length
+  1024. A source-tokenizer replay finds 700/198,000 local preference examples (0.354%) over
+  their effective cap; see `paper/naz_aaai2027/local_dpo_training_length_audit.json`.
 - Adapters register in `data/tinker_adapters.json` (sampler + state URIs) and mirror to HuggingFace
   `dementor-research/{sft,dpo,self_sft}_*`. Naming:
   `{stage}_{dataset}_{source}_as_{target}_seed{N}`.
@@ -69,8 +74,9 @@ Pipeline: **sample → score → analyze**, one paired base-vs-adapter compariso
 - `score_guard` — Llama-Guard-3-1B (sensitive upper bound; overcounts).
 - `score_harmbench` — official CAIS HarmBench classifier (content-aware; auxiliary in the matrix).
 - `score_rtl` — **RTL "refuse-then-leak" judge = Qwen3-8B**; catches refuse-then-comply that Guard
-  mis-flags. Its agreement with HarmBench was checked on a fixed automated-judge sample, not against
-  human ground truth.
+  mis-flags. Its single binary verdict is the headline safety label, not an ensemble vote. Agreement
+  with HarmBench and Llama Guard was checked on a fixed automated-judge sample, not against human
+  ground truth.
 - `analyze` — by-source / per-cell McNemar (base vs DPO) on each judge.
 
 The publication harm aggregate uses the binary RTL verdict for all five harm benchmarks, both for
@@ -87,7 +93,10 @@ RTL metric. Average both over the five harm benchmarks within each dataset/sourc
 report the origin-constrained slope `sum(T*A)/sum(T^2)` (0 stays at source; 1 reaches target), the
 change in absolute target distance `abs(T) − abs(T−A)`, and lower-harm versus higher-harm target
 strata. Confidence intervals use a 10,000-draw crossed multinomial bootstrap over source, target,
-and training dataset, rather than treating 528 cells as independent.
+and training dataset, rather than treating 528 cells as independent. Because each model appears in
+both dyadic roles, a sensitivity analysis uses one model-identity draw jointly for source and target
+roles. It gives slope intervals `[-0.084, +0.513]` for SFT and `[-0.062, +0.251]` for DPO, leaving
+the primary conclusions unchanged.
 
 **Auxiliary self-SFT control.** The complete campaign contains 48 matched-compute self-SFT cells
 (12 sources × four datasets) and 336 safety scores. They are not pooled into either 528-cell
@@ -148,6 +157,11 @@ erode safety, or the base model is **EXCLUDED** as unpowered (the single-directi
 the question there). Ablating the benign **fingerprint** direction under the identical operator is the
 test. Geometry (cosines to refusal/persona) is reported but does **not** predict the causal effect, so
 the claim rests on the causal control, not the cosines.
+
+For each steering arm, the reported operating point maximizes harmful compliance among strengths
+passing the coherence gate (or uses the disclosed most-coherent fallback). Because selection and
+reporting reuse the evaluation outcomes, these are adaptive descriptive contrasts rather than
+held-out operating-point estimates.
 
 The consolidated base assay has complete seven-benchmark cells for 29 models under both operators.
 Twenty-four pass the historical gate. The primary matched all-layer fingerprint/random variant is

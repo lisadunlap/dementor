@@ -86,6 +86,8 @@
 \newcommand{\DPOTargetAlignmentSlope}{-0.023}
 \newcommand{\SFTTargetAlignmentCI}{[-0.093, +0.493]}
 \newcommand{\DPOTargetAlignmentCI}{[-0.143, +0.208]}
+\newcommand{\SFTTargetAlignmentJointIdentityCI}{[-0.084, +0.513]}
+\newcommand{\DPOTargetAlignmentJointIdentityCI}{[-0.062, +0.251]}
 \newcommand{\SFTTargetDistanceReductionPP}{+0.95}
 \newcommand{\DPOTargetDistanceReductionPP}{+0.00}
 \newcommand{\SFTTargetDistanceReductionCI}{[-0.73, +2.88]}
@@ -241,11 +243,14 @@ Nemotron-Nano-30B-A3B, OLMo-3-7B, Phi-4, and Qwen3.6-27B. Canonical model IDs an
 aliases are fixed in the campaign configuration rather than inferred from result directories.
 
 SFT uses LoRA rank 32, $\alpha=64$, dropout 0, three epochs, learning rate
-$10^{-4}$, effective batch size 16, and 500 training examples. DPO initializes from
+$10^{-4}$, nominal batch size 16, and 500 training examples. The two model-parallel
+sources use per-device batch size 1. DPO initializes from
 the exact SFT parent and uses 500 prompt-matched preference pairs: the target output is
 chosen and the unadapted source output is rejected. It uses one epoch, learning rate
-$10^{-5}$, $\beta=0.1$, and the
-same LoRA rank. Safety-evaluation runners default to greedy generation with a
+$10^{-5}$, $\beta=0.1$, and the same LoRA rank. Tinker uses batch 16 and a 4096-token
+cap; local single-GPU/model-parallel jobs use per-device batch 2/1, gradient accumulation
+8, and 1536/1024-token caps. Only 700 of 198,000 local preference examples (0.35\%)
+exceed their cap in a source-tokenizer audit. Safety-evaluation runners default to greedy generation with a
 \CampaignMaxNewTokens-new-token cap. We additionally train one diagonal self-SFT control
 per source and dataset (48 total), using the same SFT hyperparameters. The publication
 aggregate excludes every historical adapter outside the named cohort.
@@ -286,7 +291,9 @@ $\hat\beta=\sum T A/\sum T^2$ has interpretable anchors: 0 stays at the source a
 the target. We also report $|T|-|T-A|$, the reduction in absolute target distance, and
 stratify targets with lower versus higher baseline harmful compliance. A seeded 10,000-draw
 crossed multinomial (pigeonhole) bootstrap independently resamples source, target, and
-training-dataset identities, preserving the matrix's repeated-factor dependence.
+training-dataset identities, preserving the matrix's repeated-factor dependence. Because
+models occur in both dyadic roles, a sensitivity bootstrap draws one model-identity
+multiplicity vector and applies it jointly to each model's source and target roles.
 
 We report descriptive one-way $\eta^2=SS_{\mathrm{between}}/SS_{\mathrm{total}}$
 separately for source, target, and imitation training corpus. These are marginal shares,
@@ -321,7 +328,8 @@ prompts, respectively.
 
 RTL uses \texttt{Qwen/Qwen3-8B} with greedy decoding (24-token cap) and a three-question
 rubric: a response is harmful when it delivers actionable assistance, either after a
-refusal or directly. The official \texttt{cais/HarmBench-Llama-2-13b-cls} classifier
+refusal or directly. This single RTL verdict, not an ensemble vote, is the headline safety
+label. The official \texttt{cais/HarmBench-Llama-2-13b-cls} classifier
 greedily emits a one-token yes/no label. \texttt{meta-llama/Llama-Guard-3-8B} receives
 the user/assistant chat and greedily emits its safety label (20-token cap). For an
 agreement study, we score the same 4,712 responses with all three. This restricted
@@ -439,7 +447,9 @@ do not use cellwise Pearson $p$-values as independent-cell evidence.
 \paragraph{Direct target-relative safety test.}
 The target-alignment slope is \SFTTargetAlignmentSlope after SFT (crossed bootstrap 95\% CI
 \SFTTargetAlignmentCI) and \DPOTargetAlignmentSlope after DPO
-(\DPOTargetAlignmentCI). All five benchmark-specific SFT point estimates are positive
+(\DPOTargetAlignmentCI). Joint model-identity sensitivity intervals are
+\SFTTargetAlignmentJointIdentityCI and \DPOTargetAlignmentJointIdentityCI, respectively,
+and leave both conclusions unchanged. All five benchmark-specific SFT point estimates are positive
 (0.097--0.208), whereas DPO estimates span $-0.077$ to 0.022. SFT reduces mean absolute
 target distance by \SFTTargetDistanceReductionPP points
 (\SFTTargetDistanceReductionCI) and is closer in \SFTTargetCloserPct\% of cells with a
@@ -600,7 +610,8 @@ equivalence claim. Parentheses give positive-control-passing harm benchmarks per
 
 Figure~\ref{fig:steering_effects} shows the broader secondary assay in which the
 single-direction controls act at layer 14. Its 24 gated models provide coverage, but
-the matched all-layer result above is primary because operator size is controlled.
+the matched all-layer result above is primary because layer coverage is matched. Cone rank
+remains 2--4 versus rank-one contrast and random controls, so dimensionality is not matched.
 
 Granite-4-H-Small illustrates why the gate matters. Its independently verified RTX run
 produced a valid cone and complete primary/fpall controls, but the refusal positive
@@ -647,6 +658,13 @@ diagonal target is intrinsically easier than cross-model imitation. It therefore
 fully separate cross-model target effects from generic continued fine-tuning, especially
 for the incremental DPO result.
 
+Training backend is tied to source model and memory-constrained local jobs use the
+backend-specific batch and sequence settings reported above; source effects can therefore
+include backend effects. Local DPO truncation is rare (0.35\%), but Tinker's renderer-side
+truncation was not reconstructed. Steering operating points are selected and summarized on
+the same evaluation outcomes by a coherence gate and maximum-harm rule, so these contrasts
+are adaptive descriptive estimates rather than held-out operating-point estimates.
+
 The cross-model contrast uses one main reference model (with a substitute for the
 reference model itself), one seeded norm-matched random draw per model, and a fixed
 single-direction layer chosen for the historical assay. A second-reference campaign
@@ -675,7 +693,8 @@ exclusions and tails can be audited rather than hidden by averages.
 
 An anonymized code-and-data package is submitted through the official supplementary-material
 channel. It contains configuration, analysis code, coverage manifests, per-cell aggregates,
-and representative audit inputs needed to reproduce every reported statistic. Permanent
+and representative audit inputs sufficient to audit coverage and recompute the reported
+aggregate analyses. Raw generations are omitted from the anonymous package. Permanent
 public locations and immutable revisions will be added only after double-blind review.
 
 \section{Conclusion}

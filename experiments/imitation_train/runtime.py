@@ -18,7 +18,6 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
-
 def _env(name: str, default: str) -> str:
     v = os.environ.get(name)
     return v if v else default
@@ -35,6 +34,9 @@ def _gpu_set(name: str, default: str) -> set[int]:
 
 _HERE = Path(__file__).resolve().parent                          # experiments/imitation_train
 REPO = Path(_env("DEMENTOR_REPO", str(_HERE.parent.parent)))     # repo root: two levels up
+sys.path.insert(0, str(REPO))
+from dementor import config as _dementor_config  # noqa: E402
+
 PY = _env("DEMENTOR_PY", sys.executable)                         # interpreter for training subprocesses
 DATA_ROOT = Path(_env("DEMENTOR_DATA", str(REPO / "data")))      # big-disk data/outputs root (may be symlink)
 # State (queue_state.json, local_logs/, markers). Default a dedicated dir under DEMENTOR_DATA; point
@@ -80,7 +82,11 @@ ONLY_GPUS = _gpu_set("DEMENTOR_ONLY_GPUS", "") or None
 # needs it. granite-4-h-small (32B-A9B) is INTENTIONALLY single-GPU: bf16 ~65GB fits one 80GB H100
 # with gradient_checkpointing -- like the other 32B locals. If it ever OOMs on one card, add
 # "granite-4-h-small" here to give its cells the 2-GPU model-parallel path.
-MP_SOURCE_SLUGS = {"gemma-4-31b", "llama-3.3-70b"} | {
+MP_SOURCE_SLUGS = {
+    model["slug"]
+    for model in _dementor_config.roster()
+    if model.get("local_training") == "model_parallel"
+} | {
     s.strip() for s in os.environ.get("DEMENTOR_MP_SLUGS", "").split(",") if s.strip()
 }
 # DEMENTOR_MP_SLUGS ADDS to the set above (never removes), because which students need the 2-GPU
@@ -128,8 +134,7 @@ SUSTAINED_POLLS = int(os.environ.get("SEQ_SUSTAINED_POLLS", "3"))
 # run; left OFF, other seeds/models keep processing their tinker cells unchanged.
 LOCAL_ONLY = os.environ.get("IMIT_LOCAL_ONLY", "0") in ("1", "true", "True")
 
-# --- import-time setup (runs once, before any `from dementor import ...`) -------
-sys.path.insert(0, str(REPO))
+# --- import-time setup (runs once) ----------------------------------------------
 # Canonical DEMENTOR_HF_HOME (default our-box path) -> standard HF_HOME the child training procs read.
 os.environ.setdefault(
     "HF_HOME", _env("DEMENTOR_HF_HOME", os.path.expanduser("~/.cache/huggingface"))

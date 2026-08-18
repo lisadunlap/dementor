@@ -20,13 +20,17 @@ def _build_sft_cfg(*, cell: Cell, ds_cfg, output_dir: Path, weights_name: str,
     from dementor.training.tinker_backend import EvaluationConfig
 
     hp = config.sft()
+    backend = config.backend_for(cell.source)
+    model_parallel = config.model(cell.source).get("local_training") == "model_parallel"
     common = dict(
-        base_model=cell.source, batch_size=hp["batch_size"], epochs=hp["epochs"],
+        base_model=cell.source,
+        batch_size=1 if backend == "local" and model_parallel else hp["batch_size"],
+        epochs=hp["epochs"],
         learning_rate=hp["learning_rate"], prompt_template=prompt_template,
         completion_template=completion_template, weights_name=weights_name,
         registry_path=registry_path or config.registry_path(), seed=cell.seed,
     )
-    if config.backend_for(cell.source) == "local":
+    if backend == "local":
         return SFTWorkflowConfig(provider="local", dataset=ds_cfg, output_dir=output_dir,
                                  local=LocalSFTParams(**common))
     return SFTWorkflowConfig(provider="tinker", dataset=ds_cfg, output_dir=output_dir,
@@ -47,17 +51,18 @@ def _build_dpo_cfg(*, cell: Cell, ds_cfg, output_dir: Path, sft_state_path,
         # Cap local DPO length (chatbot_arena replies are ~400-600 tokens, so this rarely
         # truncates). Tinker DPO keeps the full config length (its backend shards differently).
         local_max_length = min(hp["max_length"], 1536)
-        # gemma-4-31B (~62 GB bf16 text tower) leaves so little headroom that even at 1536,
-        # trl's entropy-from-logits *metric* allocates another full-vocab tensor and OOMs a
-        # single 80 GB card mid-run. Tighten it further (its chatbot_arena replies still fit).
-        if "31B" in cell.source or "31b" in cell.source:
+        # Model-parallel 31B/70B sources leave less per-card activation headroom. Tighten the
+        # cap and batch consistently with the executed local-cell launcher.
+        model_parallel = config.model(cell.source).get("local_training") == "model_parallel"
+        if model_parallel:
             local_max_length = min(local_max_length, 1024)
         return DPOWorkflowConfig(provider="local", dataset=ds_cfg, output_dir=output_dir,
             local=LocalDPOParams(model_name=cell.source, load_checkpoint_path=sft_state_path,
                 weights_name=weights_name, registry_path=config.registry_path(),
                 learning_rate=hp["learning_rate"], dpo_beta=hp["dpo_beta"], num_epochs=hp["num_epochs"],
-                batch_size=hp["batch_size"], max_length=local_max_length, lora_rank=hp["lora_rank"],
-                seed=cell.seed))
+                batch_size=1 if model_parallel else min(hp["batch_size"], 2),
+                max_length=local_max_length, lora_rank=hp["lora_rank"], seed=cell.seed,
+                gradient_accumulation_steps=8))
     return DPOWorkflowConfig(provider="tinker", dataset=ds_cfg, output_dir=output_dir,
         tinker=TinkerDPOParams(model_name=cell.source, renderer_name=renderer_name, log_path=log_path,
             learning_rate=hp["learning_rate"], dpo_beta=hp["dpo_beta"], num_epochs=hp["num_epochs"],

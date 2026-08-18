@@ -64,7 +64,9 @@ source–target–dataset bootstrap 95% CI [-0.093, +0.493]) and −0.023 after 
 ([-0.143, +0.208]). Mean absolute target-distance reduction is +0.95 pp after SFT
 ([-0.73, +2.88]) and +0.00 pp after DPO ([-0.85, +0.74]). Thus SFT point estimates show partial
 directional movement, but dependence-aware uncertainty includes zero transfer; DPO does not retain
-the directional pattern. Machine-readable results are in
+the directional pattern. A joint model-identity bootstrap (one identity draw applied to source and
+target roles) gives slope intervals [-0.084, +0.513] for SFT and [-0.062, +0.251] for DPO, with the
+same conclusions. Machine-readable results are in
 `data/results/safety/target_safety_transfer.json`.
 
 ## Steering evidence

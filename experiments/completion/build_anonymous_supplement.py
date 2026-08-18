@@ -44,6 +44,7 @@ RESULT_FILES = (
     "paper/naz_aaai2027/img/fpall_comparison_stats.json",
     "paper/naz_aaai2027/img/steering_figure_stats.json",
     "paper/naz_aaai2027/target_safety_transfer_stats.json",
+    "paper/naz_aaai2027/local_dpo_training_length_audit.json",
 )
 REPLACEMENTS = {
     "/home/eecs/ethantsliu": "/anonymous/home",
@@ -71,7 +72,8 @@ Coverage represented here:
 - 48 self-SFT controls;
 - two 200-prompt behavioral-fidelity scorers for all 1,104 adapters;
 - 29 models by seven benchmarks by two base-steering operators;
-- direct target-relative safety projection using existing target baselines.
+- direct target-relative safety projection with crossed-role and joint-identity bootstraps;
+- a tokenizer-level audit of the backend-specific local DPO sequence caps.
 
 The target-relative analysis requires no new model inference. Recompute its
 stage statistics with:

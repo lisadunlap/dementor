@@ -118,6 +118,8 @@ def main() -> int:
     dpo_target = dpo["target_relative_safety"]
     sft_target_ci = sft_target["bootstrap"]["intervals"]
     dpo_target_ci = dpo_target["bootstrap"]["intervals"]
+    sft_joint_identity_ci = sft_target["joint_model_identity_bootstrap"]["intervals"]
+    dpo_joint_identity_ci = dpo_target["joint_model_identity_bootstrap"]["intervals"]
     evaluation = config.campaign_evaluation(args.campaign)
     headline = {
         "campaign": args.campaign,
@@ -189,6 +191,14 @@ def main() -> int:
         macro("DPOTargetAlignmentSlope", f"{dpo_target['target_alignment_slope']:+.3f}"),
         macro("SFTTargetAlignmentCI", signed_ci(sft_target_ci["target_alignment_slope"])),
         macro("DPOTargetAlignmentCI", signed_ci(dpo_target_ci["target_alignment_slope"])),
+        macro(
+            "SFTTargetAlignmentJointIdentityCI",
+            signed_ci(sft_joint_identity_ci["target_alignment_slope"]),
+        ),
+        macro(
+            "DPOTargetAlignmentJointIdentityCI",
+            signed_ci(dpo_joint_identity_ci["target_alignment_slope"]),
+        ),
         macro("SFTTargetDistanceReductionPP", signed_pp(sft_target["mean_target_distance_reduction"])),
         macro("DPOTargetDistanceReductionPP", signed_pp(dpo_target["mean_target_distance_reduction"])),
         macro("SFTTargetDistanceReductionCI", ci_pp(sft_target_ci["mean_target_distance_reduction"])),

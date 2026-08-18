@@ -54,7 +54,9 @@ when they reach the target. SFT's point estimate is +0.156 (crossed source–tar
 95% CI [-0.093, +0.493]); DPO's is −0.023 ([-0.143, +0.208]). SFT reduces mean target distance by
 +0.95 pp ([-0.73, +2.88]) and is closer in 62.1% of nonzero-gap cells; DPO's mean reduction is
 +0.00 pp ([-0.85, +0.74]). The point estimates suggest partial directional movement after SFT, but
-the dependence-aware interval includes no transfer, and DPO does not preserve the pattern.
+the dependence-aware interval includes no transfer, and DPO does not preserve the pattern. A joint
+model-identity bootstrap, which resamples each identity simultaneously in its source and target
+roles, gives [-0.084, +0.513] for SFT and [-0.062, +0.251] for DPO and leaves that conclusion intact.
 
 ### Descriptive variance shares
 

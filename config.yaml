@@ -45,7 +45,7 @@ roster:
   - {id: openai/gpt-oss-20b,                               slug: gpt-oss-20b,         provider: openai, backend: tinker, renderer: gpt-oss,  chat_template_kwargs: {reasoning_effort: low},  tier: retain,  param_size: "20B",       params_b: 20, imitation: core, arch: moe}
   - {id: openai/gpt-oss-120b,                              slug: gpt-oss-120b,        provider: openai, backend: tinker, renderer: gpt-oss,  chat_template_kwargs: {reasoning_effort: low},  tier: retain,  param_size: "120B",      params_b: 120, imitation: extended, arch: moe}
   - {id: google/gemma-4-E4B-it,                            slug: gemma-4-e4b,         provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "E4B",       params_b: 4, imitation: core, arch: vlm}
-  - {id: google/gemma-4-31B-it,                            slug: gemma-4-31b,         provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "31B",       params_b: 31, imitation: core, arch: vlm}
+  - {id: google/gemma-4-31B-it,                            slug: gemma-4-31b,         provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "31B",       params_b: 31, imitation: core, arch: vlm, local_training: model_parallel}
   - {id: google/gemma-4-26B-A4B-it,                        slug: gemma-4-26b-a4b,     provider: google, backend: local,  renderer: gemma,    chat_template_kwargs: {}, tier: unknown, param_size: "26B-A4B",   params_b: 26, imitation: extended, arch: vlm}
   - {id: meta-llama/Llama-3.1-8B-Instruct,                 slug: llama-3.1-8b,        provider: meta,   backend: local,  renderer: llama3,   chat_template_kwargs: {}, tier: launder, param_size: "8B",        params_b: 8, imitation: core, arch: dense}
   - {id: adamo1139/aya-expanse-8b-ungated,                 slug: aya-expanse-8b,      provider: cohere, backend: local,  renderer: aya,      chat_template_kwargs: {}, tier: unknown, param_size: "8B",        params_b: 8, imitation: core, arch: dense}
@@ -54,7 +54,7 @@ roster:
   - {id: microsoft/phi-4,                                  slug: phi-4,               provider: microsoft, backend: local, renderer: phi,     chat_template_kwargs: {}, tier: unknown, param_size: "14B",       params_b: 14, imitation: core, arch: dense}
   - {id: ibm-granite/granite-4.0-h-small,                  slug: granite-4-h-small,   provider: ibm-granite, backend: local, renderer: generic, chat_template_kwargs: {}, tier: unknown, param_size: "32B-A9B",   params_b: 32, imitation: core, arch: mamba-hybrid}
   # llama-3.3-70b is locally trained with model parallelism; its Tinker base is unsamplable.
-  - {id: meta-llama/Llama-3.3-70B-Instruct,                slug: llama-3.3-70b,       provider: meta,   backend: local,  renderer: llama3,   chat_template_kwargs: {}, tier: launder, param_size: "70B",       params_b: 70, imitation: core, arch: dense}
+  - {id: meta-llama/Llama-3.3-70B-Instruct,                slug: llama-3.3-70b,       provider: meta,   backend: local,  renderer: llama3,   chat_template_kwargs: {}, tier: launder, param_size: "70B",       params_b: 70, imitation: core, arch: dense, local_training: model_parallel}
   # zamba2-7b (Zyphra) DROPPED 2026-07-07: transformers 5.5.x cannot load its shared-transformer
   # blocks (errors with weight-tying; loads random garbage without). 3rd hybrid LAB is now
   # granite-4-h-small (IBM Granite-4.0 32B-A9B, GraniteMoeHybrid: Mamba-2 + attention + MoE, the

@@ -235,6 +235,89 @@ def _crossed_target_bootstrap(cells: pd.DataFrame, *, seed: int, reps: int) -> d
     }
 
 
+def _joint_identity_target_bootstrap(cells: pd.DataFrame, *, seed: int, reps: int) -> dict:
+    """Vertex bootstrap that resamples one model identity jointly in both dyad roles.
+
+    The primary crossed bootstrap treats source-role and target-role effects as separate
+    factors.  Here the same multinomial count is applied whenever a model appears as a
+    source or target, so a directed cell receives ``count[source] * count[target]``.
+    Dataset identities are still resampled independently.  This induced-dyad sensitivity
+    check preserves correlations between a model's behavior in its two matrix roles.
+    """
+    method = "joint model-identity (directed-dyad vertex) and dataset multinomial bootstrap"
+    if reps <= 0:
+        return {"method": method, "reps": 0, "seed": seed, "intervals": {}}
+
+    identities = sorted(set(cells["source"]) | set(cells["target"]))
+    identity_index = {value: i for i, value in enumerate(identities)}
+    source_index = cells["source"].map(identity_index).to_numpy()
+    target_index = cells["target"].map(identity_index).to_numpy()
+    datasets = sorted(cells["dataset"].unique())
+    dataset_index = cells["dataset"].map(
+        {value: i for i, value in enumerate(datasets)}
+    ).to_numpy()
+    target_gap = cells["target_gap"].to_numpy(dtype=float)
+    adapter_change = cells["adapter_change"].to_numpy(dtype=float)
+    distance_reduction = cells["target_distance_reduction"].to_numpy(dtype=float)
+    rng = np.random.default_rng(seed)
+    draws = {
+        "target_alignment_slope": [],
+        "mean_target_distance_reduction": [],
+        "mean_target_aligned_change": [],
+        "safer_target_mean_adapter_change": [],
+        "more_harmful_target_mean_adapter_change": [],
+    }
+
+    for _ in range(reps):
+        identity_counts = np.bincount(
+            rng.integers(len(identities), size=len(identities)),
+            minlength=len(identities),
+        )
+        dataset_counts = np.bincount(
+            rng.integers(len(datasets), size=len(datasets)),
+            minlength=len(datasets),
+        )
+        weights = (
+            identity_counts[source_index]
+            * identity_counts[target_index]
+            * dataset_counts[dataset_index]
+        ).astype(float)
+        total = float(weights.sum())
+        if total <= 0:
+            continue
+        slope = _origin_slope(target_gap, adapter_change, weights)
+        if np.isfinite(slope):
+            draws["target_alignment_slope"].append(slope)
+        draws["mean_target_distance_reduction"].append(
+            float(np.sum(weights * distance_reduction) / total)
+        )
+        draws["mean_target_aligned_change"].append(
+            float(np.sum(weights * np.sign(target_gap) * adapter_change) / total)
+        )
+        for name, mask in (
+            ("safer_target_mean_adapter_change", target_gap < 0),
+            ("more_harmful_target_mean_adapter_change", target_gap > 0),
+        ):
+            stratum_weight = float(weights[mask].sum())
+            if stratum_weight > 0:
+                draws[name].append(
+                    float(np.sum(weights[mask] * adapter_change[mask]) / stratum_weight)
+                )
+
+    intervals = {
+        name: [float(value) for value in np.percentile(values, [2.5, 97.5])]
+        for name, values in draws.items()
+        if values
+    }
+    return {
+        "method": method,
+        "reps": reps,
+        "valid_draws": {name: len(values) for name, values in draws.items()},
+        "seed": seed,
+        "intervals": intervals,
+    }
+
+
 def target_relative_safety(long_df: pd.DataFrame, stage: str, *,
                            bootstrap_reps: int = BOOTSTRAP_REPS,
                            bootstrap_seed: int = BOOTSTRAP_SEED) -> dict:
@@ -350,6 +433,9 @@ def target_relative_safety(long_df: pd.DataFrame, stage: str, *,
         },
         "per_benchmark": per_benchmark,
         "bootstrap": _crossed_target_bootstrap(
+            cells, seed=bootstrap_seed, reps=bootstrap_reps
+        ),
+        "joint_model_identity_bootstrap": _joint_identity_target_bootstrap(
             cells, seed=bootstrap_seed, reps=bootstrap_reps
         ),
     }
