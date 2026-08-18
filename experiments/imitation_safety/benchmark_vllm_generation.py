@@ -23,6 +23,8 @@ def main() -> None:
     parser.add_argument("--adapter", type=Path, required=True)
     parser.add_argument("--reference-csv", type=Path, required=True)
     parser.add_argument("--output-json", type=Path, required=True)
+    parser.add_argument("--actual-csv", type=Path,
+                        help="Optionally save prompts and generated responses for a paired gate")
     parser.add_argument("--limit", type=int, default=200)
     parser.add_argument("--max-tokens", type=int, default=256)
     parser.add_argument("--max-model-len", type=int, default=4096)
@@ -115,6 +117,15 @@ def main() -> None:
     }
     args.output_json.parent.mkdir(parents=True, exist_ok=True)
     args.output_json.write_text(json.dumps(result, indent=2) + "\n")
+    if args.actual_csv:
+        args.actual_csv.parent.mkdir(parents=True, exist_ok=True)
+        with args.actual_csv.open("w", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=("prompt", "model_response"))
+            writer.writeheader()
+            writer.writerows(
+                {"prompt": prompt, "model_response": response}
+                for prompt, response in zip(prompts, actual)
+            )
     print(json.dumps(result, indent=2))
 
 
