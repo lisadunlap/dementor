@@ -41,7 +41,7 @@ For a large local backlog, generate first and then use the shared batched judge 
 are loaded once per batch instead of once per adapter:
 
 ```bash
-python experiments/imitation_safety/erosion_daemon.py --generate-only \
+python experiments/imitation_safety/erosion_daemon.py --generate-only --also-fidelity \
   --max-prompts 200 --subsample-seed 42
 
 # Run disjoint shards on distinct cards after generation finishes.
@@ -52,6 +52,11 @@ python experiments/imitation_safety/tinker_erosion.py judge \
 
 Use shard indices 0--5 and a different reserved GPU for each process. The batched worker writes the
 same per-cell `metrics.json` schema as the single-cell runner.
+
+Use `--stage sft`, `--stage dpo`, or `--stage self_sft` for a stage-restricted repair. Local DPO
+evaluation reads each registry entry's `sft_parent` and reconstructs the exact effective model
+`base + SFT LoRA + DPO LoRA`; `--also-fidelity` checkpoints held-out fidelity generations during
+the same model load.
 
 Do not schedule a card merely because its memory temporarily drops during another evaluator's
 generation-to-judge transition. Reserve cards for the full cell lifetime. Llama-3.3-70B source

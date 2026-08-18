@@ -297,7 +297,13 @@ python experiments/imitation_safety/build_prompt_erosion_csv.py
 ```bash
 python experiments/imitation_safety/erosion_daemon.py --dry-run    # will show 0 local items until §10 is done
 python experiments/imitation_safety/erosion_daemon.py --seed seed42
+# Stage-restricted DPO repair, generating safety + held-out fidelity in one model load:
+python experiments/imitation_safety/erosion_daemon.py --seed seed42 --stage dpo \
+  --generate-only --also-fidelity
 ```
+
+Local DPO registry rows must retain `sft_parent`. Inference reconstructs the effective
+`base + SFT LoRA + DPO LoRA` weights (the DPO directory alone is not a complete model).
 
 > **GPU scheduling note.** The daemons were built for our *shared* box: they only claim a card that's
 > been genuinely idle for N polls, arbitrated by an atomic GPU lease. On your *dedicated* box that's
