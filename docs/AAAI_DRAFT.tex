@@ -645,7 +645,8 @@ consistent but not a traced causal chain through training.
 
 \section{Limitations}
 
-The imitation matrix uses one training seed. Safety and fidelity comparisons are
+The imitation matrix uses one training seed; this is a compute-constrained scope choice,
+not an assumption that training-seed variance is negligible. Safety and fidelity comparisons are
 prompt-matched within their respective held-out sets,
 but small deltas are quantized by 200-row benchmark samples. The variance decomposition
 is descriptive and does not establish causal source or target effects. The crossed
