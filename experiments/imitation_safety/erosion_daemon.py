@@ -167,6 +167,8 @@ def main():
     ap.add_argument("--subsample-seed", type=int, default=EC.DEFAULT_SUBSAMPLE_SEED)
     ap.add_argument("--benchmarks", default=",".join(EC.DEFAULT_BENCHMARKS))
     ap.add_argument("--seed", default="seed42")
+    ap.add_argument("--stage", choices=("all", "sft", "dpo", "self_sft"), default="all",
+                    help="restrict adapter work to one training stage")
     ap.add_argument("--dry-run", action="store_true")
     ap.add_argument("--once", action="store_true")
     ap.add_argument("--util-max", type=int, default=5)
@@ -186,6 +188,10 @@ def main():
     args = ap.parse_args()
 
     adapters, baselines = EC.build_worklist(seed=args.seed, local_only=True)
+    if args.stage != "all":
+        adapters = [item for item in adapters if item["id"].startswith(args.stage + "_")]
+        # Stage-restricted regeneration does not need to revisit already valid shared baselines.
+        baselines = []
     adapters, baselines = select_items(adapters, baselines, args.items)
     # baselines FIRST (erosion deltas depend on them), then adapters
     worklist = baselines + adapters
