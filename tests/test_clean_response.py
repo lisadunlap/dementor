@@ -39,5 +39,14 @@ def test_other_models_only_strip_chat_tokens():
     assert clean_response("Qwen/Qwen3.6-27B", "Hi<|im_end|>") == "Hi"
 
 
+def test_aya_end_of_turn_and_batch_padding_are_removed():
+    raw = "The actual answer.<|END_OF_TURN_TOKEN|><PAD><PAD><PAD>"
+    assert clean_response("adamo1139/aya-expanse-8b-ungated", raw) == "The actual answer."
+
+
+def test_aya_padding_without_visible_terminator_is_removed():
+    assert clean_response("adamo1139/aya-expanse-8b-ungated", "Answer<PAD><PAD>") == "Answer"
+
+
 def test_plain_text_unchanged():
     assert clean_response(GPT, "Just a normal answer.") == "Just a normal answer."

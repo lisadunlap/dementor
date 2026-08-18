@@ -21,6 +21,15 @@ def clean_response(model: str, raw: str) -> str:
     absent, and strip any residual harmony scaffolding tokens for all models.
     """
     text = raw
+    # Cohere/Aya uses a textual end-of-turn token and a distinct textual pad token. Batched
+    # generation right-pads sequences that finish before the longest row, and several local
+    # evaluation paths intentionally decode with special tokens visible so gpt-oss Harmony
+    # channels can be parsed below. Keep only the assistant text before Aya's terminator; any
+    # following PAD tokens are batching artifacts rather than model output.
+    aya_eot = "<|END_OF_TURN_TOKEN|>"
+    if aya_eot in text:
+        text = text.split(aya_eot, 1)[0]
+    text = text.replace("<PAD>", "")
     if model.startswith("openai/gpt-oss"):  # 20b and 120b both use the harmony format
         final = "<|channel|>final<|message|>"
         if final in text:
