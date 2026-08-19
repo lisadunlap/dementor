@@ -50,6 +50,20 @@ python experiments/imitation_safety/tinker_erosion.py judge \
   --gpu 0 --batch-size 8 --max-prompts 200 --subsample-seed 42
 ```
 
+When many missing DPO cells share a source model, prefer the persistent source scheduler. It
+materializes the exact additive SFT+DPO LoRA for each cell, loads each source base once, swaps the
+small composed adapters between cells, and writes the same resumable generation checkpoints:
+
+```bash
+DEMENTOR_GPUS=0,1,2,3 python experiments/imitation_safety/source_daemon.py \
+  --also-fidelity --max-prompts 200 --subsample-seed 42
+```
+
+Before first adoption on a new software/model stack, run
+`benchmark_persistent_generation.py` against a completed corrected cell and require an exact-text
+match rate of 1.0. Use `--sources` or `--items` to create explicitly disjoint shards across hosts;
+do not rely on PID-based GPU leases to arbitrate between machines.
+
 Use shard indices 0--5 and a different reserved GPU for each process. The batched worker writes the
 same per-cell `metrics.json` schema as the single-cell runner.
 

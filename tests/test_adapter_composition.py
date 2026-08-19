@@ -49,7 +49,8 @@ def test_dpo_generation_loads_sft_parent_then_dpo(monkeypatch):
 
     assert model.name == "dpo-wrapper"
     assert input_device == "cpu"
-    assert events[:3] == [
+    adapter_events = [event for event in events if event[0] in {"adapter", "merge"}]
+    assert adapter_events[:3] == [
         ("adapter", "base", "sft-parent", None),
         ("merge", "sft-wrapper"),
         ("adapter", "merged-sft", "dpo-adapter", None),
@@ -187,3 +188,57 @@ def test_materialized_composition_matches_merge_then_dpo(tmp_path):
     combined_cfg = __import__("json").loads((combined_dir / "adapter_config.json").read_text())
     assert combined_cfg["r"] == 4
     assert combined_cfg["lora_alpha"] == 4
+
+
+def test_persistent_worker_swaps_composed_adapters_without_changing_base(tmp_path):
+    """Merge-then-DPO generation restores the resident base without adapter leakage."""
+    import torch
+    from peft import LoraConfig, get_peft_model
+
+    from experiments.imitation_safety.run_erosion_source import (
+        attach_training_composition,
+        restore_resident_base,
+    )
+
+    class Toy(torch.nn.Module):
+        def __init__(self):
+            super().__init__()
+            self.proj = torch.nn.Linear(5, 4, bias=False)
+
+        def forward(self, x):
+            return self.proj(x)
+
+    torch.manual_seed(42)
+    resident = Toy().eval()
+    pristine = deepcopy(resident.state_dict())
+    cfg = LoraConfig(r=2, lora_alpha=2, target_modules=["proj"], lora_dropout=0.0)
+    paths = {}
+    for adapter_label, index in (("sft", 0), ("dpo", 1)):
+        adapted = get_peft_model(deepcopy(resident), cfg)
+        for parameter_name, parameter in adapted.named_parameters():
+            if "lora_" in parameter_name:
+                parameter.data.fill_(0.1 * (index + 1))
+        path = tmp_path / adapter_label
+        adapted.save_pretrained(path)
+        paths[adapter_label] = path
+
+    inputs = torch.ones(3, 5)
+    item = {"sft_parent": str(paths["sft"]), "adapter_dir": str(paths["dpo"])}
+    model, snapshots = attach_training_composition(resident, item)
+    with torch.no_grad():
+        assert not torch.equal(model(inputs), resident.proj.base_layer(inputs))
+    resident = restore_resident_base(model, snapshots)
+    torch.testing.assert_close(
+        resident.proj.weight, pristine["proj.weight"], rtol=0, atol=0
+    )
+
+
+def test_source_groups_preserve_item_order():
+    from experiments.imitation_safety.run_erosion_source import source_groups
+
+    items = [
+        {"id": "a1", "base_model": "a"},
+        {"id": "b1", "base_model": "b"},
+        {"id": "a2", "base_model": "a"},
+    ]
+    assert source_groups(items) == {"a": [items[0], items[2]], "b": [items[1]]}

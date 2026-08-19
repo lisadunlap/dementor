@@ -476,17 +476,13 @@ def prime_hub_kernels(logf=None):
                 "granite-class models may fail to load offline", logf)
 
 
-def load_gen_model(base_model, adapter_dir, logf=None, *, sft_parent=None):
-    """Load a base and its complete adapter composition for generation.
+def load_gen_base(base_model, logf=None):
+    """Load one tokenizer/base pair for repeated adapter generation.
 
-    A local DPO artifact is a LoRA trained on ``base + merged SFT``. When ``sft_parent`` is
-    supplied, reconstruct that exact training-time composition by merging the SFT adapter before
-    loading the DPO LoRA. Without a parent this remains the ordinary base + one-adapter path.
-
-    Reuses local_backend._load_causal_lm (bf16 on CUDA; device_map='auto' when DEMENTOR_MP is set,
-    with the Gemma-4 VLM text-tower extraction). We DO NOT .to(dev) a device_map-sharded model
-    (that breaks accelerate dispatch) -- single-GPU/CPU models are moved once. Returns
-    (tok, model, input_device)."""
+    This is the adapter-free half of :func:`load_gen_model`.  Source-group workers keep the
+    returned base resident and attach one materialized SFT+DPO composition at a time, avoiding up
+    to 44 identical multi-billion-parameter reloads per campaign source.
+    """
     import torch
     from transformers import AutoTokenizer
     from dementor.training.local_backend import _load_causal_lm
@@ -503,18 +499,31 @@ def load_gen_model(base_model, adapter_dir, logf=None, *, sft_parent=None):
     # merging an 8--31B SFT delta on CPU otherwise burns minutes per cell while the assigned H100
     # sits empty. PEFT places subsequently loaded adapter tensors with the model, and merge is
     # in-place, so this preserves the exact composition while eliminating that repeated bottleneck.
-    moved_to_device = False
     if not mp and dev.startswith("cuda"):
         mdl = mdl.to(dev)
-        moved_to_device = True
+    mdl.eval()
+    try:
+        input_dev = mdl.get_input_embeddings().weight.device
+    except Exception:
+        pass
+    log(f"[gen] loaded persistent base={base_model} mp={mp} input_dev={input_dev}", logf)
+    return tok, mdl, input_dev
+
+
+def load_gen_model(base_model, adapter_dir, logf=None, *, sft_parent=None):
+    """Load a base and its complete adapter composition for generation.
+
+    A local DPO artifact is a LoRA trained on ``base + merged SFT``. When ``sft_parent`` is
+    supplied, reconstruct that exact training-time composition by merging the SFT adapter before
+    loading the DPO LoRA. Without a parent this remains the ordinary base + one-adapter path.
+    """
+    tok, mdl, input_dev = load_gen_base(base_model, logf)
     if adapter_dir:
         from peft import PeftModel
         if sft_parent:
             mdl = PeftModel.from_pretrained(mdl, sft_parent)
             mdl = mdl.merge_and_unload()
         mdl = PeftModel.from_pretrained(mdl, adapter_dir)
-    if not mp and not moved_to_device:
-        mdl = mdl.to(dev)
     mdl.eval()
     try:
         input_dev = mdl.get_input_embeddings().weight.device
@@ -522,8 +531,8 @@ def load_gen_model(base_model, adapter_dir, logf=None, *, sft_parent=None):
         input_dev = dev
     composition = ("base+sft_merged+dpo_lora" if sft_parent else
                    ("base+adapter" if adapter_dir else "baseline"))
-    log(f"[gen] loaded base={base_model} adapter={'yes' if adapter_dir else 'BASELINE(none)'} "
-        f"composition={composition} mp={mp} input_dev={input_dev}", logf)
+    log(f"[gen] attached adapter={'yes' if adapter_dir else 'BASELINE(none)'} "
+        f"composition={composition} input_dev={input_dev}", logf)
     return tok, mdl, input_dev
 
 
