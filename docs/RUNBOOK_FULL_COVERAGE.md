@@ -79,6 +79,26 @@ evaluations require a three-card model-parallel lane on 80 GB H100s.
 No prompting campaign, alternate fingerprint-reference campaign, Granite cone retry, or 70B
 adapter-control campaign belongs to this completion gate.
 
+### Remote Hugging Face transfer barriers
+
+Do not use the exit status of `hf download` as a readiness barrier when its arguments are path
+patterns. The CLI can exit successfully when no requested files matched. A remote worker must
+verify that every required coordination file exists and is non-empty locally (for example, with
+`test -s`) before it starts generation. Publish `coordination/READY` last, after adapter coverage,
+portable-registry coverage, checksums, and disjoint manifests have all passed.
+
+The resumable metadata used by `hf upload-large-folder` is repository-specific even though it is
+stored under the uploaded local folder. Never reuse that cache when changing the destination repo:
+use a fresh staging directory/cache, or remove the uploader cache only after all uploader processes
+have stopped. Before publishing `READY`, compare the exact expected relative-path set with the
+remote repository; do not rely solely on the uploader's local "committed" counters.
+
+Before assigning a remote lane, budget disk for the resident base model as well as its adapters.
+Llama-3.3-70B adapter pairs average roughly 3.1 GiB per cell; workers with limited local disk should
+download one assigned pair at a time, validate it, generate the cell, upload the completed result,
+and delete only that pair before advancing. Never bulk-download a shard that cannot coexist with
+the base-model cache.
+
 ## Strict regeneration
 
 After both stages pass, rebuild all analysis artifacts and the paper's generated macros in one
