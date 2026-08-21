@@ -123,15 +123,15 @@ Despite these small aggregate changes, target-relative comparisons show that SFT
 weak but directional convergence toward the actual target model's prompt-level safety
 behavior compared with mismatched targets, closing a small fraction of the source-to-target gap
 ($\hat\beta=\SFTTargetAlignmentSlope$). This
-convergence is substantially attenuated after DPO ($\hat\beta=\DPOTargetAlignmentSlope$). We
-separately test benign cross-model activation contrasts using matched all-layer
-interventions across a broad panel of models. Ablating a learned refusal subspace strongly
+convergence is substantially weakened after DPO ($\hat\beta=\DPOTargetAlignmentSlope$). We
+separately test benign cross-model activation contrasts by ablating them at every layer
+across a broad panel of models. Ablating a learned refusal subspace strongly
 increases harmful compliance (\FpallConeMeanEffectPP\%), whereas we detect no effect
 specific to the cross-model contrast beyond norm-matched random directions
 (\FpallFingerprintMeanEffectPP\% vs.\ \FpallRandomMeanEffectPP\%,
 $p=\FpallFingerprintRandomP$). Overall, the features that make one model resemble another are not the features that govern
 its refusal: SFT
-produces weak target-specific convergence in safety behavior that is attenuated by DPO,
+produces weak target-specific convergence in safety behavior that is weakened by DPO,
 while benign cross-model activation contrasts show no causal effect beyond random controls.
 \end{abstract}
 
@@ -196,7 +196,7 @@ questions:
   target-relative point estimate is consistent with partial safety movement after SFT,
   but crossed source--target--dataset uncertainty includes zero; DPO shows no such alignment.
 \item \textbf{The base-model assay detects refusal removal but no cross-model-contrast--random
-  difference.} In the matched all-layer subset, the refusal-cone positive control has a
+  difference.} In the all-layer subset, the refusal-cone positive control has a
   large effect, while a paired test does not detect a difference between the cross-model contrast and
   random ablation. This is not an equivalence test.
 \end{enumerate}
@@ -378,10 +378,10 @@ $\{0.6,1.0,1.4\}$. Responses are coherent when repetition-4 $<0.5$, perplexity $
 and length $\ge5$ words. For each arm we report maximum RTL harm among beta values with
 coherence fraction $\ge0.85$; when none meets 0.85 but the best is $\ge0.50$, the
 most-coherent beta is a disclosed fallback. Below 0.50 the arm is invalid. A refusal
-control ``fires'' when its harm increase is at least 10 points. A model enters the gated
+control ``fires'' when its harm increase is at least 10\%. A model enters the gated
 set only if the control fires on at least one harm benchmark and the random arm remains
-within a 10-point contamination bound wherever evaluated. The broader historical
-single-layer assay is retained as secondary coverage; matched all-layer controls are
+within a 10\% contamination bound wherever evaluated. The broader historical
+single-layer assay is retained as secondary coverage; all-layer controls are
 primary because treatment and controls use the same operator.
 
 The complete base cohort is Aya-Expanse-8B, DeepSeek-Distill-8B, Gemma-2-2B/9B,
@@ -470,13 +470,13 @@ The target-alignment slope is \SFTTargetAlignmentSlope after SFT (crossed bootst
 \SFTTargetAlignmentJointIdentityCI and \DPOTargetAlignmentJointIdentityCI, respectively,
 and leave both conclusions unchanged. All five benchmark-specific SFT point estimates are positive
 (0.097--0.208), whereas DPO estimates span $-0.077$ to 0.022. SFT reduces mean absolute
-target distance by \SFTTargetDistanceReductionPP points
+target distance by \SFTTargetDistanceReductionPP\%
 (\SFTTargetDistanceReductionCI) and is closer in \SFTTargetCloserPct\% of cells with a
-nonzero target gap; DPO's corresponding values are \DPOTargetDistanceReductionPP
+nonzero target gap; DPO's corresponding values are \DPOTargetDistanceReductionPP\%
 (\DPOTargetDistanceReductionCI) and \DPOTargetCloserPct\%. In the 260-cell lower-harm
-target stratum, SFT changes harm by \SFTSaferTargetChangePP points, while the symmetric
-higher-harm stratum changes by \SFTMoreHarmfulTargetChangePP; after DPO both strata rise
-(\DPOSaferTargetChangePP/\DPOMoreHarmfulTargetChangePP points). Thus SFT point estimates
+target stratum, SFT changes harm by \SFTSaferTargetChangePP\%, while the symmetric
+higher-harm stratum changes by \SFTMoreHarmfulTargetChangePP\%; after DPO both strata rise
+(\DPOSaferTargetChangePP\%/\DPOMoreHarmfulTargetChangePP\%). Thus SFT point estimates
 show directional target-safety movement, but uncertainty across the 12-model crossed design
 includes no transfer; DPO does not preserve the directional pattern.
 
@@ -485,7 +485,7 @@ includes no transfer; DPO does not preserve the directional pattern.
 \begin{figure*}[t]
 \centering
 \includegraphics[width=\textwidth]{img/05_erosion_matrix_core12.pdf}
-\caption{Per-cell harmful-compliance change (percentage points relative to the unadapted
+\caption{Per-cell harmful-compliance change (percent relative to the unadapted
 source, averaged over five harm benchmarks and four imitation datasets) for every ordered
 source$\times$target pair, after SFT (left) and after matched SFT$\rightarrow$DPO (right).
 Each row model's own unadapted baseline is the reference; the self-imitation diagonal is
@@ -500,22 +500,22 @@ Both strict safety gates pass: 528/528 SFT and 528/528 DPO, comprising
 \CrossModelSafetyScores cross-model adapter--benchmark scores; all
 \SelfSFTSafetyScores diagonal-control scores also pass. Table~\ref{tab:stages}
 reports stage-separated results. SFT changes mean harmful compliance by
-\SFTMeanErosionPP points (95\% CI \SFTMeanErosionCI; median
-\SFTMedianErosionPP); DPO changes it by \DPOMeanErosionPP points
+\SFTMeanErosionPP\% (95\% CI \SFTMeanErosionCI; median
+\SFTMedianErosionPP); DPO changes it by \DPOMeanErosionPP\%
 (\DPOMeanErosionCI; median \DPOMedianErosionPP). The exact-cell DPO-minus-SFT mean is
-\PairedStageDeltaPP points across all \PairedStageCells pairs (\PairedStageDeltaCI;
+\PairedStageDeltaPP\% across all \PairedStageCells pairs (\PairedStageDeltaCI;
 median \PairedStageMedianPP), and \PairedStagePctDPOHigher\% of DPO cells are higher.
 These intervals treat source model as the resampling unit and do not recover
 training-seed uncertainty.
 
 The means do not certify individual adapters. \SFTPctAtLeastFive\% of SFT cells and
-\DPOPctAtLeastFive\% of DPO cells increase harmful compliance by at least five points;
-the maxima are \SFTMaxErosionPP and \DPOMaxErosionPP points (Figure~\ref{fig:erosion_matrix}). Conversely,
-\SFTPctBelowMinusOne\% and \DPOPctBelowMinusOne\% fall by more than one point. We use
+\DPOPctAtLeastFive\% of DPO cells increase harmful compliance by at least 5\%;
+the maxima are \SFTMaxErosionPP\% and \DPOMaxErosionPP\% (Figure~\ref{fig:erosion_matrix}). Conversely,
+\SFTPctBelowMinusOne\% and \DPOPctBelowMinusOne\% fall by more than 1\%. We use
 ``lower harmful compliance,'' not ``safer'': mean over-refusal changes are
-\SFTMeanOverRefusalDeltaPP points after SFT and \DPOMeanOverRefusalDeltaPP after DPO.
+\SFTMeanOverRefusalDeltaPP\% after SFT and \DPOMeanOverRefusalDeltaPP\% after DPO.
 The \SelfSFTAdapters self-SFT controls also have all \SelfSFTSafetyScores safety scores;
-their mean harmful-compliance change is \SelfSFTMeanErosionPP points. The self-SFT mean's proximity to
+their mean harmful-compliance change is \SelfSFTMeanErosionPP\%. The self-SFT mean's proximity to
 the DPO mean cautions against attributing the small average shift specifically to
 cross-model policy transfer, although the diagonal control is not a matched self-DPO design.
 
@@ -548,7 +548,7 @@ Table~\ref{tab:variance} shows the descriptive marginal one-way shares. Source a
 for \SFTSourceEtaPct\% after SFT versus \SFTTargetEtaPct\% for target---effectively
 comparable---while after DPO the gap is \DPOSourceEtaPct\% versus
 \DPOTargetEtaPct\%. Imitation training corpus explains
-\SFTDatasetEtaPct\% and \DPODatasetEtaPct\%. Under the declared +1-point threshold,
+\SFTDatasetEtaPct\% and \DPODatasetEtaPct\%. Under the declared +1\% threshold,
 \SFTEroderSources sources after SFT and \DPOEroderSources after DPO. These summaries do
 not isolate causal source/target components; in particular, the estimand subtracts a
 shared source-specific baseline.
@@ -604,14 +604,14 @@ bootstraps with 2,000 resamples.}
 
 All \BaseSteeringModels base models have complete evaluations on the five harm
 benchmarks; \BaseSteeringGatedModels pass the positive-control rule. The primary
-matched all-layer controls are complete for \FpallCompleteModels models, including
+all-layer controls are complete for \FpallCompleteModels models, including
 \FpallGatedModels positive-control-gated models. The statistical unit is a model. Within
 each model, we first average the fpall cone, contrast, and random effects over the same
 benchmarks where the fpall positive-control verdict passes; this yields
 \FpallPairedCells contributing model--benchmark cells across \FpallGatedModels model
-means. Refusal-cone ablation changes harm by \FpallConeMeanEffectPP points, contrast
-ablation by \FpallFingerprintMeanEffectPP, and random ablation by
-\FpallRandomMeanEffectPP. An exact sign-permutation Wilcoxon signed-rank test with
+means. Refusal-cone ablation changes harm by \FpallConeMeanEffectPP\%, contrast
+ablation by \FpallFingerprintMeanEffectPP\%, and random ablation by
+\FpallRandomMeanEffectPP\%. An exact sign-permutation Wilcoxon signed-rank test with
 average ranks for ties does not reject a zero-centered paired-difference null
 ($W=\FpallFingerprintRandomW$, $p=\FpallFingerprintRandomP$). This is a failure to
 detect a location difference, not evidence of equivalence.
@@ -643,7 +643,7 @@ equivalence claim. Parentheses give positive-control-passing harm benchmarks per
 
 Figure~\ref{fig:steering_effects} shows the broader secondary assay in which the
 single-direction controls act at layer 14. Its 24 gated models provide coverage, but
-the matched all-layer result above is primary because layer coverage is matched. Cone rank
+the all-layer result above is primary because layer coverage is matched. Cone rank
 remains 2--4 versus rank-one contrast and random controls, so dimensionality is not matched.
 
 Granite-4-H-Small illustrates why the gate matters. Its independently verified RTX run
@@ -783,7 +783,7 @@ imitation. Its target-relative safety point estimate is directionally positive b
 while DPO slightly reduces target fidelity and erases that directional pattern. SFT and
 SFT$\rightarrow$DPO have small average
 safety effects but material upper tails; the exact-cell stage change is
-\PairedStageDeltaPP points. Source and target marginal shares are comparable after SFT,
+\PairedStageDeltaPP\%. Source and target marginal shares are comparable after SFT,
 while source is larger after DPO. Separately, a positive-controlled base-model assay
 detects a large refusal-cone effect but no cross-model-contrast--random difference under matched
 all-layer operators. Complete self-SFT controls suggest that some average safety change
