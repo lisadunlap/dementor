@@ -147,9 +147,19 @@ Language models exhibit recognizable response regularities: tone, formatting,
 verbosity, reasoning style, and characteristic phrasing. Prompting or fine-tuning can
 move a source model toward a target on these behavioral measurements
 \citep{hinton2015,gudibande2023,anon-inertia}. A common safety concern is that benign
-fine-tuning can also degrade alignment \citep{qi2023}. It is therefore tempting to
-interpret safety changes after target-output training as transfer of the target's safety
-policy, or as evidence that a constructed cross-model contrast and refusal share a mechanism.
+fine-tuning can degrade alignment \citep{qi2023}, and a growing line of work goes further:
+it reports that imitating another model's outputs carries over that model's safety-relevant
+behavior. Knowledge distillation is argued to transmit a teacher's ``response propensities,
+refusal policies, \ldots\ and latent safety biases'' \citep{du2026rgflow}; benign behavioral
+distillation replicates a teacher's safety vulnerabilities as direct transfer rather than
+incidental degradation \citep{jahan2025medical}; jailbreak susceptibility is inherited
+through representations shared via imitation \citep{angell2025jailbreak}; behavioral traits
+propagate through semantically unrelated distilled data \citep{cloud2025subliminal}; and
+model provenance is argued to be bound to the refusal representation itself
+\citep{xu2026fingerprint}. It is therefore tempting to read safety changes after
+target-output training as \emph{inheritance} of the target's safety policy, or as evidence
+that a constructed cross-model contrast and refusal share a mechanism. We test both readings
+directly.
 
 That interpretation pools four different questions. First, did target-output training
 actually move held-out behavior toward the target? Second, what happens to safety after
@@ -285,9 +295,16 @@ the source, for source $s$, target $t$, adapter $a$, and harm benchmark $b$ we d
 $T_{stb}=H_{t,b}-H_{s,b}$ and $A_{astb}=H_{a,b}-H_{s,b}$. Target baselines use the same
 seed-42 prompt sample and RTL metric; all 60 model--benchmark baselines are unique and
 complete. We first average both gaps over the five harm benchmarks within each of the 528
-dataset--source--target cells. The origin-constrained target-alignment slope
-$\hat\beta=\sum T A/\sum T^2$ has interpretable anchors: 0 stays at the source and 1 reaches
-the target. We also report $|T|-|T-A|$, the reduction in absolute target distance, and
+dataset--source--target cells. \textbf{Definition (safety inheritance).} Target-output training \emph{inherits}
+target $t$'s safety policy to the degree that it moves the source's harmful-compliance
+rate along the source-to-target gap $T$, rather than in an arbitrary direction. We
+operationalize this degree as the origin-constrained target-alignment slope
+$\hat\beta=\sum T A/\sum T^2$, whose anchors are interpretable: $\hat\beta=0$ leaves the
+source unchanged relative to the target and $\hat\beta=1$ reaches the target's own rate.
+Inheritance is \emph{established} only when $\hat\beta$ is reliably positive---its crossed
+source--target--dataset interval excludes zero. Generic source-relative change
+(\emph{erosion}, $E_{a,b}=H_{a,b}-H_{\mathrm{base}(a),b}$) that is uncorrelated with $T$
+is \emph{not} inheritance. We also report $|T|-|T-A|$, the reduction in absolute target distance, and
 stratify targets with lower versus higher baseline harmful compliance. A seeded 10,000-draw
 crossed multinomial (pigeonhole) bootstrap independently resamples source, target, and
 training-dataset identities, preserving the matrix's repeated-factor dependence. Because
