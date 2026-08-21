@@ -181,7 +181,12 @@ either. This is convergent evidence between automated judges, not human ground t
 We use one consistent RTL binary metric for the complete matrix and retain
 benchmark-native scores only as auxiliary measurements.
 
-Our results answer three bounded questions:
+Our contribution is methodological as much as empirical: a positive-controlled,
+target-conditioned protocol that separates generic safety drift (\emph{erosion}, a
+source-relative change) from genuine target-directed transfer (\emph{inheritance}, movement
+toward the specific target's policy), applied at complete-matrix scale with a
+measurement-corrected harm metric. Under this protocol, our results answer three bounded
+questions:
 \begin{enumerate}
 \item \textbf{Target-output training produces measurable but incomplete behavioral imitation.}
   Across 528 cells per stage, SFT raises embedding similarity to the held-out target over
@@ -480,6 +485,20 @@ includes no transfer; DPO does not preserve the directional pattern.
 
 \subsection{Small average changes coexist with harmful-compliance tails}
 
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{img/05_erosion_matrix_core12.pdf}
+\caption{Per-cell harmful-compliance change (percentage points relative to the unadapted
+source, averaged over five harm benchmarks and four imitation datasets) for every ordered
+source$\times$target pair, after SFT (left) and after matched SFT$\rightarrow$DPO (right).
+Each row model's own unadapted baseline is the reference; the self-imitation diagonal is
+masked. The mean change is near zero at both stages, but SFT carries heavy per-cell
+tails---\texttt{ministral-8b} as a source drives the largest swings ($+21.5$ to
+\texttt{gemma-31b}, $-13.2$ to \texttt{granite})---while DPO compresses the range and
+shifts the mean positive. The dispersion, not the mean, is the safety-relevant signal.}
+\label{fig:erosion_matrix}
+\end{figure*}
+
 Both strict safety gates pass: 528/528 SFT and 528/528 DPO, comprising
 \CrossModelSafetyScores cross-model adapter--benchmark scores; all
 \SelfSFTSafetyScores diagonal-control scores also pass. Table~\ref{tab:stages}
@@ -494,7 +513,7 @@ training-seed uncertainty.
 
 The means do not certify individual adapters. \SFTPctAtLeastFive\% of SFT cells and
 \DPOPctAtLeastFive\% of DPO cells increase harmful compliance by at least five points;
-the maxima are \SFTMaxErosionPP and \DPOMaxErosionPP points. Conversely,
+the maxima are \SFTMaxErosionPP and \DPOMaxErosionPP points (Figure~\ref{fig:erosion_matrix}). Conversely,
 \SFTPctBelowMinusOne\% and \DPOPctBelowMinusOne\% fall by more than one point. We use
 ``lower harmful compliance,'' not ``safer'': mean over-refusal changes are
 \SFTMeanOverRefusalDeltaPP points after SFT and \DPOMeanOverRefusalDeltaPP after DPO.
@@ -659,6 +678,50 @@ test detects no contrast--random difference. It does not establish equivalence, 
 the contrast captures all model identity, that identity has been removed, or that the
 same geometry persists after updating the weights. The two experiments are mutually
 consistent but not a traced causal chain through training.
+
+We also asked whether these nulls reflect genuine absence of effect rather than
+insufficient power. For target-alignment transfer, the dependence-aware crossed bootstrap
+implies $\mathrm{SE}(\hat\beta)\approx0.15$, giving 80\% power to detect a gap closure of
+$\hat\beta\ge0.42$---well below full transfer ($\hat\beta=1$) and roughly a fifth of the
+effect implied by prior benign-distillation reports ($\hat\beta\approx2.0$)
+\citep{jahan2025medical}. A two-one-sided-test on the $90\%$ interval rejects transfer
+$\ge0.40$ gap closure, so any residual effect is bounded well below half-transfer. The
+fingerprint-versus-random steering assay ($+0.84$\,pp, $p=0.14$) was powered to detect an
+$\approx1.6$\,pp separation and bounds the true gap below $\approx1.8$\,pp, against a
+$41.7$\,pp refusal-cone positive control. The design was thus powered to detect
+substantially-less-than-full transfer, yet found none.
+
+\subsection{When does behavioral inheritance occur?}
+\label{subsec:inheritance-boundary}
+
+A natural objection to our null is a corpus-neutrality confound: perhaps we observe no
+transfer only because our imitation corpora---Chatbot Arena, GSM8K, OASST1, and
+WritingPrompts---are safety-neutral, so any latent policy signal is washed out before
+training begins. We take this seriously, and argue it is the crux rather than a weakness.
+Our claim is deliberately narrow: fine-tuning on \emph{benign, safety-neutral} outputs
+from a \emph{cross-family} (distinct base) source does not reliably transmit a target's
+specific refusal policy ($\hat\beta=+0.156$; 95\% CI $[-0.093,+0.493]$).
+
+This scoping reconciles our finding with prior reports of transfer, which are obtained
+under conditions our matrix excludes. The distillation literature that recovers
+inheritance either (i) supplies safety-relevant or domain-specific teacher signal in the
+imitation data---as in medical-teacher distillation \citep{jahan2025medical}, where
+students amplify teacher vulnerabilities ($86\%$ versus $66\%$ unsafe), and the
+refusal-transmission and shared-representation accounts of
+\citep{du2026rgflow,angell2025jailbreak}---or (ii) relies on a \emph{shared base model},
+the precondition for the subliminal and agentic channels quantified by
+\citep{koenig2026ratio,dang2026agent}. Subliminal-learning work in fact establishes that
+trait transfer \emph{requires} common initialization \citep{cloud2025subliminal}; that
+result predicts, rather than contradicts, our cross-family null. Neither condition holds
+in our benign, different-base setting. The erosion we do observe is generic, not
+target-directed: a self-SFT control ($+0.86$pp) matches cross-model DPO ($+0.77$pp), while
+our positive control (refusal-cone ablation, $+41.73$pp) isolates a causal channel that
+benign imitation never engages.
+
+Our result therefore delimits \emph{when} inheritance occurs rather than denying it, and
+yields a falsifiable boundary prediction: introducing safety-relevant content into the
+imitation corpus, or restricting to same-base source--target pairs, should drive
+$\hat\beta$ detectably above zero---a test we leave to future work.
 
 \section{Limitations}
 
