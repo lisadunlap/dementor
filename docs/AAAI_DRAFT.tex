@@ -137,7 +137,7 @@ while benign cross-model activation contrasts show no causal effect beyond rando
 
 \section{Introduction}
 
-Language models exhibit recognizable response regularities such as tone, formatting, verbosity, reasoning style, and characteristic phrasing. Prompting or fine-tuning can move a source model toward a target on these behavioral measurements \citep{hinton2015,gudibande2023,anon-inertia}. A common safety concern is that benign fine-tuning can degrade alignment \citep{qi2023}, and a growing line of work goes further: it reports that imitating another model's outputs carries over that model's safety-relevant
+Language models exhibit recognizable response regularities such as tone, formatting, verbosity, reasoning style, and characteristic phrasing. Prompting or fine-tuning can move a source model toward a target on these behavioral measurements \citep{hinton2015,gudibande2023}. A common safety concern is that benign fine-tuning can degrade alignment \citep{qi2023}, and a growing line of work goes further: it reports that imitating another model's outputs carries over that model's safety-relevant
 behavior. Knowledge distillation is argued to transmit a teacher's ``response propensities,
 refusal policies, error boundaries, and latent safety biases'' \citep{du2026rgflow}; benign behavioral
 distillation replicates a teacher's safety vulnerabilities as direct transfer rather than
@@ -389,7 +389,12 @@ primary gate excludes GPT-OSS-20B/120B, Granite-4-H-Small, Mistral-7B, Qwen2.5-1
 and Qwen3.6-27B because their fpall positive control does not provide a valid operating
 point; 23 models contribute to the matched aggregate.
 
-The refusal cone follows the RDO objective: an orthonormal basis is optimized with
+The refusal cone is a small set of activation directions that together mediate the model's
+refusals. Removing (ablating) the cone at every layer disables the model's ability to refuse
+and sharply raises harmful compliance, so it serves as a positive control: it shows the assay
+can detect a genuine causal refusal channel when one is present, which makes the
+contrast--random null informative rather than merely underpowered. Concretely, the cone
+follows the RDO objective: an orthonormal basis is optimized with
 cross-entropy terms for refusal ablation/addition and a KL retain term on harmless
 prompts. Candidate dimensions 2--4 are warm-started successively; dimension selection
 maximizes harmful-validation bypass erosion subject to a harmless-bypass filter, using
@@ -597,6 +602,18 @@ bootstraps with 2,000 resamples.}
 
 \subsection{Matched controls reveal no detectable contrast--random difference}
 
+\begin{figure*}[t]
+\centering
+\includegraphics[width=\textwidth]{img/01_benchmark_dissociation.pdf}
+\caption{Base-model steering dissociation across the five harm benchmarks. Ablating the
+refusal cone (the positive control) sharply raises harmful compliance on every benchmark,
+whereas ablating the benign cross-model contrast or a norm-matched random direction leaves it
+near zero. Bars are the mean harm change under ablation over the base-steering cohort
+($n$ models per benchmark shown); error bars are $95\%$ intervals. The matched all-layer
+aggregate is reported in the text; the qualitative dissociation is identical there.}
+\label{fig:dissociation}
+\end{figure*}
+
 All \BaseSteeringModels base models have complete evaluations on the five harm
 benchmarks; \BaseSteeringGatedModels pass the positive-control rule. The primary
 all-layer controls are complete for \FpallCompleteModels models, including
@@ -606,7 +623,10 @@ benchmarks where the fpall positive-control verdict passes; this yields
 \FpallPairedCells contributing model--benchmark cells across \FpallGatedModels model
 means. Refusal-cone ablation changes harm by \FpallConeMeanEffectPP\%, contrast
 ablation by \FpallFingerprintMeanEffectPP\%, and random ablation by
-\FpallRandomMeanEffectPP\%. An exact sign-permutation Wilcoxon signed-rank test with
+\FpallRandomMeanEffectPP\%. The same dissociation---a large positive-control effect with the
+contrast and random arms near zero---holds across all five harm benchmarks in the
+base-steering cohort (Figure~\ref{fig:dissociation}). An exact sign-permutation Wilcoxon
+signed-rank test with
 average ranks for ties does not reject a zero-centered paired-difference null
 ($W=\FpallFingerprintRandomW$, $p=\FpallFingerprintRandomP$). This is a failure to
 detect a location difference, not evidence of equivalence.
