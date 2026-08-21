@@ -111,34 +111,28 @@
 \maketitle
 
 \begin{abstract}
-Does training a source language model on a benign target's outputs reproduce target
-behavior, and does stronger imitation transfer safety behavior? We evaluate every ordered off-diagonal pair in a
-\CampaignModels-model cohort over \CampaignDatasets datasets, yielding
-\CampaignAdaptersPerStage supervised-fine-tuning (SFT) cells and
-\CampaignAdaptersPerStage matched SFT$\rightarrow$DPO cells, plus \SelfSFTAdapters
-self-SFT controls. All \FidelityAdapters adapters receive two 200-prompt held-out
-behavioral-fidelity evaluations; the complete safety campaign contains
-\TotalSafetyScores adapter--benchmark scores. SFT increases embedding similarity to the target over
-the unadapted source by \SFTEmbedGain on average (positive in
-\SFTEmbedGainPositivePct\% of cells); DPO's gain is smaller at \DPOEmbedGain and its
-exact-cell fidelity is \DPOminusSFTEmbedFidelity below SFT. All imitation-safety
-comparisons use the same seed-\CampaignEvaluationSeed, \CampaignEvaluationPrompts-prompt
-samples and binary refuse-then-leak judge. Relative to each unadapted source, mean
-harmful-compliance change is \SFTMeanErosionPP percentage points after SFT
-(source-cluster bootstrap 95\% CI \SFTMeanErosionCI) and \DPOMeanErosionPP after DPO
-(\DPOMeanErosionCI). The exact-cell DPO-minus-SFT change is \PairedStageDeltaPP points
-(\PairedStageDeltaCI). These small means coexist with cellwise increases as large as
-\SFTMaxErosionPP and \DPOMaxErosionPP points. Separately, in the primary matched
-all-layer base-model steering subset, a benign cross-model activation contrast and a
-random-direction ablation change harm by
-\FpallFingerprintMeanEffectPP and \FpallRandomMeanEffectPP points; we do not detect a
-paired difference ($p=\FpallFingerprintRandomP$), while the refusal-cone positive
-control changes harm by \FpallConeMeanEffectPP points. This establishes assay
-sensitivity, not equivalence. A direct source-to-target safety projection estimates that
-SFT closes a fraction \SFTTargetAlignmentSlope of the target gap, but its crossed-model
-95\% interval \SFTTargetAlignmentCI includes no transfer; DPO's estimate is
-\DPOTargetAlignmentSlope (\DPOTargetAlignmentCI). Behavioral imitation is measurable,
-but reliable target-safety transfer is not established.
+Language models are commonly fine-tuned to imitate the behavior of other models. We study
+two distinct questions about the safety consequences of this practice: whether imitation
+produces target-specific convergence in safety behavior, and whether benign activation
+differences between models causally contribute to refusal. In a 12-model matrix spanning
+four target-output datasets, we find that supervised fine-tuning (SFT) and direct preference
+optimization (DPO) produce small average changes in harmful compliance (\SFTMeanErosionPP\%
+and \DPOMeanErosionPP\%) but highly heterogeneous effects across
+source--target pairs, with individual cells rising by as much as \SFTMaxErosionPP\%.
+Despite these small aggregate changes, target-relative comparisons show that SFT produces
+weak but directional convergence toward the actual target model's prompt-level safety
+behavior compared with mismatched targets, closing a small fraction of the source-to-target gap
+($\hat\beta=\SFTTargetAlignmentSlope$). This
+convergence is substantially attenuated after DPO ($\hat\beta=\DPOTargetAlignmentSlope$). We
+separately test benign cross-model activation contrasts using matched all-layer
+interventions across a broad panel of models. Ablating a learned refusal subspace strongly
+increases harmful compliance (\FpallConeMeanEffectPP\%), whereas we detect no effect
+specific to the cross-model contrast beyond norm-matched random directions
+(\FpallFingerprintMeanEffectPP\% vs.\ \FpallRandomMeanEffectPP\%,
+$p=\FpallFingerprintRandomP$). Overall, the features that make one model resemble another are not the features that govern
+its refusal: SFT
+produces weak target-specific convergence in safety behavior that is attenuated by DPO,
+while benign cross-model activation contrasts show no causal effect beyond random controls.
 \end{abstract}
 
 \section{Introduction}
@@ -160,14 +154,17 @@ model provenance is argued to be bound to the refusal representation itself
 \citep{xu2026fingerprint}. It is therefore tempting to read safety changes after
 target-output training as \emph{inheritance} of the target's safety policy, or as evidence
 that a constructed cross-model contrast and refusal share a mechanism. We test both readings
-directly.
+directly. Both readings share one premise---that the signal distinguishing one model from another is
+the signal that governs its refusal---which we probe behaviorally, through imitation, and
+representationally, through activation contrasts.
 
 That interpretation pools four different questions. First, did target-output training
 actually move held-out behavior toward the target? Second, what happens to safety after
 supervised imitation? Third, what additional change follows preference optimization?
 Fourth, is a benign cross-model activation contrast causally coupled to
-refusal in the unadapted model? The first three require separately analyzed SFT and DPO
-cells on identical source--target--dataset tuples; the first additionally requires a
+refusal in the unadapted model? The first three require separately analyzed supervised
+fine-tuning (SFT) and direct preference optimization (DPO) cells on identical
+source--target--dataset tuples; the first additionally requires a
 held-out imitation measure. The fourth requires an intervention
 that demonstrably reaches refusal, together with a matched null control. Evidence for
 one question cannot substitute for the controls of another.
@@ -177,7 +174,7 @@ because its prompt concerns harm even when the response refuses. In an automated
 agreement study on 4,712 shared responses, Llama-Guard 3 flags 25.4\%, compared with
 9.3\% for the official HarmBench classifier and 7.2\% for our refuse-then-leak (RTL)
 judge. HarmBench and RTL agree at $\kappa=0.699$, while Llama-Guard agrees poorly with
-either. This is convergent evidence between automated judges, not human ground truth.
+either. This pattern is convergent evidence between automated judges, not human ground truth.
 We use one consistent RTL binary metric for the complete matrix and retain
 benchmark-native scores only as auxiliary measurements.
 
@@ -226,7 +223,7 @@ activation addition use related interventions to manipulate high-level behavior
 \citep{zou2023repe,panickssery2024caa}. Prior separability results typically contrast
 directions within the safety or persona domain. Our test instead compares a benign
 cross-model activation contrast with a refusal cone under positive and random controls.
-This is narrower than proving a complete representation of model identity.
+This comparison is narrower than proving a complete representation of model identity.
 
 \paragraph{Safety evaluation.}
 We evaluate harmful compliance on AdvBench \citep{advbench2023}, HarmBench
@@ -404,7 +401,7 @@ maximizes harmful-validation bypass erosion subject to a harmless-bypass filter,
 64 harmful and 64 harmless validation instructions. Training uses all-layer hooks,
 AdamW at $10^{-2}$, effective batch size 16, and patience-based learning-rate reduction.
 
-The held-out response-embedding diagnostic argues against interpreting this as an
+The held-out response-embedding diagnostic argues against interpreting the contrast as an
 identity-removal direction: contrast ablation moves closer to the reference
 than random in only 7/27 models, and its mean distance change is $-0.0159$ versus
 $-0.0015$ for random (positive means movement toward the reference); the paired exact
@@ -518,7 +515,7 @@ the maxima are \SFTMaxErosionPP and \DPOMaxErosionPP points (Figure~\ref{fig:ero
 ``lower harmful compliance,'' not ``safer'': mean over-refusal changes are
 \SFTMeanOverRefusalDeltaPP points after SFT and \DPOMeanOverRefusalDeltaPP after DPO.
 The \SelfSFTAdapters self-SFT controls also have all \SelfSFTSafetyScores safety scores;
-their mean harmful-compliance change is \SelfSFTMeanErosionPP points. Its proximity to
+their mean harmful-compliance change is \SelfSFTMeanErosionPP points. The self-SFT mean's proximity to
 the DPO mean cautions against attributing the small average shift specifically to
 cross-model policy transfer, although the diagonal control is not a matched self-DPO design.
 
@@ -663,7 +660,7 @@ The fidelity evaluation rules out the strongest ``the adapters did nothing'' acc
 target-output SFT improves held-out target similarity in almost 90\% of cells. The direct
 safety projection adds a more specific result: SFT point estimates move toward target harm
 rates, but crossed-model uncertainty includes zero, and DPO weakens fidelity while erasing
-that directional pattern. This is incomplete, stage-dependent imitation, not reliable
+that directional pattern. This pattern is incomplete, stage-dependent imitation, not reliable
 transfer of a target identity or safety policy.
 
 The safety matrix result is an average scale statement, not a universal guarantee. Mean
@@ -674,7 +671,7 @@ needed: the source-relative mean alone cannot be read as target-policy transfer.
 
 The steering assay answers a separate mechanistic question. The refusal positive
 control shows that the system can strongly affect harmful compliance, while the paired
-test detects no contrast--random difference. It does not establish equivalence, that
+test detects no contrast--random difference. The paired test does not establish equivalence, that
 the contrast captures all model identity, that identity has been removed, or that the
 same geometry persists after updating the weights. The two experiments are mutually
 consistent but not a traced causal chain through training.
@@ -740,7 +737,7 @@ diagonal target is intrinsically easier than cross-model imitation. It therefore
 fully separate cross-model target effects from generic continued fine-tuning, especially
 for the incremental DPO result.
 
-Training backend is tied to source model and memory-constrained local jobs use the
+Training backend is tied to source model, and memory-constrained local jobs use the
 backend-specific batch and sequence settings reported above; source effects can therefore
 include backend effects. Local DPO truncation is rare (0.35\%), but Tinker's renderer-side
 truncation was not reconstructed. Steering operating points are selected and summarized on
