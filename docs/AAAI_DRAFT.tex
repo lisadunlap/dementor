@@ -112,34 +112,7 @@ A Complete SFT/DPO Matrix and a Positive-Controlled Steering Assay}
 \maketitle
 
 \begin{abstract}
-Does training a source language model on a benign target's outputs reproduce target
-behavior, and does stronger imitation transfer safety behavior? We evaluate every ordered off-diagonal pair in a
-\CampaignModels-model cohort over \CampaignDatasets datasets, yielding
-\CampaignAdaptersPerStage supervised-fine-tuning (SFT) cells and
-\CampaignAdaptersPerStage matched SFT$\rightarrow$DPO cells, plus \SelfSFTAdapters
-self-SFT controls. All \FidelityAdapters adapters receive two 200-prompt held-out
-behavioral-fidelity evaluations; the complete safety campaign contains
-\TotalSafetyScores adapter--benchmark scores. SFT increases embedding similarity to the target over
-the unadapted source by \SFTEmbedGain on average (positive in
-\SFTEmbedGainPositivePct\% of cells); DPO's gain is smaller at \DPOEmbedGain and its
-exact-cell fidelity is \DPOminusSFTEmbedFidelity below SFT. All imitation-safety
-comparisons use the same seed-\CampaignEvaluationSeed, \CampaignEvaluationPrompts-prompt
-samples and binary refuse-then-leak judge. Relative to each unadapted source, mean
-harmful-compliance change is \SFTMeanErosionPP percentage points after SFT
-(source-cluster bootstrap 95\% CI \SFTMeanErosionCI) and \DPOMeanErosionPP after DPO
-(\DPOMeanErosionCI). The exact-cell DPO-minus-SFT change is \PairedStageDeltaPP points
-(\PairedStageDeltaCI). These small means coexist with cellwise increases as large as
-\SFTMaxErosionPP and \DPOMaxErosionPP points. Separately, in the primary matched
-all-layer base-model steering subset, a benign cross-model activation contrast and a
-random-direction ablation change harm by
-\FpallFingerprintMeanEffectPP and \FpallRandomMeanEffectPP points; we do not detect a
-paired difference ($p=\FpallFingerprintRandomP$), while the refusal-cone positive
-control changes harm by \FpallConeMeanEffectPP points. This establishes assay
-sensitivity, not equivalence. A direct source-to-target safety projection estimates that
-SFT closes a fraction \SFTTargetAlignmentSlope of the target gap, but its crossed-model
-95\% interval \SFTTargetAlignmentCI includes no transfer; DPO's estimate is
-\DPOTargetAlignmentSlope (\DPOTargetAlignmentCI). Behavioral imitation is measurable,
-but reliable target-safety transfer is not established.
+Language models are commonly fine-tuned to imitate the behavior of other models. We study two distinct questions about the safety consequences of this practice: 1) whether imitation produces target-specific convergence in safety behavior, and 2) whether benign activation differences between models causally contribute to refusal. In a 12-model matrix spanning four target-output datasets, we find that supervised fine-tuning (SFT) and direct preference optimization (DPO) produce small average changes in harmful compliance but highly heterogeneous effects across source–target pairs. Despite these small aggregate changes, target-relative comparisons show that SFT produces weak but systematic convergence toward the actual target model’s prompt-level safety behavior compared with mismatched targets. This convergence is substantially attenuated after DPO. We separately test benign cross-model activation contrasts using matched all-layer interventions across a broad panel of models. Ablating a learned refusal subspace strongly increases harmful compliance, whereas we detect no effect specific to the cross-model contrast beyond norm-matched random directions. Overall, imitation does not uniformly weaken refusal: SFT produces weak target-specific convergence in safety behavior that is attenuated by DPO, while benign cross-model activation contrasts show no causal effect beyond random controls.
 \end{abstract}
 
 \section{Introduction}
