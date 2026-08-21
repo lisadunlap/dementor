@@ -111,10 +111,12 @@
 \maketitle
 
 \begin{abstract}
-Language models are commonly fine-tuned to imitate the behavior of other models. We study
-two distinct questions about the safety consequences of this practice: whether imitation
-produces target-specific convergence in safety behavior, and whether benign activation
-differences between models causally contribute to refusal. In a 12-model matrix spanning
+Language models are commonly fine-tuned to imitate the behavior of other models. We ask one
+question---are the features that make one model resemble another the same features that
+govern its refusal?---and answer it with two independent tests at different levels: a
+behavioral test of whether imitation produces target-specific convergence in safety
+behavior, and a representational test of whether benign activation differences between
+models causally contribute to refusal. In a 12-model matrix spanning
 four target-output datasets, we find that supervised fine-tuning (SFT) and direct preference
 optimization (DPO) produce small average changes in harmful compliance (\SFTMeanErosionPP\%
 and \DPOMeanErosionPP\%) but highly heterogeneous effects across
@@ -129,8 +131,8 @@ across a broad panel of models. Ablating a learned refusal subspace strongly
 increases harmful compliance (\FpallConeMeanEffectPP\%), whereas we detect no effect
 specific to the cross-model contrast beyond norm-matched random directions
 (\FpallFingerprintMeanEffectPP\% vs.\ \FpallRandomMeanEffectPP\%,
-$p=\FpallFingerprintRandomP$). Overall, the features that make one model resemble another are not the features that govern
-its refusal: SFT
+$p=\FpallFingerprintRandomP$). Overall, under benign, cross-family imitation we find no evidence that the features which
+make one model resemble another also govern its refusal: SFT
 produces weak target-specific convergence in safety behavior that is weakened by DPO,
 while benign cross-model activation contrasts show no causal effect beyond random controls.
 \end{abstract}
