@@ -681,10 +681,11 @@ consistent but not a traced causal chain through training.
 
 We also asked whether these nulls reflect genuine absence of effect rather than
 insufficient power. For target-alignment transfer, the dependence-aware crossed bootstrap
-implies $\mathrm{SE}(\hat\beta)\approx0.15$, giving 80\% power to detect a gap closure of
-$\hat\beta\ge0.42$---well below full transfer ($\hat\beta=1$) and roughly a fifth of the
-effect implied by prior benign-distillation reports ($\hat\beta\approx2.0$)
-\citep{jahan2025medical}. A two-one-sided-test on the $90\%$ interval rejects transfer
+implies $\mathrm{SE}(\hat\beta)\approx0.15$, giving 80\% power \citep{cohen1988power} to
+detect a gap closure of $\hat\beta\ge0.42$---well below full transfer ($\hat\beta=1$) and
+roughly a fifth of the effect implied by prior benign-distillation reports
+($\hat\beta\approx2.0$) \citep{jahan2025medical}. A two-one-sided-test
+\citep{schuirmann1987tost,lakens2017equivalence} on the $90\%$ interval rejects transfer
 $\ge0.40$ gap closure, so any residual effect is bounded well below half-transfer. The
 fingerprint-versus-random steering assay ($+0.84$\,pp, $p=0.14$) was powered to detect an
 $\approx1.6$\,pp separation and bounds the true gap below $\approx1.8$\,pp, against a
