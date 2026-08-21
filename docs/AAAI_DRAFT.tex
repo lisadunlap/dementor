@@ -111,38 +111,31 @@
 \maketitle
 
 \begin{abstract}
-Language models are commonly fine-tuned to imitate the behavior of other models. We study
-two distinct questions about the safety consequences of this practice: whether imitation
-produces target-specific convergence in safety behavior, and whether benign activation
-differences between models causally contribute to refusal. In a 12-model matrix spanning
-four target-output datasets, we find that supervised fine-tuning (SFT) and direct preference
-optimization (DPO) produce small average changes in harmful compliance (\SFTMeanErosionPP\%
-and \DPOMeanErosionPP\%) but highly heterogeneous effects across
-source--target pairs, with individual cells rising by as much as \SFTMaxErosionPP\%.
-Despite these small aggregate changes, target-relative comparisons show that SFT produces
-weak but directional convergence toward the actual target model's prompt-level safety
-behavior compared with mismatched targets, closing a small fraction of the source-to-target gap
-($\hat\beta=\SFTTargetAlignmentSlope$). This
-convergence is substantially weakened after DPO ($\hat\beta=\DPOTargetAlignmentSlope$). We
-separately test benign cross-model activation contrasts by ablating them at every layer
-across a broad panel of models. Ablating a learned refusal subspace strongly
-increases harmful compliance (\FpallConeMeanEffectPP\%), whereas we detect no effect
-specific to the cross-model contrast beyond norm-matched random directions
+Language models are commonly fine-tuned to imitate the behavior of other models. We ask one
+question---are the features that make one model resemble another the same features that
+govern its refusal?---and answer it with two complementary tests. The first is behavioral:
+does imitating a target's outputs transfer the target's specific safety policy? Across a
+\CampaignModels-model matrix over \CampaignDatasets\ target-output datasets, supervised
+fine-tuning (SFT) and direct preference optimization (DPO) change mean harmful compliance by
+only \SFTMeanErosionPP\% and \DPOMeanErosionPP\%, with heterogeneous per-cell effects up to
+\SFTMaxErosionPP\%; relative to each target, SFT closes only a small, uncertain fraction of
+the source-to-target safety gap ($\hat\beta=\SFTTargetAlignmentSlope$, crossed-model 95\% CI
+\SFTTargetAlignmentCI), a directional signal that DPO does not preserve
+($\hat\beta=\DPOTargetAlignmentSlope$). The second test is representational, probing one
+candidate channel for such transfer in the unadapted base model: does the benign activation
+contrast between two models causally drive refusal? Ablating a learned refusal subspace at
+every layer strongly increases harmful compliance (\FpallConeMeanEffectPP\%), but ablating
+the benign cross-model contrast produces no effect beyond norm-matched random directions
 (\FpallFingerprintMeanEffectPP\% vs.\ \FpallRandomMeanEffectPP\%,
-$p=\FpallFingerprintRandomP$). Overall, the features that make one model resemble another are not the features that govern
-its refusal: SFT
-produces weak target-specific convergence in safety behavior that is weakened by DPO,
-while benign cross-model activation contrasts show no causal effect beyond random controls.
+$p=\FpallFingerprintRandomP$). The two tests point the same way: imitation does not reliably
+transfer target safety behavior, and the benign cross-model activation contrast does not
+causally carry refusal. Under benign, cross-family imitation, we find no evidence that the
+features driving resemblance also govern refusal.
 \end{abstract}
 
 \section{Introduction}
 
-Language models exhibit recognizable response regularities: tone, formatting,
-verbosity, reasoning style, and characteristic phrasing. Prompting or fine-tuning can
-move a source model toward a target on these behavioral measurements
-\citep{hinton2015,gudibande2023,anon-inertia}. A common safety concern is that benign
-fine-tuning can degrade alignment \citep{qi2023}, and a growing line of work goes further:
-it reports that imitating another model's outputs carries over that model's safety-relevant
+Language models exhibit recognizable response regularities such as tone, formatting, verbosity, reasoning style, and characteristic phrasing. Prompting or fine-tuning can move a source model toward a target on these behavioral measurements \citep{hinton2015,gudibande2023,anon-inertia}. A common safety concern is that benign fine-tuning can degrade alignment \citep{qi2023}, and a growing line of work goes further: it reports that imitating another model's outputs carries over that model's safety-relevant
 behavior. Knowledge distillation is argued to transmit a teacher's ``response propensities,
 refusal policies, error boundaries, and latent safety biases'' \citep{du2026rgflow}; benign behavioral
 distillation replicates a teacher's safety vulnerabilities as direct transfer rather than
