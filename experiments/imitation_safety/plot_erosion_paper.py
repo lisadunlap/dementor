@@ -57,8 +57,8 @@ def rcparams():
         # the requested figsize, and these PDFs must drop into AAAI \columnwidth / \textwidth at
         # exactly 1.0 scale.  tight_layout() below does the label packing instead.
         "pdf.fonttype": 42, "ps.fonttype": 42, "savefig.bbox": "standard",
-        "font.size": 9, "axes.titlesize": 9.5, "axes.labelsize": 9,
-        "xtick.labelsize": 9, "ytick.labelsize": 9, "legend.fontsize": 9,
+        "font.size": 12, "axes.titlesize": 13, "axes.labelsize": 12,
+        "xtick.labelsize": 12, "ytick.labelsize": 12, "legend.fontsize": 12,
         "axes.linewidth": 0.6, "xtick.major.width": 0.6, "ytick.major.width": 0.6,
     })
 
@@ -220,7 +220,7 @@ def main():
     piv = piv.reindex(order).reindex(columns=order)                     # same order on both axes
     cnt = cnt.reindex(order).reindex(columns=order)
     vmax = fig_matrix(piv, cnt, os.path.join(out, "fig05a_erosion_matrix_wide"),
-                      TEXT_W, cell_fs=9.0, tick_fs=9.0, vmax=joint_vmax)
+                      TEXT_W, cell_fs=11.0, tick_fs=11.5, vmax=joint_vmax)
     fig_matrix(piv, cnt, os.path.join(out, "fig05a_erosion_matrix_col"),
                COL_W, cell_fs=4.2, tick_fs=5.0, vmax=joint_vmax)
 
